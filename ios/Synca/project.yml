@@ -1,0 +1,131 @@
+name: Synca
+options:
+  minimumXcodeGenVersion: 2.38.0
+configs:
+  Local: debug
+  Production: release
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+    MACOSX_DEPLOYMENT_TARGET: 14.0
+    DEVELOPMENT_LANGUAGE: zh-Hans
+    PRODUCT_BUNDLE_IDENTIFIER: org.haerth.synca
+    DEVELOPMENT_TEAM: 7Y33M5HLSC
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    GENERATE_INFOPLIST_FILE: YES
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+targets:
+  Synca:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: iOS
+      - path: Resources
+    settings:
+      configs:
+        Local:
+          API_BASE_URL: http://127.0.0.1:3002
+          APS_ENVIRONMENT: development
+          APNS_UPLOAD_ENV: sandbox
+        Production:
+          API_BASE_URL: https://synca.haerth.cn
+          APS_ENVIRONMENT: production
+          APNS_UPLOAD_ENV: production
+        Release:
+          API_BASE_URL: https://synca.haerth.cn
+          APS_ENVIRONMENT: production
+          APNS_UPLOAD_ENV: production
+      base:
+        PRODUCT_NAME: Synca
+        PRODUCT_MODULE_NAME: Synca
+        ENABLE_TESTABILITY: YES
+        INFOPLIST_FILE: iOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: iOS/Synca.entitlements
+    info:
+      path: iOS/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        ITSAppUsesNonExemptEncryption: false
+        APIBaseURL: $(API_BASE_URL)
+        APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
+        CFBundleLocalizations:
+          - zh-Hans
+        CFBundleDisplayName: Synca
+        UIApplicationSupportsIndirectInputEvents: true
+        UIBackgroundModes:
+          - remote-notification
+        UIRequiresFullScreen: true
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations: {}
+        NSPhotoLibraryUsageDescription: Synca 需要访问相册来发送图片
+        NSCameraUsageDescription: Synca 需要使用相机来拍照发送
+  SyncaMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Shared
+      - path: macOS
+      - path: Resources
+    settings:
+      configs:
+        Local:
+          API_BASE_URL: http://127.0.0.1:3002
+          APNS_UPLOAD_ENV: sandbox
+        Production:
+          API_BASE_URL: https://synca.haerth.cn
+          APNS_UPLOAD_ENV: production
+        Release:
+          API_BASE_URL: https://synca.haerth.cn
+          APNS_UPLOAD_ENV: production
+      base:
+        PRODUCT_NAME: Synca
+        PRODUCT_MODULE_NAME: Synca
+        PRODUCT_BUNDLE_IDENTIFIER: org.haerth.synca
+        ENABLE_TESTABILITY: YES
+        INFOPLIST_FILE: macOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: macOS/SyncaMac.entitlements
+    info:
+      path: macOS/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        ITSAppUsesNonExemptEncryption: false
+        APIBaseURL: $(API_BASE_URL)
+        APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
+        CFBundleLocalizations:
+          - zh-Hans
+        CFBundleDisplayName: Synca
+schemes:
+  Synca:
+    build:
+      targets:
+        Synca: all
+    run:
+      config: Local
+    test:
+      config: Local
+    archive:
+      config: Release
+  SyncaMac:
+    build:
+      targets:
+        SyncaMac: all
+    run:
+      config: Local
+    test:
+      config: Local
+    archive:
+      config: Release

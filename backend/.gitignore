@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+coverage
+.env
+data/synca.test.sqlite
+data/synca.sqlite
+/uploads
+*.log

@@ -1,0 +1,63 @@
+import { v4 as uuidv4 } from 'uuid';
+import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession } from './store.js';
+
+/**
+ * Verify Apple identity token on the server side.
+ * Uses apple-signin-auth to validate the JWT against Apple's public keys.
+ */
+export async function verifyAppleToken(idToken: string): Promise<{
+    appleUserId: string;
+    email?: string;
+}> {
+    // Dynamic import to handle ESM/CJS compatibility
+    const appleSignin = await import('apple-signin-auth');
+    const clientId = process.env.APPLE_CLIENT_ID ?? 'org.haerth.synca';
+
+    const payload = await appleSignin.verifyIdToken(idToken, {
+        audience: clientId,
+    });
+
+    return {
+        appleUserId: payload.sub,
+        email: payload.email,
+    };
+}
+
+/**
+ * Login or register a user via Apple Sign In.
+ * Returns a session token and user info.
+ */
+export async function loginWithApple(params: {
+    idToken: string;
+    deviceId?: string;
+}): Promise<{ token: string; user: any }> {
+    const { appleUserId, email } = await verifyAppleToken(params.idToken);
+
+    const now = new Date().toISOString();
+    let user = await getUserByAppleId(appleUserId);
+
+    if (!user) {
+        user = await createUser({
+            id: uuidv4(),
+            appleUserId,
+            email,
+            nickname: 'Synca 用户',
+            now,
+        });
+    }
+
+    const token = uuidv4();
+    await dbCreateSession(token, user.id, params.deviceId);
+
+    return { token, user };
+}
+
+/**
+ * Extract user ID from Bearer token.
+ */
+export async function getUserIdFromToken(rawAuth?: string): Promise<string | null> {
+    if (!rawAuth?.startsWith('Bearer ')) return null;
+    const token = rawAuth.slice('Bearer '.length).trim();
+    const userId = await getSession(token);
+    return userId ?? null;
+}

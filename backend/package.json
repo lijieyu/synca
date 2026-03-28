@@ -1,0 +1,38 @@
+{
+  "name": "synca-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/src/server.js",
+    "build": "tsc -p tsconfig.json",
+    "migrate:prod": "node dist/src/migrate.js",
+    "migrate": "tsx src/migrate.ts",
+    "test": "rm -f data/synca.test.sqlite && DB_PATH=synca.test.sqlite npm run migrate && DB_PATH=synca.test.sqlite vitest run",
+    "test:watch": "rm -f data/synca.test.sqlite && DB_PATH=synca.test.sqlite npm run migrate && DB_PATH=synca.test.sqlite vitest"
+  },
+  "dependencies": {
+    "apple-signin-auth": "^2.0.0",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2",
+    "kysely": "^0.28.11",
+    "multer": "^2.0.2",
+    "uuid": "^11.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^22.13.4",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
