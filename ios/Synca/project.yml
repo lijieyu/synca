@@ -114,9 +114,9 @@ schemes:
       targets:
         Synca: all
     run:
-      config: Local
+      config: Production
     test:
-      config: Local
+      config: Production
     archive:
       config: Release
   SyncaMac:
@@ -124,8 +124,8 @@ schemes:
       targets:
         SyncaMac: all
     run:
-      config: Local
+      config: Production
     test:
-      config: Local
+      config: Production
     archive:
       config: Release

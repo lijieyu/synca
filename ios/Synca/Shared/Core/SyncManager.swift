@@ -40,6 +40,7 @@ final class SyncManager: ObservableObject {
     func fullSync(manual: Bool = false) async {
         guard api.isAuthenticated else { return }
         isLoading = messages.isEmpty && manual
+        defer { isLoading = false } // 确保无论成败，退出时重置状态
         errorMessage = nil
         if manual { updateStatus(.syncing) }
 
@@ -54,8 +55,6 @@ final class SyncManager: ObservableObject {
             handleError(error, context: "同步")
             if manual { updateStatus(.error(error.localizedDescription)) }
         }
-
-        isLoading = false
     }
 
     // MARK: - Incremental Sync

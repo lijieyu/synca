@@ -102,7 +102,7 @@ struct MessageListView: View {
             }
         }
         .overlay {
-            if syncManager.isLoading {
+            if syncManager.isLoading && syncManager.messages.isEmpty {
                 ProgressView("加载中...")
                     .padding()
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
