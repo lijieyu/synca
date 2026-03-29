@@ -15,6 +15,7 @@ export interface SyncaMessage {
     imagePath?: string | null;
     imageUrl?: string | null; // computed: full URL for client
     isCleared: boolean;
+    isDeleted: boolean;
     sourceDevice?: string | null;
     createdAt: string;
     updatedAt: string;

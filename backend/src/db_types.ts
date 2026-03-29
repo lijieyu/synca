@@ -16,6 +16,7 @@ export interface MessagesTable {
     text_content: string | null;
     image_path: string | null;
     is_cleared: number; // 0 | 1
+    is_deleted: number; // 0 | 1
     source_device: string | null;
     created_at: string;
     updated_at: string;

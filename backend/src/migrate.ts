@@ -34,6 +34,14 @@ export async function runMigrations() {
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at)`.execute(db);
+    
+    // Add is_deleted column if missing
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`.execute(db);
+        console.log('[migrate] Added is_deleted column to messages table.');
+    } catch (e) {
+        // Column may already exist
+    }
 
     // Create sessions table
     await sql`

@@ -95,6 +95,15 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await patch("/messages/\(id)/clear")
     }
 
+    func deleteMessage(id: String) async throws {
+        var request = URLRequest(url: URL(string: "\(baseURL)/messages/\(id)")!)
+        request.httpMethod = "DELETE"
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let _: OkResponse = try await execute(request)
+    }
+
     func clearAllMessages() async throws -> Int {
         let response: OkResponse = try await post("/messages/clear-all", body: [:])
         return response.clearedCount ?? 0

@@ -7,7 +7,7 @@ import cors from 'cors';
 import multer from 'multer';
 import { loginWithApple, getUserIdFromToken } from './auth.js';
 import {
-    listMessages, getMessage, createMessage, clearMessage, clearAllMessages, getUnclearedCount,
+    listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens,
 } from './store.js';
 import { apnsProvider } from './apns.js';
@@ -197,6 +197,20 @@ app.patch('/messages/:id/clear', auth, async (req, res) => {
     }
 
     // Notify other devices about the clear
+    notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
+
+    res.json({ ok: true });
+});
+
+// Delete single message (True Delete)
+app.delete('/messages/:id', auth, async (req, res) => {
+    const userId = getUserId(req);
+    const deleted = await deleteMessage(req.params.id, userId, uploadsDir);
+    if (!deleted) {
+        return res.status(404).json({ error: 'message_not_found' });
+    }
+
+    // Notify other devices about the deletion
     notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
 
     res.json({ ok: true });

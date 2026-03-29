@@ -17,6 +17,7 @@ struct ImagePreviewView: View {
     @State private var showControls = true
     @State private var loadID = UUID() // 重试加载
     @State private var saveStatus: SaveStatus = .none
+    @State private var showDeleteConfirm = false
 
     enum SaveStatus {
         case none, saving, success, error
@@ -70,13 +71,12 @@ struct ImagePreviewView: View {
                             Button { Task { await saveImageAs(from: imageURL) } } label: { Label("另存为...", systemImage: "folder.badge.plus") }
                             #endif
                             
-                            if let onDelete = onDelete {
+                            if onDelete != nil {
                                 Divider()
                                 Button(role: .destructive) {
-                                    onDelete()
-                                    dismiss()
+                                    showDeleteConfirm = true
                                 } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label("彻底删除", systemImage: "trash")
                                 }
                             }
                         }
@@ -159,6 +159,15 @@ struct ImagePreviewView: View {
                 }
                 .transition(.opacity)
             }
+        }
+        .alert("彻底删除记录", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("彻底删除", role: .destructive) {
+                onDelete?()
+                dismiss()
+            }
+        } message: {
+            Text("此操作将从云端永久抹除此记录和图片文件，且不可撤销。")
         }
     }
 

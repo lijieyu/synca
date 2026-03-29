@@ -69,6 +69,11 @@ final class SyncManager: ObservableObject {
 
             if !newMessages.isEmpty {
                 for msg in newMessages {
+                    if msg.isDeleted {
+                        messages.removeAll { $0.id == msg.id }
+                        continue
+                    }
+                    
                     if let index = messages.firstIndex(where: { $0.id == msg.id }) {
                         messages[index] = msg
                     } else {
@@ -208,6 +213,16 @@ final class SyncManager: ObservableObject {
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
             handleError(error, context: "清理")
+        }
+    }
+
+    func deleteMessage(_ id: String) async {
+        do {
+            try await api.deleteMessage(id: id)
+            messages.removeAll { $0.id == id }
+            unclearedCount = messages.filter { !$0.isCleared }.count
+        } catch {
+            handleError(error, context: "删除")
         }
     }
 

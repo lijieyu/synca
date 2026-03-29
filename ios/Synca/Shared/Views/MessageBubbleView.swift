@@ -8,10 +8,12 @@ import AppKit
 struct MessageBubbleView: View {
     let message: SyncaMessage
     let onClear: () -> Void
+    let onDelete: () -> Void
 
     @State private var showImagePreview = false
     @State private var copied = false
     @State private var saveStatus: SaveStatus = .none
+    @State private var showDeleteConfirm = false
     @State private var loadID = UUID() // #1: 重显失败图片的关键
 
     enum SaveStatus {
@@ -90,6 +92,14 @@ struct MessageBubbleView: View {
             }
         }
         #endif
+        .alert("彻底删除记录", isPresented: $showDeleteConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("彻底删除", role: .destructive) {
+                onDelete()
+            }
+        } message: {
+            Text("此操作将从云端永久抹除此记录\(message.type == .image ? "和图片文件" : "")，且不可撤销。")
+        }
     }
 
     private var cardBackground: Color {
@@ -115,13 +125,12 @@ struct MessageBubbleView: View {
                     Label("拷贝", systemImage: "doc.on.doc")
                 }
                 
-                if !message.isCleared {
-                    Divider()
-                    Button(role: .destructive) {
-                        onClear()
-                    } label: {
-                        Label("删除", systemImage: "trash")
-                    }
+                Divider()
+                
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label("彻底删除", systemImage: "trash")
                 }
             }
     }
@@ -159,13 +168,12 @@ struct MessageBubbleView: View {
                                 }
                                 #endif
                                 
-                                if !message.isCleared {
-                                    Divider()
-                                    Button(role: .destructive) {
-                                        onClear()
-                                    } label: {
-                                        Label("删除", systemImage: "trash")
-                                    }
+                                Divider()
+                                
+                                Button(role: .destructive) {
+                                    showDeleteConfirm = true
+                                } label: {
+                                    Label("彻底删除", systemImage: "trash")
                                 }
                             }
                     case .failure:

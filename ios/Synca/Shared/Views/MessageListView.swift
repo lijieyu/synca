@@ -27,9 +27,15 @@ struct MessageListView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(syncManager.messages) { message in
-                                MessageBubbleView(message: message) {
-                                    Task { await syncManager.clearMessage(message.id) }
-                                }
+                                MessageBubbleView(
+                                    message: message,
+                                    onClear: {
+                                        Task { await syncManager.clearMessage(message.id) }
+                                    },
+                                    onDelete: {
+                                        Task { await syncManager.deleteMessage(message.id) }
+                                    }
+                                )
                                 .id(message.id)
                             }
                         }

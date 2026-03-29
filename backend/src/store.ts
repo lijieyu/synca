@@ -25,6 +25,7 @@ function toMessage(row: MessagesTable, baseUrl?: string): SyncaMessage {
         imagePath: row.image_path ?? undefined,
         imageUrl: row.image_path && baseUrl ? `${baseUrl}/uploads/${row.image_path}` : undefined,
         isCleared: row.is_cleared === 1,
+        isDeleted: row.is_deleted === 1,
         sourceDevice: row.source_device ?? undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -81,6 +82,9 @@ export async function listMessages(params: {
 
     if (params.since) {
         query = query.where('updated_at', '>', params.since);
+    } else {
+        // Initial load: skip deleted records
+        query = query.where('is_deleted', '=', 0);
     }
 
     query = query.orderBy('created_at', 'asc');
@@ -117,6 +121,7 @@ export async function createMessage(message: {
         text_content: message.textContent ?? null,
         image_path: message.imagePath ?? null,
         is_cleared: 0,
+        is_deleted: 0,
         source_device: message.sourceDevice ?? null,
         created_at: message.now,
         updated_at: message.now,
@@ -132,6 +137,48 @@ export async function clearMessage(id: string, userId: string): Promise<boolean>
         .where('is_cleared', '=', 0)
         .execute();
     return result[0].numUpdatedRows > 0n;
+}
+
+export async function deleteMessage(id: string, userId: string, uploadsDir: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    
+    // 1. Get message info to check for image file
+    const msg = await db.selectFrom('messages')
+        .select(['id', 'image_path'])
+        .where('id', '=', id)
+        .where('user_id', '=', userId)
+        .executeTakeFirst();
+    
+    if (!msg) return false;
+
+    // 2. Mark as deleted in DB
+    const result = await db.updateTable('messages')
+        .set({ 
+            is_deleted: 1, 
+            updated_at: now,
+            text_content: null, // Clear content for privacy
+            image_path: null 
+        })
+        .where('id', '=', id)
+        .where('user_id', '=', userId)
+        .execute();
+    
+    const success = result[0].numUpdatedRows > 0n;
+
+    // 3. Physically delete image file from disk if it exists
+    if (success && msg.image_path) {
+        import('fs').then((fs) => {
+            const filePath = import('path').then((path) => {
+                const fullPath = path.resolve(uploadsDir, msg.image_path!);
+                fs.unlink(fullPath, (err) => {
+                    if (err) console.error(`[delete] Failed to remove file ${fullPath}:`, err);
+                    else console.log(`[delete] Physically removed file ${fullPath}`);
+                });
+            });
+        });
+    }
+
+    return success;
 }
 
 export async function clearAllMessages(userId: string): Promise<number> {
