@@ -120,7 +120,7 @@ struct MessageBubbleView: View {
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+                CachedAsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
                         image
@@ -160,7 +160,7 @@ struct MessageBubbleView: View {
                         .frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onTapGesture {
-                            loadID = UUID() // 刷新视图身份以重试
+                            loadID = UUID() // 更新外部 ID 触发重新渲染
                         }
                     case .empty:
                         ProgressView().frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
@@ -168,7 +168,7 @@ struct MessageBubbleView: View {
                     @unknown default: EmptyView()
                     }
                 }
-                .id(loadID) // 关键所在
+                .id(loadID)
             }
         }
     }

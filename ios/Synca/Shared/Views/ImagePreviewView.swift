@@ -25,7 +25,7 @@ struct ImagePreviewView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            AsyncImage(url: imageURL) { phase in
+            CachedAsyncImage(url: imageURL) { phase in
                 switch phase {
                 case .success(let image):
                     image
