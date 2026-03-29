@@ -3,9 +3,9 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
-/// A selectable, wrapping text view for macOS that uses NSTextField (Label mode)
-/// to ensure perfect SwiftUI height/width calculation, while providing a pure
-/// (customized) context menu without system clutter.
+/// A selectable text view for macOS designed specifically to act as an overlay
+/// in a ZStack. It relies entirely on the SwiftUI frame for sizing and
+/// only provides the custom context menu and selection capabilities.
 struct MacSelectableText: NSViewRepresentable {
     let text: String
     let color: Color
@@ -13,39 +13,42 @@ struct MacSelectableText: NSViewRepresentable {
     let onCopy: () -> Void
     let onDelete: () -> Void
 
-    func makeNSView(context: Context) -> CustomContextMenuTextField {
-        // wrappingLabelWithString is the magic that tells AppKit to treat this
-        // as a multi-line auto-sizing label, communicating the correct intrinsic size to SwiftUI.
-        let textField = CustomContextMenuTextField(wrappingLabelWithString: text)
-        textField.isSelectable = true
-        textField.isEditable = false
-        textField.drawsBackground = false
+    func makeNSView(context: Context) -> CustomContextMenuTextView {
+        let textView = CustomContextMenuTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
         
-        // Let SwiftUI control the width but respect the vertical content size
-        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // Zero out padding so it aligns exactly with the underlying invisible SwiftUI Text
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
         
-        textField.onCopy = onCopy
-        textField.onDelete = onDelete
+        // Fills the SwiftUI-provided bounds perfectly
+        textView.isVerticallyResizable = false
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width, .height]
+        textView.textContainer?.widthTracksTextView = true
         
-        return textField
+        textView.onCopy = onCopy
+        textView.onDelete = onDelete
+        
+        return textView
     }
 
-    func updateNSView(_ nsView: CustomContextMenuTextField, context: Context) {
-        nsView.stringValue = text
+    func updateNSView(_ nsView: CustomContextMenuTextView, context: Context) {
+        nsView.string = text
         nsView.textColor = NSColor(color)
-        
-        // Sync basic font style - maps directly to macOS body font size for consistency
-        nsView.font = NSFont.systemFont(ofSize: 14)
+        nsView.font = NSFont.systemFont(ofSize: 13) // SwiftUI .body roughly maps to 13pt
     }
 }
 
-class CustomContextMenuTextField: NSTextField {
+class CustomContextMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
-        
         let copyItem = NSMenuItem(title: "拷贝", action: #selector(handleCopy(_:)), keyEquivalent: "c")
         copyItem.target = self
         menu.addItem(copyItem)
@@ -60,10 +63,8 @@ class CustomContextMenuTextField: NSTextField {
     }
 
     @objc func handleCopy(_ sender: Any?) {
-        // If the user selected some text, copy only the selection.
-        // Otherwise, invoke the onCopy callback to copy the entire message content.
-        if let editor = self.currentEditor(), editor.selectedRange.length > 0 {
-            editor.copy(sender)
+        if self.selectedRange().length > 0 {
+            self.copy(sender)
         } else {
             onCopy?()
         }

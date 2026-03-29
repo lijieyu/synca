@@ -114,13 +114,22 @@ struct MessageBubbleView: View {
     
     private var textContent: some View {
         #if os(macOS)
-        MacSelectableText(
-            text: message.textContent ?? "",
-            color: message.isCleared ? Color.secondary : Color.primary,
-            font: .body,
-            onCopy: { copyText(message.textContent ?? "") },
-            onDelete: { showDeleteConfirm = true }
-        )
+        ZStack(alignment: .topLeading) {
+            // Invisible native Text to guarantee perfect SwiftUI auto-layout height & wrapping
+            Text(message.textContent ?? "")
+                .font(.body)
+                .lineLimit(nil)
+                .opacity(0)
+            
+            // AppKit Text overlay for selection and custom context menu
+            MacSelectableText(
+                text: message.textContent ?? "",
+                color: message.isCleared ? Color.secondary : Color.primary,
+                font: .body,
+                onCopy: { copyText(message.textContent ?? "") },
+                onDelete: { showDeleteConfirm = true }
+            )
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
         #else
         Text(message.textContent ?? "")
