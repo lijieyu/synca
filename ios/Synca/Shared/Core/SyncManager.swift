@@ -22,8 +22,8 @@ final class SyncManager: ObservableObject {
     @Published var isLoading = false
     @Published var isSending = false
     @Published var isRefreshing = false
-    @Published var syncStatus: SyncStatus = .idle // #5: 同步状态反馈
-    @Published var lastRefreshDate: Date?       // #5: 上次同步时间
+    @Published var syncStatus: SyncStatus = .idle 
+    @Published var lastRefreshDate: Date?       
     @Published var errorMessage: String?
     @Published var sessionExpired = false
 
@@ -31,16 +31,17 @@ final class SyncManager: ObservableObject {
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
     private var statusResetTask: Task<Void, Never>?
+    private var isManualRefresh = false // #5: 用于区分静默同步和手动同步
 
     private init() {}
 
     // MARK: - Full Sync
 
-    func fullSync() async {
+    func fullSync(manual: Bool = false) async {
         guard api.isAuthenticated else { return }
-        isLoading = messages.isEmpty
+        isLoading = messages.isEmpty && manual
         errorMessage = nil
-        updateStatus(.syncing)
+        if manual { updateStatus(.syncing) }
 
         do {
             let allMessages = try await api.listMessages()
@@ -48,10 +49,10 @@ final class SyncManager: ObservableObject {
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
-            updateStatus(.success)
+            if manual { updateStatus(.success) }
         } catch {
             handleError(error, context: "同步")
-            updateStatus(.error(error.localizedDescription))
+            if manual { updateStatus(.error(error.localizedDescription)) }
         }
 
         isLoading = false
@@ -59,9 +60,9 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Incremental Sync
 
-    func incrementalSync() async {
+    func incrementalSync(manual: Bool = false) async {
         guard api.isAuthenticated else { return }
-        updateStatus(.syncing)
+        if manual { updateStatus(.syncing) }
 
         do {
             let since = lastSyncTimestamp
@@ -80,10 +81,10 @@ final class SyncManager: ObservableObject {
                 lastRefreshDate = Date()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
-            updateStatus(.success)
+            if manual { updateStatus(.success) }
         } catch {
-            handleError(error, context: "同步", silent: true)
-            updateStatus(.error(error.localizedDescription))
+            handleError(error, context: "同步", silent: !manual)
+            if manual { updateStatus(.error(error.localizedDescription)) }
         }
     }
 
@@ -91,7 +92,7 @@ final class SyncManager: ObservableObject {
 
     func refresh() async {
         isRefreshing = true
-        await fullSync()
+        await fullSync(manual: true)
         isRefreshing = false
     }
 
@@ -99,9 +100,10 @@ final class SyncManager: ObservableObject {
 
     func startPolling() {
         stopPolling()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                await self?.incrementalSync()
+                // 轮询采用静默模式
+                await self?.incrementalSync(manual: false)
             }
         }
     }
@@ -117,7 +119,6 @@ final class SyncManager: ObservableObject {
         syncStatus = status
         statusResetTask?.cancel()
         
-        // 成功或错误状态在 3 秒后重置回 idle
         if status != .syncing && status != .idle {
             statusResetTask = Task {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
@@ -171,6 +172,8 @@ final class SyncManager: ObservableObject {
 
     func sendImages(_ imageDatas: [Data]) async {
         isSending = true
+        var failureCount = 0
+        
         for imageData in imageDatas {
             do {
                 let message = try await api.sendImageMessage(
@@ -181,9 +184,15 @@ final class SyncManager: ObservableObject {
                 unclearedCount += 1
                 lastSyncTimestamp = message.updatedAt
             } catch {
-                handleError(error, context: "图片发送")
+                failureCount += 1
+                print("[send] 批量发送单张失败: \(error)")
             }
         }
+        
+        if failureCount > 0 {
+            errorMessage = "批量发送完成，但有 \(failureCount) 张图片发送失败"
+        }
+        
         lastRefreshDate = Date()
         isSending = false
     }

@@ -88,7 +88,7 @@ struct ImagePreviewView: View {
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundStyle(.white)
                                 .padding(12)
-                                .background(.ultraThinMaterial)
+                                .background(Color.black.opacity(0.4))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
@@ -108,11 +108,11 @@ struct ImagePreviewView: View {
                                 Image(systemName: "square.and.arrow.down")
                                 Text("下载到本地")
                             }
-                            .font(.subheadline)
+                            .font(.subheadline.bold())
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(.ultraThinMaterial)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.black.opacity(0.4))
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)

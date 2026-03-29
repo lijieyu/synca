@@ -41,12 +41,12 @@ struct MessageBubbleView: View {
 
                 // #6: Actions row (Always visible)
                 HStack(spacing: 16) {
+                    if message.type == .image {
+                        downloadImageButton
+                        copyImageButton
+                    }
                     if message.type == .text {
                         copyTextButton
-                    }
-                    if message.type == .image {
-                        copyImageButton
-                        downloadImageButton
                     }
                     
                     if !message.isCleared {

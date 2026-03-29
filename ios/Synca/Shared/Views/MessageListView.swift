@@ -109,7 +109,7 @@ struct MessageListView: View {
             }
         }
         .task {
-            await syncManager.fullSync()
+            await syncManager.fullSync(manual: true)
             syncManager.startPolling()
             updateBadge()
         }
@@ -120,11 +120,11 @@ struct MessageListView: View {
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            Task { await syncManager.incrementalSync() }
+            Task { await syncManager.incrementalSync(manual: false) }
         }
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await syncManager.incrementalSync() }
+            Task { await syncManager.incrementalSync(manual: false) }
         }
         #endif
         .onDisappear {

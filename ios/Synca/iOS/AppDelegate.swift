@@ -54,7 +54,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("[apns] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.incrementalSync()
+            await SyncManager.shared.incrementalSync(manual: false)
 
             // Update badge
             let count = SyncManager.shared.unclearedCount
