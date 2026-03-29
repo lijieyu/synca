@@ -44,6 +44,15 @@ struct MessageListView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
                         .padding(.bottom, 8)
+                        .background(
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    #if os(iOS)
+                                    hideKeyboard()
+                                    #endif
+                                }
+                        )
 
                         Color.clear
                             .frame(height: 1)
@@ -53,9 +62,6 @@ struct MessageListView: View {
                     .scrollDismissesKeyboard(.onDrag)
                     .refreshable {
                         await syncManager.refresh()
-                    }
-                    .onTapGesture {
-                        hideKeyboard()
                     }
                     #endif
                     .onChange(of: syncManager.messages.count) { _ in
@@ -250,11 +256,12 @@ struct MessageListView: View {
             .onChange(of: selectedPhotoItems) { items in
                 guard !items.isEmpty else { return }
                 Task {
+                    // Reverse the order so the 'newest' (usually selected first) 
+                    // appears at the bottom of the chat list
+                    let reversedItems = items.reversed()
                     var imageDatas: [Data] = []
-                    for item in items {
+                    for item in reversedItems {
                         if let data = try? await item.loadTransferable(type: Data.self) {
-                            // Phase 29: NEVER re-compress original files (PNG, HEIC, JPEG).
-                            // Byte-for-byte retention of metadata and transparency.
                             imageDatas.append(data)
                         }
                     }
