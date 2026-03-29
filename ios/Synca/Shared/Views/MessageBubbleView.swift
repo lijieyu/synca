@@ -113,6 +113,16 @@ struct MessageBubbleView: View {
     // MARK: - Subviews
     
     private var textContent: some View {
+        #if os(macOS)
+        MacSelectableText(
+            text: message.textContent ?? "",
+            color: message.isCleared ? Color.secondary : Color.primary,
+            font: .body,
+            onCopy: { copyText(message.textContent ?? "") },
+            onDelete: { showDeleteConfirm = true }
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
         Text(message.textContent ?? "")
             .font(.body)
             .foregroundStyle(message.isCleared ? .secondary : .primary)
@@ -133,6 +143,7 @@ struct MessageBubbleView: View {
                     Label("删除", systemImage: "trash")
                 }
             }
+        #endif
     }
 
     private var imageContent: some View {
