@@ -103,6 +103,7 @@ struct MessageListView: View {
 
     // MARK: - Subviews
 
+    @ViewBuilder
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -141,7 +142,7 @@ struct MessageListView: View {
                     .id("bottom")
             }
             #if os(iOS)
-            .scrollDismissesKeyboard(.onDrag)
+            .scrollDismissesKeyboard(.immediately)
             .refreshable {
                 await syncManager.refresh()
             }
