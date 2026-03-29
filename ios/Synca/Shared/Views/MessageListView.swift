@@ -11,14 +11,17 @@ struct MessageListView: View {
     @EnvironmentObject var syncManager: SyncManager
     @EnvironmentObject var api: APIClient
     @State private var inputText = ""
-    @State private var selectedPhotoItems: [PhotosPickerItem] = []  // #2: 多选图片
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showLogoutConfirm = false
-    @State private var showClearAllConfirm = false  // #1: 清理全部二次确认
-    @State private var showSessionExpired = false   // #7: 登录过期弹窗
+    @State private var showClearAllConfirm = false
+    @State private var showSessionExpired = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Header Status Tip (#5)
+                syncStatusTip
+
                 // Message list
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -34,14 +37,13 @@ struct MessageListView: View {
                         .padding(.top, 12)
                         .padding(.bottom, 8)
 
-                        // Invisible anchor for scrolling
                         Color.clear
                             .frame(height: 1)
                             .id("bottom")
                     }
                     #if os(iOS)
-                    .scrollDismissesKeyboard(.interactively)  // #4: 拖动收起键盘
-                    .refreshable {  // #5: iOS 下拉刷新
+                    .scrollDismissesKeyboard(.interactively)
+                    .refreshable {
                         await syncManager.refresh()
                     }
                     #endif
@@ -55,10 +57,6 @@ struct MessageListView: View {
                             proxy.scrollTo("bottom", anchor: .bottom)
                         }
                     }
-                    // #5: 叠加右下角滚到底部按钮
-                    .overlay(alignment: .bottomTrailing) {
-                        scrollToBottomButton(proxy: proxy)
-                    }
                 }
 
                 Divider()
@@ -66,41 +64,18 @@ struct MessageListView: View {
                 // Input bar
                 inputBar
             }
+            .navigationTitle("Synca")
             #if os(iOS)
-            .navigationTitle("Synca")
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 12) {
-                        clearAllButton
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        refreshButton  // #5: 头部刷新按钮
-                        settingsMenu
-                    }
-                }
-            }
-            #else
-            .navigationTitle("Synca")
-            .toolbar(.hidden)
-            .safeAreaInset(edge: .top) {
-                HStack {
+                // Trailing group for all actions (#1)
+                ToolbarItemGroup(placement: .primaryAction) {
+                    refreshButton
                     clearAllButton
-                    Spacer()
-                    Text("Synca")
-                        .font(.headline)
-                    Spacer()
-                    refreshButton  // #5: 头部刷新按钮
                     settingsMenu
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(.bar)
             }
-            #endif
-            // #1: 清理全部二次确认
             .alert("确认清理全部", isPresented: $showClearAllConfirm) {
                 Button("取消", role: .cancel) {}
                 Button("清理全部", role: .destructive) {
@@ -118,7 +93,6 @@ struct MessageListView: View {
             } message: {
                 Text("退出后需要重新登录")
             }
-            // #7: 登录过期弹窗
             .alert("登录已过期", isPresented: $showSessionExpired) {
                 Button("重新登录") {
                     syncManager.reset()
@@ -139,7 +113,6 @@ struct MessageListView: View {
             syncManager.startPolling()
             updateBadge()
         }
-        // #7: 监听 session 过期
         .onChange(of: syncManager.sessionExpired) { expired in
             if expired {
                 showSessionExpired = true
@@ -159,25 +132,52 @@ struct MessageListView: View {
         }
     }
 
+    // MARK: - Header Tip
+    
+    @ViewBuilder
+    private var syncStatusTip: some View {
+        Group {
+            switch syncManager.syncStatus {
+            case .syncing:
+                Text("正在同步...")
+            case .success:
+                Text("同步成功")
+                    .foregroundStyle(.green)
+            case .error:
+                Text("同步失败")
+                    .foregroundStyle(.red)
+            case .idle:
+                if let lastDate = syncManager.lastRefreshDate {
+                    Text("上次同步: \(lastDate.formatted(date: .omitted, time: .shortened))")
+                } else {
+                    EmptyView()
+                }
+            }
+        }
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.secondary)
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity)
+        .background(Color.gray.opacity(0.05))
+    }
+
     // MARK: - Toolbar Items
 
     @ViewBuilder
     private var clearAllButton: some View {
-        if syncManager.unclearedCount > 0 {
-            Button("清理全部") {
-                showClearAllConfirm = true  // #1: 二次确认
-            }
-            .font(.subheadline)
+        Button {
+            showClearAllConfirm = true
+        } label: {
+            Image(systemName: "broom")
         }
+        .disabled(syncManager.unclearedCount == 0) // #1: 置灰不可点
     }
 
-    // #5: 刷新按钮
     private var refreshButton: some View {
         Button {
             Task { await syncManager.refresh() }
         } label: {
             Image(systemName: "arrow.clockwise")
-                .font(.system(size: 15))
         }
         .disabled(syncManager.isRefreshing)
     }
@@ -194,29 +194,10 @@ struct MessageListView: View {
         }
     }
 
-    // #5: 滚动到底部按钮
-    @ViewBuilder
-    private func scrollToBottomButton(proxy: ScrollViewProxy) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.3)) {
-                proxy.scrollTo("bottom", anchor: .bottom)
-            }
-        } label: {
-            Image(systemName: "arrow.down.circle.fill")
-                .font(.system(size: 32))
-                .foregroundStyle(.white, Color.accentColor)
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 16)
-        .padding(.bottom, 12)
-    }
-
     // MARK: - Input Bar
 
     private var inputBar: some View {
         HStack(spacing: 12) {
-            // #2: 多选图片
             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                 Image(systemName: "photo.badge.plus")
                     .font(.system(size: 22))
@@ -241,7 +222,6 @@ struct MessageListView: View {
                 }
             }
 
-            // Text input
             TextField("输入灵感...", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...5)
@@ -256,18 +236,13 @@ struct MessageListView: View {
                 #if os(macOS)
                 .onSubmit {
                     if canSend {
-                        let text = inputText
-                        inputText = ""
-                        Task { await syncManager.sendText(text) }
+                        submitText()
                     }
                 }
                 #endif
 
-            // Send button
             Button {
-                let text = inputText
-                inputText = ""
-                Task { await syncManager.sendText(text) }
+                submitText()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
@@ -292,13 +267,19 @@ struct MessageListView: View {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !syncManager.isSending
     }
 
+    private func submitText() {
+        let text = inputText
+        inputText = ""
+        Task { await syncManager.sendText(text) }
+    }
+
     private func compressImageData(_ data: Data) -> Data? {
-        #if canImport(UIKit)
+        #if os(iOS)
         if let uiImage = UIImage(data: data) {
             return uiImage.jpegData(compressionQuality: 0.7)
         }
         return nil
-        #elseif canImport(AppKit)
+        #elseif os(macOS)
         if let nsImage = NSImage(data: data),
            let tiffData = nsImage.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData) {

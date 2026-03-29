@@ -1,7 +1,7 @@
 import SwiftUI
-#if canImport(UIKit)
+#if os(iOS)
 import UIKit
-#elseif canImport(AppKit)
+#elseif os(macOS)
 import AppKit
 #endif
 
@@ -17,11 +17,7 @@ struct ImagePreviewView: View {
 
     var body: some View {
         ZStack {
-            #if os(iOS)
             Color.black.ignoresSafeArea()
-            #else
-            Color.black
-            #endif
 
             AsyncImage(url: imageURL) { phase in
                 switch phase {
@@ -34,19 +30,10 @@ struct ImagePreviewView: View {
                         #if os(iOS)
                         .gesture(
                             MagnificationGesture()
-                                .onChanged { value in
-                                    scale = lastScale * value
-                                }
-                                .onEnded { _ in
+                                .onChanged { value in scale = lastScale * value }
+                                .onEnded { _ in 
                                     lastScale = scale
-                                    if scale < 1.0 {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            scale = 1.0
-                                            lastScale = 1.0
-                                            offset = .zero
-                                            lastOffset = .zero
-                                        }
-                                    }
+                                    if scale < 1.0 { resetZoom() }
                                 }
                         )
                         .simultaneousGesture(
@@ -57,9 +44,7 @@ struct ImagePreviewView: View {
                                         height: lastOffset.height + value.translation.height
                                     )
                                 }
-                                .onEnded { _ in
-                                    lastOffset = offset
-                                }
+                                .onEnded { _ in lastOffset = offset }
                         )
                         #endif
                         .onTapGesture {
@@ -67,33 +52,29 @@ struct ImagePreviewView: View {
                         }
                         .onTapGesture(count: 2) {
                             withAnimation(.spring(response: 0.3)) {
-                                if scale > 1.0 {
-                                    scale = 1.0
-                                    lastScale = 1.0
-                                    offset = .zero
-                                    lastOffset = .zero
-                                } else {
-                                    scale = 2.5
-                                    lastScale = 2.5
-                                }
+                                if scale > 1.0 { resetZoom() }
+                                else { scale = 2.5; lastScale = 2.5 }
                             }
+                        }
+                        .contextMenu {
+                            Button { copyImage(from: imageURL) } label: { Label("拷贝", systemImage: "doc.on.doc") }
+                            Button { Task { await saveImage(from: imageURL) } } label: { Label("保存", systemImage: "square.and.arrow.down") }
+                            #if os(macOS)
+                            Button { Task { await saveImageAs(from: imageURL) } } label: { Label("另存为...", systemImage: "folder.badge.plus") }
+                            #endif
                         }
 
                 case .failure:
                     VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
+                        Image(systemName: "exclamationmark.triangle").font(.largeTitle)
                         Text("图片加载失败")
                     }
                     .foregroundStyle(.white.opacity(0.6))
 
                 case .empty:
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(1.5)
+                    ProgressView().tint(.white).scaleEffect(1.5)
 
-                @unknown default:
-                    EmptyView()
+                @unknown default: EmptyView()
                 }
             }
 
@@ -102,15 +83,16 @@ struct ImagePreviewView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundStyle(.white.opacity(0.8))
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(12)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
-                        .padding(16)
+                        .padding(20)
                         #if os(macOS)
                         .keyboardShortcut(.escape, modifiers: [])
                         #endif
@@ -120,20 +102,18 @@ struct ImagePreviewView: View {
                     // Bottom toolbar
                     HStack(spacing: 32) {
                         Button {
-                            Task { await saveImage() }
+                            Task { await saveImage(from: imageURL) }
                         } label: {
-                            VStack(spacing: 4) {
+                            HStack {
                                 Image(systemName: "square.and.arrow.down")
-                                    .font(.system(size: 20))
-                                #if os(iOS)
-                                Text("保存")
-                                    .font(.caption2)
-                                #else
-                                Text("保存到下载")
-                                    .font(.caption2)
-                                #endif
+                                Text("下载到本地")
                             }
+                            .font(.subheadline)
                             .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
                     }
@@ -144,23 +124,64 @@ struct ImagePreviewView: View {
         }
     }
 
-    private func saveImage() async {
+    private func resetZoom() {
+        withAnimation(.spring(response: 0.3)) {
+            scale = 1.0
+            lastScale = 1.0
+            offset = .zero
+            lastOffset = .zero
+        }
+    }
+
+    // Reuse logic from BubbleView
+    private func copyImage(from url: URL) {
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                #if os(iOS)
+                if let image = UIImage(data: data) { UIPasteboard.general.image = image }
+                #elseif os(macOS)
+                if let image = NSImage(data: data) {
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    pb.writeObjects([image])
+                }
+                #endif
+            } catch { print("Copy image failed: \(error)") }
+        }
+    }
+
+    private func saveImage(from url: URL) async {
         do {
-            let (data, _) = try await URLSession.shared.data(from: imageURL)
+            let (data, _) = try await URLSession.shared.data(from: url)
             #if os(iOS)
-            if let image = UIImage(data: data) {
-                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-            }
+            if let image = UIImage(data: data) { UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) }
             #elseif os(macOS)
-            if let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first {
-                let filename = imageURL.lastPathComponent
-                let fileURL = downloadsURL.appendingPathComponent(filename)
+            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
+                FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
+            try data.write(to: fileURL)
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            #endif
+        } catch { print("Save image failed: \(error)") }
+    }
+    
+    #if os(macOS)
+    private func saveImageAs(from url: URL) async {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.title = "选择保存目录"
+            panel.prompt = "保存到此目录"
+            if panel.runModal() == .OK, let selectedURL = panel.url {
+                SettingsManager.shared.macOSDefaultSavePath = selectedURL
+                let fileURL = selectedURL.appendingPathComponent(url.lastPathComponent)
                 try data.write(to: fileURL)
                 NSWorkspace.shared.activateFileViewerSelecting([fileURL])
             }
-            #endif
-        } catch {
-            print("Save image failed: \(error)")
-        }
+        } catch { print("Save As failed: \(error)") }
     }
+    #endif
 }

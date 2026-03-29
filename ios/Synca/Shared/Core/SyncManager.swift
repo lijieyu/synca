@@ -8,34 +8,50 @@ import UIKit
 final class SyncManager: ObservableObject {
     static let shared = SyncManager()
 
+    enum SyncStatus: Equatable {
+        case idle
+        case syncing
+        case success
+        case error(String)
+        
+        var isSyncing: Bool { self == .syncing }
+    }
+
     @Published var messages: [SyncaMessage] = []
     @Published var unclearedCount: Int = 0
     @Published var isLoading = false
     @Published var isSending = false
     @Published var isRefreshing = false
+    @Published var syncStatus: SyncStatus = .idle // #5: 同步状态反馈
+    @Published var lastRefreshDate: Date?       // #5: 上次同步时间
     @Published var errorMessage: String?
-    @Published var sessionExpired = false  // #7: 401 踢出到登录页
+    @Published var sessionExpired = false
 
     private var pollTimer: Timer?
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
+    private var statusResetTask: Task<Void, Never>?
 
     private init() {}
 
-    // MARK: - Full Sync (新设备登录时全量同步)
+    // MARK: - Full Sync
 
     func fullSync() async {
         guard api.isAuthenticated else { return }
-        isLoading = messages.isEmpty // only show loading on first load
+        isLoading = messages.isEmpty
         errorMessage = nil
+        updateStatus(.syncing)
 
         do {
             let allMessages = try await api.listMessages()
             messages = allMessages
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
+            lastRefreshDate = Date()
+            updateStatus(.success)
         } catch {
             handleError(error, context: "同步")
+            updateStatus(.error(error.localizedDescription))
         }
 
         isLoading = false
@@ -45,6 +61,7 @@ final class SyncManager: ObservableObject {
 
     func incrementalSync() async {
         guard api.isAuthenticated else { return }
+        updateStatus(.syncing)
 
         do {
             let since = lastSyncTimestamp
@@ -58,18 +75,19 @@ final class SyncManager: ObservableObject {
                         messages.append(msg)
                     }
                 }
-                // Re-sort by createdAt
                 messages.sort { $0.createdAt < $1.createdAt }
                 lastSyncTimestamp = messages.compactMap(\.updatedAt).max() ?? lastSyncTimestamp
+                lastRefreshDate = Date()
             }
-
             unclearedCount = messages.filter { !$0.isCleared }.count
+            updateStatus(.success)
         } catch {
             handleError(error, context: "同步", silent: true)
+            updateStatus(.error(error.localizedDescription))
         }
     }
 
-    // MARK: - Pull to Refresh (#5)
+    // MARK: - Pull to Refresh
 
     func refresh() async {
         isRefreshing = true
@@ -93,6 +111,23 @@ final class SyncManager: ObservableObject {
         pollTimer = nil
     }
 
+    // MARK: - Status Helper
+    
+    private func updateStatus(_ status: SyncStatus) {
+        syncStatus = status
+        statusResetTask?.cancel()
+        
+        // 成功或错误状态在 3 秒后重置回 idle
+        if status != .syncing && status != .idle {
+            statusResetTask = Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if !Task.isCancelled {
+                    syncStatus = .idle
+                }
+            }
+        }
+    }
+
     // MARK: - Send Messages
 
     func sendText(_ text: String) async {
@@ -107,6 +142,7 @@ final class SyncManager: ObservableObject {
             messages.append(message)
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
+            lastRefreshDate = Date()
         } catch {
             handleError(error, context: "发送")
         }
@@ -125,6 +161,7 @@ final class SyncManager: ObservableObject {
             messages.append(message)
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
+            lastRefreshDate = Date()
         } catch {
             handleError(error, context: "图片发送")
         }
@@ -132,10 +169,8 @@ final class SyncManager: ObservableObject {
         isSending = false
     }
 
-    // #2: 批量发送多张图片
     func sendImages(_ imageDatas: [Data]) async {
         isSending = true
-
         for imageData in imageDatas {
             do {
                 let message = try await api.sendImageMessage(
@@ -149,7 +184,7 @@ final class SyncManager: ObservableObject {
                 handleError(error, context: "图片发送")
             }
         }
-
+        lastRefreshDate = Date()
         isSending = false
     }
 
@@ -188,9 +223,10 @@ final class SyncManager: ObservableObject {
         unclearedCount = 0
         lastSyncTimestamp = nil
         sessionExpired = false
+        syncStatus = .idle
+        lastRefreshDate = nil
     }
 
-    // #7: 统一错误处理，401 时踢出到登录页
     private func handleError(_ error: Error, context: String, silent: Bool = false) {
         if error is CancellationError { return }
 
@@ -207,7 +243,7 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func currentDeviceName() -> String {
+    private func currentDeviceName() -> String {
         #if os(iOS)
         return UIDevice.current.name
         #elseif os(macOS)

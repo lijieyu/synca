@@ -32,7 +32,13 @@ final class AuthService: NSObject, ObservableObject {
             #if os(macOS)
             controller.presentationContextProvider = self
             #endif
-            controller.performRequests()
+            
+            // #Fix Hang Risk: In Xcode 16, performRequests() can trigger QoS priority inversion warnings
+            // if called synchronously on a high-priority actor like @MainActor.
+            // Using a detached task or async dispatch helps the system manage the thread priority better.
+            Task.detached(priority: .userInitiated) {
+                controller.performRequests()
+            }
         }
 
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,

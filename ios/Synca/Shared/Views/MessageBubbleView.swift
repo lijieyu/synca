@@ -1,7 +1,7 @@
 import SwiftUI
-#if canImport(UIKit)
+#if os(iOS)
 import UIKit
-#elseif canImport(AppKit)
+#elseif os(macOS)
 import AppKit
 #endif
 
@@ -11,6 +11,7 @@ struct MessageBubbleView: View {
 
     @State private var showImagePreview = false
     @State private var copied = false
+    @State private var isDownloading = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -38,51 +39,21 @@ struct MessageBubbleView: View {
 
                 Spacer()
 
-                if !message.isCleared {
-                    HStack(spacing: 16) {
-                        // #6: Copy button
-                        if message.type == .text {
-                            Button {
-                                copyText(message.textContent ?? "")
-                                withAnimation { copied = true }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                    withAnimation { copied = false }
-                                }
-                            } label: {
-                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(copied ? .green : .secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        // #6: Download/Save button for images
-                        if message.type == .image {
-                            Button {
-                                if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                                    Task { await saveImage(from: url) }
-                                }
-                            } label: {
-                                Image(systemName: "square.and.arrow.down")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        Button {
-                            onClear()
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
+                // #6: Actions row (Always visible)
+                HStack(spacing: 16) {
+                    if message.type == .text {
+                        copyTextButton
                     }
-                } else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(Color.gray.opacity(0.3))
+                    if message.type == .image {
+                        copyImageButton
+                        downloadImageButton
+                    }
+                    
+                    if !message.isCleared {
+                        clearButton
+                    } else {
+                        checkFillIcon
+                    }
                 }
             }
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
@@ -118,14 +89,14 @@ struct MessageBubbleView: View {
 
     private var cardBackground: Color {
         #if os(iOS)
-        Color(.systemBackground)
+        Color(uiColor: .systemBackground)
         #else
-        Color(.controlBackgroundColor)
+        Color(nsColor: .controlBackgroundColor)
         #endif
     }
 
-    // MARK: - Text Content
-
+    // MARK: - Subviews
+    
     private var textContent: some View {
         Text(message.textContent ?? "")
             .font(.body)
@@ -141,8 +112,6 @@ struct MessageBubbleView: View {
             }
     }
 
-    // MARK: - Image Content
-
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
@@ -152,47 +121,138 @@ struct MessageBubbleView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 260, maxHeight: 300)
+                            .frame(maxWidth: 240, maxHeight: 300)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .onTapGesture { showImagePreview = true }
                             .contextMenu {
                                 Button {
+                                    copyImage(from: url)
+                                } label: {
+                                    Label("拷贝", systemImage: "doc.on.doc")
+                                }
+                                
+                                Button {
                                     Task { await saveImage(from: url) }
                                 } label: {
-                                    #if os(iOS)
-                                    Label("保存到相册", systemImage: "square.and.arrow.down")
-                                    #else
-                                    Label("保存到下载", systemImage: "square.and.arrow.down")
-                                    #endif
+                                    Label("保存", systemImage: "square.and.arrow.down")
                                 }
+                                
+                                #if os(macOS)
+                                Button {
+                                    Task { await saveImageAs(from: url) }
+                                } label: {
+                                    Label("另存为...", systemImage: "folder.badge.plus")
+                                }
+                                #endif
                             }
                     case .failure:
                         Label("图片加载失败", systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 200, height: 100)
-                            .background(Color.gray.opacity(0.1))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     case .empty:
-                        ProgressView()
-                            .frame(width: 200, height: 100)
-                            .background(Color.gray.opacity(0.1))
+                        ProgressView().frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                    @unknown default:
-                        EmptyView()
+                    @unknown default: EmptyView()
                     }
                 }
             }
         }
     }
 
+    // MARK: - Buttons
+    
+    private var copyTextButton: some View {
+        Button {
+            copyText(message.textContent ?? "")
+            withAnimation { copied = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 13))
+                .foregroundStyle(copied ? .green : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var copyImageButton: some View {
+        Button {
+            if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
+                copyImage(from: url)
+            }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 13))
+                .foregroundStyle(copied ? .green : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var downloadImageButton: some View {
+        Button {
+            if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
+                Task { await saveImage(from: url) }
+            }
+        } label: {
+            Image(systemName: "square.and.arrow.down")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var clearButton: some View {
+        Button {
+            onClear()
+        } label: {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 18))
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var checkFillIcon: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 18))
+            .foregroundStyle(Color.gray.opacity(0.3))
+    }
+
+    // MARK: - Helper Methods
+    
     private func copyText(_ text: String) {
         #if os(iOS)
         UIPasteboard.general.string = text
         #elseif os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
         #endif
+    }
+
+    private func copyImage(from url: URL) {
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                #if os(iOS)
+                if let image = UIImage(data: data) {
+                    UIPasteboard.general.image = image
+                    withAnimation { copied = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                }
+                #elseif os(macOS)
+                if let image = NSImage(data: data) {
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    pb.writeObjects([image])
+                    withAnimation { copied = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                }
+                #endif
+            } catch {
+                print("Copy image failed: \(error)")
+            }
+        }
     }
 
     private func saveImage(from url: URL) async {
@@ -203,17 +263,38 @@ struct MessageBubbleView: View {
                 UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
             }
             #elseif os(macOS)
-            // Save to Downloads folder
-            if let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first {
-                let filename = url.lastPathComponent
-                let fileURL = downloadsURL.appendingPathComponent(filename)
-                try data.write(to: fileURL)
-                // Open in Finder
-                NSWorkspace.shared.activateFileViewerSelecting([fileURL])
-            }
+            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
+                FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
+            try data.write(to: fileURL)
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
             #endif
         } catch {
             print("Save image failed: \(error)")
         }
     }
+
+    #if os(macOS)
+    private func saveImageAs(from url: URL) async {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.allowsMultipleSelection = false
+            panel.title = "选择保存目录"
+            panel.prompt = "保存到此目录"
+            
+            if panel.runModal() == .OK, let selectedURL = panel.url {
+                // 更新默认路径
+                SettingsManager.shared.macOSDefaultSavePath = selectedURL
+                let fileURL = selectedURL.appendingPathComponent(url.lastPathComponent)
+                try data.write(to: fileURL)
+                NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            }
+        } catch {
+            print("Save Image As failed: \(error)")
+        }
+    }
+    #endif
 }
