@@ -92,9 +92,9 @@ struct MessageBubbleView: View {
             }
         }
         #endif
-        .alert("彻底删除记录", isPresented: $showDeleteConfirm) {
+        .alert("确认删除", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) {}
-            Button("彻底删除", role: .destructive) {
+            Button("删除", role: .destructive) {
                 onDelete()
             }
         } message: {
@@ -130,7 +130,7 @@ struct MessageBubbleView: View {
                 Button(role: .destructive) {
                     showDeleteConfirm = true
                 } label: {
-                    Label("彻底删除", systemImage: "trash")
+                    Label("删除", systemImage: "trash")
                 }
             }
     }
@@ -173,7 +173,7 @@ struct MessageBubbleView: View {
                                 Button(role: .destructive) {
                                     showDeleteConfirm = true
                                 } label: {
-                                    Label("彻底删除", systemImage: "trash")
+                                    Label("删除", systemImage: "trash")
                                 }
                             }
                     case .failure:

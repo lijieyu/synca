@@ -6,6 +6,7 @@ import UIKit
 #elseif canImport(AppKit)
 import AppKit
 #endif
+import UniformTypeIdentifiers
 
 struct MessageListView: View {
     @EnvironmentObject var syncManager: SyncManager
@@ -139,6 +140,21 @@ struct MessageListView: View {
         .onDisappear {
             syncManager.stopPolling()
         }
+        #if os(macOS)
+        .onPasteCommand(of: [.image]) { providers in
+            for provider in providers {
+                _ = provider.loadDataRepresentation(for: .image) { data, error in
+                    if let data = data {
+                        Task { @MainActor in
+                            if let compressed = compressImageData(data) {
+                                await syncManager.sendImage(compressed)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #endif
     }
 
     // MARK: - Header Tip
