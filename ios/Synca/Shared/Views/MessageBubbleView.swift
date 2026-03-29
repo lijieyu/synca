@@ -11,7 +11,12 @@ struct MessageBubbleView: View {
 
     @State private var showImagePreview = false
     @State private var copied = false
-    @State private var isDownloading = false
+    @State private var saveStatus: SaveStatus = .none
+    @State private var loadID = UUID() // #1: 重显失败图片的关键
+
+    enum SaveStatus {
+        case none, saving, success, error
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -146,16 +151,24 @@ struct MessageBubbleView: View {
                                 #endif
                             }
                     case .failure:
-                        Label("图片加载失败", systemImage: "exclamationmark.triangle")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle")
+                            Text("加载失败，点击重试")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.secondary)
+                        .frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .onTapGesture {
+                            loadID = UUID() // 刷新视图身份以重试
+                        }
                     case .empty:
                         ProgressView().frame(width: 200, height: 100).background(Color.gray.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     @unknown default: EmptyView()
                     }
                 }
+                .id(loadID) // 关键所在
             }
         }
     }
@@ -194,11 +207,25 @@ struct MessageBubbleView: View {
                 Task { await saveImage(from: url) }
             }
         } label: {
-            Image(systemName: "square.and.arrow.down")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+            Group {
+                switch saveStatus {
+                case .none:
+                    Image(systemName: "square.and.arrow.down")
+                        .foregroundStyle(.secondary)
+                case .saving:
+                    ProgressView().scaleEffect(0.6)
+                case .success:
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.green)
+                case .error:
+                    Image(systemName: "xmark.circle")
+                        .foregroundStyle(.red)
+                }
+            }
+            .font(.system(size: 13))
         }
         .buttonStyle(.plain)
+        .disabled(saveStatus == .saving)
     }
 
     private var clearButton: some View {
@@ -256,11 +283,15 @@ struct MessageBubbleView: View {
     }
 
     private func saveImage(from url: URL) async {
+        saveStatus = .saving
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             #if os(iOS)
             if let image = UIImage(data: data) {
                 UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                withAnimation { saveStatus = .success }
+            } else {
+                saveStatus = .error
             }
             #elseif os(macOS)
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
@@ -268,9 +299,24 @@ struct MessageBubbleView: View {
             let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
             try data.write(to: fileURL)
             NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            withAnimation { saveStatus = .success }
             #endif
         } catch {
             print("Save image failed: \(error)")
+            saveStatus = .error
+            
+            #if os(macOS)
+            let alert = NSAlert()
+            alert.messageText = "保存失败"
+            alert.informativeText = "无法将图片保存到指定目录: \(error.localizedDescription)\n\n极大可能是由于权限不足，您可以尝试“另存为”以重新授权。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "确定")
+            alert.runModal()
+            #endif
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
         }
     }
 
@@ -286,14 +332,19 @@ struct MessageBubbleView: View {
             panel.prompt = "保存到此目录"
             
             if panel.runModal() == .OK, let selectedURL = panel.url {
-                // 更新默认路径
                 SettingsManager.shared.macOSDefaultSavePath = selectedURL
                 let fileURL = selectedURL.appendingPathComponent(url.lastPathComponent)
                 try data.write(to: fileURL)
                 NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+                withAnimation { saveStatus = .success }
             }
         } catch {
             print("Save Image As failed: \(error)")
+            saveStatus = .error
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
         }
     }
     #endif

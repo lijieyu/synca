@@ -14,6 +14,12 @@ struct ImagePreviewView: View {
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var showControls = true
+    @State private var loadID = UUID() // 重试加载
+    @State private var saveStatus: SaveStatus = .none
+
+    enum SaveStatus {
+        case none, saving, success, error
+    }
 
     var body: some View {
         ZStack {
@@ -65,11 +71,16 @@ struct ImagePreviewView: View {
                         }
 
                 case .failure:
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle").font(.largeTitle)
                         Text("图片加载失败")
+                        Button("点击重试") {
+                            loadID = UUID()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.white.opacity(0.2))
                     }
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.white)
 
                 case .empty:
                     ProgressView().tint(.white).scaleEffect(1.5)
@@ -77,6 +88,7 @@ struct ImagePreviewView: View {
                 @unknown default: EmptyView()
                 }
             }
+            .id(loadID)
 
             // Controls overlay
             if showControls {
@@ -105,17 +117,32 @@ struct ImagePreviewView: View {
                             Task { await saveImage(from: imageURL) }
                         } label: {
                             HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("下载到本地")
+                                Group {
+                                    switch saveStatus {
+                                    case .none:
+                                        Image(systemName: "square.and.arrow.down")
+                                        Text("下载到本地")
+                                    case .saving:
+                                        ProgressView().tint(.white)
+                                        Text("正在保存...")
+                                    case .success:
+                                        Image(systemName: "checkmark")
+                                        Text("保存成功")
+                                    case .error:
+                                        Image(systemName: "xmark.circle")
+                                        Text("保存失败")
+                                    }
+                                }
                             }
                             .font(.subheadline.bold())
                             .foregroundStyle(.white)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
-                            .background(Color.black.opacity(0.4))
+                            .background(saveStatus == .error ? Color.red.opacity(0.6) : Color.black.opacity(0.4))
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .disabled(saveStatus == .saving)
                     }
                     .padding(.bottom, 40)
                 }
@@ -133,7 +160,6 @@ struct ImagePreviewView: View {
         }
     }
 
-    // Reuse logic from BubbleView
     private func copyImage(from url: URL) {
         Task {
             do {
@@ -152,18 +178,32 @@ struct ImagePreviewView: View {
     }
 
     private func saveImage(from url: URL) async {
+        saveStatus = .saving
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             #if os(iOS)
-            if let image = UIImage(data: data) { UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) }
+            if let image = UIImage(data: data) { 
+                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) 
+                saveStatus = .success
+            } else {
+                saveStatus = .error
+            }
             #elseif os(macOS)
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
             let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
             try data.write(to: fileURL)
             NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            saveStatus = .success
             #endif
-        } catch { print("Save image failed: \(error)") }
+        } catch { 
+            print("Save image failed: \(error)") 
+            saveStatus = .error
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
+        }
     }
     
     #if os(macOS)
@@ -180,8 +220,13 @@ struct ImagePreviewView: View {
                 let fileURL = selectedURL.appendingPathComponent(url.lastPathComponent)
                 try data.write(to: fileURL)
                 NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+                saveStatus = .success
             }
         } catch { print("Save As failed: \(error)") }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
+        }
     }
     #endif
 }
