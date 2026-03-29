@@ -114,16 +114,17 @@ struct MessageBubbleView: View {
     
     private var textContent: some View {
         #if os(macOS)
-        SelectableTextView(
+        let color = message.isCleared ? NSColor.secondaryLabelColor : NSColor.labelColor
+        return SelectableTextView(
             text: message.textContent ?? "",
-            color: message.isCleared ? .secondaryLabelColor : .labelColor,
-            font: .systemFont(ofSize: 14), // Match body-like size on Mac
+            color: color,
+            font: .systemFont(ofSize: 14),
             onCopy: { copyText(message.textContent ?? "") },
             onDelete: { showDeleteConfirm = true }
         )
         .frame(maxWidth: .infinity, alignment: .leading)
         #else
-        Text(message.textContent ?? "")
+        return Text(message.textContent ?? "")
             .font(.body)
             .foregroundStyle(message.isCleared ? .secondary : .primary)
             .textSelection(.enabled)

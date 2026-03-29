@@ -70,4 +70,15 @@ class CustomMenuTextView: NSTextView {
         onDelete?()
     }
 }
+#else
+import SwiftUI
+// Dummy view for non-macOS targets to keep the name in scope
+struct SelectableTextView: View {
+    let text: String
+    let color: Color
+    let font: Font
+    let onCopy: () -> Void
+    let onDelete: () -> Void
+    var body: some View { EmptyView() }
+}
 #endif
