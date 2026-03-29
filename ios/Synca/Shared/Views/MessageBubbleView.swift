@@ -113,12 +113,20 @@ struct MessageBubbleView: View {
     // MARK: - Subviews
     
     private var textContent: some View {
+        #if os(macOS)
+        SelectableTextView(
+            text: message.textContent ?? "",
+            color: message.isCleared ? .secondaryLabelColor : .labelColor,
+            font: .systemFont(ofSize: 14), // Match body-like size on Mac
+            onCopy: { copyText(message.textContent ?? "") },
+            onDelete: { showDeleteConfirm = true }
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
         Text(message.textContent ?? "")
             .font(.body)
             .foregroundStyle(message.isCleared ? .secondary : .primary)
-            #if os(iOS)
             .textSelection(.enabled)
-            #endif
             .frame(maxWidth: .infinity, alignment: .leading)
             .contextMenu {
                 Button {
@@ -135,6 +143,7 @@ struct MessageBubbleView: View {
                     Label("删除", systemImage: "trash")
                 }
             }
+        #endif
     }
 
     private var imageContent: some View {

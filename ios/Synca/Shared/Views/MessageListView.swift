@@ -325,15 +325,20 @@ struct MessageListView: View {
     #if os(macOS)
     private func handlePaste() {
         let pb = NSPasteboard.general
-        // Support common image types directly
-        let types: [NSPasteboard.PasteboardType] = [.png, .tiff, .pdf]
-        for type in types {
-            if let data = pb.data(forType: type) {
-                if let compressed = compressImageData(data) {
-                    Task { await syncManager.sendImage(compressed) }
-                    return // Found and sent
-                }
+        
+        // 1. Check for Image objects (robust way)
+        if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage {
+            if let tiffData = image.tiffRepresentation,
+               let bitmap = NSBitmapImageRep(data: tiffData),
+               let compressed = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) {
+                Task { await syncManager.sendImage(compressed) }
+                return
             }
+        }
+        
+        // 2. Check for Text (normal paste)
+        if let text = pb.string(forType: .string) {
+            inputText += text
         }
     }
     #endif
