@@ -23,13 +23,12 @@ struct MessageBubbleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Content
-            VStack(alignment: .leading, spacing: 8) {
-                if message.type == .image {
-                    imageContent
-                }
-                
-                if let text = message.textContent, !text.isEmpty {
+            Group {
+                switch message.type {
+                case .text:
                     textContent
+                case .image:
+                    imageContent
                 }
             }
 
@@ -114,17 +113,6 @@ struct MessageBubbleView: View {
     // MARK: - Subviews
     
     private var textContent: some View {
-        #if os(macOS)
-        SelectableTextView(
-            text: message.textContent ?? "",
-            color: message.isCleared ? Color.secondary : Color.primary,
-            font: .body,
-            onCopy: { copyText(message.textContent ?? "") },
-            onDelete: { showDeleteConfirm = true }
-        )
-        // No fixedSize needed with NSTextField, it reports intrinsic size correctly
-        .frame(maxWidth: .infinity, alignment: .leading)
-        #else
         Text(message.textContent ?? "")
             .font(.body)
             .foregroundStyle(message.isCleared ? .secondary : .primary)
@@ -145,7 +133,6 @@ struct MessageBubbleView: View {
                     Label("删除", systemImage: "trash")
                 }
             }
-        #endif
     }
 
     private var imageContent: some View {
