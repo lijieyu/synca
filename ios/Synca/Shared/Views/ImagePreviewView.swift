@@ -294,11 +294,11 @@ struct ImagePreviewView: View {
                     // Paging end
                     // Use a threshold for paging
                     let threshold: CGFloat = 80
-                    if value.predictedTranslation.width < -threshold && currentIndex < messages.count - 1 {
+                    if value.translation.width < -threshold && currentIndex < messages.count - 1 {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             currentIndex += 1
                         }
-                    } else if value.predictedTranslation.width > threshold && currentIndex > 0 {
+                    } else if value.translation.width > threshold && currentIndex > 0 {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             currentIndex -= 1
                         }
@@ -311,7 +311,7 @@ struct ImagePreviewView: View {
                 isVerticalDrag = false
             }
         #else
-        return DragGesture().onChanged { _ in }
+        return DragGesture().onChanged { _ in }.onEnded { _ in }
         #endif
     }
 
