@@ -231,6 +231,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+        .menuIndicator(.hidden)
     }
 
     // MARK: - Input Bar
