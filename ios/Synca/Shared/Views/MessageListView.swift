@@ -174,11 +174,28 @@ struct MessageListView: View {
                 }
             }
         }
-        .font(.system(size: 11, weight: .medium))
+        .font(.system(size: 12, weight: .medium)) // Slightly larger for better readability in a taller bar
         .foregroundStyle(.secondary)
-        .padding(.vertical, 4)
+        .padding(.vertical, 8) // Taller height
         .frame(maxWidth: .infinity)
-        .background(Color.gray.opacity(0.05))
+        .background(
+            // Premium transparency + gradient treatment
+            LinearGradient(
+                colors: [
+                    Color.gray.opacity(0.02),
+                    Color.gray.opacity(0.08)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        // Subtle bottom border to separate it cleanly from the messages list
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundStyle(Color.gray.opacity(0.2)),
+            alignment: .bottom
+        )
     }
 
     // MARK: - Toolbar Items
