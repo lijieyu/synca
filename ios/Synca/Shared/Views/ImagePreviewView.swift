@@ -23,6 +23,8 @@ struct ImagePreviewView: View {
     // Swipe to close state (iOS)
     @State private var backgroundOpacity: Double = 1.0
     @State private var dragOffset: CGSize = .zero
+    @State private var isVerticalDrag = false
+    @State private var hasDeterminedDirection = false
 
     enum SaveStatus {
         case none, saving, success, error
@@ -99,36 +101,62 @@ struct ImagePreviewView: View {
                             }
                     )
                     .simultaneousGesture(
-                        DragGesture()
+                        DragGesture(minimumDistance: 10)
                             .onChanged { value in
                                 if scale > 1.0 {
                                     offset = CGSize(
                                         width: lastOffset.width + value.translation.width,
                                         height: lastOffset.height + value.translation.height
                                     )
-                                } else {
+                                    return
+                                }
+                                
+                                // Determine direction on first few pixels
+                                if !hasDeterminedDirection {
+                                    let horizontalAmount = abs(value.translation.width)
+                                    let verticalAmount = abs(value.translation.height)
+                                    
+                                    if verticalAmount > horizontalAmount && value.translation.height > 0 {
+                                        isVerticalDrag = true
+                                    } else {
+                                        isVerticalDrag = false
+                                    }
+                                    hasDeterminedDirection = true
+                                }
+                                
+                                if isVerticalDrag {
                                     // Swipe down to close logic (WeChat style)
-                                    dragOffset = value.translation
-                                    let dragProgress = min(max(value.translation.height / 300, 0), 1)
+                                    // Only allow downward movement
+                                    let yOffset = max(value.translation.height, 0)
+                                    dragOffset = CGSize(width: value.translation.width * 0.5, height: yOffset)
+                                    
+                                    let dragProgress = min(yOffset / 300, 1)
                                     backgroundOpacity = 1.0 - dragProgress
+                                    
+                                    // Scale down image slightly while dragging down
+                                    scale = 1.0 - (dragProgress * 0.2)
                                 }
                             }
                             .onEnded { value in
-                                if scale > 1.0 {
+                                if scale != 1.0 && !isVerticalDrag {
                                     lastOffset = offset
-                                } else {
+                                } else if isVerticalDrag {
                                     if value.translation.height > 100 {
                                         withAnimation(.easeOut(duration: 0.2)) {
                                             backgroundOpacity = 0
                                             dismiss()
                                         }
                                     } else {
-                                        withAnimation(.spring()) {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                                             dragOffset = .zero
                                             backgroundOpacity = 1.0
+                                            scale = 1.0
                                         }
                                     }
                                 }
+                                // Reset direction tracking for next gesture
+                                hasDeterminedDirection = false
+                                isVerticalDrag = false
                             }
                     )
                     #endif
