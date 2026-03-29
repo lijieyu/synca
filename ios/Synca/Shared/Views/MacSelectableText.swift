@@ -47,7 +47,7 @@ class CustomContextMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
 
-    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType, returnType: NSPasteboard.PasteboardType?) -> Any? {
+    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType?, returnType: NSPasteboard.PasteboardType?) -> Any? {
         // By returning nil, we tell the system this responder does not provide any data
         // for macOS Services. This forces the OS to omit the "Services" (服务) context menu item.
         return nil
