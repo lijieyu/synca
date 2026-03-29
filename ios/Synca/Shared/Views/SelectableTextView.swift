@@ -7,8 +7,8 @@ import AppKit
 /// while retaining the ability to select text.
 struct SelectableTextView: NSViewRepresentable {
     let text: String
-    let color: NSColor
-    let font: NSFont
+    let color: Color
+    let font: Font
     let onCopy: () -> Void
     let onDelete: () -> Void
 
@@ -18,8 +18,12 @@ struct SelectableTextView: NSViewRepresentable {
         textView.isSelectable = true
         textView.drawsBackground = false
         textView.backgroundColor = .clear
-        textView.textColor = color
-        textView.font = font
+        
+        // Convert SwiftUI Color to NSColor
+        textView.textColor = NSColor(color)
+        // Set a default font if conversion is complex, or use NSFont
+        textView.font = NSFont.systemFont(ofSize: 14)
+        
         textView.onCopy = onCopy
         textView.onDelete = onDelete
         
@@ -32,8 +36,7 @@ struct SelectableTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSTextView, context: Context) {
         nsView.string = text
-        nsView.textColor = color
-        nsView.font = font
+        nsView.textColor = NSColor(color)
     }
 }
 
