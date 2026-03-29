@@ -8,6 +8,7 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
     var imagePath: String?
     var imageUrl: String?
     var isCleared: Bool
+    var isDeleted: Bool
     var sourceDevice: String?
     let createdAt: String
     var updatedAt: String
