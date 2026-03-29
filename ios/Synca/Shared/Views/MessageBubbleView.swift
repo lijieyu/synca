@@ -116,7 +116,9 @@ struct MessageBubbleView: View {
         Text(message.textContent ?? "")
             .font(.body)
             .foregroundStyle(message.isCleared ? .secondary : .primary)
+            #if os(iOS)
             .textSelection(.enabled)
+            #endif
             .frame(maxWidth: .infinity, alignment: .leading)
             .contextMenu {
                 Button {

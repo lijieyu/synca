@@ -141,19 +141,14 @@ struct MessageListView: View {
             syncManager.stopPolling()
         }
         #if os(macOS)
-        .onPasteCommand(of: [.image]) { providers in
-            for provider in providers {
-                _ = provider.loadDataRepresentation(for: .image) { data, error in
-                    if let data = data {
-                        Task { @MainActor in
-                            if let compressed = compressImageData(data) {
-                                await syncManager.sendImage(compressed)
-                            }
-                        }
-                    }
-                }
+        .background(
+            Button("") {
+                handlePaste()
             }
-        }
+            .keyboardShortcut("v", modifiers: .command)
+            .opacity(0)
+            .allowsHitTesting(false)
+        )
         #endif
     }
 
@@ -326,4 +321,20 @@ struct MessageListView: View {
         }
         #endif
     }
+    
+    #if os(macOS)
+    private func handlePaste() {
+        let pb = NSPasteboard.general
+        // Support common image types directly
+        let types: [NSPasteboard.PasteboardType] = [.png, .tiff, .pdf]
+        for type in types {
+            if let data = pb.data(forType: type) {
+                if let compressed = compressImageData(data) {
+                    Task { await syncManager.sendImage(compressed) }
+                    return // Found and sent
+                }
+            }
+        }
+    }
+    #endif
 }
