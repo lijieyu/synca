@@ -12,61 +12,52 @@ struct SelectableTextView: NSViewRepresentable {
     let onCopy: () -> Void
     let onDelete: () -> Void
 
-    func makeNSView(context: Context) -> NSTextView {
-        let textView = CustomMenuTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.backgroundColor = .clear
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = CustomMenuTextField(labelWithString: text)
+        textField.isEditable = false
+        textField.isSelectable = true
+        textField.isBordered = false
+        textField.drawsBackground = false
+        textField.backgroundColor = .clear
         
-        // Setup text container for wrapping
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
-        textView.textContainer?.containerSize = NSSize(width: 400, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = true
+        // Line wrapping configuration
+        textField.cell?.wraps = true
+        textField.cell?.isScrollable = false
+        textField.lineBreakMode = .byWordWrapping
         
-        // Remove padding to match SwiftUI Text
-        textView.textContainerInset = NSSize.zero
-        textView.textContainer?.lineFragmentPadding = 0
+        // Set compression/hugging for SwiftUI layout
+        textField.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        textField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textField.setContentCompressionResistancePriority(.defaultHigh, for: .vertical)
+        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         
-        textView.onCopy = onCopy
-        textView.onDelete = onDelete
+        textField.onCopy = onCopy
+        textField.onDelete = onDelete
         
-        return textView
+        return textField
     }
 
-    func updateNSView(_ nsView: NSTextView, context: Context) {
-        nsView.string = text
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        nsView.stringValue = text
         nsView.textColor = NSColor(color)
         
-        // Match font - basic mapping for now
+        // Match font size - simplified for Mac body style
         nsView.font = NSFont.systemFont(ofSize: 14)
         
-        // Trigger re-layout for height calculation
+        // Notify layout changes
         nsView.invalidateIntrinsicContentSize()
     }
 }
 
-class CustomMenuTextView: NSTextView {
+class CustomMenuTextField: NSTextField {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
-
-    // #21: Report correct size to SwiftUI
-    override var intrinsicContentSize: NSSize {
-        guard let container = textContainer, let manager = layoutManager else { return .zero }
-        manager.ensureLayout(for: container)
-        let usedRect = manager.usedRect(for: container)
-        return NSSize(width: usedRect.width, height: usedRect.height)
-    }
-
-    // #21: Ensure we can become first responder for selection to work
-    override var acceptsFirstResponder: Bool { true }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
         
-        let copyItem = NSMenuItem(title: "拷贝", action: #selector(copyFullText(_:)), keyEquivalent: "c")
+        // Copy selection or all
+        let copyItem = NSMenuItem(title: "拷贝", action: #selector(copyOperation(_:)), keyEquivalent: "c")
         copyItem.target = self
         menu.addItem(copyItem)
         
@@ -79,11 +70,11 @@ class CustomMenuTextView: NSTextView {
         return menu
     }
 
-    @objc func copyFullText(_ sender: Any?) {
-        if self.selectedRange().length > 0 {
-            self.copy(sender)
-        } else if let onCopy = onCopy {
-            onCopy()
+    @objc func copyOperation(_ sender: Any?) {
+        if let editor = self.currentEditor(), editor.selectedRange.length > 0 {
+            editor.copy(sender)
+        } else {
+            onCopy?()
         }
     }
 

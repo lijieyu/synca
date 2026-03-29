@@ -23,12 +23,13 @@ struct MessageBubbleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Content
-            Group {
-                switch message.type {
-                case .text:
-                    textContent
-                case .image:
+            VStack(alignment: .leading, spacing: 8) {
+                if message.type == .image {
                     imageContent
+                }
+                
+                if let text = message.textContent, !text.isEmpty {
+                    textContent
                 }
             }
 
@@ -121,7 +122,7 @@ struct MessageBubbleView: View {
             onCopy: { copyText(message.textContent ?? "") },
             onDelete: { showDeleteConfirm = true }
         )
-        .fixedSize(horizontal: false, vertical: true)
+        // No fixedSize needed with NSTextField, it reports intrinsic size correctly
         .frame(maxWidth: .infinity, alignment: .leading)
         #else
         Text(message.textContent ?? "")
