@@ -61,10 +61,7 @@ struct MessageListView: View {
                             proxy.scrollTo("bottom", anchor: .bottom)
                         }
                     }
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        syncStatusTip
-                    }
-                }
+                } // End ScrollViewReader
 
                 Divider()
 
@@ -108,6 +105,34 @@ struct MessageListView: View {
                 Text("请重新登录以继续使用")
             }
         }
+        .overlay(alignment: .top) {
+            Group {
+                if case .success = syncManager.syncStatus {
+                    Label("同步成功", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                        .padding(.top, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else if case .error(let msg) = syncManager.syncStatus {
+                    Label("同步失败", systemImage: "xmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                        .padding(.top, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: syncManager.syncStatus)
+        }
         .overlay {
             if syncManager.isLoading && syncManager.messages.isEmpty {
                 ProgressView("加载中...")
@@ -150,54 +175,6 @@ struct MessageListView: View {
             .allowsHitTesting(false)
         )
         #endif
-    }
-
-    // MARK: - Header Tip
-    
-    @ViewBuilder
-    private var syncStatusTip: some View {
-        Group {
-            switch syncManager.syncStatus {
-            case .syncing:
-                Text("正在同步...")
-            case .success:
-                Text("同步成功")
-                    .foregroundStyle(.green)
-            case .error:
-                Text("同步失败")
-                    .foregroundStyle(.red)
-            case .idle:
-                if let lastDate = syncManager.lastRefreshDate {
-                    Text("上次同步: \(lastDate.formatted(date: .omitted, time: .shortened))")
-                } else {
-                    EmptyView()
-                }
-            }
-        }
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(.secondary)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background(
-            ZStack {
-                // True transparency (blur effect) so scrolling messages are visible underneath
-                #if os(iOS)
-                Rectangle().fill(.ultraThinMaterial)
-                #else
-                Rectangle().fill(.regularMaterial)
-                #endif
-                
-                // Visible color gradient overlay
-                LinearGradient(
-                    colors: [
-                        Color.gray.opacity(0.15),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-        )
     }
 
     // MARK: - Toolbar Items
