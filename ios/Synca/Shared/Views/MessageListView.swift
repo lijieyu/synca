@@ -37,7 +37,7 @@ struct MessageListView: View {
                             .frame(height: 1)
                             .id("bottom")
                     }
-                    .onChange(of: syncManager.messages.count) { _, _ in
+                    .onChange(of: syncManager.messages.count) { _ in
                         withAnimation(.easeOut(duration: 0.3)) {
                             proxy.scrollTo("bottom", anchor: .bottom)
                         }
@@ -148,7 +148,7 @@ struct MessageListView: View {
                     .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
-            .onChange(of: selectedPhotoItem) { _, newItem in
+            .onChange(of: selectedPhotoItem) { newItem in
                 guard let newItem else { return }
                 Task {
                     if let data = try? await newItem.loadTransferable(type: Data.self) {

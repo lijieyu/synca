@@ -8,8 +8,8 @@ configs:
 settings:
   base:
     SWIFT_VERSION: 6.0
-    IPHONEOS_DEPLOYMENT_TARGET: 17.0
-    MACOSX_DEPLOYMENT_TARGET: 14.0
+    IPHONEOS_DEPLOYMENT_TARGET: 16.0
+    MACOSX_DEPLOYMENT_TARGET: 13.0
     DEVELOPMENT_LANGUAGE: zh-Hans
     PRODUCT_BUNDLE_IDENTIFIER: org.haerth.synca
     DEVELOPMENT_TEAM: 7Y33M5HLSC
@@ -23,7 +23,7 @@ targets:
   Synca:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "16.0"
     sources:
       - path: Shared
       - path: iOS
@@ -74,7 +74,7 @@ targets:
   SyncaMac:
     type: application
     platform: macOS
-    deploymentTarget: "14.0"
+    deploymentTarget: "13.0"
     sources:
       - path: Shared
       - path: macOS
