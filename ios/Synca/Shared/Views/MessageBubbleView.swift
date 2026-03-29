@@ -121,6 +121,7 @@ struct MessageBubbleView: View {
             onCopy: { copyText(message.textContent ?? "") },
             onDelete: { showDeleteConfirm = true }
         )
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         #else
         Text(message.textContent ?? "")

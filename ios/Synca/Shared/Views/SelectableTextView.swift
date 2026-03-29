@@ -19,17 +19,19 @@ struct SelectableTextView: NSViewRepresentable {
         textView.drawsBackground = false
         textView.backgroundColor = .clear
         
-        // Convert SwiftUI Color to NSColor
-        textView.textColor = NSColor(color)
-        // Set a default font if conversion is complex, or use NSFont
-        textView.font = NSFont.systemFont(ofSize: 14)
-        
-        textView.onCopy = onCopy
-        textView.onDelete = onDelete
+        // Setup text container for wrapping
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(width: 400, height: .greatestFiniteMagnitude)
+        textView.textContainer?.widthTracksTextView = true
         
         // Remove padding to match SwiftUI Text
         textView.textContainerInset = NSSize.zero
         textView.textContainer?.lineFragmentPadding = 0
+        
+        textView.onCopy = onCopy
+        textView.onDelete = onDelete
         
         return textView
     }
@@ -37,12 +39,29 @@ struct SelectableTextView: NSViewRepresentable {
     func updateNSView(_ nsView: NSTextView, context: Context) {
         nsView.string = text
         nsView.textColor = NSColor(color)
+        
+        // Match font - basic mapping for now
+        nsView.font = NSFont.systemFont(ofSize: 14)
+        
+        // Trigger re-layout for height calculation
+        nsView.invalidateIntrinsicContentSize()
     }
 }
 
 class CustomMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
+
+    // #21: Report correct size to SwiftUI
+    override var intrinsicContentSize: NSSize {
+        guard let container = textContainer, let manager = layoutManager else { return .zero }
+        manager.ensureLayout(for: container)
+        let usedRect = manager.usedRect(for: container)
+        return NSSize(width: usedRect.width, height: usedRect.height)
+    }
+
+    // #21: Ensure we can become first responder for selection to work
+    override var acceptsFirstResponder: Bool { true }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
@@ -61,7 +80,6 @@ class CustomMenuTextView: NSTextView {
     }
 
     @objc func copyFullText(_ sender: Any?) {
-        // If there's a selection, copy that. Otherwise, copy the full text.
         if self.selectedRange().length > 0 {
             self.copy(sender)
         } else if let onCopy = onCopy {
