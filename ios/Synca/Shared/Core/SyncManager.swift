@@ -281,10 +281,13 @@ final class SyncManager: ObservableObject {
             return
         }
 
+        let errorDescription = (error as NSError).localizedDescription
+        let errorCode = (error as NSError).code
+        
         if !silent {
-            errorMessage = "\(context)失败: \(error.localizedDescription)"
+            errorMessage = "\(context)失败: \(errorDescription) (\(errorCode))"
         } else {
-            print("[sync] \(context) failed: \(error.localizedDescription)")
+            print("[sync] \(context) failed: \(errorDescription) (\(errorCode))")
         }
     }
 

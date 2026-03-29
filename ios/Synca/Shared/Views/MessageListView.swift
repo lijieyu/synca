@@ -144,6 +144,8 @@ struct MessageListView: View {
             #if os(iOS)
             .scrollDismissesKeyboard(.immediately)
             .refreshable {
+                // Add 0.3s delay to let UI and haptics settle safely
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 await syncManager.refresh()
             }
             #endif
