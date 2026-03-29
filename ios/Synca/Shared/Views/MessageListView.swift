@@ -230,9 +230,9 @@ struct MessageListView: View {
                     var imageDatas: [Data] = []
                     for item in items {
                         if let data = try? await item.loadTransferable(type: Data.self) {
-                            if let compressed = compressImageData(data) {
-                                imageDatas.append(compressed)
-                            }
+                            // Phase 29: NEVER re-compress original files (PNG, HEIC, JPEG).
+                            // Byte-for-byte retention of metadata and transparency.
+                            imageDatas.append(data)
                         }
                     }
                     selectedPhotoItems = []
@@ -293,21 +293,7 @@ struct MessageListView: View {
         Task { await syncManager.sendText(text) }
     }
 
-    private func compressImageData(_ data: Data) -> Data? {
-        #if os(iOS)
-        if let uiImage = UIImage(data: data) {
-            return uiImage.jpegData(compressionQuality: 0.7)
-        }
-        return nil
-        #elseif os(macOS)
-        if let nsImage = NSImage(data: data),
-           let tiffData = nsImage.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData) {
-            return bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
-        }
-        return nil
-        #endif
-    }
+    // [Removed] compressImageData: No longer needed. All bytes are now handled losslessly.
 
     private func updateBadge() {
         let count = syncManager.unclearedCount
@@ -326,12 +312,30 @@ struct MessageListView: View {
     private func handlePaste() {
         let pb = NSPasteboard.general
         
-        // 1. Check for Image objects (robust way)
+        // 1. Check for raw Image Data Streams (Highest Priority: Zero Quality Loss)
+        // If the user copied an actual image file or web image, we can directly snatch
+        // the raw encoded bytes WITHOUT decoding to an NSImage and re-compressing it.
+        if let rawPngData = pb.data(forType: .png) {
+            Task { await syncManager.sendImage(rawPngData) }
+            return
+        }
+        if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
+            Task { await syncManager.sendImage(rawJpegData) }
+            return
+        }
+        if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
+            Task { await syncManager.sendImage(rawHeicData) }
+            return
+        }
+        
+        // 2. Check for Memory Bitmaps (Fallback: e.g. partial screen captures)
+        // Screenshots dump raw TIFF uncompressed bytes into the clipboard.
         if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage {
+            // Encode purely lossless to PNG to prevent screenshot edge blurring. (No 0.7 JPEG)
             if let tiffData = image.tiffRepresentation,
                let bitmap = NSBitmapImageRep(data: tiffData),
-               let compressed = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) {
-                Task { await syncManager.sendImage(compressed) }
+               let losslessCompressed = bitmap.representation(using: .png, properties: [:]) {
+                Task { await syncManager.sendImage(losslessCompressed) }
                 return
             }
         }
