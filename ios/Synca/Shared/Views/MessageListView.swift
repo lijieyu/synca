@@ -21,64 +21,8 @@ struct MessageListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Message list
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(syncManager.messages) { message in
-                                MessageBubbleView(
-                                    message: message,
-                                    onClear: {
-                                        Task { await syncManager.clearMessage(message.id) }
-                                    },
-                                    onDelete: {
-                                        Task { await syncManager.deleteMessage(message.id) }
-                                    },
-                                    onImageTap: {
-                                        selectedImageMessage = message
-                                    }
-                                )
-                                .id(message.id)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-                        .background(
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    #if os(iOS)
-                                    hideKeyboard()
-                                    #endif
-                                }
-                        )
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id("bottom")
-                    }
-                    #if os(iOS)
-                    .scrollDismissesKeyboard(.onDrag)
-                    .refreshable {
-                        await syncManager.refresh()
-                    }
-                    #endif
-                    .onChange(of: syncManager.messages.count) { _ in
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
-                    }
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
-                    }
-                } // End ScrollViewReader
-
+                messageList
                 Divider()
-
-                // Input bar
                 inputBar
             }
             .navigationTitle("Synca")
@@ -86,7 +30,6 @@ struct MessageListView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                // Trailing group for all actions (#1)
                 ToolbarItemGroup(placement: .primaryAction) {
                     refreshButton
                     clearAllButton
@@ -118,60 +61,9 @@ struct MessageListView: View {
                 Text("请重新登录以继续使用")
             }
         }
-        .overlay(alignment: .top) {
-            Group {
-                if case .success = syncManager.syncStatus {
-                    Label("同步成功", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                        .padding(.top, 16)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                } else if case .error(let msg) = syncManager.syncStatus {
-                    Label("同步失败", systemImage: "xmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .clipShape(Capsule())
-                        .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                        .padding(.top, 16)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: syncManager.syncStatus)
-        }
-        .overlay {
-            if syncManager.isLoading && syncManager.messages.isEmpty {
-                ProgressView("加载中...")
-                    .padding()
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            }
-        }
-        #if os(iOS)
-        .fullScreenCover(item: $selectedImageMessage) { msg in
-            let allImages = syncManager.imageMessages
-            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
-            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedMessageId in
-                // If a message was deleted from inside the preview
-                Task { await syncManager.deleteMessage(deletedMessageId) }
-            }
-        }
-        #else
-        .sheet(item: $selectedImageMessage) { msg in
-            let allImages = syncManager.imageMessages
-            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
-            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedMessageId in
-                Task { await syncManager.deleteMessage(deletedMessageId) }
-            }
-            .frame(minWidth: 800, minHeight: 600)
-        }
-        #endif
+        .overlay(alignment: .top) { syncStatusOverlay }
+        .overlay { loadingOverlay }
+        .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
             await syncManager.fullSync(manual: true)
             syncManager.startPolling()
@@ -207,6 +99,103 @@ struct MessageListView: View {
             .allowsHitTesting(false)
         )
         #endif
+    }
+
+    // MARK: - Subviews
+
+    private var messageList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(syncManager.messages) { message in
+                        MessageBubbleView(
+                            message: message,
+                            onClear: {
+                                Task { await syncManager.clearMessage(message.id) }
+                            },
+                            onDelete: {
+                                Task { await syncManager.deleteMessage(message.id) }
+                            },
+                            onImageTap: {
+                                selectedImageMessage = message
+                            }
+                        )
+                        .id(message.id)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+                .background(
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            #if os(iOS)
+                            hideKeyboard()
+                            #endif
+                        }
+                )
+
+                Color.clear
+                    .frame(height: 1)
+                    .id("bottom")
+            }
+            #if os(iOS)
+            .scrollDismissesKeyboard(.onDrag)
+            .refreshable {
+                await syncManager.refresh()
+            }
+            #endif
+            .onChange(of: syncManager.messages.count) { _ in
+                withAnimation(.easeOut(duration: 0.3)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var syncStatusOverlay: some View {
+        Group {
+            if case .success = syncManager.syncStatus {
+                Label("同步成功", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.green)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else if case .error = syncManager.syncStatus {
+                Label("同步失败", systemImage: "xmark.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: syncManager.syncStatus)
+    }
+
+    @ViewBuilder
+    private var loadingOverlay: some View {
+        if syncManager.isLoading && syncManager.messages.isEmpty {
+            ProgressView("加载中...")
+                .padding()
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
     }
 
     // MARK: - Toolbar Items
@@ -382,4 +371,28 @@ struct MessageListView: View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     #endif
+}
+
+extension View {
+    @ViewBuilder
+    func imagePreviewSheet(item: Binding<SyncaMessage?>, syncManager: SyncManager) -> some View {
+        #if os(iOS)
+        self.fullScreenCover(item: item) { msg in
+            let allImages = syncManager.imageMessages
+            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
+            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedId in
+                Task { await syncManager.deleteMessage(deletedId) }
+            }
+        }
+        #else
+        self.sheet(item: item) { msg in
+            let allImages = syncManager.imageMessages
+            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
+            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedId in
+                Task { await syncManager.deleteMessage(deletedId) }
+            }
+            .frame(minWidth: 800, minHeight: 600)
+        }
+        #endif
+    }
 }

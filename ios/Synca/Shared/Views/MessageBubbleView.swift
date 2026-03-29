@@ -218,7 +218,7 @@ struct MessageBubbleView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 15))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -231,7 +231,7 @@ struct MessageBubbleView: View {
             }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 15))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -258,7 +258,7 @@ struct MessageBubbleView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .font(.system(size: 15))
+            .font(.system(size: 20))
         }
         .buttonStyle(.plain)
         .disabled(saveStatus == .saving)
