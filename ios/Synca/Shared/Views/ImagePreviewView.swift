@@ -57,87 +57,7 @@ struct ImagePreviewView: View {
                 .offset(x: -CGFloat(currentIndex) * size.width)
                 .offset(x: horizontalOffset)
                 .background(Color.black.opacity(0.001)) // Ensure full-screen touch area
-                .highPriorityGesture(
-                    #if os(iOS)
-                    DragGesture(minimumDistance: 3) // Small threshold to allow taps
-                        .onChanged { value in
-                            // 1. If zoomed in, handle panning
-                            if scale > 1.0 {
-                                offset = CGSize(
-                                    width: lastOffset.width + value.translation.width,
-                                    height: lastOffset.height + value.translation.height
-                                )
-                                return
-                            }
-                            
-                            // 2. Determine initial direction once
-                            if !hasDeterminedDirection {
-                                let h = abs(value.translation.width)
-                                let v = abs(value.translation.height)
-                                
-                                // Favor horizontal for shallow angles
-                                // Only vertical if it's mostly vertical AND downward
-                                if v > h && value.translation.height > 5 {
-                                    isVerticalDrag = true
-                                } else {
-                                    isVerticalDrag = false
-                                }
-                                hasDeterminedDirection = true
-                            }
-                            
-                            // 3. Apply real-time movement
-                            if isVerticalDrag {
-                                // Swipe down to close
-                                let y = max(value.translation.height, 0)
-                                // Allow horizontal drift (1:1) while dragging down
-                                dragOffset = CGSize(width: value.translation.width, height: y)
-                                
-                                let progress = min(y / 400, 1)
-                                backgroundOpacity = 1.0 - (progress * 0.8)
-                                scale = 1.0 - (progress * 0.2)
-                            } else {
-                                // Paging
-                                horizontalOffset = value.translation.width
-                            }
-                        }
-                        .onEnded { value in
-                            if scale > 1.0 {
-                                lastOffset = offset
-                            } else if isVerticalDrag {
-                                // Close if dragged significantly far
-                                if value.translation.height > 120 {
-                                    withAnimation(.easeOut(duration: 0.2)) {
-                                        backgroundOpacity = 0
-                                        dismiss()
-                                    }
-                                } else {
-                                    resetZoom()
-                                }
-                            } else {
-                                // Page navigation
-                                let threshold = size.width / 5
-                                
-                                if (value.translation.width < -threshold) && currentIndex < messages.count - 1 {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        currentIndex += 1
-                                    }
-                                } else if (value.translation.width > threshold) && currentIndex > 0 {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        currentIndex -= 1
-                                    }
-                                }
-                                
-                                withAnimation(.spring(response: 0.3)) {
-                                    horizontalOffset = 0
-                                }
-                            }
-                            hasDeterminedDirection = false
-                            isVerticalDrag = false
-                        }
-                    #else
-                    DragGesture().onChanged { _ in }.onEnded { _ in }
-                    #endif
-                )
+                .highPriorityGesture(containerGesture(size: size))
             }
             .ignoresSafeArea()
 
@@ -327,9 +247,70 @@ struct ImagePreviewView: View {
         }
     }
 
-    private var dragGesture: some Gesture {
-        // [Removed]: Handled in body for direct state reactivity
-        DragGesture().onChanged { _ in }.onEnded { _ in }
+    private func containerGesture(size: CGSize) -> some Gesture {
+        #if os(iOS)
+        return DragGesture(minimumDistance: 3)
+            .onChanged { value in
+                if scale > 1.0 {
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                    return
+                }
+                if !hasDeterminedDirection {
+                    let h = abs(value.translation.width)
+                    let v = abs(value.translation.height)
+                    if v > h && value.translation.height > 5 {
+                        isVerticalDrag = true
+                    } else {
+                        isVerticalDrag = false
+                    }
+                    hasDeterminedDirection = true
+                }
+                if isVerticalDrag {
+                    let y = max(value.translation.height, 0)
+                    dragOffset = CGSize(width: value.translation.width, height: y)
+                    let progress = min(y / 400, 1)
+                    backgroundOpacity = 1.0 - (progress * 0.8)
+                    scale = 1.0 - (progress * 0.2)
+                } else {
+                    horizontalOffset = value.translation.width
+                }
+            }
+            .onEnded { value in
+                if scale > 1.0 {
+                    lastOffset = offset
+                } else if isVerticalDrag {
+                    if value.translation.height > 120 {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            backgroundOpacity = 0
+                            dismiss()
+                        }
+                    } else {
+                        resetZoom()
+                    }
+                } else {
+                    let threshold = size.width / 5
+                    if (value.translation.width < -threshold) && currentIndex < messages.count - 1 {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            currentIndex += 1
+                        }
+                    } else if (value.translation.width > threshold) && currentIndex > 0 {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            currentIndex -= 1
+                        }
+                    }
+                    withAnimation(.spring(response: 0.3)) {
+                        horizontalOffset = 0
+                    }
+                }
+                hasDeterminedDirection = false
+                isVerticalDrag = false
+            }
+        #else
+        return DragGesture().onChanged { _ in }.onEnded { _ in }
+        #endif
     }
 
     private func navButton(icon: String, action: @escaping () -> Void) -> some View {
