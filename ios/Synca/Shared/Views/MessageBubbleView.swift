@@ -9,8 +9,8 @@ struct MessageBubbleView: View {
     let message: SyncaMessage
     let onClear: () -> Void
     let onDelete: () -> Void
+    let onImageTap: () -> Void
 
-    @State private var showImagePreview = false
     @State private var copied = false
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
@@ -47,7 +47,7 @@ struct MessageBubbleView: View {
                 Spacer()
 
                 // #6: Actions row (Always visible)
-                HStack(spacing: 16) {
+                HStack(spacing: 22) {
                     if message.type == .image {
                         downloadImageButton
                         copyImageButton
@@ -78,20 +78,7 @@ struct MessageBubbleView: View {
                 .stroke(Color.gray.opacity(message.isCleared ? 0 : 0.15), lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.6 : 1.0)
-        #if os(iOS)
-        .fullScreenCover(isPresented: $showImagePreview) {
-            if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                ImagePreviewView(imageURL: url, onDelete: message.isCleared ? nil : onClear)
-            }
-        }
-        #else
-        .sheet(isPresented: $showImagePreview) {
-            if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                ImagePreviewView(imageURL: url, onDelete: message.isCleared ? nil : onClear)
-                    .frame(minWidth: 400, minHeight: 400)
-            }
-        }
-        #endif
+        .opacity(message.isCleared ? 0.6 : 1.0)
         .alert("确认删除", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
@@ -166,7 +153,7 @@ struct MessageBubbleView: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: 240, maxHeight: 300)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .onTapGesture { showImagePreview = true }
+                            .onTapGesture { onImageTap() }
                             .contextMenu {
                                 Button {
                                     copyImage(from: url)
@@ -181,6 +168,9 @@ struct MessageBubbleView: View {
                                 }
                                 
                                 #if os(macOS)
+                                Button { openWithPreview(url: url) } label: { Label("用预览打开", systemImage: "eye") }
+                                Button { showInFinder(url: url) } label: { Label("在访达中显示", systemImage: "folder") }
+                                
                                 Button {
                                     Task { await saveImageAs(from: url) }
                                 } label: {
@@ -228,7 +218,7 @@ struct MessageBubbleView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 13))
+                .font(.system(size: 15))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -241,7 +231,7 @@ struct MessageBubbleView: View {
             }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 13))
+                .font(.system(size: 15))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -268,7 +258,7 @@ struct MessageBubbleView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .font(.system(size: 13))
+            .font(.system(size: 15))
         }
         .buttonStyle(.plain)
         .disabled(saveStatus == .saving)
@@ -279,7 +269,7 @@ struct MessageBubbleView: View {
             onClear()
         } label: {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 18))
+                .font(.system(size: 20))
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
@@ -287,7 +277,7 @@ struct MessageBubbleView: View {
 
     private var checkFillIcon: some View {
         Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 18))
+            .font(.system(size: 20))
             .foregroundStyle(Color.gray.opacity(0.3))
     }
 
@@ -367,6 +357,29 @@ struct MessageBubbleView: View {
     }
 
     #if os(macOS)
+    private func showInFinder(url: URL) {
+        Task {
+            if let localURL = try? await downloadToTemp(url: url) {
+                NSWorkspace.shared.activateFileViewerSelecting([localURL])
+            }
+        }
+    }
+    
+    private func openWithPreview(url: URL) {
+        Task {
+            if let localURL = try? await downloadToTemp(url: url) {
+                NSWorkspace.shared.open(localURL)
+            }
+        }
+    }
+
+    private func downloadToTemp(url: URL) async throws -> URL {
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        try data.write(to: tempURL)
+        return tempURL
+    }
+
     private func saveImageAs(from url: URL) async {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)

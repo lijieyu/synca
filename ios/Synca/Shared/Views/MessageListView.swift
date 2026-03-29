@@ -16,6 +16,7 @@ struct MessageListView: View {
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
     @State private var showSessionExpired = false
+    @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
 
     var body: some View {
         NavigationStack {
@@ -32,6 +33,9 @@ struct MessageListView: View {
                                     },
                                     onDelete: {
                                         Task { await syncManager.deleteMessage(message.id) }
+                                    },
+                                    onImageTap: {
+                                        selectedImageMessage = message
                                     }
                                 )
                                 .id(message.id)
@@ -46,9 +50,12 @@ struct MessageListView: View {
                             .id("bottom")
                     }
                     #if os(iOS)
-                    .scrollDismissesKeyboard(.interactively)
+                    .scrollDismissesKeyboard(.onDrag)
                     .refreshable {
                         await syncManager.refresh()
+                    }
+                    .onTapGesture {
+                        hideKeyboard()
                     }
                     #endif
                     .onChange(of: syncManager.messages.count) { _ in
@@ -140,6 +147,25 @@ struct MessageListView: View {
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
+        #if os(iOS)
+        .fullScreenCover(item: $selectedImageMessage) { msg in
+            let allImages = syncManager.imageMessages
+            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
+            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedMessageId in
+                // If a message was deleted from inside the preview
+                Task { await syncManager.deleteMessage(deletedMessageId) }
+            }
+        }
+        #else
+        .sheet(item: $selectedImageMessage) { msg in
+            let allImages = syncManager.imageMessages
+            let initialIndex = allImages.firstIndex(where: { $0.id == msg.id }) ?? 0
+            ImagePreviewView(messages: allImages, initialIndex: initialIndex) { deletedMessageId in
+                Task { await syncManager.deleteMessage(deletedMessageId) }
+            }
+            .frame(minWidth: 800, minHeight: 600)
+        }
+        #endif
         .task {
             await syncManager.fullSync(manual: true)
             syncManager.startPolling()
@@ -341,6 +367,12 @@ struct MessageListView: View {
         if let text = pb.string(forType: .string) {
             inputText += text
         }
+    }
+    #endif
+
+    #if os(iOS)
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     #endif
 }

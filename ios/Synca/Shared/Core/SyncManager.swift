@@ -27,6 +27,10 @@ final class SyncManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var sessionExpired = false
 
+    var imageMessages: [SyncaMessage] {
+        messages.filter { $0.type == .image && !$0.isDeleted }
+    }
+
     private var pollTimer: Timer?
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared

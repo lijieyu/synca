@@ -33,23 +33,30 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
     private static func formatRelativeDate(_ date: Date) -> String {
         let calendar = Calendar.current
         let now = Date()
+        
+        // Time format
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        let timeString = timeFormatter.string(from: date)
 
         if calendar.isDateInToday(date) {
-            let f = DateFormatter()
-            f.dateFormat = "HH:mm"
-            return f.string(from: date)
+            return timeString
         } else if calendar.isDateInYesterday(date) {
+            return "昨天 \(timeString)"
+        } else if let days = calendar.dateComponents([.day], from: date, to: now).day, days < 7 {
+            // Within a week, show weekday
             let f = DateFormatter()
-            f.dateFormat = "HH:mm"
-            return "昨天 \(f.string(from: date))"
+            f.locale = Locale(identifier: "zh_CN")
+            f.dateFormat = "EEEE" // Full weekday
+            return "\(f.string(from: date)) \(timeString)"
         } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
             let f = DateFormatter()
-            f.dateFormat = "M/d HH:mm"
-            return f.string(from: date)
+            f.dateFormat = "M月d日"
+            return "\(f.string(from: date)) \(timeString)"
         } else {
             let f = DateFormatter()
-            f.dateFormat = "yyyy/M/d HH:mm"
-            return f.string(from: date)
+            f.dateFormat = "yyyy年M月d日"
+            return "\(f.string(from: date)) \(timeString)"
         }
     }
 }
