@@ -47,6 +47,12 @@ class CustomContextMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
 
+    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType, returnType: NSPasteboard.PasteboardType?) -> Any? {
+        // By returning nil, we tell the system this responder does not provide any data
+        // for macOS Services. This forces the OS to omit the "Services" (服务) context menu item.
+        return nil
+    }
+
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
         let copyItem = NSMenuItem(title: "拷贝", action: #selector(handleCopy(_:)), keyEquivalent: "c")
@@ -54,6 +60,9 @@ class CustomContextMenuTextView: NSTextView {
         menu.addItem(copyItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        // Ensure no plugins or system additions are allowed on this specific menu
+        menu.allowsContextMenuPlugIns = false
         
         let deleteItem = NSMenuItem(title: "删除", action: #selector(handleDelete(_:)), keyEquivalent: "")
         deleteItem.target = self
