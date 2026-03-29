@@ -113,6 +113,9 @@ struct MessageListView: View {
             syncManager.startPolling()
             updateBadge()
         }
+        .onChange(of: syncManager.unclearedCount) { _ in
+            updateBadge()
+        }
         .onChange(of: syncManager.sessionExpired) { expired in
             if expired {
                 showSessionExpired = true
