@@ -20,9 +20,10 @@ struct ImagePreviewView: View {
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
     
-    // Swipe to close state (iOS)
+    // Swipe to close & paging state
     @State private var backgroundOpacity: Double = 1.0
     @State private var dragOffset: CGSize = .zero
+    @State private var horizontalOffset: CGFloat = 0
     @State private var isVerticalDrag = false
     @State private var hasDeterminedDirection = false
 
@@ -42,23 +43,25 @@ struct ImagePreviewView: View {
                 .opacity(backgroundOpacity)
                 .ignoresSafeArea()
 
-            #if os(iOS)
-            TabView(selection: $currentIndex) {
-                ForEach(0..<messages.count, id: \.self) { index in
-                    if let urlString = messages[index].imageUrl, let url = URL(string: urlString) {
-                        imagePage(url: url)
-                            .tag(index)
+            GeometryReader { geometry in
+                let size = geometry.size
+                
+                HStack(spacing: 0) {
+                    ForEach(0..<messages.count, id: \.self) { index in
+                        if let urlString = messages[index].imageUrl, let url = URL(string: urlString) {
+                            imagePage(url: url, size: size)
+                                .frame(width: size.width, height: size.height)
+                        }
                     }
                 }
+                .offset(x: -CGFloat(currentIndex) * size.width)
+                .offset(x: horizontalOffset)
+                .contentShape(Rectangle())
+                .gesture(
+                    dragGesture
+                )
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            #else
-            if let urlString = messages[currentIndex].imageUrl, let url = URL(string: urlString) {
-                imagePage(url: url)
-                    .transition(.opacity)
-                    .id(currentIndex)
-            }
-            #endif
+            .ignoresSafeArea()
 
             // UI Controls
             controlsOverlay
@@ -80,7 +83,7 @@ struct ImagePreviewView: View {
     }
 
     @ViewBuilder
-    private func imagePage(url: URL) -> some View {
+    private func imagePage(url: URL, size: CGSize) -> some View {
         CachedAsyncImage(url: url) { phase in
             switch phase {
             case .success(let image):
@@ -98,65 +101,6 @@ struct ImagePreviewView: View {
                             .onEnded { _ in
                                 lastScale = scale
                                 if scale < 1.0 { resetZoom() }
-                            }
-                    )
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 10)
-                            .onChanged { value in
-                                if scale > 1.0 {
-                                    offset = CGSize(
-                                        width: lastOffset.width + value.translation.width,
-                                        height: lastOffset.height + value.translation.height
-                                    )
-                                    return
-                                }
-                                
-                                // Determine direction on first few pixels
-                                if !hasDeterminedDirection {
-                                    let horizontalAmount = abs(value.translation.width)
-                                    let verticalAmount = abs(value.translation.height)
-                                    
-                                    if verticalAmount > horizontalAmount && value.translation.height > 0 {
-                                        isVerticalDrag = true
-                                    } else {
-                                        isVerticalDrag = false
-                                    }
-                                    hasDeterminedDirection = true
-                                }
-                                
-                                if isVerticalDrag {
-                                    // Swipe down to close logic (WeChat style)
-                                    // Only allow downward movement
-                                    let yOffset = max(value.translation.height, 0)
-                                    dragOffset = CGSize(width: value.translation.width * 0.5, height: yOffset)
-                                    
-                                    let dragProgress = min(yOffset / 300, 1)
-                                    backgroundOpacity = 1.0 - dragProgress
-                                    
-                                    // Scale down image slightly while dragging down
-                                    scale = 1.0 - (dragProgress * 0.2)
-                                }
-                            }
-                            .onEnded { value in
-                                if scale != 1.0 && !isVerticalDrag {
-                                    lastOffset = offset
-                                } else if isVerticalDrag {
-                                    if value.translation.height > 100 {
-                                        withAnimation(.easeOut(duration: 0.2)) {
-                                            backgroundOpacity = 0
-                                            dismiss()
-                                        }
-                                    } else {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                            dragOffset = .zero
-                                            backgroundOpacity = 1.0
-                                            scale = 1.0
-                                        }
-                                    }
-                                }
-                                // Reset direction tracking for next gesture
-                                hasDeterminedDirection = false
-                                isVerticalDrag = false
                             }
                     )
                     #endif
@@ -291,6 +235,84 @@ struct ImagePreviewView: View {
         case .success: return "保存成功"
         case .error: return "保存失败"
         }
+    }
+
+    private var dragGesture: some Gesture {
+        #if os(iOS)
+        return DragGesture(minimumDistance: 5)
+            .onChanged { value in
+                if scale > 1.0 {
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                    return
+                }
+                
+                if !hasDeterminedDirection {
+                    let horizontalAmount = abs(value.translation.width)
+                    let verticalAmount = abs(value.translation.height)
+                    
+                    if verticalAmount > horizontalAmount && value.translation.height > 0 {
+                        isVerticalDrag = true
+                    } else {
+                        isVerticalDrag = false
+                    }
+                    hasDeterminedDirection = true
+                }
+                
+                if isVerticalDrag {
+                    // Swipe down to close logic
+                    let yOffset = max(value.translation.height, 0)
+                    dragOffset = CGSize(width: value.translation.width * 0.3, height: yOffset)
+                    // Use a reasonable height for progress
+                    let dragProgress = min(yOffset / 400, 1)
+                    backgroundOpacity = 1.0 - (dragProgress * 0.8)
+                    scale = 1.0 - (dragProgress * 0.2)
+                } else {
+                    // Paging logic
+                    horizontalOffset = value.translation.width
+                }
+            }
+            .onEnded { value in
+                if scale > 1.0 {
+                    lastOffset = offset
+                } else if isVerticalDrag {
+                    if value.translation.height > 150 {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            backgroundOpacity = 0
+                            dismiss()
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            dragOffset = .zero
+                            backgroundOpacity = 1.0
+                            scale = 1.0
+                        }
+                    }
+                } else {
+                    // Paging end
+                    // Use a threshold for paging
+                    let threshold: CGFloat = 80
+                    if value.predictedTranslation.width < -threshold && currentIndex < messages.count - 1 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            currentIndex += 1
+                        }
+                    } else if value.predictedTranslation.width > threshold && currentIndex > 0 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            currentIndex -= 1
+                        }
+                    }
+                    withAnimation(.spring(response: 0.3)) {
+                        horizontalOffset = 0
+                    }
+                }
+                hasDeterminedDirection = false
+                isVerticalDrag = false
+            }
+        #else
+        return DragGesture().onChanged { _ in }
+        #endif
     }
 
     private func navButton(icon: String, action: @escaping () -> Void) -> some View {
