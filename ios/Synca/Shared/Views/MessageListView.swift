@@ -168,9 +168,9 @@ struct MessageListView: View {
         Button {
             showClearAllConfirm = true
         } label: {
-            Image(systemName: "broom")
+            Image(systemName: "trash")
         }
-        .disabled(syncManager.unclearedCount == 0) // #1: 置灰不可点
+        .disabled(syncManager.unclearedCount == 0)
     }
 
     private var refreshButton: some View {

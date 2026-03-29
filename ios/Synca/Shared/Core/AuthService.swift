@@ -33,10 +33,9 @@ final class AuthService: NSObject, ObservableObject {
             controller.presentationContextProvider = self
             #endif
             
-            // #Fix Hang Risk: In Xcode 16, performRequests() can trigger QoS priority inversion warnings
-            // if called synchronously on a high-priority actor like @MainActor.
-            // Using a detached task or async dispatch helps the system manage the thread priority better.
-            Task.detached(priority: .userInitiated) {
+            // Using a standard Task on @MainActor instead of detached helps keep the context 
+            // synchronized with the UI while still allowing the call to be asynchronous.
+            Task {
                 controller.performRequests()
             }
         }
@@ -90,8 +89,13 @@ extension AuthService: ASAuthorizationControllerDelegate {
 #if os(macOS)
 extension AuthService: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return MainActor.assumeIsolated {
-            NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
+        // Safe access to NSApp windows from a synchronous delegate method
+        if Thread.isMainThread {
+            return NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
+        } else {
+            return DispatchQueue.main.sync {
+                NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
+            }
         }
     }
 }
