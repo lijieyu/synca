@@ -22,6 +22,10 @@ struct SyncaApp: App {
         }
         #if os(macOS)
         .defaultSize(width: 480, height: 700)
+        .commands {
+            // Remove "New Window" / "New Tab" menu items
+            CommandGroup(replacing: .newItem) {}
+        }
         #endif
     }
 }

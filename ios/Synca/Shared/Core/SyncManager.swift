@@ -12,7 +12,9 @@ final class SyncManager: ObservableObject {
     @Published var unclearedCount: Int = 0
     @Published var isLoading = false
     @Published var isSending = false
+    @Published var isRefreshing = false
     @Published var errorMessage: String?
+    @Published var sessionExpired = false  // #7: 401 踢出到登录页
 
     private var pollTimer: Timer?
     private var lastSyncTimestamp: String?
@@ -20,7 +22,7 @@ final class SyncManager: ObservableObject {
 
     private init() {}
 
-    // MARK: - Full Sync
+    // MARK: - Full Sync (新设备登录时全量同步)
 
     func fullSync() async {
         guard api.isAuthenticated else { return }
@@ -31,11 +33,9 @@ final class SyncManager: ObservableObject {
             let allMessages = try await api.listMessages()
             messages = allMessages
             unclearedCount = allMessages.filter { !$0.isCleared }.count
-            lastSyncTimestamp = allMessages.last?.updatedAt
+            lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
         } catch {
-            if !(error is CancellationError) {
-                errorMessage = error.localizedDescription
-            }
+            handleError(error, context: "同步")
         }
 
         isLoading = false
@@ -65,9 +65,16 @@ final class SyncManager: ObservableObject {
 
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
-            // Silent fail for background sync
-            print("[sync] incremental sync failed: \(error.localizedDescription)")
+            handleError(error, context: "同步", silent: true)
         }
+    }
+
+    // MARK: - Pull to Refresh (#5)
+
+    func refresh() async {
+        isRefreshing = true
+        await fullSync()
+        isRefreshing = false
     }
 
     // MARK: - Polling
@@ -101,7 +108,7 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
         } catch {
-            errorMessage = "发送失败: \(error.localizedDescription)"
+            handleError(error, context: "发送")
         }
 
         isSending = false
@@ -119,7 +126,28 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
         } catch {
-            errorMessage = "图片发送失败: \(error.localizedDescription)"
+            handleError(error, context: "图片发送")
+        }
+
+        isSending = false
+    }
+
+    // #2: 批量发送多张图片
+    func sendImages(_ imageDatas: [Data]) async {
+        isSending = true
+
+        for imageData in imageDatas {
+            do {
+                let message = try await api.sendImageMessage(
+                    imageData: imageData,
+                    sourceDevice: currentDeviceName()
+                )
+                messages.append(message)
+                unclearedCount += 1
+                lastSyncTimestamp = message.updatedAt
+            } catch {
+                handleError(error, context: "图片发送")
+            }
         }
 
         isSending = false
@@ -136,7 +164,7 @@ final class SyncManager: ObservableObject {
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
-            errorMessage = "清理失败: \(error.localizedDescription)"
+            handleError(error, context: "清理")
         }
     }
 
@@ -148,7 +176,7 @@ final class SyncManager: ObservableObject {
             }
             unclearedCount = 0
         } catch {
-            errorMessage = "清理失败: \(error.localizedDescription)"
+            handleError(error, context: "清理")
         }
     }
 
@@ -159,9 +187,27 @@ final class SyncManager: ObservableObject {
         messages = []
         unclearedCount = 0
         lastSyncTimestamp = nil
+        sessionExpired = false
     }
 
-    private func currentDeviceName() -> String {
+    // #7: 统一错误处理，401 时踢出到登录页
+    private func handleError(_ error: Error, context: String, silent: Bool = false) {
+        if error is CancellationError { return }
+
+        if case APIError.unauthorized = error {
+            sessionExpired = true
+            api.clearToken()
+            return
+        }
+
+        if !silent {
+            errorMessage = "\(context)失败: \(error.localizedDescription)"
+        } else {
+            print("[sync] \(context) failed: \(error.localizedDescription)")
+        }
+    }
+
+    func currentDeviceName() -> String {
         #if os(iOS)
         return UIDevice.current.name
         #elseif os(macOS)

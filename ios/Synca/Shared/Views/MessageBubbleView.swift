@@ -39,14 +39,46 @@ struct MessageBubbleView: View {
                 Spacer()
 
                 if !message.isCleared {
-                    Button {
-                        onClear()
-                    } label: {
-                        Image(systemName: "checkmark.circle")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 16) {
+                        // #6: Copy button
+                        if message.type == .text {
+                            Button {
+                                copyText(message.textContent ?? "")
+                                withAnimation { copied = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation { copied = false }
+                                }
+                            } label: {
+                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(copied ? .green : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        // #6: Download/Save button for images
+                        if message.type == .image {
+                            Button {
+                                if let urlString = message.imageUrl, let url = URL(string: urlString) {
+                                    Task { await saveImage(from: url) }
+                                }
+                            } label: {
+                                Image(systemName: "square.and.arrow.down")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Button {
+                            onClear()
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18))
