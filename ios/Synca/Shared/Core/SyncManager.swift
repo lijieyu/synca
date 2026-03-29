@@ -35,7 +35,8 @@ final class SyncManager: ObservableObject {
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
     private var statusResetTask: Task<Void, Never>?
-    private var isManualRefresh = false // #5: 用于区分静默同步和手动同步
+    private var isSyncingInternal = false // Concurrency lock
+    private var isManualRefresh = false
 
     private init() {}
 
@@ -43,9 +44,17 @@ final class SyncManager: ObservableObject {
 
     func fullSync(manual: Bool = false) async {
         guard api.isAuthenticated else { return }
+        guard !isSyncingInternal else { return }
+        
+        isSyncingInternal = true
         isLoading = messages.isEmpty && manual
-        defer { isLoading = false } // 确保无论成败，退出时重置状态
         errorMessage = nil
+        
+        defer {
+            isLoading = false
+            isSyncingInternal = false
+        }
+        
         if manual { updateStatus(.syncing) }
 
         do {
@@ -55,6 +64,8 @@ final class SyncManager: ObservableObject {
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
             if manual { updateStatus(.success) }
+        } catch is CancellationError {
+            // Ignore cancellation to avoid false error reports during scroll/pull
         } catch {
             handleError(error, context: "同步")
             if manual { updateStatus(.error(error.localizedDescription)) }
@@ -65,6 +76,11 @@ final class SyncManager: ObservableObject {
 
     func incrementalSync(manual: Bool = false) async {
         guard api.isAuthenticated else { return }
+        guard !isSyncingInternal else { return }
+        
+        isSyncingInternal = true
+        defer { isSyncingInternal = false }
+        
         if manual { updateStatus(.syncing) }
 
         do {
@@ -90,6 +106,8 @@ final class SyncManager: ObservableObject {
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
             if manual { updateStatus(.success) }
+        } catch is CancellationError {
+            // Ignore
         } catch {
             handleError(error, context: "同步", silent: !manual)
             if manual { updateStatus(.error(error.localizedDescription)) }
