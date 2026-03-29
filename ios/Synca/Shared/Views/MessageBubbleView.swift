@@ -79,13 +79,13 @@ struct MessageBubbleView: View {
         #if os(iOS)
         .fullScreenCover(isPresented: $showImagePreview) {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                ImagePreviewView(imageURL: url)
+                ImagePreviewView(imageURL: url, onDelete: message.isCleared ? nil : onClear)
             }
         }
         #else
         .sheet(isPresented: $showImagePreview) {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                ImagePreviewView(imageURL: url)
+                ImagePreviewView(imageURL: url, onDelete: message.isCleared ? nil : onClear)
                     .frame(minWidth: 400, minHeight: 400)
             }
         }
@@ -112,7 +112,16 @@ struct MessageBubbleView: View {
                 Button {
                     copyText(message.textContent ?? "")
                 } label: {
-                    Label("复制", systemImage: "doc.on.doc")
+                    Label("拷贝", systemImage: "doc.on.doc")
+                }
+                
+                if !message.isCleared {
+                    Divider()
+                    Button(role: .destructive) {
+                        onClear()
+                    } label: {
+                        Label("删除", systemImage: "trash")
+                    }
                 }
             }
     }
@@ -149,6 +158,15 @@ struct MessageBubbleView: View {
                                     Label("另存为...", systemImage: "folder.badge.plus")
                                 }
                                 #endif
+                                
+                                if !message.isCleared {
+                                    Divider()
+                                    Button(role: .destructive) {
+                                        onClear()
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
+                                    }
+                                }
                             }
                     case .failure:
                         VStack(spacing: 8) {

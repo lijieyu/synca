@@ -7,6 +7,7 @@ import AppKit
 
 struct ImagePreviewView: View {
     let imageURL: URL
+    var onDelete: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var scale: CGFloat = 1.0
@@ -68,6 +69,16 @@ struct ImagePreviewView: View {
                             #if os(macOS)
                             Button { Task { await saveImageAs(from: imageURL) } } label: { Label("另存为...", systemImage: "folder.badge.plus") }
                             #endif
+                            
+                            if let onDelete = onDelete {
+                                Divider()
+                                Button(role: .destructive) {
+                                    onDelete()
+                                    dismiss()
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                            }
                         }
 
                 case .failure:
