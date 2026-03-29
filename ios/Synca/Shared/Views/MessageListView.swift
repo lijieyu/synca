@@ -20,9 +20,6 @@ struct MessageListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header Status Tip (#5)
-                syncStatusTip
-
                 // Message list
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -63,6 +60,9 @@ struct MessageListView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             proxy.scrollTo("bottom", anchor: .bottom)
                         }
+                    }
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        syncStatusTip
                     }
                 }
 
@@ -174,27 +174,29 @@ struct MessageListView: View {
                 }
             }
         }
-        .font(.system(size: 12, weight: .medium)) // Slightly larger for better readability in a taller bar
+        .font(.system(size: 12, weight: .medium))
         .foregroundStyle(.secondary)
-        .padding(.vertical, 8) // Taller height
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background(
-            // Premium transparency + gradient treatment
-            LinearGradient(
-                colors: [
-                    Color.gray.opacity(0.02),
-                    Color.gray.opacity(0.08)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        // Subtle bottom border to separate it cleanly from the messages list
-        .overlay(
-            Rectangle()
-                .frame(height: 0.5)
-                .foregroundStyle(Color.gray.opacity(0.2)),
-            alignment: .bottom
+            ZStack {
+                // True transparency (blur effect) so scrolling messages are visible underneath
+                #if os(iOS)
+                Rectangle().fill(.ultraThinMaterial)
+                #else
+                Rectangle().fill(.regularMaterial)
+                #endif
+                
+                // Visible color gradient overlay
+                LinearGradient(
+                    colors: [
+                        Color.gray.opacity(0.15),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
         )
     }
 
