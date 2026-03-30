@@ -67,18 +67,30 @@ struct MessageBubbleView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(message.isCleared
-                      ? Color.gray.opacity(0.08)
-                      : cardBackground)
-                .shadow(color: .black.opacity(message.isCleared ? 0 : 0.04), radius: 2, y: 1)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(message.isCleared
+                          ? Color.syncaMintLight
+                          : cardBackground)
+                
+                if message.isCleared {
+                    // Subtle mint glow for processed
+                    Circle()
+                        .fill(Color.syncaMint.opacity(0.1))
+                        .frame(width: 80, height: 80)
+                        .blur(radius: 20)
+                        .offset(x: 40, y: -20)
+                }
+            }
+            .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gray.opacity(message.isCleared ? 0 : 0.15), lineWidth: 0.5)
+                .stroke(message.isCleared 
+                        ? Color.syncaMint.opacity(0.3) 
+                        : Color.gray.opacity(0.15), lineWidth: 0.5)
         )
-        .opacity(message.isCleared ? 0.6 : 1.0)
-        .opacity(message.isCleared ? 0.6 : 1.0)
+        .opacity(message.isCleared ? 0.95 : 1.0)
         .alert("确认删除", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
@@ -121,7 +133,7 @@ struct MessageBubbleView: View {
         #else
         Text(message.textContent ?? "")
             .font(.body)
-            .foregroundStyle(message.isCleared ? .secondary : .primary)
+            .foregroundStyle(message.isCleared ? Color.primary.opacity(0.6) : .primary)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contextMenu {
@@ -156,23 +168,23 @@ struct MessageBubbleView: View {
                             .onTapGesture { onImageTap() }
                             .contextMenu {
                                 Button {
-                                    copyImage(from: url)
+                                    self.copyImage(from: url)
                                 } label: {
                                     Label("拷贝", systemImage: "doc.on.doc")
                                 }
                                 
                                 Button {
-                                    Task { await saveImage(from: url) }
+                                    Task { await self.saveImage(from: url) }
                                 } label: {
                                     Label("保存", systemImage: "square.and.arrow.down")
                                 }
                                 
                                 #if os(macOS)
-                                Button { openWithPreview(url: url) } label: { Label("用预览打开", systemImage: "eye") }
-                                Button { showInFinder(url: url) } label: { Label("在访达中显示", systemImage: "folder") }
+                                Button { self.openWithPreview(url: url) } label: { Label("用预览打开", systemImage: "eye") }
+                                Button { self.showInFinder(url: url) } label: { Label("在访达中显示", systemImage: "folder") }
                                 
                                 Button {
-                                    Task { await saveImageAs(from: url) }
+                                    Task { await self.saveImageAs(from: url) }
                                 } label: {
                                     Label("另存为...", systemImage: "folder.badge.plus")
                                 }
@@ -227,7 +239,7 @@ struct MessageBubbleView: View {
     private var copyImageButton: some View {
         Button {
             if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
-                copyImage(from: url)
+                self.copyImage(from: url)
             }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
@@ -240,7 +252,7 @@ struct MessageBubbleView: View {
     private var downloadImageButton: some View {
         Button {
             if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
-                Task { await saveImage(from: url) }
+                Task { await self.saveImage(from: url) }
             }
         } label: {
             Group {
@@ -278,7 +290,7 @@ struct MessageBubbleView: View {
     private var checkFillIcon: some View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 20))
-            .foregroundStyle(Color.gray.opacity(0.3))
+            .foregroundStyle(Color.green.opacity(0.8))
     }
 
     // MARK: - Helper Methods

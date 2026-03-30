@@ -275,19 +275,35 @@ final class SyncManager: ObservableObject {
     private func handleError(_ error: Error, context: String, silent: Bool = false) {
         if error is CancellationError { return }
 
+        // Trigger error haptic
+        #if os(iOS)
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.error)
+        #endif
+
+        print("[SyncManager] ERROR in \(context): \(error)")
+
         if case APIError.unauthorized = error {
             sessionExpired = true
             api.clearToken()
             return
         }
 
-        let errorDescription = (error as NSError).localizedDescription
-        let errorCode = (error as NSError).code
+        let nsError = error as NSError
+        let errorDescription = nsError.localizedDescription
+        let errorCode = nsError.code
+        let domain = nsError.domain
+        
+        let fullErrorMsg = "\(context)失败: \(errorDescription) (Code: \(errorCode), Domain: \(domain))"
         
         if !silent {
-            errorMessage = "\(context)失败: \(errorDescription) (\(errorCode))"
-        } else {
-            print("[sync] \(context) failed: \(errorDescription) (\(errorCode))")
+            errorMessage = fullErrorMsg
+        }
+        
+        print("[SyncManager] ERROR in \(context): \(fullErrorMsg)")
+        if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            print("[SyncManager] Underlying error: \(underlyingError)")
         }
     }
 

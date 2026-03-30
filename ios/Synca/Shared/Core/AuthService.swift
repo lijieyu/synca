@@ -89,13 +89,8 @@ extension AuthService: ASAuthorizationControllerDelegate {
 #if os(macOS)
 extension AuthService: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // Safe access to NSApp windows from a synchronous delegate method
-        if Thread.isMainThread {
-            return NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
-        } else {
-            return DispatchQueue.main.sync {
-                NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
-            }
+        MainActor.assumeIsolated {
+            NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
         }
     }
 }

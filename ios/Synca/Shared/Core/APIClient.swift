@@ -166,10 +166,27 @@ final class APIClient: ObservableObject {
     }
 
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
+        #if DEBUG
+        print("[APIClient] >>> \(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "")")
+        if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
+            print("[APIClient] Body: \(bodyString)")
+        }
+        #endif
+
         let (data, response) = try await URLSession.shared.data(for: request)
+        
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("[APIClient] ❌ Invalid response type")
             throw APIError.invalidResponse
         }
+        
+        #if DEBUG
+        print("[APIClient] <<< Status: \(httpResponse.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("[APIClient] Response: \(responseString)")
+        }
+        #endif
+
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }

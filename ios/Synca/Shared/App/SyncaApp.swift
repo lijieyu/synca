@@ -16,6 +16,7 @@ struct SyncaApp: App {
             RootView()
                 .environmentObject(api)
                 .environmentObject(syncManager)
+                .tint(.syncaPurple)
             #if os(macOS)
                 .frame(minWidth: 400, idealWidth: 480, minHeight: 500, idealHeight: 700)
             #endif

@@ -67,10 +67,10 @@ struct MessageListView: View {
         .task {
             await syncManager.fullSync(manual: true)
             syncManager.startPolling()
-            updateBadge()
+            self.updateBadge()
         }
         .onChange(of: syncManager.unclearedCount) { _ in
-            updateBadge()
+            self.updateBadge()
         }
         .onChange(of: syncManager.sessionExpired) { expired in
             if expired {
@@ -165,7 +165,7 @@ struct MessageListView: View {
     @ViewBuilder
     private var syncStatusOverlay: some View {
         Group {
-            if case .success = syncManager.syncStatus {
+            if case .success = self.syncManager.syncStatus {
                 Label("同步成功", systemImage: "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
@@ -176,7 +176,7 @@ struct MessageListView: View {
                     .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
                     .padding(.top, 16)
                     .transition(.move(edge: .top).combined(with: .opacity))
-            } else if case .error = syncManager.syncStatus {
+            } else if case .error = self.syncManager.syncStatus {
                 Label("同步失败", systemImage: "xmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
@@ -189,12 +189,12 @@ struct MessageListView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: syncManager.syncStatus)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: self.syncManager.syncStatus)
     }
 
     @ViewBuilder
     private var loadingOverlay: some View {
-        if syncManager.isLoading && syncManager.messages.isEmpty {
+        if self.syncManager.isLoading && self.syncManager.messages.isEmpty {
             ProgressView("加载中...")
                 .padding()
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -206,26 +206,26 @@ struct MessageListView: View {
     @ViewBuilder
     private var clearAllButton: some View {
         Button {
-            showClearAllConfirm = true
+            self.showClearAllConfirm = true
         } label: {
             Image(systemName: "trash")
         }
-        .disabled(syncManager.unclearedCount == 0)
+        .disabled(self.syncManager.unclearedCount == 0)
     }
 
     private var refreshButton: some View {
         Button {
-            Task { await syncManager.refresh() }
+            Task { await self.syncManager.refresh() }
         } label: {
             Image(systemName: "arrow.clockwise")
         }
-        .disabled(syncManager.isRefreshing)
+        .disabled(self.syncManager.isRefreshing)
     }
 
     private var settingsMenu: some View {
         Menu {
             Button(role: .destructive) {
-                showLogoutConfirm = true
+                self.showLogoutConfirm = true
             } label: {
                 Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
             }
@@ -242,10 +242,10 @@ struct MessageListView: View {
             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                 Image(systemName: "photo.badge.plus")
                     .font(.system(size: 22))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Color.syncaPurple)
             }
             .buttonStyle(.plain)
-            .onChange(of: selectedPhotoItems) { items in
+            .onChange(of: self.selectedPhotoItems) { items in
                 guard !items.isEmpty else { return }
                 Task {
                     // Reverse the order so the 'newest' (usually selected first) 
@@ -257,9 +257,9 @@ struct MessageListView: View {
                             imageDatas.append(data)
                         }
                     }
-                    selectedPhotoItems = []
+                    self.selectedPhotoItems = []
                     if !imageDatas.isEmpty {
-                        await syncManager.sendImages(imageDatas)
+                        await self.syncManager.sendImages(imageDatas)
                     }
                 }
             }
@@ -284,11 +284,11 @@ struct MessageListView: View {
                 #endif
 
             Button {
-                submitText()
+                self.submitText()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
-                    .foregroundStyle(canSend ? Color.accentColor : Color.gray.opacity(0.4))
+                    .foregroundStyle(self.canSend ? Color.syncaPurple : Color.gray.opacity(0.4))
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
@@ -317,10 +317,15 @@ struct MessageListView: View {
 
     // [Removed] compressImageData: No longer needed. All bytes are now handled losslessly.
 
+    @MainActor
     private func updateBadge() {
         let count = syncManager.unclearedCount
         #if os(iOS)
-        UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+        if #available(iOS 17.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(count)
+        } else {
+            UIApplication.shared.applicationIconBadgeNumber = count
+        }
         #elseif os(macOS)
         if count > 0 {
             NSApp.dockTile.badgeLabel = "\(count)"
