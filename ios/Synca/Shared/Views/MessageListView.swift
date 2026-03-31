@@ -109,25 +109,36 @@ struct MessageListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(syncManager.messages) { message in
-                        MessageBubbleView(
-                            message: message,
-                            onClear: {
-                                Task { await syncManager.clearMessage(message.id) }
-                            },
-                            onDelete: {
-                                Task { await syncManager.deleteMessage(message.id) }
-                            },
-                            onImageTap: {
-                                selectedImageMessage = message
-                            }
-                        )
-                        .id(message.id)
+                    let completed = syncManager.orderedMessages.filter { $0.isCleared }
+                    let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
+                    
+                    ForEach(completed) { message in
+                        messageView(for: message)
+                    }
+                    
+                    if !uncompleted.isEmpty {
+                        HStack {
+                            Text("待办")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(4)
+                            Spacer()
+                        }
+                        .padding(.top, 8)
+                        .id("uncompleted_header")
+                        
+                        ForEach(uncompleted) { message in
+                            messageView(for: message)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: syncManager.orderedMessages)
                 .background(
                     Color.clear
                         .contentShape(Rectangle())
@@ -383,6 +394,23 @@ struct MessageListView: View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     #endif
+
+    @ViewBuilder
+    private func messageView(for message: SyncaMessage) -> some View {
+        MessageBubbleView(
+            message: message,
+            onClear: {
+                Task { await syncManager.clearMessage(message.id) }
+            },
+            onDelete: {
+                Task { await syncManager.deleteMessage(message.id) }
+            },
+            onImageTap: {
+                selectedImageMessage = message
+            }
+        )
+        .id("\(message.id)-\(message.isCleared)")
+    }
 }
 
 extension View {

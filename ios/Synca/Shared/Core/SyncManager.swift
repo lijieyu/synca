@@ -31,6 +31,18 @@ final class SyncManager: ObservableObject {
         messages.filter { $0.type == .image && !$0.isDeleted }
     }
 
+    var orderedMessages: [SyncaMessage] {
+        messages.sorted { m1, m2 in
+            if m1.isCleared != m2.isCleared {
+                return m1.isCleared
+            }
+            if m1.isCleared {
+                return (m1.updatedAt ?? m1.createdAt) < (m2.updatedAt ?? m2.createdAt)
+            }
+            return m1.createdAt < m2.createdAt
+        }
+    }
+
     private var pollTimer: Timer?
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
@@ -229,8 +241,11 @@ final class SyncManager: ObservableObject {
         do {
             try await api.clearMessage(id: id)
             if let index = messages.firstIndex(where: { $0.id == id }) {
-                messages[index].isCleared = true
-                messages[index].updatedAt = Date().ISO8601Format()
+                var updated = messages[index]
+                updated.isCleared = true
+                updated.updatedAt = Date().ISO8601Format()
+                messages[index] = updated
+                objectWillChange.send()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
