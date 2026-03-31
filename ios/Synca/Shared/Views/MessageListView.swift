@@ -106,15 +106,15 @@ struct MessageListView: View {
 
     @ViewBuilder
     private var messageList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    let completed = syncManager.orderedMessages.filter { $0.isCleared }
-                    let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
+        let completed = syncManager.orderedMessages.filter { $0.isCleared }
+        let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
 
-                    if completed.isEmpty && uncompleted.isEmpty {
-                        emptyStateView
-                    } else {
+        if completed.isEmpty && uncompleted.isEmpty {
+            emptyStateView
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
                         ForEach(completed) { message in
                             messageView(for: message)
                         }
@@ -138,41 +138,40 @@ struct MessageListView: View {
                             }
                         }
                     }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: syncManager.orderedMessages)
-                .background(
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            #if os(iOS)
-                            hideKeyboard()
-                            #endif
-                        }
-                )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: syncManager.orderedMessages)
+                    .background(
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                #if os(iOS)
+                                hideKeyboard()
+                                #endif
+                            }
+                    )
 
-                Color.clear
-                    .frame(height: 1)
-                    .id("bottom")
-            }
-            #if os(iOS)
-            .scrollDismissesKeyboard(.immediately)
-            .refreshable {
-                // Add 0.3s delay to let UI and haptics settle safely
-                try? await Task.sleep(nanoseconds: 300_000_000)
-                await syncManager.refresh()
-            }
-            #endif
-            .onChange(of: syncManager.messages.count) { _ in
-                withAnimation(.easeOut(duration: 0.3)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
+                    Color.clear
+                        .frame(height: 1)
+                        .id("bottom")
                 }
-            }
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
+                #if os(iOS)
+                .scrollDismissesKeyboard(.immediately)
+                .refreshable {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    await syncManager.refresh()
+                }
+                #endif
+                .onChange(of: syncManager.messages.count) { _ in
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
                 }
             }
         }
@@ -222,7 +221,7 @@ struct MessageListView: View {
         VStack(spacing: 16) {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary.opacity(0.5))
+                .foregroundColor(Color.syncaPurple)
 
             Text("Synca")
                 .font(.system(size: 24, weight: .semibold))
@@ -233,7 +232,6 @@ struct MessageListView: View {
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.top, 100)
     }
 
     // MARK: - Toolbar Items
