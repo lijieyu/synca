@@ -6,25 +6,25 @@ import UniformTypeIdentifiers
 
 struct PasteAwareTextView: UIViewRepresentable {
     @Binding var text: String
+    @Binding var height: CGFloat
     let onImagePaste: (Data) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, height: $height, onImagePaste: onImagePaste)
     }
 
     func makeUIView(context: Context) -> UITextView {
         let textView = PasteAwareUITextView()
         textView.delegate = context.coordinator
         textView.onImagePaste = onImagePaste
-        textView.backgroundColor = UIColor.systemGray6
+        textView.backgroundColor = .clear
         textView.font = .preferredFont(forTextStyle: .body)
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         textView.textContainer.lineFragmentPadding = 0
-        textView.layer.cornerRadius = 20
-        textView.clipsToBounds = true
-        textView.isScrollEnabled = true
-        textView.alwaysBounceVertical = false
-        textView.returnKeyType = .default
+        textView.isScrollEnabled = false // Important for self-sizing
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.text = text
         return textView
     }
@@ -33,17 +33,36 @@ struct PasteAwareTextView: UIViewRepresentable {
         if uiView.text != text {
             uiView.text = text
         }
+        // Force height update
+        DispatchQueue.main.async {
+            self.updateHeight(uiView)
+        }
+    }
+
+    private func updateHeight(_ textView: UITextView) {
+        let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude))
+        if height != size.height {
+            height = size.height
+        }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         @Binding var text: String
+        @Binding var height: CGFloat
+        let onImagePaste: (Data) -> Void
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, height: Binding<CGFloat>, onImagePaste: @escaping (Data) -> Void) {
             _text = text
+            _height = height
+            self.onImagePaste = onImagePaste
         }
 
         func textViewDidChange(_ textView: UITextView) {
             text = textView.text
+            let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude))
+            if height != size.height {
+                height = size.height
+            }
         }
     }
 }
@@ -51,34 +70,35 @@ struct PasteAwareTextView: UIViewRepresentable {
 final class PasteAwareUITextView: UITextView {
     var onImagePaste: ((Data) -> Void)?
 
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(paste(_:)) {
+            let pb = UIPasteboard.general
+            return pb.hasStrings || pb.hasImages || pb.hasColors || pb.numberOfItems > 0
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
     override func paste(_ sender: Any?) {
         if let imageData = pastedImageData() {
             onImagePaste?(imageData)
             return
         }
-
         super.paste(sender)
     }
 
     private func pastedImageData() -> Data? {
         let pasteboard = UIPasteboard.general
-
-        if let pngData = pasteboard.data(forPasteboardType: UTType.png.identifier) {
-            return pngData
+        
+        let types = [UTType.png, UTType.jpeg, UTType.heic]
+        for type in types {
+            if let data = pasteboard.data(forPasteboardType: type.identifier) {
+                return data
+            }
         }
-
-        if let jpegData = pasteboard.data(forPasteboardType: UTType.jpeg.identifier) {
-            return jpegData
-        }
-
-        if let heicData = pasteboard.data(forPasteboardType: UTType.heic.identifier) {
-            return heicData
-        }
-
+        
         if let image = pasteboard.image {
             return image.pngData()
         }
-
         return nil
     }
 }

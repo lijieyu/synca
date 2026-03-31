@@ -1,0 +1,89 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project Synca.xcodeproj -scheme Synca build
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, variant:Designed for [iPad,iPhone], id:00008132-001C41E13C06401C, name:My Mac }
+{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device }
+{ platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder-iphonesimulator:placeholder, name:Any iOS Simulator Device }
+{ platform:iOS Simulator, arch:arm64, id:3572D634-FA1F-432C-A16E-6A9F10AFE38A, OS:16.4, name:iPad (10th generation) }
+{ platform:iOS Simulator, arch:x86_64, id:3572D634-FA1F-432C-A16E-6A9F10AFE38A, OS:16.4, name:iPad (10th generation) }
+{ platform:iOS Simulator, arch:arm64, id:C8331F1A-6F27-409C-AC07-72B93E1D013D, OS:26.2, name:iPad (A16) }
+{ platform:iOS Simulator, arch:arm64, id:906AEA75-6EAF-4B36-86DD-2FD86E9ACDC5, OS:26.4, name:iPad (A16) }
+{ platform:iOS Simulator, arch:arm64, id:B9362687-AB45-4CB4-A1BA-E0D24C7252D2, OS:16.4, name:iPad Air (5th generation) }
+{ platform:iOS Simulator, arch:x86_64, id:B9362687-AB45-4CB4-A1BA-E0D24C7252D2, OS:16.4, name:iPad Air (5th generation) }
+{ platform:iOS Simulator, arch:arm64, id:B3AF9A7F-7BC0-4FD1-9177-6FB8EB828528, OS:26.2, name:iPad Air 11-inch (M3) }
+{ platform:iOS Simulator, arch:arm64, id:7AE7173C-03CA-4248-A2A6-B039654B2096, OS:26.4, name:iPad Air 11-inch (M4) }
+{ platform:iOS Simulator, arch:arm64, id:239175C9-EA08-4916-80AC-83E286AEEBFB, OS:26.2, name:iPad Air 13-inch (M3) }
+{ platform:iOS Simulator, arch:arm64, id:D3BF1B0D-EDD7-43AF-B679-E697A8F32BEE, OS:26.4, name:iPad Air 13-inch (M4) }
+{ platform:iOS Simulator, arch:arm64, id:9B21BD33-013D-476F-A48C-2A51F4220EE1, OS:16.4, name:iPad Pro (11-inch) (4th generation) }
+{ platform:iOS Simulator, arch:x86_64, id:9B21BD33-013D-476F-A48C-2A51F4220EE1, OS:16.4, name:iPad Pro (11-inch) (4th generation) }
+{ platform:iOS Simulator, arch:arm64, id:6C28362F-4D25-43D8-9AFA-505DF28BC7DC, OS:16.4, name:iPad Pro (12.9-inch) (6th generation) }
+{ platform:iOS Simulator, arch:x86_64, id:6C28362F-4D25-43D8-9AFA-505DF28BC7DC, OS:16.4, name:iPad Pro (12.9-inch) (6th generation) }
+{ platform:iOS Simulator, arch:arm64, id:0E2E8293-C307-477F-AB3F-83A3473BDDEC, OS:26.2, name:iPad Pro 11-inch (M5) }
+{ platform:iOS Simulator, arch:arm64, id:BCF66FA6-BC2B-453A-AC4A-E8CF3FC68E72, OS:26.4, name:iPad Pro 11-inch (M5) }
+{ platform:iOS Simulator, arch:arm64, id:C2B87D98-753A-4388-8707-BBB962D5A5FB, OS:26.2, name:iPad Pro 13-inch (M5) }
+{ platform:iOS Simulator, arch:arm64, id:F4427925-85F5-490E-9920-D50F56CEF545, OS:26.4, name:iPad Pro 13-inch (M5) }
+{ platform:iOS Simulator, arch:arm64, id:8F5577F2-2076-486C-99F3-AE3AA31124F7, OS:16.4, name:iPad mini (6th generation) }
+{ platform:iOS Simulator, arch:x86_64, id:8F5577F2-2076-486C-99F3-AE3AA31124F7, OS:16.4, name:iPad mini (6th generation) }
+{ platform:iOS Simulator, arch:arm64, id:03862363-3A7F-434F-9CB9-85FE6FBCD74A, OS:26.2, name:iPad mini (A17 Pro) }
+{ platform:iOS Simulator, arch:arm64, id:7D6F4AF3-8BB4-46CD-8552-7ECB29277A5E, OS:26.4, name:iPad mini (A17 Pro) }
+{ platform:iOS Simulator, arch:arm64, id:6CAD6E2B-0B2C-48E0-B6C3-981C9AB66075, OS:16.4, name:iPhone 14 }
+{ platform:iOS Simulator, arch:x86_64, id:6CAD6E2B-0B2C-48E0-B6C3-981C9AB66075, OS:16.4, name:iPhone 14 }
+{ platform:iOS Simulator, arch:arm64, id:13649225-02D4-4C5F-ACA3-841726F81CF7, OS:16.4, name:iPhone 14 Plus }
+{ platform:iOS Simulator, arch:x86_64, id:13649225-02D4-4C5F-ACA3-841726F81CF7, OS:16.4, name:iPhone 14 Plus }
+{ platform:iOS Simulator, arch:arm64, id:8DE1EA57-15F7-4039-87F7-B7B1E9CBE30A, OS:16.4, name:iPhone 14 Pro }
+{ platform:iOS Simulator, arch:x86_64, id:8DE1EA57-15F7-4039-87F7-B7B1E9CBE30A, OS:16.4, name:iPhone 14 Pro }
+{ platform:iOS Simulator, arch:arm64, id:1A82EA8E-D8E0-49FA-8AB5-21344F5297DF, OS:16.4, name:iPhone 14 Pro Max }
+{ platform:iOS Simulator, arch:x86_64, id:1A82EA8E-D8E0-49FA-8AB5-21344F5297DF, OS:16.4, name:iPhone 14 Pro Max }
+{ platform:iOS Simulator, arch:arm64, id:FECA3941-0836-4F89-A9D9-1489E9CCAEA9, OS:26.2, name:iPhone 16e }
+{ platform:iOS Simulator, arch:arm64, id:94EA0ED4-668B-41BA-AC9D-0BE2514A3DCD, OS:26.2, name:iPhone 17 }
+{ platform:iOS Simulator, arch:arm64, id:1600A9E1-D54E-4AD4-9520-E746543303DF, OS:26.4, name:iPhone 17 }
+{ platform:iOS Simulator, arch:arm64, id:CAF25B83-4324-4D2E-8FFE-5A2A065C1EF4, OS:26.2, name:iPhone 17 Pro }
+{ platform:iOS Simulator, arch:arm64, id:FDE7DBEF-BF88-4B1F-AA42-E980C0177450, OS:26.4, name:iPhone 17 Pro }
+{ platform:iOS Simulator, arch:arm64, id:4ED04460-6DEE-4E4E-A301-175A3670A388, OS:26.2, name:iPhone 17 Pro Max }
+{ platform:iOS Simulator, arch:arm64, id:19550716-76F9-428C-A8B1-530A487916DA, OS:26.4, name:iPhone 17 Pro Max }
+{ platform:iOS Simulator, arch:arm64, id:0F4EDFCC-E6FA-404C-9FC1-E59190E3E8F1, OS:26.4, name:iPhone 17e }
+{ platform:iOS Simulator, arch:arm64, id:811D82CC-1DE9-4AAA-92D6-83CFD31F95F0, OS:26.2, name:iPhone Air }
+{ platform:iOS Simulator, arch:arm64, id:4EED9317-CB80-42E4-8EC6-D9E066D4C21E, OS:26.4, name:iPhone Air }
+{ platform:iOS Simulator, arch:arm64, id:06DB1F5F-FF28-4818-ADC2-11B36E036D96, OS:16.4, name:iPhone SE (3rd generation) }
+{ platform:iOS Simulator, arch:x86_64, id:06DB1F5F-FF28-4818-ADC2-11B36E036D96, OS:16.4, name:iPhone SE (3rd generation) }
+{ platform:iOS, arch:arm64, id:00008140-000A5C1C2606801C, name:哈尔的iPhone }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'Synca' in project 'Synca' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.4.sdk /Users/haer/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.4-23E237-68a138bb55de9ba35ce6c8c40d12849e.sdkstatcache
+    cd /Users/haer/Projects/synca/ios/Synca/Synca.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.4.sdk -o /Users/haer/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.4-23E237-68a138bb55de9ba35ce6c8c40d12849e.sdkstatcache
+
+CompileAssetCatalogVariant thinned /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Products/Production-iphoneos/Synca.app /Users/haer/Projects/synca/ios/Synca/Resources/Assets.xcassets (in target 'Synca' from project 'Synca')
+    cd /Users/haer/Projects/synca/ios/Synca
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/haer/Projects/synca/ios/Synca/Resources/Assets.xcassets --compile /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --filter-for-thinning-device-configuration MacFamily20,1 --filter-for-device-os-version 26.3 --development-region zh-Hans --target-device iphone --target-device ipad --minimum-deployment-target 16.0 --platform iphoneos
+
+SwiftDriver\ Compilation\ Requirements Synca normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Synca' from project 'Synca')
+    cd /Users/haer/Projects/synca/ios/Synca
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Synca -O -whole-module-optimization @/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.4.sdk -target arm64-apple-ios16.0 -g -module-cache-path /Users/haer/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -swift-version 6 -I /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Products/Production-iphoneos -F /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Products/Production-iphoneos -c -num-threads 10 -Xcc -ivfsstatcache -Xcc /Users/haer/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.4-23E237-68a138bb55de9ba35ce6c8c40d12849e.sdkstatcache -output-file-map /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/haer/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/haer/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/haer/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca_const_extract_protocols.json -Xcc -iquote -Xcc /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Synca-generated-files.hmap -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Synca-own-target-headers.hmap -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Synca-all-target-headers.hmap -Xcc -iquote -Xcc /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Synca-project-headers.hmap -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Products/Production-iphoneos/include -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/DerivedSources-normal/arm64 -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/DerivedSources/arm64 -Xcc -I/Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/haer/Library/Developer/Xcode/DerivedData/Synca-dzscobczzddsaagpnqnkqjkhwxlb/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-Swift.h -working-directory /Users/haer/Projects/synca/ios/Synca -no-emit-module-separately-wmo
+error: Build input file cannot be found: '/Users/haer/Projects/synca/ios/Synca/Shared/Views/PasteAwareTextView.swift'. Did you forget to declare this file as an output of a script phase or custom build rule which produces it? (in target 'Synca' from project 'Synca')
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftDriver\ Compilation\ Requirements Synca normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Synca' from project 'Synca')
+	Building project Synca with scheme Synca
+(2 failures)

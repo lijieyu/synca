@@ -157,7 +157,7 @@ struct ImagePreviewView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Capsule().fill(.ultraThinMaterial))
+                            .background(Capsule().fill(.black.opacity(0.5)))
                             .padding(.leading, 20)
                     }
                     Spacer()
@@ -166,7 +166,7 @@ struct ImagePreviewView: View {
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(10)
-                            .background(Circle().fill(.ultraThinMaterial))
+                            .background(Circle().fill(.black.opacity(0.5)))
                             .overlay(Circle().stroke(.white.opacity(0.2), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
@@ -205,7 +205,7 @@ struct ImagePreviewView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
-                        .background(Capsule().fill(.ultraThinMaterial))
+                        .background(Capsule().fill(.black.opacity(0.5)))
                         .overlay(Capsule().stroke(.white.opacity(0.2), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
@@ -214,6 +214,7 @@ struct ImagePreviewView: View {
                 }
             }
         }
+        .environment(\.colorScheme, .dark)
     }
 
     @ViewBuilder
@@ -319,7 +320,7 @@ struct ImagePreviewView: View {
                 .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(16)
-                .background(Circle().fill(.ultraThinMaterial))
+                .background(Circle().fill(.black.opacity(0.5)))
                 .overlay(Circle().stroke(.white.opacity(0.2), lineWidth: 0.5))
         }
         .buttonStyle(.plain)

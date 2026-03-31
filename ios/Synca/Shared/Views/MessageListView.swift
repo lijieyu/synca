@@ -16,6 +16,7 @@ struct MessageListView: View {
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
     @State private var showSessionExpired = false
+    @State private var inputHeight: CGFloat = 40
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
 
     var body: some View {
@@ -265,29 +266,25 @@ struct MessageListView: View {
             }
 
             #if os(iOS)
-            PasteAwareTextView(text: $inputText) { imageData in
+            PasteAwareTextView(text: $inputText, height: $inputHeight) { imageData in
                 Task { await syncManager.sendImage(imageData) }
             }
-            .frame(minHeight: 40, maxHeight: 120)
+            .frame(height: max(40, min(inputHeight, 150)))
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             #else
             TextField("输入灵感...", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...5)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                #if os(iOS)
-                .background(Color(.systemGray6))
-                #else
                 .background(Color(.controlBackgroundColor))
-                #endif
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                #if os(macOS)
                 .onSubmit {
                     if canSend {
                         submitText()
                     }
                 }
-                #endif
             #endif
 
             Button {
