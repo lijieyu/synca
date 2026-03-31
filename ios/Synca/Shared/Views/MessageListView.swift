@@ -111,27 +111,31 @@ struct MessageListView: View {
                 LazyVStack(spacing: 12) {
                     let completed = syncManager.orderedMessages.filter { $0.isCleared }
                     let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
-                    
-                    ForEach(completed) { message in
-                        messageView(for: message)
-                    }
-                    
-                    if !uncompleted.isEmpty {
-                        HStack {
-                            Text("待办")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.secondary.opacity(0.1))
-                                .cornerRadius(4)
-                            Spacer()
-                        }
-                        .padding(.top, 8)
-                        .id("uncompleted_header")
-                        
-                        ForEach(uncompleted) { message in
+
+                    if completed.isEmpty && uncompleted.isEmpty {
+                        emptyStateView
+                    } else {
+                        ForEach(completed) { message in
                             messageView(for: message)
+                        }
+
+                        if !uncompleted.isEmpty {
+                            HStack {
+                                Text("待办")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.secondary.opacity(0.1))
+                                    .cornerRadius(4)
+                                Spacer()
+                            }
+                            .padding(.top, 8)
+                            .id("uncompleted_header")
+
+                            ForEach(uncompleted) { message in
+                                messageView(for: message)
+                            }
                         }
                     }
                 }
@@ -211,6 +215,25 @@ struct MessageListView: View {
                 .padding()
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
+    }
+
+    @ViewBuilder
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lightbulb.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary.opacity(0.5))
+
+            Text("Synca")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(.primary)
+
+            Text("Sync Your Aha Moment")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.top, 100)
     }
 
     // MARK: - Toolbar Items
