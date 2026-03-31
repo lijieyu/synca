@@ -265,13 +265,10 @@ final class SyncManager: ObservableObject {
 
     func clearAll() async {
         do {
-            _ = try await api.clearAllMessages()
-            for i in messages.indices {
-                messages[i].isCleared = true
-            }
-            unclearedCount = 0
+            _ = try await api.deleteCompletedMessages()
+            messages.removeAll { $0.isCleared }
         } catch {
-            handleError(error, context: "清理")
+            handleError(error, context: "删除")
         }
     }
 

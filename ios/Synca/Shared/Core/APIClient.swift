@@ -109,6 +109,11 @@ final class APIClient: ObservableObject {
         return response.clearedCount ?? 0
     }
 
+    func deleteCompletedMessages() async throws -> Int {
+        let response: OkResponse = try await post("/messages/delete-completed", body: [:])
+        return response.deletedCount ?? 0
+    }
+
     func getUnclearedCount() async throws -> Int {
         let response: UnclearedCountResponse = try await get("/messages/uncleared-count")
         return response.count

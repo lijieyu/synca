@@ -86,6 +86,7 @@ struct UnclearedCountResponse: Codable {
 struct OkResponse: Codable {
     let ok: Bool
     var clearedCount: Int?
+    var deletedCount: Int?
 }
 
 struct ErrorResponse: Codable {

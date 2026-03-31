@@ -7,7 +7,7 @@ import cors from 'cors';
 import multer from 'multer';
 import { loginWithApple, getUserIdFromToken } from './auth.js';
 import {
-    listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, getUnclearedCount,
+    listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens,
 } from './store.js';
 import { apnsProvider } from './apns.js';
@@ -225,6 +225,17 @@ app.post('/messages/clear-all', auth, async (req, res) => {
     notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
 
     res.json({ ok: true, clearedCount: count });
+});
+
+// Delete completed messages
+app.post('/messages/delete-completed', auth, async (req, res) => {
+    const userId = getUserId(req);
+    const count = await deleteCompletedMessages(userId);
+
+    // Notify other devices
+    notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
+
+    res.json({ ok: true, deletedCount: count });
 });
 
 // Get uncleared count (for badge)

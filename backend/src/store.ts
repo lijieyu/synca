@@ -191,6 +191,14 @@ export async function clearAllMessages(userId: string): Promise<number> {
     return Number(result[0].numUpdatedRows);
 }
 
+export async function deleteCompletedMessages(userId: string): Promise<number> {
+    const result = await db.deleteFrom('messages')
+        .where('user_id', '=', userId)
+        .where('is_cleared', '=', 1)
+        .execute();
+    return Number(result[0].numDeletedRows);
+}
+
 export async function getUnclearedCount(userId: string): Promise<number> {
     const row = await db.selectFrom('messages')
         .select((eb) => eb.fn.count<string>('id').as('count'))

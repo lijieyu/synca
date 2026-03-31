@@ -37,13 +37,13 @@ struct MessageListView: View {
                     settingsMenu
                 }
             }
-            .alert("确认清理全部", isPresented: $showClearAllConfirm) {
+            .alert("确认删除", isPresented: $showClearAllConfirm) {
                 Button("取消", role: .cancel) {}
-                Button("清理全部", role: .destructive) {
+                Button("删除", role: .destructive) {
                     Task { await syncManager.clearAll() }
                 }
             } message: {
-                Text("将清理所有 \(syncManager.unclearedCount) 条未处理消息")
+                Text("将删除所有已完成的待办")
             }
             .alert("确认退出", isPresented: $showLogoutConfirm) {
                 Button("取消", role: .cancel) {}
@@ -222,7 +222,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "trash")
         }
-        .disabled(self.syncManager.unclearedCount == 0)
+        .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
     }
 
     private var refreshButton: some View {
