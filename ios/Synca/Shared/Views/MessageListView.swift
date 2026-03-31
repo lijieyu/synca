@@ -264,6 +264,12 @@ struct MessageListView: View {
                 }
             }
 
+            #if os(iOS)
+            PasteAwareTextView(text: $inputText) { imageData in
+                Task { await syncManager.sendImage(imageData) }
+            }
+            .frame(minHeight: 40, maxHeight: 120)
+            #else
             TextField("输入灵感...", text: $inputText, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...5)
@@ -282,6 +288,7 @@ struct MessageListView: View {
                     }
                 }
                 #endif
+            #endif
 
             Button {
                 self.submitText()
