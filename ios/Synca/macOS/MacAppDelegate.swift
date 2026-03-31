@@ -17,6 +17,17 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            MacWindowBehaviorController.shared.restoreMainWindow()
+        }
+        return true
+    }
+
     func application(_ application: NSApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()

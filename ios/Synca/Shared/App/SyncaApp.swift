@@ -18,6 +18,7 @@ struct SyncaApp: App {
                 .environmentObject(syncManager)
                 .tint(.syncaPurple)
             #if os(macOS)
+                .background(MacWindowAccessor())
                 .frame(minWidth: 400, idealWidth: 480, minHeight: 500, idealHeight: 700)
             #endif
         }
