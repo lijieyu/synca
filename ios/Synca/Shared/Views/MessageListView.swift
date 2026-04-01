@@ -31,9 +31,7 @@ struct MessageListView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    refreshButton
-                    clearAllButton
+                ToolbarItem(placement: .primaryAction) {
                     settingsMenu
                 }
             }
@@ -66,7 +64,8 @@ struct MessageListView: View {
         .overlay { loadingOverlay }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
-            await syncManager.fullSync(manual: true)
+            await PushTokenManager.shared.uploadCachedTokenIfPossible()
+            await syncManager.fullSync(manual: true, showSuccessStatus: false)
             syncManager.startPolling()
             self.updateBadge()
         }
@@ -109,7 +108,10 @@ struct MessageListView: View {
         let completed = syncManager.orderedMessages.filter { $0.isCleared }
         let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
 
-        if completed.isEmpty && uncompleted.isEmpty {
+        if !syncManager.hasCompletedInitialLoad {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if completed.isEmpty && uncompleted.isEmpty {
             emptyStateView
         } else {
             ScrollViewReader { proxy in
@@ -179,6 +181,12 @@ struct MessageListView: View {
 
     @ViewBuilder
     private var syncStatusOverlay: some View {
+        #if os(iOS)
+        let topInset: CGFloat = 58
+        #else
+        let topInset: CGFloat = 16
+        #endif
+
         Group {
             if case .success = self.syncManager.syncStatus {
                 Label("同步成功", systemImage: "checkmark.circle.fill")
@@ -189,7 +197,7 @@ struct MessageListView: View {
                     .background(Color.green)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                    .padding(.top, 16)
+                    .padding(.top, topInset)
                     .transition(.move(edge: .top).combined(with: .opacity))
             } else if case .error = self.syncManager.syncStatus {
                 Label("同步失败", systemImage: "xmark.circle.fill")
@@ -200,7 +208,7 @@ struct MessageListView: View {
                     .background(Color.red)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                    .padding(.top, 16)
+                    .padding(.top, topInset)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -221,7 +229,7 @@ struct MessageListView: View {
         VStack(spacing: 16) {
             Image(systemName: "lightbulb.fill")
                 .font(.system(size: 60))
-                .foregroundColor(Color.syncaPurple)
+                .foregroundStyle(.secondary)
 
             Text("Synca")
                 .font(.system(size: 24, weight: .semibold))
@@ -236,27 +244,22 @@ struct MessageListView: View {
 
     // MARK: - Toolbar Items
 
-    @ViewBuilder
-    private var clearAllButton: some View {
-        Button {
-            self.showClearAllConfirm = true
-        } label: {
-            Image(systemName: "trash")
-        }
-        .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
-    }
-
-    private var refreshButton: some View {
-        Button {
-            Task { await self.syncManager.refresh() }
-        } label: {
-            Image(systemName: "arrow.clockwise")
-        }
-        .disabled(self.syncManager.isRefreshing)
-    }
-
     private var settingsMenu: some View {
         Menu {
+            Button {
+                Task { await self.syncManager.refresh() }
+            } label: {
+                Label("刷新任务", systemImage: "arrow.clockwise")
+            }
+            .disabled(self.syncManager.isRefreshing)
+
+            Button {
+                self.showClearAllConfirm = true
+            } label: {
+                Label("清理历史", systemImage: "trash")
+            }
+            .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
+
             Button(role: .destructive) {
                 self.showLogoutConfirm = true
             } label: {
@@ -275,7 +278,6 @@ struct MessageListView: View {
             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                 Image(systemName: "photo.badge.plus")
                     .font(.system(size: 22))
-                    .foregroundStyle(Color.syncaPurple)
             }
             .buttonStyle(.plain)
             .onChange(of: self.selectedPhotoItems) { items in
@@ -324,7 +326,7 @@ struct MessageListView: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
-                    .foregroundStyle(self.canSend ? Color.syncaPurple : Color.gray.opacity(0.4))
+                    .foregroundStyle(self.canSend ? Color.accentColor : Color.gray.opacity(0.4))
             }
             .buttonStyle(.plain)
             .disabled(!canSend)

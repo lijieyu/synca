@@ -34,20 +34,8 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
         print("[apns:mac] device token: \(token.prefix(12))...")
 
         Task { @MainActor in
-            guard APIClient.shared.isAuthenticated else { return }
-            let topic = Bundle.main.bundleIdentifier
-            let env = Self.currentAPNsEnvironment()
-            do {
-                try await APIClient.shared.registerPushToken(
-                    token: token,
-                    platform: "macos",
-                    apnsEnvironment: env,
-                    topic: topic
-                )
-                print("[apns:mac] token uploaded (\(env))")
-            } catch {
-                print("[apns:mac] token upload failed: \(error.localizedDescription)")
-            }
+            PushTokenManager.shared.cacheDeviceToken(deviceToken)
+            await PushTokenManager.shared.uploadCachedTokenIfPossible()
         }
     }
 
@@ -70,20 +58,6 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.dockTile.badgeLabel = nil
             }
         }
-    }
-
-    static func currentAPNsEnvironment() -> String {
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "APNSUploadEnvironment") as? String {
-            let normalized = configured.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if normalized == "production" { return "production" }
-            if normalized == "sandbox" || normalized == "development" { return "sandbox" }
-        }
-
-        #if DEBUG
-        return "sandbox"
-        #else
-        return "production"
-        #endif
     }
 }
 

@@ -20,6 +20,7 @@ final class SyncManager: ObservableObject {
     @Published var messages: [SyncaMessage] = []
     @Published var unclearedCount: Int = 0
     @Published var isLoading = false
+    @Published var hasCompletedInitialLoad = false
     @Published var isSending = false
     @Published var isRefreshing = false
     @Published var syncStatus: SyncStatus = .idle 
@@ -48,13 +49,13 @@ final class SyncManager: ObservableObject {
     private let api = APIClient.shared
     private var statusResetTask: Task<Void, Never>?
     private var isSyncingInternal = false // Concurrency lock
-    private var isManualRefresh = false
+    private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
 
     private init() {}
 
     // MARK: - Full Sync
 
-    func fullSync(manual: Bool = false) async {
+    func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async {
         guard api.isAuthenticated else { return }
         guard !isSyncingInternal else { return }
         
@@ -64,7 +65,9 @@ final class SyncManager: ObservableObject {
         
         defer {
             isLoading = false
+            hasCompletedInitialLoad = true
             isSyncingInternal = false
+            resumeRefreshWaiters()
         }
         
         if manual { updateStatus(.syncing) }
@@ -75,10 +78,9 @@ final class SyncManager: ObservableObject {
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
-            if manual { updateStatus(.success) }
-        } catch is CancellationError {
-            // Ignore cancellation to avoid false error reports during scroll/pull
+            if manual && showSuccessStatus { updateStatus(.success) }
         } catch {
+            if isCancellationError(error) { return }
             handleError(error, context: "同步")
             if manual { updateStatus(.error(error.localizedDescription)) }
         }
@@ -91,7 +93,10 @@ final class SyncManager: ObservableObject {
         guard !isSyncingInternal else { return }
         
         isSyncingInternal = true
-        defer { isSyncingInternal = false }
+        defer {
+            isSyncingInternal = false
+            resumeRefreshWaiters()
+        }
         
         if manual { updateStatus(.syncing) }
 
@@ -118,9 +123,8 @@ final class SyncManager: ObservableObject {
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
             if manual { updateStatus(.success) }
-        } catch is CancellationError {
-            // Ignore
         } catch {
+            if isCancellationError(error) { return }
             handleError(error, context: "同步", silent: !manual)
             if manual { updateStatus(.error(error.localizedDescription)) }
         }
@@ -129,8 +133,11 @@ final class SyncManager: ObservableObject {
     // MARK: - Pull to Refresh
 
     func refresh() async {
+        await waitForCurrentSyncIfNeeded()
         isRefreshing = true
+        stopPolling()
         await fullSync(manual: true)
+        startPolling()
         isRefreshing = false
     }
 
@@ -159,7 +166,7 @@ final class SyncManager: ObservableObject {
         
         if status != .syncing && status != .idle {
             statusResetTask = Task {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                try? await Task.sleep(nanoseconds: 1_600_000_000)
                 if !Task.isCancelled {
                     syncStatus = .idle
                 }
@@ -278,14 +285,38 @@ final class SyncManager: ObservableObject {
         stopPolling()
         messages = []
         unclearedCount = 0
+        hasCompletedInitialLoad = false
         lastSyncTimestamp = nil
         sessionExpired = false
         syncStatus = .idle
         lastRefreshDate = nil
+        resumeRefreshWaiters()
+    }
+
+    private func waitForCurrentSyncIfNeeded() async {
+        guard isSyncingInternal else { return }
+
+        await withCheckedContinuation { continuation in
+            refreshWaiters.append(continuation)
+        }
+    }
+
+    private func resumeRefreshWaiters() {
+        let waiters = refreshWaiters
+        refreshWaiters.removeAll()
+        for waiter in waiters {
+            waiter.resume()
+        }
     }
 
     private func handleError(_ error: Error, context: String, silent: Bool = false) {
-        if error is CancellationError { return }
+        if isCancellationError(error) {
+            print("[SyncManager] CANCELLED in \(context): \(error)")
+            Task { @MainActor in
+                await SyncDebugLogger.shared.log("\(context) cancelled and ignored")
+            }
+            return
+        }
 
         // Trigger error haptic
         #if os(iOS)
@@ -317,6 +348,15 @@ final class SyncManager: ObservableObject {
         if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
             print("[SyncManager] Underlying error: \(underlyingError)")
         }
+    }
+
+    private func isCancellationError(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
+
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func currentDeviceName() -> String {

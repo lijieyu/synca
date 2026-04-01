@@ -230,7 +230,7 @@ struct MessageBubbleView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -243,7 +243,7 @@ struct MessageBubbleView: View {
             }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(copied ? .green : .secondary)
         }
         .buttonStyle(.plain)
@@ -270,7 +270,7 @@ struct MessageBubbleView: View {
                         .foregroundStyle(.red)
                 }
             }
-            .font(.system(size: 20))
+            .font(.system(size: 16))
         }
         .buttonStyle(.plain)
         .disabled(saveStatus == .saving)
@@ -281,7 +281,7 @@ struct MessageBubbleView: View {
             onClear()
         } label: {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 20))
+                .font(.system(size: 16))
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
@@ -289,7 +289,7 @@ struct MessageBubbleView: View {
 
     private var checkFillIcon: some View {
         Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 20))
+            .font(.system(size: 16))
             .foregroundStyle(Color.green.opacity(0.8))
     }
 

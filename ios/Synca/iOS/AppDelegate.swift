@@ -26,20 +26,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         print("[apns] device token: \(token.prefix(12))...")
 
         Task { @MainActor in
-            guard APIClient.shared.isAuthenticated else { return }
-            let topic = Bundle.main.bundleIdentifier
-            let env = Self.currentAPNsEnvironment()
-            do {
-                try await APIClient.shared.registerPushToken(
-                    token: token,
-                    platform: "ios",
-                    apnsEnvironment: env,
-                    topic: topic
-                )
-                print("[apns] token uploaded (\(env))")
-            } catch {
-                print("[apns] token upload failed: \(error.localizedDescription)")
-            }
+            PushTokenManager.shared.cacheDeviceToken(deviceToken)
+            await PushTokenManager.shared.uploadCachedTokenIfPossible()
         }
     }
 
@@ -62,29 +50,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
             completionHandler(.newData)
         }
-    }
-
-    static func currentAPNsEnvironment() -> String {
-        if let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"),
-           let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-           let profile = String(data: data, encoding: .ascii) {
-            if profile.contains("<key>aps-environment</key><string>production</string>") {
-                return "production"
-            }
-            return "sandbox"
-        }
-
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "APNSUploadEnvironment") as? String {
-            let normalized = configured.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if normalized == "production" { return "production" }
-            if normalized == "sandbox" || normalized == "development" { return "sandbox" }
-        }
-
-        #if DEBUG
-        return "sandbox"
-        #else
-        return "production"
-        #endif
     }
 }
 
