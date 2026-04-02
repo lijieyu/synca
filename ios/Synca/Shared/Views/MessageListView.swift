@@ -243,7 +243,7 @@ struct MessageListView: View {
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.primary)
 
-            Text("Sync Your Aha Moment")
+            Text("灵感记录 即刻同步")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
         }
@@ -394,7 +394,7 @@ struct MessageListView: View {
     private var aboutMessage: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "\nSynca · Sync Your Aha Moment\n\n版本 \(version) (\(build))"
+        return "\nSynca · 灵感记录 即刻同步\n\n版本 \(version) (\(build))"
     }
 
     #if os(macOS)

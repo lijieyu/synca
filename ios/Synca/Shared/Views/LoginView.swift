@@ -1,31 +1,40 @@
 import SwiftUI
 import AuthenticationServices
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct LoginView: View {
     @StateObject private var authService = AuthService.shared
     @State private var showError = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Logo area
-            VStack(spacing: 16) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundStyle(.tint)
+            VStack(spacing: 20) {
+                Image("LoginLogo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 104, height: 104)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
 
                 Text("Synca")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
 
-                Text("跨端灵感同步")
+                Text("灵感记录 即刻同步")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .tracking(0.3)
             }
 
             Spacer()
 
-            // Sign in button
             VStack(spacing: 16) {
                 Button {
                     Task {
@@ -39,36 +48,69 @@ struct LoginView: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "apple.logo")
-                            .font(.system(size: 18))
-                        Text("通过 Apple 登录")
-                            .font(.system(size: 17, weight: .semibold))
+                    ZStack {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 18))
+                            Text("通过 Apple 登录")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .opacity(authService.isSigningIn ? 0 : 1)
+
+                        if authService.isSigningIn {
+                            ProgressView()
+                                .controlSize(.regular)
+                                .tint(signInForegroundColor)
+                        }
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(signInForegroundColor)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.black)
-                    .cornerRadius(12)
+                    .background(signInBackgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(signInBorderColor, lineWidth: colorScheme == .dark ? 1 : 0.5)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(authService.isSigningIn)
-
-                if authService.isSigningIn {
-                    ProgressView()
-                        .padding(.top, 8)
-                }
+                .opacity(authService.isSigningIn ? 0.92 : 1)
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 60)
         }
+        .background(backgroundColor.ignoresSafeArea())
         #if os(macOS)
-        .frame(minWidth: 300, minHeight: 400)
+        .frame(minWidth: 320, minHeight: 420)
         #endif
         .alert("登录失败", isPresented: $showError) {
             Button("好的") {}
         } message: {
             Text(authService.errorMessage ?? "请稍后重试")
         }
+    }
+
+    private var backgroundColor: Color {
+        if colorScheme == .dark {
+            return .black
+        }
+        #if os(macOS)
+        return Color(nsColor: .windowBackgroundColor)
+        #else
+        return Color(uiColor: .systemBackground)
+        #endif
+    }
+
+    private var signInBackgroundColor: Color {
+        .black
+    }
+
+    private var signInForegroundColor: Color {
+        colorScheme == .dark ? .white : .white
+    }
+
+    private var signInBorderColor: Color {
+        .clear
     }
 }
