@@ -42,7 +42,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("[apns] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.incrementalSync(manual: false)
+            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
 
             // Update badge
             let count = SyncManager.shared.unclearedCount
@@ -63,7 +63,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Se
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Trigger sync on foreground notification
         Task { @MainActor in
-            await SyncManager.shared.incrementalSync()
+            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
         }
         completionHandler([])  // Don't show banner since app is in foreground
     }

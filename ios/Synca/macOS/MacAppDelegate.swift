@@ -48,7 +48,7 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
                      didReceiveRemoteNotification userInfo: [String: Any]) {
         print("[apns:mac] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.incrementalSync(manual: false)
+            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
 
             // Update Dock badge
             let count = SyncManager.shared.unclearedCount
@@ -69,7 +69,7 @@ final class MacNotificationDelegate: NSObject, UNUserNotificationCenterDelegate,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         Task { @MainActor in
-            await SyncManager.shared.incrementalSync()
+            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
         }
         completionHandler([])
     }

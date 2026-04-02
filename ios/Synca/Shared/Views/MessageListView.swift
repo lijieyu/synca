@@ -15,6 +15,7 @@ struct MessageListView: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
+    @State private var showAboutInfo = false
     @State private var showSessionExpired = false
     @State private var inputHeight: CGFloat = 40
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
@@ -31,7 +32,9 @@ struct MessageListView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    refreshButton
+                    clearAllButton
                     settingsMenu
                 }
             }
@@ -51,6 +54,11 @@ struct MessageListView: View {
                 }
             } message: {
                 Text("退出后需要重新登录")
+            }
+            .alert("关于 Synca", isPresented: $showAboutInfo) {
+                Button("知道了", role: .cancel) {}
+            } message: {
+                Text(aboutMessage)
             }
             .alert("登录已过期", isPresented: $showSessionExpired) {
                 Button("重新登录") {
@@ -79,11 +87,11 @@ struct MessageListView: View {
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            Task { await syncManager.incrementalSync(manual: false) }
+            Task { await syncManager.fullSync(manual: false, showSuccessStatus: false) }
         }
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await syncManager.incrementalSync(manual: false) }
+            Task { await syncManager.fullSync(manual: false, showSuccessStatus: false) }
         }
         #endif
         .onDisappear {
@@ -92,7 +100,7 @@ struct MessageListView: View {
         #if os(macOS)
         .background(
             Button("") {
-                handlePaste()
+                handlePasteShortcut()
             }
             .keyboardShortcut("v", modifiers: .command)
             .opacity(0)
@@ -244,21 +252,35 @@ struct MessageListView: View {
 
     // MARK: - Toolbar Items
 
+    private var refreshButton: some View {
+        Button {
+            Task { await self.syncManager.refresh() }
+        } label: {
+            Image(systemName: "arrow.clockwise")
+        }
+        .disabled(self.syncManager.isRefreshing)
+    }
+
+    private var clearAllButton: some View {
+        Button {
+            self.showClearAllConfirm = true
+        } label: {
+            Image(systemName: "trash")
+        }
+        .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
+    }
+
     private var settingsMenu: some View {
         Menu {
             Button {
-                Task { await self.syncManager.refresh() }
+                #if os(macOS)
+                showAboutOnMac()
+                #else
+                self.showAboutInfo = true
+                #endif
             } label: {
-                Label("刷新任务", systemImage: "arrow.clockwise")
+                Label("关于 Synca", systemImage: "info.circle")
             }
-            .disabled(self.syncManager.isRefreshing)
-
-            Button {
-                self.showClearAllConfirm = true
-            } label: {
-                Label("清理历史", systemImage: "trash")
-            }
-            .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
 
             Button(role: .destructive) {
                 self.showLogoutConfirm = true
@@ -307,18 +329,14 @@ struct MessageListView: View {
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 20))
             #else
-            TextField("输入灵感...", text: $inputText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .lineLimit(1...5)
+            MacInputTextView(text: $inputText, height: $inputHeight) { imageData in
+                Task { await syncManager.sendImage(imageData) }
+            }
+                .frame(height: max(40, min(inputHeight, 150)))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color(.controlBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
-                .onSubmit {
-                    if canSend {
-                        submitText()
-                    }
-                }
             #endif
 
             Button {
@@ -373,13 +391,16 @@ struct MessageListView: View {
         #endif
     }
     
+    private var aboutMessage: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "\nSynca · Sync Your Aha Moment\n\n版本 \(version) (\(build))"
+    }
+
     #if os(macOS)
-    private func handlePaste() {
+    private func handlePasteShortcut() {
         let pb = NSPasteboard.general
-        
-        // 1. Check for raw Image Data Streams (Highest Priority: Zero Quality Loss)
-        // If the user copied an actual image file or web image, we can directly snatch
-        // the raw encoded bytes WITHOUT decoding to an NSImage and re-compressing it.
+
         if let rawPngData = pb.data(forType: .png) {
             Task { await syncManager.sendImage(rawPngData) }
             return
@@ -392,23 +413,24 @@ struct MessageListView: View {
             Task { await syncManager.sendImage(rawHeicData) }
             return
         }
-        
-        // 2. Check for Memory Bitmaps (Fallback: e.g. partial screen captures)
-        // Screenshots dump raw TIFF uncompressed bytes into the clipboard.
-        if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage {
-            // Encode purely lossless to PNG to prevent screenshot edge blurring. (No 0.7 JPEG)
-            if let tiffData = image.tiffRepresentation,
-               let bitmap = NSBitmapImageRep(data: tiffData),
-               let losslessCompressed = bitmap.representation(using: .png, properties: [:]) {
-                Task { await syncManager.sendImage(losslessCompressed) }
-                return
-            }
+        if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage,
+           let tiffData = image.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffData),
+           let pngData = bitmap.representation(using: .png, properties: [:]) {
+            Task { await syncManager.sendImage(pngData) }
+            return
         }
-        
-        // 2. Check for Text (normal paste)
-        if let text = pb.string(forType: .string) {
-            inputText += text
-        }
+
+        NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+    }
+
+    private func showAboutOnMac() {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "关于 Synca"
+        alert.informativeText = aboutMessage
+        alert.addButton(withTitle: "知道了")
+        alert.runModal()
     }
     #endif
 

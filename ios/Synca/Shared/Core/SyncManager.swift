@@ -50,6 +50,7 @@ final class SyncManager: ObservableObject {
     private var statusResetTask: Task<Void, Never>?
     private var isSyncingInternal = false // Concurrency lock
     private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
+    private var pollCycleCount = 0
 
     private init() {}
 
@@ -145,10 +146,18 @@ final class SyncManager: ObservableObject {
 
     func startPolling() {
         stopPolling()
+        pollCycleCount = 0
         pollTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                // 轮询采用静默模式
-                await self?.incrementalSync(manual: false)
+                guard let self else { return }
+                self.pollCycleCount += 1
+
+                // 定期做一次全量同步，覆盖“删除历史”这类增量同步难以感知的变化
+                if self.pollCycleCount % 3 == 0 {
+                    await self.fullSync(manual: false, showSuccessStatus: false)
+                } else {
+                    await self.incrementalSync(manual: false)
+                }
             }
         }
     }
@@ -156,6 +165,7 @@ final class SyncManager: ObservableObject {
     func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+        pollCycleCount = 0
     }
 
     // MARK: - Status Helper
