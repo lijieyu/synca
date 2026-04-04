@@ -5,6 +5,12 @@ export interface UsersTable {
     apple_user_id: string;
     email: string | null;
     nickname: string;
+    trial_started_at: string | null;
+    trial_ends_at: string | null;
+    purchase_date: string | null;
+    subscription_expires_at: string | null;
+    lifetime_purchased_at: string | null;
+    store_product_id: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -43,9 +49,28 @@ export interface DevicePushTokensTable {
     updated_at: string;
 }
 
+export interface IapTransactionsTable {
+    transaction_id: string;
+    original_transaction_id: string | null;
+    user_id: string;
+    product_id: string;
+    environment: string;
+    type: string | null;
+    app_account_token: string | null;
+    purchase_date: string | null;
+    original_purchase_date: string | null;
+    expires_at: string | null;
+    revocation_date: string | null;
+    is_upgraded: number;
+    signed_transaction_info: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Database {
     users: UsersTable;
     messages: MessagesTable;
     sessions: SessionsTable;
     device_push_tokens: DevicePushTokensTable;
+    iap_transactions: IapTransactionsTable;
 }

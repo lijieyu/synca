@@ -58,8 +58,10 @@ final class AuthService: NSObject, ObservableObject {
             deviceId: deviceId
         )
 
-        APIClient.shared.setToken(response.token)
+        APIClient.shared.setToken(response.token, userId: response.user.id)
+        AccessManager.shared.apply(response.accessStatus)
         await PushTokenManager.shared.uploadCachedTokenIfPossible()
+        await PurchaseManager.shared.syncLatestTransactions()
 
         return response
     }
@@ -67,6 +69,7 @@ final class AuthService: NSObject, ObservableObject {
     func signOut() {
         APIClient.shared.clearToken()
         PushTokenManager.shared.clearUploadedSessionMarker()
+        AccessManager.shared.clear()
     }
 }
 

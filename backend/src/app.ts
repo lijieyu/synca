@@ -6,10 +6,12 @@ import fs from 'fs';
 import cors from 'cors';
 import multer from 'multer';
 import { loginWithApple, getUserIdFromToken } from './auth.js';
+import { assertCanCreateMessage, buildAccessStatus, DailyLimitError, reconcilePurchaseAccess } from './access.js';
+import { appleMsToIso, isSupportedProduct, verifySignedTransactionInfo } from './iap.js';
 import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
-    upsertDevicePushToken, listActiveDevicePushTokens,
+    upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -153,6 +155,15 @@ app.post('/messages', auth, async (req, res) => {
     const id = uuidv4();
     const now = new Date().toISOString();
 
+    try {
+        await assertCanCreateMessage(userId);
+    } catch (error) {
+        if (error instanceof DailyLimitError) {
+            return res.status(403).json({ error: 'daily_limit_reached', accessStatus: error.accessStatus });
+        }
+        throw error;
+    }
+
     await createMessage({
         id,
         userId,
@@ -183,6 +194,18 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
     const id = uuidv4();
     const now = new Date().toISOString();
     const sourceDevice = req.body?.sourceDevice ?? null;
+
+    try {
+        await assertCanCreateMessage(userId);
+    } catch (error) {
+        if (error instanceof DailyLimitError) {
+            if (file?.path && fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            return res.status(403).json({ error: 'daily_limit_reached', accessStatus: error.accessStatus });
+        }
+        throw error;
+    }
 
     await createMessage({
         id,
@@ -258,6 +281,69 @@ app.get('/messages/uncleared-count', auth, async (req, res) => {
     const userId = getUserId(req);
     const count = await getUnclearedCount(userId);
     res.json({ count });
+});
+
+app.get('/me/access-status', auth, async (req, res) => {
+    const userId = getUserId(req);
+    const accessStatus = await buildAccessStatus(userId);
+    res.json({ userId, accessStatus });
+});
+
+app.post('/me/purchases/sync', auth, async (req, res) => {
+    const parsed = z.object({
+        signedTransactions: z.array(z.string().min(20)).min(1).max(20),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const userId = getUserId(req);
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    for (const signedTransactionInfo of parsed.data.signedTransactions) {
+        let transaction;
+        try {
+            transaction = await verifySignedTransactionInfo(signedTransactionInfo);
+        } catch (error) {
+            console.error('[purchase/sync] verification failed:', error);
+            return res.status(400).json({ error: 'invalid_purchase_transaction' });
+        }
+
+        if (!isSupportedProduct(transaction.productId)) {
+            continue;
+        }
+
+        if (transaction.appAccountToken && transaction.appAccountToken !== userId) {
+            return res.status(403).json({ error: 'purchase_account_mismatch' });
+        }
+
+        if (!transaction.transactionId) {
+            return res.status(400).json({ error: 'purchase_transaction_missing_id' });
+        }
+
+        await upsertIapTransaction({
+            transactionId: transaction.transactionId,
+            originalTransactionId: transaction.originalTransactionId ?? null,
+            userId,
+            productId: transaction.productId,
+            environment: transaction.environment ?? 'Unknown',
+            type: typeof transaction.type === 'string' ? transaction.type : null,
+            appAccountToken: transaction.appAccountToken ?? null,
+            purchaseDate: appleMsToIso(transaction.purchaseDate),
+            originalPurchaseDate: appleMsToIso(transaction.originalPurchaseDate),
+            expiresAt: appleMsToIso(transaction.expiresDate),
+            revocationDate: appleMsToIso(transaction.revocationDate),
+            isUpgraded: Boolean(transaction.isUpgraded),
+            signedTransactionInfo,
+            now: nowIso,
+        });
+    }
+
+    await reconcilePurchaseAccess(userId, now);
+    const accessStatus = await buildAccessStatus(userId, now);
+    res.json({ ok: true, userId, accessStatus });
 });
 
 // Register/update push token

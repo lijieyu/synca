@@ -11,6 +11,8 @@ import UniformTypeIdentifiers
 struct MessageListView: View {
     @EnvironmentObject var syncManager: SyncManager
     @EnvironmentObject var api: APIClient
+    @EnvironmentObject var accessManager: AccessManager
+    @EnvironmentObject var purchaseManager: PurchaseManager
     @State private var inputText = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showLogoutConfirm = false
@@ -36,6 +38,16 @@ struct MessageListView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItem(placement: accessToolbarPlacement) {
+                    if let status = accessManager.status {
+                        Button {
+                            accessManager.showAccessCenter = true
+                        } label: {
+                            AccessStatusPill(status: status, compact: isCompactMacToolbar)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 ToolbarItemGroup(placement: .primaryAction) {
                     refreshButton
                     clearAllButton
@@ -74,10 +86,17 @@ struct MessageListView: View {
         }
         .overlay(alignment: .top) { syncStatusOverlay }
         .overlay { loadingOverlay }
+        .sheet(isPresented: $accessManager.showAccessCenter) {
+            AccessCenterView()
+                .environmentObject(accessManager)
+                .environmentObject(purchaseManager)
+        }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
             shouldScrollToBottomAfterInitialLoad = true
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
+            await purchaseManager.loadProducts()
+            await purchaseManager.syncLatestTransactions()
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
             if !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
@@ -280,6 +299,22 @@ struct MessageListView: View {
 
     // MARK: - Toolbar Items
 
+    private var accessToolbarPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        return .topBarLeading
+        #else
+        return .navigation
+        #endif
+    }
+
+    private var isCompactMacToolbar: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
     private var refreshButton: some View {
         Button {
             Task { await self.syncManager.refresh() }
@@ -448,11 +483,17 @@ struct MessageListView: View {
     }
 
     private func submitText() {
-        let text = inputText
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
         inputText = ""
         inputHeight = defaultComposerHeight
         shouldScrollToBottomAfterSend = true
-        Task { await syncManager.sendText(text) }
+        Task {
+            let result = await syncManager.sendText(text)
+            if result != .sent {
+                inputText = text
+            }
+        }
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {

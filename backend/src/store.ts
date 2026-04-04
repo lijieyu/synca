@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncaUser, SyncaMessage } from './types.js';
-import { UsersTable, MessagesTable } from './db_types.js';
+import { UsersTable, MessagesTable, IapTransactionsTable } from './db_types.js';
 
 // ── Mappers ──
 
@@ -56,16 +56,119 @@ export async function createUser(user: {
     email?: string | null;
     nickname: string;
     now: string;
+    trialStartedAt?: string | null;
+    trialEndsAt?: string | null;
 }): Promise<SyncaUser> {
     await db.insertInto('users').values({
         id: user.id,
         apple_user_id: user.appleUserId,
         email: user.email ?? null,
         nickname: user.nickname,
+        trial_started_at: user.trialStartedAt ?? null,
+        trial_ends_at: user.trialEndsAt ?? null,
+        purchase_date: null,
+        subscription_expires_at: null,
+        lifetime_purchased_at: null,
+        store_product_id: null,
         created_at: user.now,
         updated_at: user.now,
     }).execute();
     return (await getUser(user.id))!;
+}
+
+export async function getUserAccessFields(userId: string): Promise<Pick<UsersTable, 'id' | 'trial_started_at' | 'trial_ends_at' | 'purchase_date' | 'subscription_expires_at' | 'lifetime_purchased_at' | 'store_product_id'> | undefined> {
+    return db.selectFrom('users')
+        .select([
+            'id',
+            'trial_started_at',
+            'trial_ends_at',
+            'purchase_date',
+            'subscription_expires_at',
+            'lifetime_purchased_at',
+            'store_product_id',
+        ])
+        .where('id', '=', userId)
+        .executeTakeFirst();
+}
+
+export async function upsertIapTransaction(input: {
+    transactionId: string;
+    originalTransactionId?: string | null;
+    userId: string;
+    productId: string;
+    environment: string;
+    type?: string | null;
+    appAccountToken?: string | null;
+    purchaseDate?: string | null;
+    originalPurchaseDate?: string | null;
+    expiresAt?: string | null;
+    revocationDate?: string | null;
+    isUpgraded: boolean;
+    signedTransactionInfo: string;
+    now: string;
+}): Promise<void> {
+    await db.insertInto('iap_transactions')
+        .values({
+            transaction_id: input.transactionId,
+            original_transaction_id: input.originalTransactionId ?? null,
+            user_id: input.userId,
+            product_id: input.productId,
+            environment: input.environment,
+            type: input.type ?? null,
+            app_account_token: input.appAccountToken ?? null,
+            purchase_date: input.purchaseDate ?? null,
+            original_purchase_date: input.originalPurchaseDate ?? null,
+            expires_at: input.expiresAt ?? null,
+            revocation_date: input.revocationDate ?? null,
+            is_upgraded: input.isUpgraded ? 1 : 0,
+            signed_transaction_info: input.signedTransactionInfo,
+            created_at: input.now,
+            updated_at: input.now,
+        })
+        .onConflict((oc) => oc.column('transaction_id').doUpdateSet({
+            original_transaction_id: input.originalTransactionId ?? null,
+            user_id: input.userId,
+            product_id: input.productId,
+            environment: input.environment,
+            type: input.type ?? null,
+            app_account_token: input.appAccountToken ?? null,
+            purchase_date: input.purchaseDate ?? null,
+            original_purchase_date: input.originalPurchaseDate ?? null,
+            expires_at: input.expiresAt ?? null,
+            revocation_date: input.revocationDate ?? null,
+            is_upgraded: input.isUpgraded ? 1 : 0,
+            signed_transaction_info: input.signedTransactionInfo,
+            updated_at: input.now,
+        }))
+        .execute();
+}
+
+export async function listUserIapTransactions(userId: string): Promise<IapTransactionsTable[]> {
+    return db.selectFrom('iap_transactions')
+        .selectAll()
+        .where('user_id', '=', userId)
+        .orderBy('purchase_date', 'asc')
+        .execute();
+}
+
+export async function updateUserPurchaseAccess(input: {
+    userId: string;
+    purchaseDate?: string | null;
+    subscriptionExpiresAt?: string | null;
+    lifetimePurchasedAt?: string | null;
+    storeProductId?: string | null;
+    now: string;
+}): Promise<void> {
+    await db.updateTable('users')
+        .set({
+            purchase_date: input.purchaseDate ?? null,
+            subscription_expires_at: input.subscriptionExpiresAt ?? null,
+            lifetime_purchased_at: input.lifetimePurchasedAt ?? null,
+            store_product_id: input.storeProductId ?? null,
+            updated_at: input.now,
+        })
+        .where('id', '=', input.userId)
+        .execute();
 }
 
 // ── Message DAO ──
@@ -208,6 +311,16 @@ export async function getUnclearedCount(userId: string): Promise<number> {
     return Number(row?.count ?? 0);
 }
 
+export async function countMessagesCreatedBetween(userId: string, startInclusive: string, endExclusive: string): Promise<number> {
+    const row = await db.selectFrom('messages')
+        .select((eb) => eb.fn.count<string>('id').as('count'))
+        .where('user_id', '=', userId)
+        .where('created_at', '>=', startInclusive)
+        .where('created_at', '<', endExclusive)
+        .executeTakeFirst();
+    return Number(row?.count ?? 0);
+}
+
 // ── Session DAO ──
 
 export async function createSession(token: string, userId: string, deviceId?: string): Promise<void> {
@@ -336,6 +449,7 @@ export async function updateDevicePushTokenEnvironment(input: {
 // ── Reset (test only) ──
 
 export async function resetDb() {
+    await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();
     await db.deleteFrom('messages').execute();
     await db.deleteFrom('sessions').execute();

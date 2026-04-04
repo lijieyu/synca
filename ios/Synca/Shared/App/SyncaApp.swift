@@ -10,19 +10,23 @@ struct SyncaApp: App {
 
     @StateObject private var api = APIClient.shared
     @StateObject private var syncManager = SyncManager.shared
+    @StateObject private var accessManager = AccessManager.shared
+    @StateObject private var purchaseManager = PurchaseManager.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(api)
                 .environmentObject(syncManager)
+                .environmentObject(accessManager)
+                .environmentObject(purchaseManager)
             #if os(macOS)
                 .background(MacWindowAccessor())
-                .frame(minWidth: 400, idealWidth: 480, minHeight: 500, idealHeight: 700)
+                .frame(minWidth: 460, idealWidth: 500, minHeight: 500, idealHeight: 700)
             #endif
         }
         #if os(macOS)
-        .defaultSize(width: 480, height: 700)
+        .defaultSize(width: 500, height: 700)
         .commands {
             // Remove "New Window" / "New Tab" menu items
             CommandGroup(replacing: .newItem) {}

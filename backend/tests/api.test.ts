@@ -7,7 +7,14 @@ import { db } from '../src/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Create a test user directly in DB (bypassing Apple auth for testing)
-async function createTestUser() {
+async function createTestUser(options?: {
+    trialStartedAt?: string | null;
+    trialEndsAt?: string | null;
+    purchaseDate?: string | null;
+    subscriptionExpiresAt?: string | null;
+    lifetimePurchasedAt?: string | null;
+    storeProductId?: string | null;
+}) {
     const userId = uuidv4();
     const token = uuidv4();
     const now = new Date().toISOString();
@@ -17,6 +24,12 @@ async function createTestUser() {
         apple_user_id: `test_apple_${userId}`,
         email: 'test@example.com',
         nickname: 'Test User',
+        trial_started_at: options?.trialStartedAt ?? now,
+        trial_ends_at: options?.trialEndsAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        purchase_date: options?.purchaseDate ?? null,
+        subscription_expires_at: options?.subscriptionExpiresAt ?? null,
+        lifetime_purchased_at: options?.lifetimePurchasedAt ?? null,
+        store_product_id: options?.storeProductId ?? null,
         created_at: now,
         updated_at: now,
     }).execute();
@@ -226,6 +239,46 @@ describe('Synca API', () => {
                 .send({ textContent: '' });
 
             expect(res.status).toBe(400);
+        });
+
+        it('should return access status for trial users', async () => {
+            const { authHeader } = await createTestUser();
+
+            const res = await request(app)
+                .get('/me/access-status')
+                .set('Authorization', authHeader);
+
+            expect(res.status).toBe(200);
+            expect(res.body.accessStatus.plan).toBe('trial');
+            expect(res.body.accessStatus.isTrial).toBe(true);
+            expect(res.body.accessStatus.todayLimit).toBeNull();
+        });
+
+        it('should enforce the daily free limit after trial ends', async () => {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { authHeader } = await createTestUser({
+                trialStartedAt: yesterday,
+                trialEndsAt: yesterday,
+            });
+
+            for (let i = 0; i < 20; i += 1) {
+                const createRes = await request(app)
+                    .post('/messages')
+                    .set('Authorization', authHeader)
+                    .send({ textContent: `消息${i}` });
+                expect(createRes.status).toBe(201);
+            }
+
+            const blockedRes = await request(app)
+                .post('/messages')
+                .set('Authorization', authHeader)
+                .send({ textContent: '第 21 条' });
+
+            expect(blockedRes.status).toBe(403);
+            expect(blockedRes.body.error).toBe('daily_limit_reached');
+            expect(blockedRes.body.accessStatus.plan).toBe('free');
+            expect(blockedRes.body.accessStatus.todayUsed).toBe(20);
+            expect(blockedRes.body.accessStatus.todayLimit).toBe(20);
         });
     });
 

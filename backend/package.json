@@ -13,6 +13,7 @@
     "test:watch": "rm -f data/synca.test.sqlite && DB_PATH=synca.test.sqlite npm run migrate && DB_PATH=synca.test.sqlite vitest"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^3.0.0",
     "apple-signin-auth": "^2.0.0",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",

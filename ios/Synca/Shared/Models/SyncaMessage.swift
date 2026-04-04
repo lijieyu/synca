@@ -76,6 +76,7 @@ struct SyncaUser: Codable {
 struct AuthResponse: Codable {
     let token: String
     let user: SyncaUser
+    let accessStatus: AccessStatus
 }
 
 struct MessagesResponse: Codable {

@@ -5,23 +5,39 @@ final class APIClient: ObservableObject {
     static let shared = APIClient()
 
     private let baseURL: String
+    private let currentUserIdKey = "currentUserId"
     @Published var token: String?
+    @Published private(set) var currentUserId: String?
 
     private init() {
         self.baseURL = (Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String) ?? "http://127.0.0.1:3000"
         self.token = KeychainHelper.load(key: "authToken")
+        self.currentUserId = UserDefaults.standard.string(forKey: currentUserIdKey)
     }
 
     var isAuthenticated: Bool { token != nil }
 
-    func setToken(_ newToken: String) {
+    func setToken(_ newToken: String, userId: String? = nil) {
         token = newToken
         KeychainHelper.save(key: "authToken", value: newToken)
+        if let userId {
+            setCurrentUserId(userId)
+        }
     }
 
     func clearToken() {
         token = nil
         KeychainHelper.delete(key: "authToken")
+        setCurrentUserId(nil)
+    }
+
+    func setCurrentUserId(_ newUserId: String?) {
+        currentUserId = newUserId
+        if let newUserId {
+            UserDefaults.standard.set(newUserId, forKey: currentUserIdKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: currentUserIdKey)
+        }
     }
 
     // MARK: - Auth
@@ -30,6 +46,24 @@ final class APIClient: ObservableObject {
         var body: [String: Any] = ["idToken": idToken]
         if let deviceId { body["deviceId"] = deviceId }
         return try await post("/auth/apple", body: body, authenticated: false)
+    }
+
+    func getAccessStatus() async throws -> AccessStatus {
+        let response: AccessStatusResponse = try await get("/me/access-status")
+        if let userId = response.userId {
+            setCurrentUserId(userId)
+        }
+        return response.accessStatus
+    }
+
+    func syncPurchases(signedTransactions: [String]) async throws -> AccessStatus {
+        let response: AccessStatusResponse = try await post("/me/purchases/sync", body: [
+            "signedTransactions": signedTransactions,
+        ])
+        if let userId = response.userId {
+            setCurrentUserId(userId)
+        }
+        return response.accessStatus
     }
 
     // MARK: - Messages
@@ -83,7 +117,7 @@ final class APIClient: ObservableObject {
             throw APIError.invalidResponse
         }
         guard httpResponse.statusCode == 201 else {
-            throw APIError.httpError(httpResponse.statusCode, String(data: responseData, encoding: .utf8))
+            throw decodeAPIError(statusCode: httpResponse.statusCode, data: responseData)
         }
 
         let decoder = JSONDecoder()
@@ -196,25 +230,49 @@ final class APIClient: ObservableObject {
             throw APIError.unauthorized
         }
         guard (200...299).contains(httpResponse.statusCode) else {
-            throw APIError.httpError(httpResponse.statusCode, String(data: data, encoding: .utf8))
+            throw decodeAPIError(statusCode: httpResponse.statusCode, data: data)
         }
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return try decoder.decode(T.self, from: data)
     }
+
+    private func decodeAPIError(statusCode: Int, data: Data) -> APIError {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        if statusCode == 401 {
+            return .unauthorized
+        }
+
+        if statusCode == 403,
+           let serverError = try? decoder.decode(ServerErrorResponse.self, from: data),
+           serverError.error == "daily_limit_reached" {
+            return .dailyLimitReached(serverError.accessStatus)
+        }
+
+        return .httpError(statusCode, String(data: data, encoding: .utf8))
+    }
 }
 
 enum APIError: LocalizedError {
     case invalidResponse
     case unauthorized
+    case dailyLimitReached(AccessStatus?)
     case httpError(Int, String?)
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return String(localized: "api.invalid_response", bundle: .main)
         case .unauthorized: return String(localized: "api.unauthorized", bundle: .main)
+        case .dailyLimitReached: return String(localized: "access.limit_reached_title", bundle: .main)
         case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")
         }
     }
+}
+
+private struct ServerErrorResponse: Decodable {
+    let error: String
+    let accessStatus: AccessStatus?
 }

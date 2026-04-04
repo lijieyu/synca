@@ -8,6 +8,12 @@ import UIKit
 final class SyncManager: ObservableObject {
     static let shared = SyncManager()
 
+    enum SendResult {
+        case sent
+        case blocked
+        case failed
+    }
+
     enum SyncStatus: Equatable {
         case idle
         case syncing
@@ -84,6 +90,7 @@ final class SyncManager: ObservableObject {
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
             if appendedRemotely {
                 remoteAppendEvent = UUID()
+                await AccessManager.shared.refresh()
             }
             if manual && showSuccessStatus { updateStatus(.success) }
         } catch {
@@ -133,6 +140,7 @@ final class SyncManager: ObservableObject {
             unclearedCount = messages.filter { !$0.isCleared }.count
             if appendedRemotely && hasCompletedInitialLoad {
                 remoteAppendEvent = UUID()
+                await AccessManager.shared.refresh()
             }
             if manual { updateStatus(.success) }
         } catch {
@@ -197,8 +205,8 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Send Messages
 
-    func sendText(_ text: String) async {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    func sendText(_ text: String) async -> SendResult {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .failed }
         isSending = true
 
         do {
@@ -210,11 +218,18 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
+            await AccessManager.shared.refresh()
+            isSending = false
+            return .sent
+        } catch APIError.dailyLimitReached(let status) {
+            AccessManager.shared.presentUpgrade(using: status)
+            isSending = false
+            return .blocked
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
+            isSending = false
+            return .failed
         }
-
-        isSending = false
     }
 
     func sendImage(_ imageData: Data) async {
@@ -229,6 +244,9 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
+            await AccessManager.shared.refresh()
+        } catch APIError.dailyLimitReached(let status) {
+            AccessManager.shared.presentUpgrade(using: status)
         } catch {
             handleError(error, contextKey: "sync.error_context.send_image")
         }
@@ -239,6 +257,7 @@ final class SyncManager: ObservableObject {
     func sendImages(_ imageDatas: [Data]) async {
         isSending = true
         var failureCount = 0
+        var sentCount = 0
         
         for imageData in imageDatas {
             do {
@@ -249,6 +268,10 @@ final class SyncManager: ObservableObject {
                 messages.append(message)
                 unclearedCount += 1
                 lastSyncTimestamp = message.updatedAt
+                sentCount += 1
+            } catch APIError.dailyLimitReached(let status) {
+                AccessManager.shared.presentUpgrade(using: status)
+                break
             } catch {
                 failureCount += 1
                 print("[send] single item in batch failed: \(error)")
@@ -260,6 +283,9 @@ final class SyncManager: ObservableObject {
         }
         
         lastRefreshDate = Date()
+        if sentCount > 0 {
+            await AccessManager.shared.refresh()
+        }
         isSending = false
     }
 

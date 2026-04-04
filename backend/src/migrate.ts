@@ -11,10 +11,35 @@ export async function runMigrations() {
             apple_user_id TEXT UNIQUE NOT NULL,
             email TEXT,
             nickname TEXT NOT NULL DEFAULT 'Synca 用户',
+            trial_started_at TEXT,
+            trial_ends_at TEXT,
+            purchase_date TEXT,
+            subscription_expires_at TEXT,
+            lifetime_purchased_at TEXT,
+            store_product_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
     `.execute(db);
+
+    try {
+        await sql`ALTER TABLE users ADD COLUMN trial_started_at TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE users ADD COLUMN trial_ends_at TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE users ADD COLUMN purchase_date TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE users ADD COLUMN subscription_expires_at TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE users ADD COLUMN lifetime_purchased_at TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE users ADD COLUMN store_product_id TEXT`.execute(db);
+    } catch (_e) {}
 
     // Create messages table
     await sql`
@@ -69,6 +94,28 @@ export async function runMigrations() {
             updated_at TEXT NOT NULL
         )
     `.execute(db);
+
+    await sql`
+        CREATE TABLE IF NOT EXISTS iap_transactions (
+            transaction_id TEXT PRIMARY KEY,
+            original_transaction_id TEXT,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            product_id TEXT NOT NULL,
+            environment TEXT NOT NULL,
+            type TEXT,
+            app_account_token TEXT,
+            purchase_date TEXT,
+            original_purchase_date TEXT,
+            expires_at TEXT,
+            revocation_date TEXT,
+            is_upgraded INTEGER NOT NULL DEFAULT 0,
+            signed_transaction_info TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    `.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_iap_transactions_user_id ON iap_transactions(user_id)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_iap_transactions_product_id ON iap_transactions(product_id)`.execute(db);
 
     console.log('[migrate] Migrations complete.');
 }

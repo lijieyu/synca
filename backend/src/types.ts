@@ -7,6 +7,24 @@ export interface SyncaUser {
     updatedAt: string;
 }
 
+export type SyncaAccessPlan = 'trial' | 'free' | 'unlimited';
+export type SyncaUnlimitedSource = 'subscription' | 'lifetime' | null;
+
+export interface SyncaAccessStatus {
+    plan: SyncaAccessPlan;
+    isUnlimited: boolean;
+    isTrial: boolean;
+    unlimitedSource: SyncaUnlimitedSource;
+    trialEndsAt?: string | null;
+    daysLeft?: number | null;
+    todayUsed: number;
+    todayLimit?: number | null;
+    dailyResetAt: string;
+    purchaseDate?: string | null;
+    subscriptionExpiresAt?: string | null;
+    storeProductId?: string | null;
+}
+
 export interface SyncaMessage {
     id: string;
     userId: string;

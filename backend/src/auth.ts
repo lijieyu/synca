@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession } from './store.js';
+import { buildAccessStatus, buildTrialWindow } from './access.js';
 
 /**
  * Verify Apple identity token on the server side.
@@ -30,26 +31,31 @@ export async function verifyAppleToken(idToken: string): Promise<{
 export async function loginWithApple(params: {
     idToken: string;
     deviceId?: string;
-}): Promise<{ token: string; user: any }> {
+}): Promise<{ token: string; user: any; accessStatus: any }> {
     const { appleUserId, email } = await verifyAppleToken(params.idToken);
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
     let user = await getUserByAppleId(appleUserId);
 
     if (!user) {
+        const trialWindow = buildTrialWindow(now);
         user = await createUser({
             id: uuidv4(),
             appleUserId,
             email,
             nickname: 'Synca 用户',
-            now,
+            now: nowIso,
+            trialStartedAt: trialWindow.trialStartedAt,
+            trialEndsAt: trialWindow.trialEndsAt,
         });
     }
 
     const token = uuidv4();
     await dbCreateSession(token, user.id, params.deviceId);
+    const accessStatus = await buildAccessStatus(user.id, now);
 
-    return { token, user };
+    return { token, user, accessStatus };
 }
 
 /**
