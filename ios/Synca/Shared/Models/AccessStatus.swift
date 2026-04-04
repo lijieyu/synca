@@ -21,5 +21,6 @@ struct AccessStatus: Codable, Equatable {
 
 struct AccessStatusResponse: Codable {
     let userId: String?
+    let email: String?
     let accessStatus: AccessStatus
 }

@@ -20,6 +20,7 @@
 "message_list.todo_section" = "To-Do";
 "message_list.sync_success" = "Synced";
 "message_list.sync_failed" = "Sync Failed";
+"message_list.error_too_long" = "Message must be %d characters or less.";
 "message_list.loading" = "Loading...";
 "message_list.clear_all_confirm_title" = "Confirm Delete";
 "message_list.clear_all_confirm_message" = "This will delete all completed to-dos";
@@ -27,6 +28,7 @@
 "message_list.logout_confirm_message" = "You will need to sign in again";
 "message_list.logout" = "Sign Out";
 "message_list.about" = "About Synca";
+"message_list.feedback" = "Feedback";
 "message_list.sign_out" = "Sign Out";
 "message_list.session_expired_title" = "Session Expired";
 "message_list.session_expired_message" = "Please sign in again to continue";
@@ -91,6 +93,23 @@
 "access.purchase_date" = "Purchased on %@";
 "access.subscription_expires" = "Renews / expires on %@";
 "access.limit_reached_title" = "Today's free limit reached";
+
+/* Feedback */
+"feedback.title" = "Send Feedback";
+"feedback.submit" = "Submit";
+"feedback.content_title" = "Feedback";
+"feedback.content_placeholder" = "Tell us what happened or what you'd like to see.";
+"feedback.images_title" = "Images";
+"feedback.add_images" = "Add images";
+"feedback.add_more_images" = "Add more images";
+"feedback.images_limit" = "%d/%d images attached";
+"feedback.email_title" = "Email";
+"feedback.email_placeholder" = "Required for follow-up";
+"feedback.error_content_required" = "Please enter your feedback.";
+"feedback.error_content_too_long" = "Feedback must be %d characters or less.";
+"feedback.error_email_required" = "Please enter a valid email address.";
+"feedback.submit_failed" = "Unable to submit feedback right now.";
+"feedback.submit_success" = "Feedback sent";
 
 /* Message Bubble */
 "message_bubble.delete_confirm_title" = "Confirm Delete";

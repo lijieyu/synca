@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession } from './store.js';
+import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, updateUserEmail } from './store.js';
 import { buildAccessStatus, buildTrialWindow } from './access.js';
 
 /**
@@ -49,6 +49,8 @@ export async function loginWithApple(params: {
             trialStartedAt: trialWindow.trialStartedAt,
             trialEndsAt: trialWindow.trialEndsAt,
         });
+    } else if (email && user.email !== email) {
+        user = (await updateUserEmail(user.id, email, nowIso)) ?? user;
     }
 
     const token = uuidv4();

@@ -50,6 +50,18 @@ export async function getUser(id: string): Promise<SyncaUser | undefined> {
     return row ? toUser(row) : undefined;
 }
 
+export async function updateUserEmail(userId: string, email: string, now: string): Promise<SyncaUser | undefined> {
+    await db.updateTable('users')
+        .set({
+            email,
+            updated_at: now,
+        })
+        .where('id', '=', userId)
+        .execute();
+
+    return getUser(userId);
+}
+
 export async function createUser(user: {
     id: string;
     appleUserId: string;
@@ -169,6 +181,25 @@ export async function updateUserPurchaseAccess(input: {
         })
         .where('id', '=', input.userId)
         .execute();
+}
+
+export async function createFeedback(input: {
+    id: string;
+    userId: string;
+    content: string;
+    email: string;
+    imagePaths: string[];
+    now: string;
+}): Promise<void> {
+    await db.insertInto('feedbacks').values({
+        id: input.id,
+        user_id: input.userId,
+        content: input.content,
+        email: input.email,
+        image_paths: input.imagePaths.length > 0 ? JSON.stringify(input.imagePaths) : null,
+        created_at: input.now,
+        updated_at: input.now,
+    }).execute();
 }
 
 // ── Message DAO ──
@@ -449,6 +480,7 @@ export async function updateDevicePushTokenEnvironment(input: {
 // ── Reset (test only) ──
 
 export async function resetDb() {
+    await db.deleteFrom('feedbacks').execute();
     await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();
     await db.deleteFrom('messages').execute();

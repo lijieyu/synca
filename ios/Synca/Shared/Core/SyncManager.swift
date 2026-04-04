@@ -206,12 +206,17 @@ final class SyncManager: ObservableObject {
     // MARK: - Send Messages
 
     func sendText(_ text: String) async -> SendResult {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .failed }
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else { return .failed }
+        guard trimmedText.count <= 2000 else {
+            updateStatus(.error(String(format: String(localized: "message_list.error_too_long", bundle: .main), 2000)))
+            return .failed
+        }
         isSending = true
 
         do {
             let message = try await api.sendTextMessage(
-                text: text.trimmingCharacters(in: .whitespacesAndNewlines),
+                text: trimmedText,
                 sourceDevice: currentDeviceName()
             )
             messages.append(message)
@@ -225,6 +230,10 @@ final class SyncManager: ObservableObject {
             AccessManager.shared.presentUpgrade(using: status)
             isSending = false
             return .blocked
+        } catch APIError.messageTooLong(let limit) {
+            updateStatus(.error(String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)))
+            isSending = false
+            return .failed
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
             isSending = false

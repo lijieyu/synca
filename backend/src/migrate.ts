@@ -117,6 +117,20 @@ export async function runMigrations() {
     await sql`CREATE INDEX IF NOT EXISTS idx_iap_transactions_user_id ON iap_transactions(user_id)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_iap_transactions_product_id ON iap_transactions(product_id)`.execute(db);
 
+    await sql`
+        CREATE TABLE IF NOT EXISTS feedbacks (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            content TEXT NOT NULL,
+            email TEXT NOT NULL,
+            image_paths TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    `.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_user_id ON feedbacks(user_id)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at)`.execute(db);
+
     console.log('[migrate] Migrations complete.');
 }
 

@@ -164,7 +164,7 @@ final class ClickForwardingScrollView: NSScrollView {
     }
 
     /// SwiftUI often gives the scroll view a width before AppKit propagates it to the text container; width 0 breaks drawing and typing.
-    fileprivate func syncTextViewWidthAndContainer() {
+    func syncTextViewWidthAndContainer() {
         guard let textView = documentView as? NSTextView else { return }
         let w = contentView.bounds.width
         guard w > 0 else { return }

@@ -18,6 +18,7 @@ struct MessageListView: View {
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
     @State private var showAboutInfo = false
+    @State private var showFeedbackComposer = false
     @State private var showSessionExpired = false
     @State private var inputHeight: CGFloat = 40
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
@@ -25,6 +26,7 @@ struct MessageListView: View {
     @State private var postSendScrollWindowID = UUID()
     @State private var shouldScrollToBottomAfterInitialLoad = false
     @State private var initialLoadScrollWindowID = UUID()
+    @State private var showFeedbackSuccessToast = false
 
     var body: some View {
         NavigationStack {
@@ -85,11 +87,16 @@ struct MessageListView: View {
             }
         }
         .overlay(alignment: .top) { syncStatusOverlay }
+        .overlay(alignment: .top) { feedbackToastOverlay }
         .overlay { loadingOverlay }
         .sheet(isPresented: $accessManager.showAccessCenter) {
             AccessCenterView()
                 .environmentObject(accessManager)
                 .environmentObject(purchaseManager)
+        }
+        .sheet(isPresented: $showFeedbackComposer) {
+            FeedbackComposerView()
+                .environmentObject(api)
         }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
@@ -123,6 +130,17 @@ struct MessageListView: View {
         #endif
         .onDisappear {
             syncManager.stopPolling()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaFeedbackSubmitted)) { _ in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showFeedbackSuccessToast = true
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_600_000_000)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    showFeedbackSuccessToast = false
+                }
+            }
         }
         #if os(macOS)
         .background(
@@ -254,17 +272,22 @@ struct MessageListView: View {
                     .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
                     .padding(.top, topInset)
                     .transition(.move(edge: .top).combined(with: .opacity))
-            } else if case .error = self.syncManager.syncStatus {
-                Label("message_list.sync_failed", systemImage: "xmark.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.red)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                    .padding(.top, topInset)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else if case .error(let message) = self.syncManager.syncStatus {
+                HStack(spacing: 8) {
+                    Image(systemName: "xmark.circle.fill")
+                    Text(message)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.red)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                .padding(.top, topInset)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: self.syncManager.syncStatus)
@@ -276,6 +299,28 @@ struct MessageListView: View {
             ProgressView("message_list.loading")
                 .padding()
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    @ViewBuilder
+    private var feedbackToastOverlay: some View {
+        #if os(iOS)
+        let topInset: CGFloat = 58
+        #else
+        let topInset: CGFloat = 16
+        #endif
+
+        if showFeedbackSuccessToast {
+            Label("feedback.submit_success", systemImage: "checkmark.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.green)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+                .padding(.top, topInset)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 
@@ -335,6 +380,12 @@ struct MessageListView: View {
 
     private var settingsMenu: some View {
         Menu {
+            Button {
+                showFeedbackComposer = true
+            } label: {
+                Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+            }
+
             Button {
                 #if os(macOS)
                 showAboutOnMac()

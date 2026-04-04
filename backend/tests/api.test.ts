@@ -366,4 +366,35 @@ describe('Synca API', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    describe('Feedback API', () => {
+        it('should submit feedback with email and optional images', async () => {
+            const { authHeader } = await createTestUser();
+
+            const res = await request(app)
+                .post('/feedback')
+                .set('Authorization', authHeader)
+                .field('content', 'The composer feels great overall, but I found a sync issue.')
+                .field('email', 'tester@example.com')
+                .attach('images', Buffer.from('fake-image'), {
+                    filename: 'feedback.png',
+                    contentType: 'image/png',
+                });
+
+            expect(res.status).toBe(201);
+            expect(res.body.ok).toBe(true);
+        });
+
+        it('should reject feedback without required fields', async () => {
+            const { authHeader } = await createTestUser();
+
+            const res = await request(app)
+                .post('/feedback')
+                .set('Authorization', authHeader)
+                .field('content', '')
+                .field('email', '');
+
+            expect(res.status).toBe(400);
+        });
+    });
 });

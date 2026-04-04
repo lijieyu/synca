@@ -6,13 +6,16 @@ final class APIClient: ObservableObject {
 
     private let baseURL: String
     private let currentUserIdKey = "currentUserId"
+    private let currentUserEmailKey = "currentUserEmail"
     @Published var token: String?
     @Published private(set) var currentUserId: String?
+    @Published private(set) var currentUserEmail: String?
 
     private init() {
         self.baseURL = (Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String) ?? "http://127.0.0.1:3000"
         self.token = KeychainHelper.load(key: "authToken")
         self.currentUserId = UserDefaults.standard.string(forKey: currentUserIdKey)
+        self.currentUserEmail = UserDefaults.standard.string(forKey: currentUserEmailKey)
     }
 
     var isAuthenticated: Bool { token != nil }
@@ -29,6 +32,7 @@ final class APIClient: ObservableObject {
         token = nil
         KeychainHelper.delete(key: "authToken")
         setCurrentUserId(nil)
+        setCurrentUserEmail(nil)
     }
 
     func setCurrentUserId(_ newUserId: String?) {
@@ -37,6 +41,15 @@ final class APIClient: ObservableObject {
             UserDefaults.standard.set(newUserId, forKey: currentUserIdKey)
         } else {
             UserDefaults.standard.removeObject(forKey: currentUserIdKey)
+        }
+    }
+
+    func setCurrentUserEmail(_ newEmail: String?) {
+        currentUserEmail = newEmail
+        if let newEmail {
+            UserDefaults.standard.set(newEmail, forKey: currentUserEmailKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: currentUserEmailKey)
         }
     }
 
@@ -53,6 +66,9 @@ final class APIClient: ObservableObject {
         if let userId = response.userId {
             setCurrentUserId(userId)
         }
+        if let email = response.email, !email.isEmpty {
+            setCurrentUserEmail(email)
+        }
         return response.accessStatus
     }
 
@@ -62,6 +78,9 @@ final class APIClient: ObservableObject {
         ])
         if let userId = response.userId {
             setCurrentUserId(userId)
+        }
+        if let email = response.email, !email.isEmpty {
+            setCurrentUserEmail(email)
         }
         return response.accessStatus
     }
@@ -165,6 +184,43 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await post("/me/push-token", body: body)
     }
 
+    func submitFeedback(content: String, email: String, imageDatas: [Data]) async throws {
+        let url = URL(string: "\(baseURL)/feedback")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        func appendField(name: String, value: String) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append(value.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        appendField(name: "content", value: content)
+        appendField(name: "email", value: email)
+
+        for (index, imageData) in imageDatas.enumerated() {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"images\"; filename=\"feedback-\(index).jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let _: OkResponse = try await execute(request)
+    }
+
     // MARK: - Generic HTTP Methods
 
     private func get<T: Decodable>(_ path: String, params: [String: String] = [:],
@@ -246,6 +302,18 @@ final class APIClient: ObservableObject {
             return .unauthorized
         }
 
+        if statusCode == 400,
+           let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
+            switch serverError.error {
+            case "message_too_long":
+                return .messageTooLong(2000)
+            case "feedback_too_long":
+                return .feedbackTooLong(2000)
+            default:
+                break
+            }
+        }
+
         if statusCode == 403,
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data),
            serverError.error == "daily_limit_reached" {
@@ -260,6 +328,8 @@ enum APIError: LocalizedError {
     case invalidResponse
     case unauthorized
     case dailyLimitReached(AccessStatus?)
+    case messageTooLong(Int)
+    case feedbackTooLong(Int)
     case httpError(Int, String?)
 
     var errorDescription: String? {
@@ -267,6 +337,10 @@ enum APIError: LocalizedError {
         case .invalidResponse: return String(localized: "api.invalid_response", bundle: .main)
         case .unauthorized: return String(localized: "api.unauthorized", bundle: .main)
         case .dailyLimitReached: return String(localized: "access.limit_reached_title", bundle: .main)
+        case .messageTooLong(let limit):
+            return String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)
+        case .feedbackTooLong(let limit):
+            return String(format: String(localized: "feedback.error_content_too_long", bundle: .main), limit)
         case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")
         }
     }

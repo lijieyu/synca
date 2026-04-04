@@ -67,10 +67,21 @@ export interface IapTransactionsTable {
     updated_at: string;
 }
 
+export interface FeedbacksTable {
+    id: string;
+    user_id: string;
+    content: string;
+    email: string;
+    image_paths: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Database {
     users: UsersTable;
     messages: MessagesTable;
     sessions: SessionsTable;
     device_push_tokens: DevicePushTokensTable;
     iap_transactions: IapTransactionsTable;
+    feedbacks: FeedbacksTable;
 }

@@ -20,6 +20,7 @@
 "message_list.todo_section" = "待办";
 "message_list.sync_success" = "同步成功";
 "message_list.sync_failed" = "同步失败";
+"message_list.error_too_long" = "消息不能超过 %d 个字符。";
 "message_list.loading" = "加载中...";
 "message_list.clear_all_confirm_title" = "确认删除";
 "message_list.clear_all_confirm_message" = "将删除所有已完成的待办";
@@ -27,6 +28,7 @@
 "message_list.logout_confirm_message" = "退出后需要重新登录";
 "message_list.logout" = "退出";
 "message_list.about" = "关于 Synca";
+"message_list.feedback" = "反馈";
 "message_list.sign_out" = "退出登录";
 "message_list.session_expired_title" = "登录已过期";
 "message_list.session_expired_message" = "请重新登录以继续使用";
@@ -91,6 +93,23 @@
 "access.purchase_date" = "购买时间：%@";
 "access.subscription_expires" = "续费 / 到期时间：%@";
 "access.limit_reached_title" = "今日免费额度已用完";
+
+/* Feedback */
+"feedback.title" = "提交反馈";
+"feedback.submit" = "发送";
+"feedback.content_title" = "反馈内容";
+"feedback.content_placeholder" = "请写下你的想法、建议或遇到的问题。";
+"feedback.images_title" = "图片附件";
+"feedback.add_images" = "添加图片";
+"feedback.add_more_images" = "继续添加图片";
+"feedback.images_limit" = "已添加 %d/%d 张图片";
+"feedback.email_title" = "邮箱";
+"feedback.email_placeholder" = "必填，方便联系反馈";
+"feedback.error_content_required" = "请先填写反馈内容。";
+"feedback.error_content_too_long" = "反馈内容不能超过 %d 个字符。";
+"feedback.error_email_required" = "请填写有效的邮箱地址。";
+"feedback.submit_failed" = "暂时无法提交反馈，请稍后再试。";
+"feedback.submit_success" = "反馈已发送";
 
 /* Message Bubble */
 "message_bubble.delete_confirm_title" = "确认删除";

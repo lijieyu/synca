@@ -11,7 +11,7 @@ import { appleMsToIso, isSupportedProduct, verifySignedTransactionInfo } from '.
 import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
-    upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction,
+    upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -33,8 +33,15 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+const feedbackUploadsDir = path.resolve(process.cwd(), 'feedback_uploads');
+if (!fs.existsSync(feedbackUploadsDir)) {
+    fs.mkdirSync(feedbackUploadsDir, { recursive: true });
+}
+
+const allowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
+
 // Multer for image uploads
-const storage = multer.diskStorage({
+const messageStorage = multer.diskStorage({
     destination: (_req, _file, cb) => {
         cb(null, uploadsDir);
     },
@@ -43,12 +50,27 @@ const storage = multer.diskStorage({
         cb(null, `${uuidv4()}${ext}`);
     },
 });
+const feedbackStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+        cb(null, feedbackUploadsDir);
+    },
+    filename: (_req, file, cb) => {
+        const ext = imageExtensionForMimeType(file.mimetype);
+        cb(null, `feedback-${uuidv4()}${ext}`);
+    },
+});
 const upload = multer({
-    storage,
+    storage: messageStorage,
     limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
     fileFilter: (_req, file, cb) => {
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
-        cb(null, allowed.includes(file.mimetype));
+        cb(null, allowedImageMimeTypes.includes(file.mimetype));
+    },
+});
+const feedbackUpload = multer({
+    storage: feedbackStorage,
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        cb(null, allowedImageMimeTypes.includes(file.mimetype));
     },
 });
 
@@ -60,6 +82,14 @@ function imageExtensionForMimeType(mimeType: string): string {
         case 'image/heif': return '.heif';
         case 'image/gif': return '.gif';
         default: return '.png';
+    }
+}
+
+function cleanupUploadedFiles(files: Express.Multer.File[] | undefined) {
+    for (const file of files ?? []) {
+        if (file.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+        }
     }
 }
 
@@ -142,8 +172,12 @@ app.get('/messages', auth, async (req, res) => {
 
 // Send text message
 app.post('/messages', auth, async (req, res) => {
+    if (typeof req.body?.textContent === 'string' && req.body.textContent.length > 2000) {
+        return res.status(400).json({ error: 'message_too_long' });
+    }
+
     const parsed = z.object({
-        textContent: z.string().min(1).max(10000),
+        textContent: z.string().min(1).max(2000),
         sourceDevice: z.string().max(50).optional(),
     }).safeParse(req.body);
 
@@ -226,6 +260,36 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
     res.status(201).json(message);
 });
 
+app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) => {
+    const files = ((req as any).files as Express.Multer.File[] | undefined) ?? [];
+    if (typeof req.body?.content === 'string' && req.body.content.trim().length > 2000) {
+        cleanupUploadedFiles(files);
+        return res.status(400).json({ error: 'feedback_too_long' });
+    }
+
+    const parsed = z.object({
+        content: z.string().trim().min(1).max(2000),
+        email: z.string().trim().email().max(320),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        cleanupUploadedFiles(files);
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const now = new Date().toISOString();
+    await createFeedback({
+        id: uuidv4(),
+        userId: getUserId(req),
+        content: parsed.data.content,
+        email: parsed.data.email,
+        imagePaths: files.map((file) => file.filename),
+        now,
+    });
+
+    res.status(201).json({ ok: true });
+});
+
 // Clear single message
 app.patch('/messages/:id/clear', auth, async (req, res) => {
     const userId = getUserId(req);
@@ -286,7 +350,8 @@ app.get('/messages/uncleared-count', auth, async (req, res) => {
 app.get('/me/access-status', auth, async (req, res) => {
     const userId = getUserId(req);
     const accessStatus = await buildAccessStatus(userId);
-    res.json({ userId, accessStatus });
+    const user = await getUser(userId);
+    res.json({ userId, email: user?.email ?? null, accessStatus });
 });
 
 app.post('/me/purchases/sync', auth, async (req, res) => {
@@ -343,7 +408,8 @@ app.post('/me/purchases/sync', auth, async (req, res) => {
 
     await reconcilePurchaseAccess(userId, now);
     const accessStatus = await buildAccessStatus(userId, now);
-    res.json({ ok: true, userId, accessStatus });
+    const user = await getUser(userId);
+    res.json({ ok: true, userId, email: user?.email ?? null, accessStatus });
 });
 
 // Register/update push token
@@ -402,5 +468,13 @@ async function notifyOtherDevices(userId: string, authHeader?: string): Promise<
         })),
     );
 }
+
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof multer.MulterError) {
+        const error = err.code === 'LIMIT_FILE_SIZE' ? 'file_too_large' : 'invalid_upload';
+        return res.status(400).json({ error });
+    }
+    next(err);
+});
 
 export default app;
