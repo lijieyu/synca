@@ -32,19 +32,23 @@ struct MacInputTextView: NSViewRepresentable {
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.allowsUndo = true
-        textView.drawsBackground = false
+        // Draw field background in AppKit so it stays visible regardless of SwiftUI layering.
+        textView.drawsBackground = true
+        textView.backgroundColor = .textBackgroundColor
         textView.font = .systemFont(ofSize: NSFont.systemFontSize)
-        textView.textColor = .labelColor
-        textView.insertionPointColor = .labelColor
+        textView.textColor = .textColor
+        textView.insertionPointColor = .textColor
         textView.typingAttributes = [
             .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
-            .foregroundColor: NSColor.labelColor
+            .foregroundColor: NSColor.textColor
         ]
-        textView.textContainerInset = NSSize(width: 0, height: 8)
+        // Vertical inset is set in recalculateHeight so min-height fields center the line optically.
+        textView.textContainerInset = NSSize(width: 0, height: 10)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
+        // Height is driven by Coordinator.recalculateHeight so content isn't top-aligned in excess vertical space.
+        textView.isVerticallyResizable = false
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.string = text
 
@@ -60,18 +64,19 @@ struct MacInputTextView: NSViewRepresentable {
         context.coordinator.onSubmit = onSubmit
         textView.onSubmit = onSubmit
         textView.onPasteImage = onPasteImage
-        if textView.string != text {
+        scrollView.syncTextViewWidthAndContainer()
+        // Do not overwrite the text view while IME composition is active (e.g. Chinese input).
+        if !textView.hasMarkedText(), textView.string != text {
             // Use replaceCharacters instead of string= to preserve typingAttributes
             let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
             textView.textStorage?.replaceCharacters(in: fullRange, with: text)
             textView.typingAttributes = [
                 .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
-                .foregroundColor: NSColor.labelColor
+                .foregroundColor: NSColor.textColor
             ]
         }
-        DispatchQueue.main.async {
-            context.coordinator.recalculateHeight(for: textView)
-        }
+        // Synchronous layout + height avoids a one-frame mismatch where the caret uses stale geometry (e.g. after send clears the field).
+        context.coordinator.recalculateHeight(for: textView)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -90,28 +95,84 @@ struct MacInputTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
-            recalculateHeight(for: textView)
         }
 
         @MainActor
         func recalculateHeight(for textView: NSTextView) {
-            textView.layoutManager?.ensureLayout(for: textView.textContainer!)
-            let usedHeight = textView.layoutManager?.usedRect(for: textView.textContainer!).height ?? 0
-            let contentHeight = max(40, min(150, ceil(usedHeight + textView.textContainerInset.height * 2)))
-            if abs(height - contentHeight) > 0.5 {
-                height = contentHeight
+            guard let lm = textView.layoutManager, let tc = textView.textContainer else { return }
+            lm.ensureLayout(for: tc)
+            let font = textView.font ?? .systemFont(ofSize: NSFont.systemFontSize)
+            let lineH = lm.defaultLineHeight(for: font)
+            // Empty (or not yet laid out) usedRect is often 0; using line height keeps padding + caret position stable after clear/send.
+            var usedHeight = lm.usedRect(for: tc).height
+            if textView.string.isEmpty {
+                usedHeight = lineH
             }
+
+            let minFieldH: CGFloat = 40
+            let maxFieldH: CGFloat = 150
+            let minSidePad: CGFloat = 4
+
+            let naturalH = usedHeight + 2 * minSidePad
+            let fieldH: CGFloat
+            if naturalH <= maxFieldH {
+                fieldH = max(minFieldH, ceil(naturalH))
+            } else {
+                fieldH = maxFieldH
+            }
+
+            // Split extra height equally above/below the laid-out text so single-line fields don’t look top-heavy.
+            let verticalPad: CGFloat
+            if fieldH >= usedHeight {
+                verticalPad = max(minSidePad, (fieldH - usedHeight) / 2)
+            } else {
+                verticalPad = minSidePad
+            }
+
+            textView.textContainerInset = NSSize(width: 0, height: verticalPad)
+            lm.ensureLayout(for: tc)
+
+            var f = textView.frame
+            f.size.height = fieldH
+            textView.frame = f
+            if abs(height - fieldH) > 0.5 {
+                height = fieldH
+            }
+
+            let len = (textView.string as NSString).length
+            textView.scrollRangeToVisible(NSRange(location: len, length: 0))
+            textView.updateInsertionPointStateAndRestartTimer(true)
         }
     }
 }
 
 /// Forwards mouse clicks to the inner NSTextView so SwiftUI doesn't swallow them.
 final class ClickForwardingScrollView: NSScrollView {
+    override func layout() {
+        super.layout()
+        syncTextViewWidthAndContainer()
+    }
+
     override func mouseDown(with event: NSEvent) {
         if let textView = documentView as? NSTextView {
             window?.makeFirstResponder(textView)
         }
         super.mouseDown(with: event)
+    }
+
+    /// SwiftUI often gives the scroll view a width before AppKit propagates it to the text container; width 0 breaks drawing and typing.
+    fileprivate func syncTextViewWidthAndContainer() {
+        guard let textView = documentView as? NSTextView else { return }
+        let w = contentView.bounds.width
+        guard w > 0 else { return }
+        var f = textView.frame
+        f.size.width = w
+        textView.frame = f
+        let inset = textView.textContainerInset.width * 2
+        let containerW = max(1, w - inset)
+        textView.textContainer?.containerSize = NSSize(width: containerW, height: CGFloat.greatestFiniteMagnitude)
+        textView.minSize = NSSize(width: w, height: 0)
+        textView.maxSize = NSSize(width: w, height: CGFloat.greatestFiniteMagnitude)
     }
 }
 
@@ -120,10 +181,12 @@ final class PasteAwareMacTextView: NSTextView {
     var onSubmit: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
-        // Return without modifiers = send; Shift+Return = newline; Command+Return = send
-        if event.keyCode == 36 {
+        // Plain Return / keypad Enter = send; any modifier (Shift, Command, Option, Control) = newline.
+        if event.keyCode == 36 || event.keyCode == 76 {
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags.contains(.shift) || flags.contains(.command) {
+            let hasModifier = flags.contains(.shift) || flags.contains(.command)
+                || flags.contains(.option) || flags.contains(.control)
+            if hasModifier {
                 insertNewlineIgnoringFieldEditor(nil)
             } else {
                 onSubmit?()

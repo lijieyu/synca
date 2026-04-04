@@ -174,9 +174,11 @@ struct MessageListView: View {
                 }
                 #endif
                 .onChange(of: syncManager.messages.count) { _ in
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
+                    scrollListToBottom(proxy: proxy)
+                }
+                // Completing a todo updates isCleared but not message count — still scroll so the list follows the bottom.
+                .onChange(of: syncManager.unclearedCount) { _ in
+                    scrollListToBottom(proxy: proxy)
                 }
                 .onAppear {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -334,10 +336,16 @@ struct MessageListView: View {
             }, onSubmit: {
                 self.submitText()
             })
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: max(40, min(inputHeight, 150)))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color(.controlBackgroundColor))
+                // Contrasts with `.background` on the bar; border reads as a real text field (custom NSTextView paste is unchanged).
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 20))
             #endif
 
@@ -350,9 +358,6 @@ struct MessageListView: View {
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
-            #if os(macOS)
-            .keyboardShortcut(.return, modifiers: .command)
-            #endif
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -371,6 +376,12 @@ struct MessageListView: View {
         let text = inputText
         inputText = ""
         Task { await syncManager.sendText(text) }
+    }
+
+    private func scrollListToBottom(proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.3)) {
+            proxy.scrollTo("bottom", anchor: .bottom)
+        }
     }
 
     // [Removed] compressImageData: No longer needed. All bytes are now handled losslessly.
