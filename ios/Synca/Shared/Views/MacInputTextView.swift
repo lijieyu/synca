@@ -75,8 +75,10 @@ struct MacInputTextView: NSViewRepresentable {
                 .foregroundColor: NSColor.textColor
             ]
         }
-        // Synchronous layout + height avoids a one-frame mismatch where the caret uses stale geometry (e.g. after send clears the field).
-        context.coordinator.recalculateHeight(for: textView)
+        // Defer binding updates to the next run loop so AppKit sizing doesn't mutate SwiftUI state during view updates.
+        DispatchQueue.main.async {
+            context.coordinator.recalculateHeight(for: textView)
+        }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {

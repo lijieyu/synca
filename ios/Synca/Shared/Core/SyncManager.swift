@@ -39,7 +39,7 @@ final class SyncManager: ObservableObject {
                 return m1.isCleared
             }
             if m1.isCleared {
-                return (m1.updatedAt ?? m1.createdAt) < (m2.updatedAt ?? m2.createdAt)
+                return m1.updatedAt < m2.updatedAt
             }
             return m1.createdAt < m2.createdAt
         }
@@ -335,7 +335,7 @@ final class SyncManager: ObservableObject {
         if isCancellationError(error) {
             print("[SyncManager] CANCELLED in \(context): \(error)")
             Task { @MainActor in
-                await SyncDebugLogger.shared.log("\(context) cancelled and ignored")
+                SyncDebugLogger.shared.log("\(context) cancelled and ignored")
             }
             return
         }
