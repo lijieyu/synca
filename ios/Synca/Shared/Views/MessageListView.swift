@@ -199,6 +199,10 @@ struct MessageListView: View {
                     guard shouldScrollToBottomAfterSend || shouldScrollToBottomAfterInitialLoad else { return }
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
+                .onChange(of: syncManager.remoteAppendEvent) { _ in
+                    guard syncManager.hasCompletedInitialLoad else { return }
+                    scrollToBottomAfterLayoutSettles(proxy: proxy)
+                }
                 .onAppear {
                     if syncManager.hasCompletedInitialLoad && !syncManager.orderedMessages.isEmpty {
                         beginInitialLoadScrollWindow()
@@ -435,9 +439,18 @@ struct MessageListView: View {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !syncManager.isSending
     }
 
+    private var defaultComposerHeight: CGFloat {
+        #if os(iOS)
+        44
+        #else
+        34
+        #endif
+    }
+
     private func submitText() {
         let text = inputText
         inputText = ""
+        inputHeight = defaultComposerHeight
         shouldScrollToBottomAfterSend = true
         Task { await syncManager.sendText(text) }
     }

@@ -27,6 +27,7 @@ final class SyncManager: ObservableObject {
     @Published var lastRefreshDate: Date?       
     @Published var errorMessage: String?
     @Published var sessionExpired = false
+    @Published var remoteAppendEvent = UUID()
 
     var imageMessages: [SyncaMessage] {
         messages.filter { $0.type == .image && !$0.isDeleted }
@@ -74,11 +75,16 @@ final class SyncManager: ObservableObject {
         if manual { updateStatus(.syncing) }
 
         do {
+            let existingIDs = Set(messages.map(\.id))
             let allMessages = try await api.listMessages()
             messages = allMessages
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
+            let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
+            if appendedRemotely {
+                remoteAppendEvent = UUID()
+            }
             if manual && showSuccessStatus { updateStatus(.success) }
         } catch {
             if isCancellationError(error) { return }
@@ -104,6 +110,7 @@ final class SyncManager: ObservableObject {
         do {
             let since = lastSyncTimestamp
             let newMessages = try await api.listMessages(since: since)
+            var appendedRemotely = false
 
             if !newMessages.isEmpty {
                 for msg in newMessages {
@@ -116,6 +123,7 @@ final class SyncManager: ObservableObject {
                         messages[index] = msg
                     } else {
                         messages.append(msg)
+                        appendedRemotely = true
                     }
                 }
                 messages.sort { $0.createdAt < $1.createdAt }
@@ -123,6 +131,9 @@ final class SyncManager: ObservableObject {
                 lastRefreshDate = Date()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
+            if appendedRemotely && hasCompletedInitialLoad {
+                remoteAppendEvent = UUID()
+            }
             if manual { updateStatus(.success) }
         } catch {
             if isCancellationError(error) { return }
