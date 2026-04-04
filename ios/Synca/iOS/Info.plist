@@ -19,6 +19,7 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>zh-Hans</string>
+		<string>en</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
@@ -36,8 +37,12 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
+	<string>Synca needs access to your camera to take photos</string>
+	<key>NSCameraUsageDescription#zh-Hans</key>
 	<string>Synca 需要使用相机来拍照发送</string>
 	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Synca needs access to your photo library to send images</string>
+	<key>NSPhotoLibraryUsageDescription#zh-Hans</key>
 	<string>Synca 需要访问相册来发送图片</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

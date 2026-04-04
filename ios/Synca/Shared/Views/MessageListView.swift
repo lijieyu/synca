@@ -38,34 +38,34 @@ struct MessageListView: View {
                     settingsMenu
                 }
             }
-            .alert("确认删除", isPresented: $showClearAllConfirm) {
-                Button("取消", role: .cancel) {}
-                Button("删除", role: .destructive) {
+            .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
+                Button("common.cancel", role: .cancel) {}
+                Button("common.delete", role: .destructive) {
                     Task { await syncManager.clearAll() }
                 }
             } message: {
-                Text("将删除所有已完成的待办")
+                Text("message_list.clear_all_confirm_message")
             }
-            .alert("确认退出", isPresented: $showLogoutConfirm) {
-                Button("取消", role: .cancel) {}
-                Button("退出", role: .destructive) {
+            .alert("message_list.logout_confirm_title", isPresented: $showLogoutConfirm) {
+                Button("common.cancel", role: .cancel) {}
+                Button("message_list.logout", role: .destructive) {
                     syncManager.reset()
                     AuthService.shared.signOut()
                 }
             } message: {
-                Text("退出后需要重新登录")
+                Text("message_list.logout_confirm_message")
             }
-            .alert("关于 Synca", isPresented: $showAboutInfo) {
-                Button("知道了", role: .cancel) {}
+            .alert("message_list.about", isPresented: $showAboutInfo) {
+                Button("message_list.got_it", role: .cancel) {}
             } message: {
                 Text(aboutMessage)
             }
-            .alert("登录已过期", isPresented: $showSessionExpired) {
-                Button("重新登录") {
+            .alert("message_list.session_expired_title", isPresented: $showSessionExpired) {
+                Button("message_list.sign_in_again") {
                     syncManager.reset()
                 }
             } message: {
-                Text("请重新登录以继续使用")
+                Text("message_list.session_expired_message")
             }
         }
         .overlay(alignment: .top) { syncStatusOverlay }
@@ -131,7 +131,7 @@ struct MessageListView: View {
 
                         if !uncompleted.isEmpty {
                             HStack {
-                                Text("待办")
+                                Text("message_list.todo_section", bundle: .main)
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(.secondary)
                                     .padding(.horizontal, 8)
@@ -197,7 +197,7 @@ struct MessageListView: View {
 
         Group {
             if case .success = self.syncManager.syncStatus {
-                Label("同步成功", systemImage: "checkmark.circle.fill")
+                Label("message_list.sync_success", systemImage: "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
@@ -208,7 +208,7 @@ struct MessageListView: View {
                     .padding(.top, topInset)
                     .transition(.move(edge: .top).combined(with: .opacity))
             } else if case .error = self.syncManager.syncStatus {
-                Label("同步失败", systemImage: "xmark.circle.fill")
+                Label("message_list.sync_failed", systemImage: "xmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
@@ -226,7 +226,7 @@ struct MessageListView: View {
     @ViewBuilder
     private var loadingOverlay: some View {
         if self.syncManager.isLoading && self.syncManager.messages.isEmpty {
-            ProgressView("加载中...")
+            ProgressView("message_list.loading")
                 .padding()
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
@@ -243,7 +243,7 @@ struct MessageListView: View {
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.primary)
 
-            Text("灵感记录 即刻同步")
+            Text("app.slogan", bundle: .main)
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
         }
@@ -279,13 +279,13 @@ struct MessageListView: View {
                 self.showAboutInfo = true
                 #endif
             } label: {
-                Label("关于 Synca", systemImage: "info.circle")
+                Label("message_list.about", systemImage: "info.circle")
             }
 
             Button(role: .destructive) {
                 self.showLogoutConfirm = true
             } label: {
-                Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right")
+                Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -329,9 +329,11 @@ struct MessageListView: View {
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 20))
             #else
-            MacInputTextView(text: $inputText, height: $inputHeight) { imageData in
+            MacInputTextView(text: $inputText, height: $inputHeight, onPasteImage: { imageData in
                 Task { await syncManager.sendImage(imageData) }
-            }
+            }, onSubmit: {
+                self.submitText()
+            })
                 .frame(height: max(40, min(inputHeight, 150)))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -394,7 +396,7 @@ struct MessageListView: View {
     private var aboutMessage: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return "\nSynca · 灵感记录 即刻同步\n\n版本 \(version) (\(build))"
+        return String(format: String(localized: "message_list.about_message", bundle: .main), version, build)
     }
 
     #if os(macOS)
@@ -427,9 +429,9 @@ struct MessageListView: View {
     private func showAboutOnMac() {
         let alert = NSAlert()
         alert.alertStyle = .informational
-        alert.messageText = "关于 Synca"
+        alert.messageText = String(localized: "message_list.about", bundle: .main)
         alert.informativeText = aboutMessage
-        alert.addButton(withTitle: "知道了")
+        alert.addButton(withTitle: String(localized: "message_list.got_it", bundle: .main))
         alert.runModal()
     }
     #endif

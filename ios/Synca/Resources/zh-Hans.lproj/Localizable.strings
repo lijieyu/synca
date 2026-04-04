@@ -1,0 +1,75 @@
+/* App */
+"app.name" = "Synca";
+"app.slogan" = "灵感记录 即刻同步";
+
+/* Login */
+"login.sign_in_with_apple" = "通过 Apple 登录";
+"login.failed" = "登录失败";
+"login.failed_message" = "请稍后重试";
+
+/* Common */
+"common.ok" = "好的";
+"common.cancel" = "取消";
+"common.delete" = "删除";
+"common.copy" = "拷贝";
+"common.save" = "保存";
+
+/* Message List */
+"message_list.todo_section" = "待办";
+"message_list.sync_success" = "同步成功";
+"message_list.sync_failed" = "同步失败";
+"message_list.loading" = "加载中...";
+"message_list.clear_all_confirm_title" = "确认删除";
+"message_list.clear_all_confirm_message" = "将删除所有已完成的待办";
+"message_list.logout_confirm_title" = "确认退出";
+"message_list.logout_confirm_message" = "退出后需要重新登录";
+"message_list.logout" = "退出";
+"message_list.about" = "关于 Synca";
+"message_list.sign_out" = "退出登录";
+"message_list.session_expired_title" = "登录已过期";
+"message_list.session_expired_message" = "请重新登录以继续使用";
+"message_list.sign_in_again" = "重新登录";
+"message_list.got_it" = "知道了";
+"message_list.about_message" = "\nSynca · 灵感记录 即刻同步\n\n版本 %@ (%@)";
+
+/* Message Bubble */
+"message_bubble.delete_confirm_title" = "确认删除";
+"message_bubble.delete_confirm_message" = "此操作将从云端永久抹除此记录%@，且不可撤销。";
+"message_bubble.delete_image_suffix" = "和图片文件";
+"message_bubble.load_failed_retry" = "加载失败，点击重试";
+"message_bubble.open_with_preview" = "用预览打开";
+"message_bubble.show_in_finder" = "在访达中显示";
+"message_bubble.save_as" = "另存为...";
+"message_bubble.save_failed_title" = "保存失败";
+"message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
+"message_bubble.choose_save_directory" = "选择保存目录";
+"message_bubble.save_to_directory" = "保存到此目录";
+
+/* Image Preview */
+"image_preview.download_to_local" = "下载到本地";
+"image_preview.saving" = "正在保存...";
+"image_preview.save_success" = "保存成功";
+"image_preview.save_failed" = "保存失败";
+"image_preview.load_failed" = "图片加载失败";
+"image_preview.tap_to_retry" = "点击重试";
+
+/* Message Bubble */
+"message_bubble.delete_confirm_title" = "确认删除";
+"message_bubble.delete_confirm_message" = "此操作将从云端永久抹除此记录%@，且不可撤销。";
+"message_bubble.delete_image_suffix" = "和图片文件";
+"message_bubble.load_failed_retry" = "加载失败，点击重试";
+"message_bubble.open_with_preview" = "用预览打开";
+"message_bubble.show_in_finder" = "在访达中显示";
+"message_bubble.save_as" = "另存为...";
+"message_bubble.save_failed_title" = "保存失败";
+"message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
+"message_bubble.choose_save_directory" = "选择保存目录";
+"message_bubble.save_to_directory" = "保存到此目录";
+
+/* Image Preview */
+"image_preview.download_to_local" = "下载到本地";
+"image_preview.saving" = "正在保存...";
+"image_preview.save_success" = "保存成功";
+"image_preview.save_failed" = "保存失败";
+"image_preview.load_failed" = "图片加载失败";
+"image_preview.tap_to_retry" = "点击重试";

@@ -27,7 +27,7 @@ struct LoginView: View {
                 Text("Synca")
                     .font(.system(size: 36, weight: .bold, design: .rounded))
 
-                Text("灵感记录 即刻同步")
+                Text("app.slogan", bundle: .main)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .tracking(0.3)
@@ -52,7 +52,7 @@ struct LoginView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "apple.logo")
                                 .font(.system(size: 18))
-                            Text("通过 Apple 登录")
+                            Text("login.sign_in_with_apple", bundle: .main)
                                 .font(.system(size: 17, weight: .semibold))
                         }
                         .opacity(authService.isSigningIn ? 0 : 1)
@@ -84,10 +84,10 @@ struct LoginView: View {
         #if os(macOS)
         .frame(minWidth: 320, minHeight: 420)
         #endif
-        .alert("登录失败", isPresented: $showError) {
-            Button("好的") {}
+        .alert(Text("login.failed", bundle: .main), isPresented: $showError) {
+            Button("common.ok") {}
         } message: {
-            Text(authService.errorMessage ?? "请稍后重试")
+            Text(authService.errorMessage ?? String(localized: "login.failed_message"))
         }
     }
 

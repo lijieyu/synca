@@ -1,0 +1,54 @@
+/* App */
+"app.name" = "Synca";
+"app.slogan" = "Sync Your Aha Moment";
+
+/* Login */
+"login.sign_in_with_apple" = "Sign in with Apple";
+"login.failed" = "Sign In Failed";
+"login.failed_message" = "Please try again later";
+
+/* Common */
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.delete" = "Delete";
+"common.copy" = "Copy";
+"common.save" = "Save";
+
+/* Message List */
+"message_list.todo_section" = "To-Do";
+"message_list.sync_success" = "Synced";
+"message_list.sync_failed" = "Sync Failed";
+"message_list.loading" = "Loading...";
+"message_list.clear_all_confirm_title" = "Confirm Delete";
+"message_list.clear_all_confirm_message" = "This will delete all completed to-dos";
+"message_list.logout_confirm_title" = "Confirm Sign Out";
+"message_list.logout_confirm_message" = "You will need to sign in again";
+"message_list.logout" = "Sign Out";
+"message_list.about" = "About Synca";
+"message_list.sign_out" = "Sign Out";
+"message_list.session_expired_title" = "Session Expired";
+"message_list.session_expired_message" = "Please sign in again to continue";
+"message_list.sign_in_again" = "Sign In Again";
+"message_list.got_it" = "Got It";
+"message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)";
+
+/* Message Bubble */
+"message_bubble.delete_confirm_title" = "Confirm Delete";
+"message_bubble.delete_confirm_message" = "This will permanently delete this record%@ from the cloud and cannot be undone.";
+"message_bubble.delete_image_suffix" = " and image file";
+"message_bubble.load_failed_retry" = "Load failed, tap to retry";
+"message_bubble.open_with_preview" = "Open with Preview";
+"message_bubble.show_in_finder" = "Show in Finder";
+"message_bubble.save_as" = "Save As...";
+"message_bubble.save_failed_title" = "Save Failed";
+"message_bubble.save_failed_message" = "Unable to save image to the specified directory: %@\n\nThis is most likely due to insufficient permissions. You can try \"Save As\" to re-authorize.";
+"message_bubble.choose_save_directory" = "Choose Save Directory";
+"message_bubble.save_to_directory" = "Save to This Directory";
+
+/* Image Preview */
+"image_preview.download_to_local" = "Download";
+"image_preview.saving" = "Saving...";
+"image_preview.save_success" = "Saved";
+"image_preview.save_failed" = "Save Failed";
+"image_preview.load_failed" = "Image Load Failed";
+"image_preview.tap_to_retry" = "Tap to Retry";

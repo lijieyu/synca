@@ -91,13 +91,14 @@ struct MessageBubbleView: View {
                         : Color.gray.opacity(0.15), lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
-        .alert("确认删除", isPresented: $showDeleteConfirm) {
-            Button("取消", role: .cancel) {}
-            Button("删除", role: .destructive) {
+        .alert(Text("message_bubble.delete_confirm_title", bundle: .main), isPresented: $showDeleteConfirm) {
+            Button("common.cancel", role: .cancel) {}
+            Button("common.delete", role: .destructive) {
                 onDelete()
             }
         } message: {
-            Text("此操作将从云端永久抹除此记录\(message.type == .image ? "和图片文件" : "")，且不可撤销。")
+            let suffix = message.type == .image ? String(localized: "message_bubble.delete_image_suffix", bundle: .main) : ""
+            Text(String(localized: "message_bubble.delete_confirm_message", bundle: .main).replacingOccurrences(of: "%@", with: suffix))
         }
     }
 
@@ -140,7 +141,7 @@ struct MessageBubbleView: View {
                 Button {
                     copyText(message.textContent ?? "")
                 } label: {
-                    Label("拷贝", systemImage: "doc.on.doc")
+                    Label("common.copy", systemImage: "doc.on.doc")
                 }
                 
                 Divider()
@@ -148,7 +149,7 @@ struct MessageBubbleView: View {
                 Button(role: .destructive) {
                     showDeleteConfirm = true
                 } label: {
-                    Label("删除", systemImage: "trash")
+                    Label("common.delete", systemImage: "trash")
                 }
             }
         #endif
@@ -170,23 +171,23 @@ struct MessageBubbleView: View {
                                 Button {
                                     self.copyImage(from: url)
                                 } label: {
-                                    Label("拷贝", systemImage: "doc.on.doc")
+                                    Label("common.copy", systemImage: "doc.on.doc")
                                 }
-                                
+
                                 Button {
                                     Task { await self.saveImage(from: url) }
                                 } label: {
-                                    Label("保存", systemImage: "square.and.arrow.down")
+                                    Label("common.save", systemImage: "square.and.arrow.down")
                                 }
-                                
+
                                 #if os(macOS)
-                                Button { self.openWithPreview(url: url) } label: { Label("用预览打开", systemImage: "eye") }
-                                Button { self.showInFinder(url: url) } label: { Label("在访达中显示", systemImage: "folder") }
-                                
+                                Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
+                                Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
+
                                 Button {
                                     Task { await self.saveImageAs(from: url) }
                                 } label: {
-                                    Label("另存为...", systemImage: "folder.badge.plus")
+                                    Label("message_bubble.save_as", systemImage: "folder.badge.plus")
                                 }
                                 #endif
                                 
@@ -201,7 +202,7 @@ struct MessageBubbleView: View {
                     case .failure:
                         VStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle")
-                            Text("加载失败，点击重试")
+                            Text("message_bubble.load_failed_retry", bundle: .main)
                                 .font(.caption2)
                         }
                         .foregroundStyle(.secondary)
@@ -355,10 +356,10 @@ struct MessageBubbleView: View {
             
             #if os(macOS)
             let alert = NSAlert()
-            alert.messageText = "保存失败"
-            alert.informativeText = "无法将图片保存到指定目录: \(error.localizedDescription)\n\n极大可能是由于权限不足，您可以尝试“另存为”以重新授权。"
+            alert.messageText = String(localized: "message_bubble.save_failed_title", bundle: .main)
+            alert.informativeText = String(localized: "message_bubble.save_failed_message", bundle: .main).replacingOccurrences(of: "%@", with: error.localizedDescription)
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "确定")
+            alert.addButton(withTitle: String(localized: "common.ok", bundle: .main))
             alert.runModal()
             #endif
         }
@@ -399,8 +400,8 @@ struct MessageBubbleView: View {
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.allowsMultipleSelection = false
-            panel.title = "选择保存目录"
-            panel.prompt = "保存到此目录"
+            panel.title = String(localized: "message_bubble.choose_save_directory", bundle: .main)
+            panel.prompt = String(localized: "message_bubble.save_to_directory", bundle: .main)
             
             if panel.runModal() == .OK, let selectedURL = panel.url {
                 SettingsManager.shared.macOSDefaultSavePath = selectedURL

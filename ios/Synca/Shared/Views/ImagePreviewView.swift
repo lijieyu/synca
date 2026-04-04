@@ -129,20 +129,20 @@ struct ImagePreviewView: View {
 
     @ViewBuilder
     private func contextMenuItems(url: URL) -> some View {
-        Button { copyImage(from: url) } label: { Label("拷贝", systemImage: "doc.on.doc") }
-        Button { Task { await saveImage(from: url) } } label: { Label("保存", systemImage: "square.and.arrow.down") }
-        
+        Button { copyImage(from: url) } label: { Label("common.copy", systemImage: "doc.on.doc") }
+        Button { Task { await saveImage(from: url) } } label: { Label("common.save", systemImage: "square.and.arrow.down") }
+
         #if os(macOS)
-        Button { openWithPreview(url: url) } label: { Label("用预览打开", systemImage: "eye") }
-        Button { showInFinder(url: url) } label: { Label("在访达中显示", systemImage: "folder") }
-        Button { Task { await saveImageAs(from: url) } } label: { Label("另存为...", systemImage: "folder.badge.plus") }
+        Button { openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
+        Button { showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
+        Button { Task { await saveImageAs(from: url) } } label: { Label("message_bubble.save_as", systemImage: "folder.badge.plus") }
         #endif
-        
+
         Divider()
         Button(role: .destructive) {
             showDeleteConfirm = true
         } label: {
-            Label("删除", systemImage: "trash")
+            Label("common.delete", systemImage: "trash")
         }
     }
 
@@ -229,10 +229,10 @@ struct ImagePreviewView: View {
 
     private var saveStatusText: String {
         switch saveStatus {
-        case .none: return "下载到本地"
-        case .saving: return "正在保存..."
-        case .success: return "保存成功"
-        case .error: return "保存失败"
+        case .none: return String(localized: "image_preview.download_to_local", bundle: .main)
+        case .saving: return String(localized: "image_preview.saving", bundle: .main)
+        case .success: return String(localized: "image_preview.save_success", bundle: .main)
+        case .error: return String(localized: "image_preview.save_failed", bundle: .main)
         }
     }
 
@@ -420,8 +420,8 @@ struct ImagePreviewView: View {
     private var failureView: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle").font(.largeTitle)
-            Text("图片加载失败")
-            Button("点击重试") { loadID = UUID() }.buttonStyle(.bordered)
+            Text("image_preview.load_failed")
+            Button("image_preview.tap_to_retry") { loadID = UUID() }.buttonStyle(.bordered)
         }
         .foregroundStyle(.white)
     }

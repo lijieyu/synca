@@ -58,6 +58,7 @@ targets:
         APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
         CFBundleLocalizations:
           - zh-Hans
+          - en
         CFBundleDisplayName: Synca
         UIApplicationSupportsIndirectInputEvents: true
         UIBackgroundModes:
@@ -69,8 +70,10 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UISceneConfigurations: {}
-        NSPhotoLibraryUsageDescription: Synca 需要访问相册来发送图片
-        NSCameraUsageDescription: Synca 需要使用相机来拍照发送
+        NSPhotoLibraryUsageDescription: Synca needs access to your photo library to send images
+        NSPhotoLibraryUsageDescription#zh-Hans: Synca 需要访问相册来发送图片
+        NSCameraUsageDescription: Synca needs access to your camera to take photos
+        NSCameraUsageDescription#zh-Hans: Synca 需要使用相机来拍照发送
   SyncaMac:
     type: application
     platform: macOS
@@ -107,6 +110,7 @@ targets:
         APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
         CFBundleLocalizations:
           - zh-Hans
+          - en
         CFBundleDisplayName: Synca
 schemes:
   Synca:
