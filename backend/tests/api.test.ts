@@ -44,6 +44,26 @@ describe('Synca API', () => {
         });
     });
 
+    describe('Public pages', () => {
+        it('should serve the English privacy policy page', async () => {
+            const res = await request(app).get('/en/privacy-policy');
+
+            expect(res.status).toBe(200);
+            expect(res.headers['content-type']).toContain('text/html');
+            expect(res.text).toContain('Synca Privacy Policy');
+            expect(res.text).toContain('jieyu.li@icloud.com');
+        });
+
+        it('should serve the Chinese support page', async () => {
+            const res = await request(app).get('/zh-hans/support');
+
+            expect(res.status).toBe(200);
+            expect(res.headers['content-type']).toContain('text/html');
+            expect(res.text).toContain('Synca 支持页面');
+            expect(res.text).toContain('Synca 现已提供 7 天免费试用');
+        });
+    });
+
     describe('Authentication', () => {
         it('should reject unauthenticated requests', async () => {
             const res = await request(app).get('/messages');

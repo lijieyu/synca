@@ -6,6 +6,7 @@ import fs from 'fs';
 import cors from 'cors';
 import multer from 'multer';
 import { loginWithApple, getUserIdFromToken } from './auth.js';
+import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens,
@@ -82,6 +83,20 @@ function getBaseUrl(req: express.Request): string {
 // Health check
 app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'synca', now: new Date().toISOString() });
+});
+
+// Public legal and support pages
+app.get('/:locale(en|zh-hans)/:pageKind(privacy-policy|terms-of-use|support)', (req, res) => {
+    const html = renderLegalPage(
+        req.params.locale as 'en' | 'zh-hans',
+        req.params.pageKind as 'privacy-policy' | 'terms-of-use' | 'support',
+    );
+
+    if (!html) {
+        return res.status(404).send('Not Found');
+    }
+
+    res.type('html').send(html);
 });
 
 // Sign in with Apple

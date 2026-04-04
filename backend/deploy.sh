@@ -40,10 +40,18 @@ deploy() {
     dist package.json package-lock.json \
     "${REMOTE_HOST}:${REMOTE_DIR}/"
 
+  if [ -d "certs/apple" ]; then
+    log "Syncing Apple root certificates without touching remote private keys"
+    rsync -avzc \
+      -e "ssh -o StrictHostKeyChecking=no" \
+      certs/apple/ \
+      "${REMOTE_HOST}:${REMOTE_DIR}/certs/apple/"
+  fi
+
   log "Installing dependencies, running migrations, and starting PM2..."
   ssh -o StrictHostKeyChecking=no "${REMOTE_HOST}" "
     cd ${REMOTE_DIR} && \
-    mkdir -p data uploads backups && \
+    mkdir -p data uploads backups certs/apple && \
 
     # Create .env if it doesn't exist
     if [ ! -f .env ]; then
