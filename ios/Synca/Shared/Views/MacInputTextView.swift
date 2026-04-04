@@ -43,7 +43,7 @@ struct MacInputTextView: NSViewRepresentable {
             .foregroundColor: NSColor.textColor
         ]
         // Vertical inset is set in recalculateHeight so min-height fields center the line optically.
-        textView.textContainerInset = NSSize(width: 0, height: 10)
+        textView.textContainerInset = NSSize(width: 0, height: 5)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
@@ -95,6 +95,7 @@ struct MacInputTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
+            recalculateHeight(for: textView)
         }
 
         @MainActor
@@ -109,8 +110,8 @@ struct MacInputTextView: NSViewRepresentable {
                 usedHeight = lineH
             }
 
-            let minFieldH: CGFloat = 40
-            let maxFieldH: CGFloat = 150
+            let minFieldH: CGFloat = 34
+            let maxFieldH: CGFloat = 104
             let minSidePad: CGFloat = 4
 
             let naturalH = usedHeight + 2 * minSidePad

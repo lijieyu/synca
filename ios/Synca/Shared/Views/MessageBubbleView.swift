@@ -197,7 +197,7 @@ struct MessageBubbleView: View {
                                 Button(role: .destructive) {
                                     showDeleteConfirm = true
                                 } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label("common.delete", systemImage: "trash")
                                 }
                             }
                     case .failure:

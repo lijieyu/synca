@@ -6,6 +6,7 @@
 "login.sign_in_with_apple" = "通过 Apple 登录";
 "login.failed" = "登录失败";
 "login.failed_message" = "请稍后重试";
+"auth.missing_credentials" = "无法获取 Apple 登录凭证";
 
 /* Common */
 "common.ok" = "好的";
@@ -13,6 +14,7 @@
 "common.delete" = "删除";
 "common.copy" = "拷贝";
 "common.save" = "保存";
+"message.date.yesterday" = "昨天 %@";
 
 /* Message List */
 "message_list.todo_section" = "待办";
@@ -31,6 +33,17 @@
 "message_list.sign_in_again" = "重新登录";
 "message_list.got_it" = "知道了";
 "message_list.about_message" = "\nSynca · 灵感记录 即刻同步\n\n版本 %@ (%@)";
+"message_list.input_placeholder" = "记录此刻的想法...";
+"sync.error_context.sync" = "同步";
+"sync.error_context.send" = "发送";
+"sync.error_context.send_image" = "图片发送";
+"sync.error_context.clear" = "清理";
+"sync.error_context.delete" = "删除";
+"sync.error_format" = "%@失败: %@ (Code: %d, Domain: %@)";
+"sync.batch_send_partial_failure" = "批量发送完成，但有 %d 张图片发送失败";
+"api.invalid_response" = "服务器响应异常";
+"api.unauthorized" = "登录已过期，请重新登录";
+"api.http_error" = "请求失败 (%d): %@";
 
 /* Message Bubble */
 "message_bubble.delete_confirm_title" = "确认删除";

@@ -36,26 +36,29 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
         
         // Time format
         let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm"
+        timeFormatter.locale = .current
+        timeFormatter.setLocalizedDateFormatFromTemplate("Hm")
         let timeString = timeFormatter.string(from: date)
 
         if calendar.isDateInToday(date) {
             return timeString
         } else if calendar.isDateInYesterday(date) {
-            return "昨天 \(timeString)"
+            return String(format: String(localized: "message.date.yesterday", bundle: .main), timeString)
         } else if let days = calendar.dateComponents([.day], from: date, to: now).day, days < 7 {
             // Within a week, show weekday
             let f = DateFormatter()
-            f.locale = Locale(identifier: "zh_CN")
-            f.dateFormat = "EEEE" // Full weekday
+            f.locale = .current
+            f.setLocalizedDateFormatFromTemplate("EEEE")
             return "\(f.string(from: date)) \(timeString)"
         } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
             let f = DateFormatter()
-            f.dateFormat = "M月d日"
+            f.locale = .current
+            f.setLocalizedDateFormatFromTemplate("Md")
             return "\(f.string(from: date)) \(timeString)"
         } else {
             let f = DateFormatter()
-            f.dateFormat = "yyyy年M月d日"
+            f.locale = .current
+            f.setLocalizedDateFormatFromTemplate("yMd")
             return "\(f.string(from: date)) \(timeString)"
         }
     }

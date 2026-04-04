@@ -103,7 +103,7 @@ enum AuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingCredentials: return "无法获取 Apple 登录凭证"
+        case .missingCredentials: return String(localized: "auth.missing_credentials", bundle: .main)
         }
     }
 }

@@ -55,7 +55,7 @@ class CustomContextMenuTextView: NSTextView {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
-        let copyItem = NSMenuItem(title: "拷贝", action: #selector(handleCopy(_:)), keyEquivalent: "c")
+        let copyItem = NSMenuItem(title: String(localized: "common.copy", bundle: .main), action: #selector(handleCopy(_:)), keyEquivalent: "c")
         copyItem.target = self
         menu.addItem(copyItem)
         
@@ -64,7 +64,7 @@ class CustomContextMenuTextView: NSTextView {
         // Ensure no plugins or system additions are allowed on this specific menu
         menu.allowsContextMenuPlugIns = false
         
-        let deleteItem = NSMenuItem(title: "删除", action: #selector(handleDelete(_:)), keyEquivalent: "")
+        let deleteItem = NSMenuItem(title: String(localized: "common.delete", bundle: .main), action: #selector(handleDelete(_:)), keyEquivalent: "")
         deleteItem.target = self
         menu.addItem(deleteItem)
         

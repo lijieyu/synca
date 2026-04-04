@@ -19,7 +19,7 @@ struct PasteAwareTextView: UIViewRepresentable {
         textView.onImagePaste = onImagePaste
         textView.backgroundColor = .clear
         textView.font = .preferredFont(forTextStyle: .body)
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        textView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false // Important for self-sizing
         textView.isEditable = true

@@ -82,7 +82,7 @@ final class SyncManager: ObservableObject {
             if manual && showSuccessStatus { updateStatus(.success) }
         } catch {
             if isCancellationError(error) { return }
-            handleError(error, context: "同步")
+            handleError(error, contextKey: "sync.error_context.sync")
             if manual { updateStatus(.error(error.localizedDescription)) }
         }
     }
@@ -126,7 +126,7 @@ final class SyncManager: ObservableObject {
             if manual { updateStatus(.success) }
         } catch {
             if isCancellationError(error) { return }
-            handleError(error, context: "同步", silent: !manual)
+            handleError(error, contextKey: "sync.error_context.sync", silent: !manual)
             if manual { updateStatus(.error(error.localizedDescription)) }
         }
     }
@@ -200,7 +200,7 @@ final class SyncManager: ObservableObject {
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
         } catch {
-            handleError(error, context: "发送")
+            handleError(error, contextKey: "sync.error_context.send")
         }
 
         isSending = false
@@ -219,7 +219,7 @@ final class SyncManager: ObservableObject {
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
         } catch {
-            handleError(error, context: "图片发送")
+            handleError(error, contextKey: "sync.error_context.send_image")
         }
 
         isSending = false
@@ -240,12 +240,12 @@ final class SyncManager: ObservableObject {
                 lastSyncTimestamp = message.updatedAt
             } catch {
                 failureCount += 1
-                print("[send] 批量发送单张失败: \(error)")
+                print("[send] single item in batch failed: \(error)")
             }
         }
         
         if failureCount > 0 {
-            errorMessage = "批量发送完成，但有 \(failureCount) 张图片发送失败"
+            errorMessage = String(format: String(localized: "sync.batch_send_partial_failure", bundle: .main), failureCount)
         }
         
         lastRefreshDate = Date()
@@ -266,7 +266,7 @@ final class SyncManager: ObservableObject {
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
-            handleError(error, context: "清理")
+            handleError(error, contextKey: "sync.error_context.clear")
         }
     }
 
@@ -276,7 +276,7 @@ final class SyncManager: ObservableObject {
             messages.removeAll { $0.id == id }
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
-            handleError(error, context: "删除")
+            handleError(error, contextKey: "sync.error_context.delete")
         }
     }
 
@@ -285,7 +285,7 @@ final class SyncManager: ObservableObject {
             _ = try await api.deleteCompletedMessages()
             messages.removeAll { $0.isCleared }
         } catch {
-            handleError(error, context: "删除")
+            handleError(error, contextKey: "sync.error_context.delete")
         }
     }
 
@@ -319,7 +319,8 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    private func handleError(_ error: Error, context: String, silent: Bool = false) {
+    private func handleError(_ error: Error, contextKey: String, silent: Bool = false) {
+        let context = String(localized: String.LocalizationValue(contextKey), bundle: .main)
         if isCancellationError(error) {
             print("[SyncManager] CANCELLED in \(context): \(error)")
             Task { @MainActor in
@@ -348,7 +349,13 @@ final class SyncManager: ObservableObject {
         let errorCode = nsError.code
         let domain = nsError.domain
         
-        let fullErrorMsg = "\(context)失败: \(errorDescription) (Code: \(errorCode), Domain: \(domain))"
+        let fullErrorMsg = String(
+            format: String(localized: "sync.error_format", bundle: .main),
+            context,
+            errorDescription,
+            errorCode,
+            domain
+        )
         
         if !silent {
             errorMessage = fullErrorMsg

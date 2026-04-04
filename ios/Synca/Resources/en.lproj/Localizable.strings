@@ -6,6 +6,7 @@
 "login.sign_in_with_apple" = "Sign in with Apple";
 "login.failed" = "Sign In Failed";
 "login.failed_message" = "Please try again later";
+"auth.missing_credentials" = "Unable to retrieve Apple sign-in credentials";
 
 /* Common */
 "common.ok" = "OK";
@@ -13,6 +14,7 @@
 "common.delete" = "Delete";
 "common.copy" = "Copy";
 "common.save" = "Save";
+"message.date.yesterday" = "Yesterday %@";
 
 /* Message List */
 "message_list.todo_section" = "To-Do";
@@ -31,6 +33,17 @@
 "message_list.sign_in_again" = "Sign In Again";
 "message_list.got_it" = "Got It";
 "message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)";
+"message_list.input_placeholder" = "Capture your thoughts...";
+"sync.error_context.sync" = "Sync";
+"sync.error_context.send" = "Send";
+"sync.error_context.send_image" = "Image Send";
+"sync.error_context.clear" = "Clear";
+"sync.error_context.delete" = "Delete";
+"sync.error_format" = "%@ failed: %@ (Code: %d, Domain: %@)";
+"sync.batch_send_partial_failure" = "Batch send finished, but %d images failed to send";
+"api.invalid_response" = "Invalid server response";
+"api.unauthorized" = "Session expired. Please sign in again";
+"api.http_error" = "Request failed (%d): %@";
 
 /* Message Bubble */
 "message_bubble.delete_confirm_title" = "Confirm Delete";

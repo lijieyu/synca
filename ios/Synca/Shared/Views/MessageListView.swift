@@ -21,6 +21,8 @@ struct MessageListView: View {
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
     @State private var shouldScrollToBottomAfterSend = false
     @State private var postSendScrollWindowID = UUID()
+    @State private var shouldScrollToBottomAfterInitialLoad = false
+    @State private var initialLoadScrollWindowID = UUID()
 
     var body: some View {
         NavigationStack {
@@ -74,8 +76,12 @@ struct MessageListView: View {
         .overlay { loadingOverlay }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
+            shouldScrollToBottomAfterInitialLoad = true
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
+            if !syncManager.orderedMessages.isEmpty {
+                beginInitialLoadScrollWindow()
+            }
             syncManager.startPolling()
             self.updateBadge()
         }
@@ -180,11 +186,23 @@ struct MessageListView: View {
                     beginPostSendScrollWindow()
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
+                .onChange(of: syncManager.hasCompletedInitialLoad) { hasCompletedInitialLoad in
+                    guard hasCompletedInitialLoad, !syncManager.orderedMessages.isEmpty else { return }
+                    beginInitialLoadScrollWindow()
+                    scrollToBottomAfterLayoutSettles(proxy: proxy)
+                }
+                .onChange(of: syncManager.orderedMessages.count) { _ in
+                    guard shouldScrollToBottomAfterInitialLoad else { return }
+                    scrollToBottomAfterLayoutSettles(proxy: proxy)
+                }
                 .onReceive(NotificationCenter.default.publisher(for: .syncaScrollToBottomAfterImageLoad)) { _ in
-                    guard shouldScrollToBottomAfterSend else { return }
+                    guard shouldScrollToBottomAfterSend || shouldScrollToBottomAfterInitialLoad else { return }
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onAppear {
+                    if syncManager.hasCompletedInitialLoad && !syncManager.orderedMessages.isEmpty {
+                        beginInitialLoadScrollWindow()
+                    }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         proxy.scrollTo("bottom", anchor: .bottom)
                     }
@@ -329,31 +347,9 @@ struct MessageListView: View {
             }
 
             #if os(iOS)
-            PasteAwareTextView(text: $inputText, height: $inputHeight) { imageData in
-                shouldScrollToBottomAfterSend = true
-                Task { await syncManager.sendImage(imageData) }
-            }
-            .frame(height: max(40, min(inputHeight, 150)))
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            inputField
             #else
-            MacInputTextView(text: $inputText, height: $inputHeight, onPasteImage: { imageData in
-                shouldScrollToBottomAfterSend = true
-                Task { await syncManager.sendImage(imageData) }
-            }, onSubmit: {
-                self.submitText()
-            })
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(height: max(40, min(inputHeight, 150)))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                // Contrasts with `.background` on the bar; border reads as a real text field (custom NSTextView paste is unchanged).
-                .background(Color(nsColor: .textBackgroundColor))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+            inputField
             #endif
 
             Button {
@@ -367,11 +363,71 @@ struct MessageListView: View {
             .disabled(!canSend)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        #if os(macOS)
+        .padding(.vertical, 8)
+        #else
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        #endif
         #if os(iOS)
         .background(.bar)
         #else
         .background(.background)
+        #endif
+    }
+
+    @ViewBuilder
+    private var inputField: some View {
+        #if os(iOS)
+        ZStack(alignment: .leading) {
+            PasteAwareTextView(text: $inputText, height: $inputHeight) { imageData in
+                shouldScrollToBottomAfterSend = true
+                Task { await syncManager.sendImage(imageData) }
+            }
+            .frame(height: max(44, min(inputHeight, 150)))
+
+            if inputText.isEmpty {
+                Text("message_list.input_placeholder", bundle: .main)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 8)
+                    .padding(.top, 1)
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        #else
+        ZStack(alignment: .leading) {
+            MacInputTextView(text: $inputText, height: $inputHeight, onPasteImage: { imageData in
+                shouldScrollToBottomAfterSend = true
+                Task { await syncManager.sendImage(imageData) }
+            }, onSubmit: {
+                self.submitText()
+            })
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: max(34, min(inputHeight, 104)))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+
+            if inputText.isEmpty {
+                Text("message_list.input_placeholder", bundle: .main)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 12)
+                    .padding(.top, 1)
+                    .allowsHitTesting(false)
+            }
+        }
+        .background(Color(nsColor: .textBackgroundColor))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         #endif
     }
 
@@ -387,7 +443,7 @@ struct MessageListView: View {
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
-        let delays: [TimeInterval] = [0, 0.08, 0.18]
+        let delays: [TimeInterval] = [0, 0.10, 0.24, 0.45]
 
         for delay in delays {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -405,6 +461,18 @@ struct MessageListView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             if postSendScrollWindowID == windowID {
                 shouldScrollToBottomAfterSend = false
+            }
+        }
+    }
+
+    private func beginInitialLoadScrollWindow() {
+        let windowID = UUID()
+        initialLoadScrollWindowID = windowID
+        shouldScrollToBottomAfterInitialLoad = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            if initialLoadScrollWindowID == windowID {
+                shouldScrollToBottomAfterInitialLoad = false
             }
         }
     }
@@ -496,7 +564,7 @@ struct MessageListView: View {
                 selectedImageMessage = message
             },
             onImageLoaded: {
-                guard shouldScrollToBottomAfterSend else { return }
+                guard shouldScrollToBottomAfterSend || shouldScrollToBottomAfterInitialLoad else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                     NotificationCenter.default.post(name: .syncaScrollToBottomAfterImageLoad, object: nil)
                 }

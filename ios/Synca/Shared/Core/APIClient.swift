@@ -212,9 +212,9 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: return "服务器响应异常"
-        case .unauthorized: return "登录已过期，请重新登录"
-        case .httpError(let code, let message): return "请求失败 (\(code)): \(message ?? "")"
+        case .invalidResponse: return String(localized: "api.invalid_response", bundle: .main)
+        case .unauthorized: return String(localized: "api.unauthorized", bundle: .main)
+        case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")
         }
     }
 }
