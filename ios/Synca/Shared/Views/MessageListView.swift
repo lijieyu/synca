@@ -19,6 +19,8 @@ struct MessageListView: View {
     @State private var showSessionExpired = false
     @State private var inputHeight: CGFloat = 40
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
+    @State private var shouldScrollToBottomAfterSend = false
+    @State private var postSendScrollWindowID = UUID()
 
     var body: some View {
         NavigationStack {
@@ -173,12 +175,14 @@ struct MessageListView: View {
                     await syncManager.refresh()
                 }
                 #endif
-                .onChange(of: syncManager.messages.count) { _ in
-                    scrollListToBottom(proxy: proxy)
+                .onChange(of: syncManager.isSending) { isSending in
+                    guard !isSending, shouldScrollToBottomAfterSend else { return }
+                    beginPostSendScrollWindow()
+                    scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
-                // Completing a todo updates isCleared but not message count — still scroll so the list follows the bottom.
-                .onChange(of: syncManager.unclearedCount) { _ in
-                    scrollListToBottom(proxy: proxy)
+                .onReceive(NotificationCenter.default.publisher(for: .syncaScrollToBottomAfterImageLoad)) { _ in
+                    guard shouldScrollToBottomAfterSend else { return }
+                    scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onAppear {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -318,6 +322,7 @@ struct MessageListView: View {
                     }
                     self.selectedPhotoItems = []
                     if !imageDatas.isEmpty {
+                        shouldScrollToBottomAfterSend = true
                         await self.syncManager.sendImages(imageDatas)
                     }
                 }
@@ -325,6 +330,7 @@ struct MessageListView: View {
 
             #if os(iOS)
             PasteAwareTextView(text: $inputText, height: $inputHeight) { imageData in
+                shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData) }
             }
             .frame(height: max(40, min(inputHeight, 150)))
@@ -332,6 +338,7 @@ struct MessageListView: View {
             .clipShape(RoundedRectangle(cornerRadius: 20))
             #else
             MacInputTextView(text: $inputText, height: $inputHeight, onPasteImage: { imageData in
+                shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData) }
             }, onSubmit: {
                 self.submitText()
@@ -375,12 +382,30 @@ struct MessageListView: View {
     private func submitText() {
         let text = inputText
         inputText = ""
+        shouldScrollToBottomAfterSend = true
         Task { await syncManager.sendText(text) }
     }
 
-    private func scrollListToBottom(proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.3)) {
-            proxy.scrollTo("bottom", anchor: .bottom)
+    private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
+        let delays: [TimeInterval] = [0, 0.08, 0.18]
+
+        for delay in delays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private func beginPostSendScrollWindow() {
+        let windowID = UUID()
+        postSendScrollWindowID = windowID
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            if postSendScrollWindowID == windowID {
+                shouldScrollToBottomAfterSend = false
+            }
         }
     }
 
@@ -415,14 +440,17 @@ struct MessageListView: View {
         let pb = NSPasteboard.general
 
         if let rawPngData = pb.data(forType: .png) {
+            shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(rawPngData) }
             return
         }
         if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
+            shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(rawJpegData) }
             return
         }
         if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
+            shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(rawHeicData) }
             return
         }
@@ -430,6 +458,7 @@ struct MessageListView: View {
            let tiffData = image.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData),
            let pngData = bitmap.representation(using: .png, properties: [:]) {
+            shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(pngData) }
             return
         }
@@ -465,10 +494,20 @@ struct MessageListView: View {
             },
             onImageTap: {
                 selectedImageMessage = message
+            },
+            onImageLoaded: {
+                guard shouldScrollToBottomAfterSend else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                    NotificationCenter.default.post(name: .syncaScrollToBottomAfterImageLoad, object: nil)
+                }
             }
         )
         .id("\(message.id)-\(message.isCleared)")
     }
+}
+
+private extension Notification.Name {
+    static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
 }
 
 extension View {

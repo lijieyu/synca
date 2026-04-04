@@ -9,11 +9,18 @@ import AppKit
 /// Images are downloaded once and subsequent loads are instant from disk.
 struct CachedAsyncImage<Content: View>: View {
     let url: URL
+    let onSuccess: (() -> Void)?
     @ViewBuilder let content: (AsyncImagePhase) -> Content
     
     @State private var phase: AsyncImagePhase = .empty
     @State private var loadTask: Task<Void, Never>?
     @State private var reloadID = UUID()
+
+    init(url: URL, onSuccess: (() -> Void)? = nil, @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
+        self.url = url
+        self.onSuccess = onSuccess
+        self.content = content
+    }
 
     var body: some View {
         content(phase)
@@ -37,11 +44,13 @@ struct CachedAsyncImage<Content: View>: View {
             #if os(iOS)
             if let uiImage = UIImage(data: data) {
                 phase = .success(Image(uiImage: uiImage))
+                onSuccess?()
                 return
             }
             #elseif os(macOS)
             if let nsImage = NSImage(data: data) {
                 phase = .success(Image(nsImage: nsImage))
+                onSuccess?()
                 return
             }
             #endif
@@ -65,12 +74,14 @@ struct CachedAsyncImage<Content: View>: View {
                 #if os(iOS)
                 if let uiImage = UIImage(data: data) {
                     phase = .success(Image(uiImage: uiImage))
+                    onSuccess?()
                 } else {
                     phase = .failure(URLError(.cannotDecodeContentData))
                 }
                 #elseif os(macOS)
                 if let nsImage = NSImage(data: data) {
                     phase = .success(Image(nsImage: nsImage))
+                    onSuccess?()
                 } else {
                     phase = .failure(URLError(.cannotDecodeContentData))
                 }

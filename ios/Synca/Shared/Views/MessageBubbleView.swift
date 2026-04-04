@@ -10,6 +10,7 @@ struct MessageBubbleView: View {
     let onClear: () -> Void
     let onDelete: () -> Void
     let onImageTap: () -> Void
+    let onImageLoaded: () -> Void
 
     @State private var copied = false
     @State private var saveStatus: SaveStatus = .none
@@ -158,7 +159,7 @@ struct MessageBubbleView: View {
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
-                CachedAsyncImage(url: url) { phase in
+                CachedAsyncImage(url: url, onSuccess: onImageLoaded) { phase in
                     switch phase {
                     case .success(let image):
                         image

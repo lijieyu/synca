@@ -82,7 +82,7 @@ struct ImagePreviewView: View {
 
     @ViewBuilder
     private func imagePage(url: URL, size: CGSize) -> some View {
-        CachedAsyncImage(url: url) { phase in
+        CachedAsyncImage(url: url, onSuccess: nil) { phase in
             switch phase {
             case .success(let image):
                 image
