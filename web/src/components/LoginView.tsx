@@ -35,7 +35,7 @@ export const LoginView: React.FC = () => {
       const idToken = event.detail.authorization.id_token;
       try {
         const res = await api.loginWithApple(idToken);
-        login(res.token);
+        login(res.token, res.user.isAdmin);
       } catch (err) {
         console.error('Login failed to exchange token', err);
         alert(t('login.failed') + ': ' + err);
