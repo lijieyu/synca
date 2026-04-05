@@ -99,7 +99,7 @@ export const MessageListView: React.FC = () => {
           {/* Action Group */}
           <div style={{ display: 'flex', gap: '4px' }}>
             {isAdmin && (
-              <button className="header-btn" onClick={() => window.location.href = '/admin'} title="Admin Dashboard">
+              <button className="header-btn" onClick={() => window.open('/admin', '_blank')} title="Admin Dashboard">
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)', padding: '0 4px' }}>Manage</span>
               </button>
             )}
@@ -124,17 +124,16 @@ export const MessageListView: React.FC = () => {
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '8px',
-              padding: '4px 8px 4px 12px',
+              gap: '12px',
+              padding: '4px 8px 4px 14px',
               borderRadius: '20px',
               background: 'rgba(0,0,0,0.03)',
-              border: '1px solid var(--border-color)'
+              border: '1px solid var(--border-color)',
+              whiteSpace: 'nowrap'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.8 }}>{email}</span>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  {getPlanInfo()}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>
+                {getPlanInfo()}
               </div>
               <button 
                 className="header-btn" 
