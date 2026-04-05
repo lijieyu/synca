@@ -17,7 +17,7 @@
 "message.date.yesterday" = "昨天 %@";
 
 /* Message List */
-"message_list.todo_section" = "待办";
+"message_list.todo_section" = "待整理";
 "message_list.sync_success" = "同步成功";
 "message_list.sync_failed" = "同步失败";
 "message_list.error_too_long" = "消息不能超过 %d 个字符。";
