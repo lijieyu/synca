@@ -80,7 +80,6 @@ struct MessageBubbleView: View {
                         .fill(Color.syncaMint.opacity(0.1))
                         .frame(width: 80, height: 80)
                         .blur(radius: 20)
-                        .offset(x: 40, y: -20)
                 }
             }
             .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
