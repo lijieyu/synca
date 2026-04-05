@@ -80,7 +80,10 @@ export const MessageListView: React.FC = () => {
   return (
     <div className="app-container">
       <div className="header">
-        <h1 className="header-title">{t('app.name', 'Synca')}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
+          <h1 className="header-title">{t('app.name', 'Synca')}</h1>
+        </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button className="header-btn" onClick={handleRefresh} title={t('message_list.sync_success', 'Sync')}>
             <RefreshCcw size={18} />
