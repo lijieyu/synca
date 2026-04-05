@@ -131,3 +131,5 @@
 "image_preview.save_failed" = "Save Failed";
 "image_preview.load_failed" = "Image Load Failed";
 "image_preview.tap_to_retry" = "Tap to Retry";
+
+"common.send" = "Send";

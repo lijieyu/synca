@@ -152,3 +152,5 @@
 "image_preview.save_failed" = "保存失败";
 "image_preview.load_failed" = "图片加载失败";
 "image_preview.tap_to_retry" = "点击重试";
+
+"common.send" = "发送";

@@ -102,9 +102,11 @@ struct ImagePreviewView: View {
                             }
                     )
                     #endif
+                    #if os(iOS)
                     .onTapGesture {
                         withAnimation { dismiss() } // Click to close as requested
                     }
+                    #endif
                     .onTapGesture(count: 2) {
                         if scale > 1.0 { resetZoom() }
                         else { 
@@ -171,6 +173,9 @@ struct ImagePreviewView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(20)
+                    #if os(macOS)
+                    .keyboardShortcut("w", modifiers: .command)
+                    #endif
                 }
                 Spacer()
             }

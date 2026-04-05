@@ -470,10 +470,12 @@ struct MessageListView: View {
     private var inputField: some View {
         #if os(iOS)
         ZStack(alignment: .leading) {
-            PasteAwareTextView(text: $inputText, height: $inputHeight) { imageData in
+            PasteAwareTextView(text: $inputText, height: $inputHeight, onImagePaste: { imageData in
                 shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData) }
-            }
+            }, onSubmit: {
+                self.submitText()
+            })
             .frame(height: max(44, min(inputHeight, 150)))
 
             if inputText.isEmpty {

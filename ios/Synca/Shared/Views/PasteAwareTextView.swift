@@ -8,9 +8,10 @@ struct PasteAwareTextView: UIViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
     let onImagePaste: (Data) -> Void
+    let onSubmit: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, height: $height, onImagePaste: onImagePaste)
+        Coordinator(text: $text, height: $height, onImagePaste: onImagePaste, onSubmit: onSubmit)
     }
 
     func makeUIView(context: Context) -> UITextView {
@@ -25,6 +26,11 @@ struct PasteAwareTextView: UIViewRepresentable {
         textView.isEditable = true
         textView.isSelectable = true
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.returnKeyType = .send
+        textView.enablesReturnKeyAutomatically = true
+        if let tint = UIColor(named: "AccentColor") {
+            textView.tintColor = tint
+        }
         textView.text = text
         return textView
     }
@@ -50,11 +56,13 @@ struct PasteAwareTextView: UIViewRepresentable {
         @Binding var text: String
         @Binding var height: CGFloat
         let onImagePaste: (Data) -> Void
+        let onSubmit: () -> Void
 
-        init(text: Binding<String>, height: Binding<CGFloat>, onImagePaste: @escaping (Data) -> Void) {
+        init(text: Binding<String>, height: Binding<CGFloat>, onImagePaste: @escaping (Data) -> Void, onSubmit: @escaping () -> Void) {
             _text = text
             _height = height
             self.onImagePaste = onImagePaste
+            self.onSubmit = onSubmit
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -63,6 +71,14 @@ struct PasteAwareTextView: UIViewRepresentable {
             if height != size.height {
                 height = size.height
             }
+        }
+
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if text == "\n" {
+                onSubmit()
+                return false
+            }
+            return true
         }
     }
 }
