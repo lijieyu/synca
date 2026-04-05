@@ -12,7 +12,7 @@ interface Props {
 const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="15" cy="15" r="14" fill={color} />
-    <path d="M15 22V9M15 9L10.5 13.5M15 9L19.5 13.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M15 22V9M15 9L10.5 13.5M15 9L19.5 13.5" stroke="var(--send-icon-arrow-color)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
