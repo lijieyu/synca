@@ -572,7 +572,7 @@ struct HeaderAccessBadge: View {
                 .fixedSize(horizontal: true, vertical: false)
 
             if !status.isUnlimited {
-                Image(systemName: "arrow.up")
+                Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 10.5, weight: .bold))
                     .foregroundStyle(Color.accentColor)
             }
