@@ -75,11 +75,36 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Cmd+Enter or Shift+Enter = newline (do nothing, let browser handle)
     // Enter alone (no meta, no shift) = send
     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       handleSendText();
+    } 
+    // Cmd+Enter = explicit newline
+    else if (e.key === 'Enter' && e.metaKey) {
+      e.preventDefault();
+      const el = textareaRef.current;
+      if (!el) return;
+      
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const value = el.value;
+      
+      // Update text state with newline at cursor
+      const newText = value.substring(0, start) + "\n" + value.substring(end);
+      setText(newText);
+      
+      // We need to set selection after React re-renders, but for a quick fix 
+      // we can rely on the onChange and autoGrow.
+      // However, to be precise:
+      setTimeout(() => {
+        el.selectionStart = el.selectionEnd = start + 1;
+        autoGrow();
+        // Only scroll if we have actually hit the max-height limit (160px)
+        if (el.scrollHeight > 160) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }, 0);
     }
   };
 
