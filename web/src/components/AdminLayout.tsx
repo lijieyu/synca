@@ -38,6 +38,12 @@ export const AdminLayout: React.FC = () => {
     fetchData();
   }, [activeTab]);
 
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to log out from the Admin Dashboard?')) {
+      logout();
+    }
+  };
+
   return (
     <div className="admin-layout">
       <div className="header" style={{ borderBottom: 'none' }}>
@@ -51,7 +57,7 @@ export const AdminLayout: React.FC = () => {
           <button className="header-btn" onClick={fetchData} title="Refresh">
             <RefreshCcw size={18} />
           </button>
-          <button className="header-btn" onClick={logout} title="Logout">
+          <button className="header-btn" onClick={handleLogout} title="Logout">
             <LogOut size={18} />
           </button>
         </div>
