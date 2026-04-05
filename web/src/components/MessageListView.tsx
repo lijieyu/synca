@@ -11,7 +11,7 @@ import { Modal } from './Modal';
 export const MessageListView: React.FC = () => {
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { logout } = useAuth();
+  const { logout, isAdmin, email, plan } = useAuth();
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   
@@ -49,6 +49,17 @@ export const MessageListView: React.FC = () => {
     }
   };
 
+  const getPlanInfo = () => {
+    if (!plan) return null;
+    const planMap: Record<string, { label: string, color: string }> = {
+      'free': { label: 'Free', color: 'rgba(142, 142, 147, 0.15)' },
+      'trial': { label: 'Trial', color: 'rgba(255, 159, 10, 0.15)' },
+      'unlimited': { label: 'Unlimited', color: 'rgba(125, 77, 255, 0.15)' },
+    };
+    const info = planMap[plan] || { label: plan, color: 'rgba(142, 142, 147, 0.15)' };
+    return <span className="admin-tag" style={{ background: info.color, marginLeft: '6px', fontSize: '10px' }}>{info.label}</span>;
+  };
+
   const handleRefresh = async () => {
     await fetchMessages(false);
     setToastMsg(t('message_list.sync_success', 'Synced'));
@@ -84,7 +95,18 @@ export const MessageListView: React.FC = () => {
           <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
           <h1 className="header-title">{t('app.name', 'Synca')}</h1>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {email && (
+            <div style={{ display: 'flex', alignItems: 'center', marginRight: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {email}
+              {getPlanInfo()}
+            </div>
+          )}
+          {isAdmin && (
+            <button className="header-btn" onClick={() => window.location.href = '/admin'} title="Admin Dashboard">
+              <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)' }}>Manage</span>
+            </button>
+          )}
           <button className="header-btn" onClick={handleRefresh} title={t('message_list.sync_success', 'Sync')}>
             <RefreshCcw size={18} />
           </button>
@@ -93,8 +115,9 @@ export const MessageListView: React.FC = () => {
             onClick={() => setShowClearAllModal(true)} 
             disabled={completed.length === 0}
             title={t('message_list.clear_all_confirm_title', 'Clear All')}
+            style={{ opacity: completed.length === 0 ? 0.3 : 1 }}
           >
-            <Trash2 size={18} style={{ opacity: completed.length === 0 ? 0.3 : 1 }} />
+            <Trash2 size={18} />
           </button>
           <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')}>
             <LogOut size={18} />
