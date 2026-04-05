@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api, type SyncaMessage } from '../api/client';
 import { CircleCheck, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   message: SyncaMessage;
@@ -9,6 +10,7 @@ interface Props {
 
 export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const { t } = useTranslation();
 
   // Time formatter
   const formatTime = (isoString: string) => {
@@ -30,7 +32,7 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
 
   const handleDelete = async () => {
     if (isProcessing) return;
-    if (!window.confirm('Delete this message?')) return;
+    if (!window.confirm(t('message_bubble.delete_confirm_title', 'Confirm Delete'))) return;
     
     setIsProcessing(true);
     try {
@@ -64,7 +66,7 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
         </div>
         
         <div className="actions">
-          <button className="action-btn" onClick={handleDelete} disabled={isProcessing}>
+          <button className="action-btn" onClick={handleDelete} disabled={isProcessing} title={t('common.delete', 'Delete')}>
             <Trash2 size={16} />
           </button>
           <button 

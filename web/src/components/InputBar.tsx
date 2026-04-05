@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { api } from '../api/client';
 import { ArrowUpCircle, ImagePlus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   onSent: () => void;
@@ -10,6 +11,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const handleSendText = async () => {
     const trimmed = text.trim();
@@ -22,7 +24,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       onSent();
     } catch (e) {
       console.error(e);
-      alert('Failed to send text');
+      alert(t('sync.error_context.send', 'Send failed'));
     }
     setIsSending(false);
   };
@@ -37,7 +39,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       onSent();
     } catch (err) {
       console.error(err);
-      alert('Failed to send image');
+      alert(t('sync.error_context.send_image', 'Image send failed'));
     }
     
     if (fileInputRef.current) {
@@ -67,7 +69,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       </div>
       
       <textarea
-        placeholder="Type a message..."
+        placeholder={t('message_list.input_placeholder', 'Capture your thoughts...')}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
