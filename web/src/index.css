@@ -16,7 +16,7 @@
     --text-main: #ffffff;
     --text-secondary: #8E8E93;
     --border-color: rgba(255, 255, 255, 0.05);
-    --synca-mint-light: rgba(48, 209, 88, 0.08); /* Muted green */
+    --synca-mint-light: rgba(48, 209, 88, 0.05); /* Very muted green shadow */
   }
 }
 
@@ -127,17 +127,17 @@ body {
 
 .message-bubble.cleared {
   background-color: var(--synca-mint-light);
-  border-color: rgba(48, 209, 88, 0.2);
-  opacity: 0.85; /* Subdue the whole bubble */
+  border-color: rgba(48, 209, 88, 0.1);
+  opacity: 0.8; /* More subdued */
 }
 
 .message-bubble.cleared .message-content {
   color: var(--text-main);
-  opacity: 0.7; /* Greying out the text */
+  opacity: 0.5; /* More faded text */
 }
 
 .message-bubble.cleared .message-image {
-  opacity: 0.8; /* Dim images slightly */
+  opacity: 0.6; /* More faded images */
 }
 
 .message-header {
