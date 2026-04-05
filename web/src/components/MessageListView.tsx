@@ -58,10 +58,8 @@ export const MessageListView: React.FC = () => {
   const handleClearAll = async () => {
     setShowClearAllModal(false);
     try {
-      await api.clearAllMessages();
+      await api.deleteCompletedMessages();
       await fetchMessages(false);
-      setToastMsg(t('message_list.sync_success', 'Synced'));
-      setShowToast(true);
     } catch (err) {
       console.error(err);
     }
