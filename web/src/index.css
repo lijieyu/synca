@@ -11,12 +11,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #121212; /* Mac window background */
-    --card-bg-color: #1c1c1e; /* Mac list item background */
+    --bg-color: #2c2c2e; /* Mac list background - dark grey */
+    --card-bg-color: #121212; /* Mac card background - nearly black */
     --text-main: #ffffff;
     --text-secondary: #8E8E93;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --synca-mint-light: rgba(48, 209, 88, 0.12);
+    --border-color: rgba(255, 255, 255, 0.05);
+    --synca-mint-light: rgba(48, 209, 88, 0.08); /* Muted green */
   }
 }
 
