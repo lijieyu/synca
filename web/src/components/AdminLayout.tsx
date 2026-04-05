@@ -23,6 +23,7 @@ export const AdminLayout: React.FC = () => {
     setIsLoading(true);
     try {
       let res;
+      setStats(null); // Clear previous stats to prevent rendering with old data
       if (activeTab === 0) res = await api.getAdminOverview();
       else if (activeTab === 1) res = await api.getAdminUsers();
       else if (activeTab === 2) res = await api.getAdminMessageStats();
@@ -123,7 +124,7 @@ export const AdminLayout: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.users.map((u: any) => (
+                    {stats?.users?.map((u: any) => (
                       <tr key={u.id}>
                         <td>
                           <div style={{ fontWeight: 500 }}>{u.email || 'Anonymous'}</div>
@@ -153,7 +154,7 @@ export const AdminLayout: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.dailyVolume.map((d: any) => (
+                      {stats?.dailyVolume?.map((d: any) => (
                         <tr key={d.date}>
                           <td>{d.date}</td>
                           <td>{d.count}</td>
@@ -177,7 +178,7 @@ export const AdminLayout: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.dailyRevenue.map((d: any) => (
+                      {stats?.dailyRevenue?.map((d: any) => (
                         <tr key={d.date}>
                           <td>{d.date}</td>
                           <td>¥{d.amount}</td>
@@ -200,7 +201,7 @@ export const AdminLayout: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.feedbacks.map((f: any) => (
+                    {stats?.feedbacks?.map((f: any) => (
                       <tr key={f.id}>
                         <td style={{ maxWidth: 300 }}>{f.content}</td>
                         <td>
