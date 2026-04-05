@@ -13,9 +13,10 @@ export async function verifyAppleToken(idToken: string): Promise<{
     // Dynamic import to handle ESM/CJS compatibility
     const appleSignin = await import('apple-signin-auth');
     const clientId = process.env.APPLE_CLIENT_ID ?? 'org.haerth.synca';
+    const webClientId = process.env.APPLE_WEB_CLIENT_ID ?? 'cn.haerth.synca.web';
 
     const payload = await appleSignin.verifyIdToken(idToken, {
-        audience: clientId,
+        audience: [clientId, webClientId],
     });
 
     return {

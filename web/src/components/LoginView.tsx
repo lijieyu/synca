@@ -63,8 +63,7 @@ export const LoginView: React.FC = () => {
         style={{ 
           width: '96px', 
           height: '96px', 
-          borderRadius: '22px',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)'
+          borderRadius: '22px'
         }} 
       />
       <h1>{t('app.name', 'Synca')}</h1>
