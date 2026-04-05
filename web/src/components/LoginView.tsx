@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import { useTranslation } from 'react-i18next';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const scriptLoaded = useRef(false);
 
   useEffect(() => {
-    // Dynamically load Apple's Sign In JS
     if (scriptLoaded.current) return;
     
     const script = document.createElement('script');
@@ -23,14 +24,13 @@ export const LoginView: React.FC = () => {
           clientId: 'cn.haerth.synca.web',
           scope: 'email',
           redirectURI: 'https://synca.haerth.cn/api/auth/apple/callback',
-          usePopup: true // crucial for SPA flow
+          usePopup: true
         });
       }
     };
     
     document.body.appendChild(script);
 
-    // Add event listener for success/failure
     const handleSuccess = async (event: any) => {
       const idToken = event.detail.authorization.id_token;
       try {
@@ -38,7 +38,7 @@ export const LoginView: React.FC = () => {
         login(res.token);
       } catch (err) {
         console.error('Login failed to exchange token', err);
-        alert('Login failed: ' + err);
+        alert(t('login.failed') + ': ' + err);
       }
     };
 
@@ -53,18 +53,24 @@ export const LoginView: React.FC = () => {
       document.removeEventListener('AppleIDSignInOnSuccess', handleSuccess);
       document.removeEventListener('AppleIDSignInOnFailure', handleFailure);
     };
-  }, [login]);
+  }, [login, t]);
 
   return (
     <div className="auth-container">
-      <h1>Synca</h1>
-      <p>Synchronize your thoughts, effortlessly.</p>
+      <img 
+        src="/logo.png" 
+        alt="Synca" 
+        style={{ 
+          width: '96px', 
+          height: '96px', 
+          borderRadius: '22px',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)'
+        }} 
+      />
+      <h1>{t('app.name', 'Synca')}</h1>
+      <p>{t('app.slogan', 'Sync Your Aha Moment')}</p>
       
       <div id="appleid-signin" data-color="black" data-border="true" data-type="sign in"></div>
-      
-      <p style={{ marginTop: '40px', fontSize: '12px', opacity: 0.5 }}>
-        Only Apple ID sign-in is supported to ensure seamless synchronization with your iOS & Mac apps.
-      </p>
     </div>
   );
 };
