@@ -5,6 +5,7 @@ export interface SyncaMessage {
   sourceDevice: string;
   textContent: string | null;
   imagePath: string | null;
+  imageUrl: string | null;
   type: 'text' | 'image';
   isCleared: boolean;
   isDeleted: boolean;
@@ -97,6 +98,10 @@ class APIClient {
 
   async clearMessage(id: string): Promise<void> {
     await this.fetch(`/messages/${id}/clear`, { method: 'PATCH' });
+  }
+
+  async clearAllMessages(): Promise<void> {
+    await this.fetch('/messages/clear-all', { method: 'POST' });
   }
 
   async deleteMessage(id: string): Promise<void> {

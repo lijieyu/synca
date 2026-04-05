@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api, type SyncaMessage } from '../api/client';
 import { CircleCheck, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Modal } from './Modal';
 
 interface Props {
   message: SyncaMessage;
@@ -10,9 +11,9 @@ interface Props {
 
 export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { t } = useTranslation();
 
-  // Time formatter
   const formatTime = (isoString: string) => {
     const d = new Date(isoString);
     return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -31,9 +32,7 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   };
 
   const handleDelete = async () => {
-    if (isProcessing) return;
-    if (!window.confirm(t('message_bubble.delete_confirm_title', 'Confirm Delete'))) return;
-    
+    setShowDeleteModal(false);
     setIsProcessing(true);
     try {
       await api.deleteMessage(message.id);
@@ -45,39 +44,53 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   };
 
   return (
-    <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
-      {message.type === 'text' && (
-        <div className="message-content">{message.textContent}</div>
-      )}
-      
-      {message.type === 'image' && message.imagePath && (
-        <img 
-          src={message.imagePath} 
-          alt="Shared content" 
-          className="message-image" 
-        />
-      )}
-
-      <div className="message-header">
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span>{formatTime(message.createdAt)}</span>
-          <span>·</span>
-          <span>{message.sourceDevice}</span>
-        </div>
+    <>
+      <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
+        {message.type === 'text' && (
+          <div className="message-content">{message.textContent}</div>
+        )}
         
-        <div className="actions">
-          <button className="action-btn" onClick={handleDelete} disabled={isProcessing} title={t('common.delete', 'Delete')}>
-            <Trash2 size={16} />
-          </button>
-          <button 
-            className={`action-btn ${message.isCleared ? 'cleared-icon' : ''}`} 
-            onClick={handleClear} 
-            disabled={message.isCleared || isProcessing}
-          >
-            <CircleCheck size={16} />
-          </button>
+        {message.type === 'image' && message.imageUrl && (
+          <img 
+            src={message.imageUrl} 
+            alt="Shared content" 
+            className="message-image" 
+          />
+        )}
+
+        <div className="message-header">
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span>{formatTime(message.createdAt)}</span>
+            <span>·</span>
+            <span>{message.sourceDevice}</span>
+          </div>
+          
+          <div className="actions">
+            <button className="action-btn" onClick={() => setShowDeleteModal(true)} disabled={isProcessing} title={t('common.delete', 'Delete')}>
+              <Trash2 size={16} />
+            </button>
+            <button 
+              className={`action-btn ${message.isCleared ? 'cleared-icon' : ''}`} 
+              onClick={handleClear} 
+              disabled={message.isCleared || isProcessing}
+            >
+              <CircleCheck size={16} />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showDeleteModal && (
+        <Modal
+          title={t('message_bubble.delete_confirm_title', 'Confirm Delete')}
+          message={t('message_bubble.delete_confirm_message', 'This will permanently delete this record from the cloud and cannot be undone.').replace('%@', '')}
+          confirmText={t('common.delete', 'Delete')}
+          cancelText={t('common.cancel', 'Cancel')}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+          destructive
+        />
+      )}
+    </>
   );
 };
