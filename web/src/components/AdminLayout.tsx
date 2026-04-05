@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { RefreshCcw, LogOut, ChevronLeft, User, MessageSquare, BarChart3, Heart, CreditCard } from 'lucide-react';
+import { Modal } from './Modal';
 
 export const AdminLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { logout } = useAuth();
 
   const tabs = [
@@ -38,14 +40,19 @@ export const AdminLayout: React.FC = () => {
     fetchData();
   }, [activeTab]);
 
-  const handleLogout = () => {
-    if (window.confirm('Are you sure you want to log out from the Admin Dashboard?')) {
-      logout();
-    }
-  };
-
   return (
     <div className="admin-layout">
+      {showLogoutModal && (
+        <Modal 
+          title="Sign Out"
+          message="Are you sure you want to log out from the Admin Dashboard?"
+          confirmText="Confirm"
+          cancelText="Cancel"
+          onConfirm={logout}
+          onCancel={() => setShowLogoutModal(false)}
+          destructive
+        />
+      )}
       <div className="header" style={{ borderBottom: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button className="header-btn" onClick={() => window.location.href = '/'} title="Back to App">
@@ -57,7 +64,7 @@ export const AdminLayout: React.FC = () => {
           <button className="header-btn" onClick={fetchData} title="Refresh">
             <RefreshCcw size={18} />
           </button>
-          <button className="header-btn" onClick={handleLogout} title="Logout">
+          <button className="header-btn" onClick={() => setShowLogoutModal(true)} title="Logout">
             <LogOut size={18} />
           </button>
         </div>
