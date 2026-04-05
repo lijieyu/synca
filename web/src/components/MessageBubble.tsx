@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SyncaMessage, api } from '../api/client';
+import { api, type SyncaMessage } from '../api/client';
 import { CircleCheck, Trash2 } from 'lucide-react';
 
 interface Props {

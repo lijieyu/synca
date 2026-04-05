@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { SyncaMessage, api } from '../api/client';
+import { api, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
