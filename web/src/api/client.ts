@@ -13,11 +13,18 @@ export interface SyncaMessage {
   updatedAt: string;
 }
 
+export interface SyncaUser {
+  id: string;
+  email: string;
+  isAdmin: boolean;
+}
+
 export interface AuthResponse {
   token: string;
   user: {
     id: string;
     email: string;
+    isAdmin: boolean;
   };
 }
 
@@ -110,6 +117,32 @@ class APIClient {
 
   async deleteCompletedMessages(): Promise<void> {
     await this.fetch('/messages/delete-completed', { method: 'POST' });
+  }
+
+  // ── Admin ──
+
+  async getAdminOverview(): Promise<any> {
+    return this.fetch('/admin/overview');
+  }
+
+  async getAdminUsers(): Promise<{ users: any[] }> {
+    return this.fetch('/admin/users');
+  }
+
+  async getAdminMessageStats(): Promise<any> {
+    return this.fetch('/admin/messages/stats');
+  }
+
+  async getAdminRevenueStats(): Promise<any> {
+    return this.fetch('/admin/revenue/stats');
+  }
+
+  async getAdminFeedback(): Promise<{ feedbacks: any[] }> {
+    return this.fetch('/admin/feedback');
+  }
+
+  async getMyProfile(): Promise<any> {
+    return this.fetch('/me/access-status');
   }
 }
 
