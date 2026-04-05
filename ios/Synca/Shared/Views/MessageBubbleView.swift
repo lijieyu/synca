@@ -68,22 +68,11 @@ struct MessageBubbleView: View {
         }
         .padding(12)
         .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(message.isCleared
-                          ? Color.syncaMintLight
-                          : cardBackground)
-                
-                if message.isCleared {
-                    // Subtle mint glow for processed
-                    Circle()
-                        .fill(Color.syncaMint.opacity(0.1))
-                        .frame(width: 80, height: 80)
-                        .blur(radius: 20)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(message.isCleared
+                      ? Color.syncaMintLight
+                      : cardBackground)
+                .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
