@@ -107,6 +107,10 @@ class APIClient {
   async deleteMessage(id: string): Promise<void> {
     await this.fetch(`/messages/${id}`, { method: 'DELETE' });
   }
+
+  async deleteCompletedMessages(): Promise<void> {
+    await this.fetch('/messages/delete-completed', { method: 'POST' });
+  }
 }
 
 export const api = new APIClient();
