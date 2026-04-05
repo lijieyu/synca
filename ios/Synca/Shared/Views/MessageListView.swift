@@ -40,7 +40,9 @@ struct MessageListView: View {
             .navigationBarTitleDisplayMode(.inline)
 #endif
             .toolbar {
+#if os(iOS)
                 titleToolbarItem
+#endif
                 actionToolbarItems
             }
             .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
