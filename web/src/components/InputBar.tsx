@@ -54,10 +54,8 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     setIsSending(false);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const sendImage = async (file: File) => {
+    if (isSending) return;
     setIsSending(true);
     try {
       await api.sendImageMessage(file);
@@ -67,11 +65,31 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       setToastMsg(t('sync.error_context.send_image', 'Image send failed'));
       setShowToast(true);
     }
-    
+    setIsSending(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    setIsSending(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await sendImage(file);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          await sendImage(file);
+          break; // Send first image found
+        }
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -128,6 +146,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
           value={text}
           onChange={(e) => { setText(e.target.value); autoGrow(); }}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           disabled={isSending}
           rows={1}
         />
