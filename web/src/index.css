@@ -1,9 +1,9 @@
 :root {
   --synca-purple: #7d4dff;
   --synca-mint: #34c759;
-  --synca-mint-light: rgba(52, 199, 89, 0.05); /* Muted light green */
-  --bg-color: #f2f2f7;
-  --card-bg-color: #ffffff;
+  --synca-mint-light: rgba(52, 199, 89, 0.1);
+  --bg-color: #f2f2f7; /* Mac grey background */
+  --card-bg-color: #ffffff; /* Mac white cards */
   --text-main: #000000;
   --text-secondary: #8E8E93;
   --border-color: rgba(0, 0, 0, 0.05);
@@ -11,12 +11,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #2c2c2e;
-    --card-bg-color: #000000; /* Pure black for cards in dark mode matches better */
+    --bg-color: #2c2c2e; /* Mac list background - dark grey */
+    --card-bg-color: #121212; /* Mac card background - nearly black */
     --text-main: #ffffff;
     --text-secondary: #8E8E93;
     --border-color: rgba(255, 255, 255, 0.05);
-    --synca-mint-light: rgba(52, 199, 89, 0.03); /* Almost invisible green */
+    --synca-mint-light: rgba(48, 209, 88, 0.05); /* Very muted green shadow */
   }
 }
 
