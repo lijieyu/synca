@@ -82,6 +82,7 @@ struct MessageBubbleView: View {
                         .blur(radius: 20)
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
         )
         .overlay(
