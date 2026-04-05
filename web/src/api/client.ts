@@ -122,23 +122,23 @@ class APIClient {
   // ── Admin ──
 
   async getAdminOverview(): Promise<any> {
-    return this.fetch('/admin/overview');
+    return this.fetch('/api/admin/overview');
   }
 
   async getAdminUsers(): Promise<{ users: any[] }> {
-    return this.fetch('/admin/users');
+    return this.fetch('/api/admin/users');
   }
 
   async getAdminMessageStats(): Promise<any> {
-    return this.fetch('/admin/messages/stats');
+    return this.fetch('/api/admin/messages/stats');
   }
 
   async getAdminRevenueStats(): Promise<any> {
-    return this.fetch('/admin/revenue/stats');
+    return this.fetch('/api/admin/revenue/stats');
   }
 
   async getAdminFeedback(): Promise<{ feedbacks: any[] }> {
-    return this.fetch('/admin/feedback');
+    return this.fetch('/api/admin/feedback');
   }
 
   async getMyProfile(): Promise<any> {
