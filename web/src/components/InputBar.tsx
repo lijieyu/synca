@@ -10,10 +10,9 @@ interface Props {
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
 const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="12" />
-    <path d="M12 7L12 17" stroke="white" strokeWidth="2" strokeLinecap="round" />
-    <path d="M8 11L12 7L16 11" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width={size} height={size} viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="15" cy="15" r="14" fill={color} />
+    <path d="M15 22V9M15 9L10.5 13.5M15 9L19.5 13.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
