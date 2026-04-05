@@ -105,30 +105,35 @@ struct FeedbackComposerView: View {
         )
     }
 
+    @ViewBuilder
     private var imageAttachmentSection: some View {
+        let currentAttachments = attachments
+        let currentRemainingAttachmentSlots = remainingAttachmentSlots
+        let currentEditorBackground = editorBackground
+
         VStack(alignment: .leading, spacing: 12) {
             PhotosPicker(
                 selection: $photoItems,
-                maxSelectionCount: remainingAttachmentSlots,
+                maxSelectionCount: currentRemainingAttachmentSlots,
                 matching: .images
             ) {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.badge.plus")
-                    Text(attachments.isEmpty ? String(localized: "feedback.add_images", bundle: .main) : String(localized: "feedback.add_more_images", bundle: .main))
+                    Text(currentAttachments.isEmpty ? String(localized: "feedback.add_images", bundle: .main) : String(localized: "feedback.add_more_images", bundle: .main))
                 }
                 .font(.body.weight(.medium))
-                .foregroundStyle(remainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
+                .foregroundStyle(currentRemainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
-                .background(editorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(currentEditorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
-            .disabled(remainingAttachmentSlots == 0 || isSubmitting)
+            .disabled(currentRemainingAttachmentSlots == 0 || isSubmitting)
             .onChange(of: photoItems) { items in
                 guard !items.isEmpty else { return }
                 Task { await loadSelectedPhotos(items) }
@@ -399,6 +404,7 @@ private struct MacFeedbackTextEditor: NSViewRepresentable {
             }
         }
 
+        @MainActor
         func updateLayout(for textView: NSTextView, in scrollView: NSScrollView) {
             let contentWidth = max(0, scrollView.contentSize.width)
             textView.textContainer?.containerSize = NSSize(width: contentWidth, height: CGFloat.greatestFiniteMagnitude)

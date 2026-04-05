@@ -77,6 +77,18 @@ export interface FeedbacksTable {
     updated_at: string;
 }
 
+export interface LifetimeUpgradeOfferCodesTable {
+    id: string;
+    offer_kind: string; // 'monthly_to_lifetime' | 'yearly_to_lifetime'
+    code: string;
+    assigned_user_id: string | null;
+    assigned_at: string | null;
+    redeemed_at: string | null;
+    is_active: number; // 0 | 1
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Database {
     users: UsersTable;
     messages: MessagesTable;
@@ -84,4 +96,5 @@ export interface Database {
     device_push_tokens: DevicePushTokensTable;
     iap_transactions: IapTransactionsTable;
     feedbacks: FeedbacksTable;
+    lifetime_upgrade_offer_codes: LifetimeUpgradeOfferCodesTable;
 }

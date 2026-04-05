@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 struct AccessCenterView: View {
     @EnvironmentObject private var accessManager: AccessManager
@@ -7,25 +8,7 @@ struct AccessCenterView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if let status = accessManager.status {
-                        statusCard(status)
-
-                        if status.isUnlimited {
-                            unlimitedBenefitsCard(status)
-                        } else {
-                            freeTierCard(status)
-                            unlockBenefitsCard
-                            purchaseOptionsCard
-                        }
-                    } else {
-                        ProgressView("message_list.loading")
-                            .frame(maxWidth: .infinity, minHeight: 240)
-                    }
-                }
-                .padding(20)
-            }
+            contentContainer
             .navigationTitle(String(localized: "access.center_title", bundle: .main))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -37,254 +20,530 @@ struct AccessCenterView: View {
                     }
                 }
             }
+            .task {
+                await purchaseManager.loadProducts()
+                await accessManager.refresh()
+            }
             .onDisappear {
                 accessManager.clearUpgradeHighlight()
             }
-            .task {
-                await purchaseManager.loadProducts()
-            }
         }
-        .frame(minWidth: 360, idealWidth: 420, minHeight: 440, idealHeight: 560)
+        .frame(minWidth: 360, idealWidth: 430)
+        #if os(macOS)
+        .frame(idealHeight: preferredMacHeight)
+        #else
+        .frame(minHeight: 420, idealHeight: 560)
+        #endif
     }
 
     @ViewBuilder
-    private func statusCard(_ status: AccessStatus) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AccessStatusPill(status: status, emphasizeUpgrade: accessManager.shouldHighlightUpgrade)
-
-            if status.isTrial {
-                Text(String(format: String(localized: "access.trial_description", bundle: .main), status.daysLeft ?? 0))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else if status.isFree {
-                Text(String(format: String(localized: "access.free_description", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(String(localized: "access.unlimited_description", bundle: .main))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+    private func content(for status: AccessStatus) -> some View {
+        if status.unlimitedSource == "lifetime" {
+            lifetimeCurrentCard(status)
+        } else if status.unlimitedSource == "subscription" {
+            subscriptionCurrentCard(status)
+        } else {
+            currentFreeCard(status)
+            unlockUnlimitedCard(status)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     @ViewBuilder
-    private func freeTierCard(_ status: AccessStatus) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("access.free_title", bundle: .main)
-                .font(.headline)
-
-            if status.isTrial {
-                Label(String(format: String(localized: "access.trial_rule", bundle: .main), status.daysLeft ?? 0), systemImage: "sparkles")
-            } else {
-                Label(String(format: String(localized: "access.free_rule", bundle: .main), status.todayLimit ?? 20), systemImage: "calendar")
-                Label(String(format: String(localized: "access.free_usage", bundle: .main), status.todayUsed, status.todayLimit ?? 20), systemImage: "chart.bar")
+    private var contentContainer: some View {
+        if let status = accessManager.status {
+            #if os(macOS)
+            VStack(alignment: .leading, spacing: 16) {
+                content(for: status)
             }
-
-            Label("access.free_keep_access", systemImage: "tray.full")
-            Label("access.free_reset_hint", systemImage: "arrow.clockwise")
+            .padding(20)
+            #else
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    content(for: status)
+                }
+                .padding(20)
+            }
+            #endif
+        } else {
+            ProgressView("message_list.loading")
+                .frame(maxWidth: .infinity, minHeight: 260)
+                .padding(20)
         }
-        .font(.subheadline)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private var unlockBenefitsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("access.unlock_title", bundle: .main)
-                .font(.headline)
+    private func currentFreeCard(_ status: AccessStatus) -> some View {
+        AccessModuleCard(style: .neutral) {
+            VStack(alignment: .leading, spacing: 14) {
+                moduleHeader(
+                    title: "access.current_plan_title",
+                    badge: AccessStatusPill(status: status)
+                )
 
-            Label("access.unlock_benefit_unlimited", systemImage: "infinity")
-            Label("access.unlock_benefit_cross_device", systemImage: "ipad.and.iphone")
-            Label("access.unlock_benefit_capture_anytime", systemImage: "bolt")
-            Label("access.purchase_shared_account", systemImage: "person.crop.circle.badge.checkmark")
+                if status.isTrial {
+                    Text(String(format: String(localized: "access.current_trial_summary", bundle: .main), status.daysLeft ?? 0))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                } else {
+                    Text(String(format: String(localized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                benefitRow(systemImage: "sparkles", text: "access.free_trial_rule")
+                benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
+            }
         }
-        .font(.subheadline)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [Color.accentColor.opacity(0.14), Color.accentColor.opacity(0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-        )
     }
 
-    private var purchaseOptionsCard: some View {
+    private func unlockUnlimitedCard(_ status: AccessStatus) -> some View {
+        AccessModuleCard(style: .accent) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("access.unlock_title", bundle: .main)
+                        .font(.headline)
+                    Spacer()
+                    restoreInlineButton
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
+                    benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
+                    benefitRow(systemImage: "sparkles.rectangle.stack", text: "access.shared_future_feature")
+                }
+
+                VStack(spacing: 10) {
+                    subscriptionPurchaseButton(.monthly)
+                    subscriptionPurchaseButton(.yearly)
+                    lifetimePurchaseButton()
+                }
+
+                statusMessageView
+            }
+        }
+    }
+
+    private func subscriptionCurrentCard(_ status: AccessStatus) -> some View {
+        AccessModuleCard(style: .accent) {
+            VStack(alignment: .leading, spacing: 16) {
+                moduleHeader(
+                    title: "access.current_plan_title",
+                    badge: AccessStatusPill(status: status)
+                )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(currentSubscriptionName(status))
+                        .font(.title3.weight(.semibold))
+
+                    if let purchaseDate = status.purchaseDate {
+                        detailRow("access.purchase_date_label", value: formatDate(purchaseDate))
+                    }
+                    if let renewalDate = status.subscriptionExpiresAt {
+                        detailRow("access.subscription_expires_label", value: formatDate(renewalDate))
+                    }
+                    benefitRow(systemImage: "checkmark.seal", text: "access.shared_base_feature")
+                }
+
+                if let switchProductID = alternateSubscriptionProduct(for: status) {
+                    subscriptionSwitchButton(for: switchProductID)
+                }
+
+                lifetimeUpgradeSection(status)
+
+                restoreFooterButton
+                statusMessageView
+            }
+        }
+    }
+
+    private func lifetimeCurrentCard(_ status: AccessStatus) -> some View {
+        AccessModuleCard(style: .accent) {
+            VStack(alignment: .leading, spacing: 16) {
+                moduleHeader(
+                    title: "access.current_plan_title",
+                    badge: AccessStatusPill(status: status)
+                )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(currentLifetimeName)
+                        .font(.title3.weight(.semibold))
+                    if let purchaseDate = status.purchaseDate {
+                        detailRow("access.purchase_date_label", value: formatDate(purchaseDate))
+                    }
+                    benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
+                    benefitRow(systemImage: "checkmark.seal", text: "access.shared_base_feature")
+                }
+
+                restoreFooterButton
+                statusMessageView
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func lifetimeUpgradeSection(_ status: AccessStatus) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("access.purchase_options_title", bundle: .main)
-                .font(.headline)
-            Text("access.purchase_shared_hint", bundle: .main)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            purchaseOptionRow(
-                title: "access.option_monthly_title",
-                subtitle: "access.option_monthly_subtitle",
-                priceText: purchaseManager.monthlyProduct?.displayPrice,
-                isLoading: purchaseManager.purchasingProductID == SyncaProductID.monthly.rawValue
-            ) {
-                Task {
-                    _ = await purchaseManager.purchase(.monthly)
-                }
-            }
-            purchaseOptionRow(
-                title: "access.option_yearly_title",
-                subtitle: "access.option_yearly_subtitle",
-                priceText: purchaseManager.yearlyProduct?.displayPrice,
-                isLoading: purchaseManager.purchasingProductID == SyncaProductID.yearly.rawValue
-            ) {
-                Task {
-                    _ = await purchaseManager.purchase(.yearly)
-                }
-            }
-            purchaseOptionRow(
-                title: "access.option_lifetime_title",
-                subtitle: "access.option_lifetime_subtitle",
-                priceText: purchaseManager.lifetimeProduct?.displayPrice,
-                isLoading: purchaseManager.purchasingProductID == SyncaProductID.lifetime.rawValue
-            ) {
-                Task {
-                    _ = await purchaseManager.purchase(.lifetime)
-                }
-            }
-
             Divider()
 
-            if let errorMessage = purchaseManager.lastErrorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            Text("access.lifetime_upgrade_title", bundle: .main)
+                .font(.headline)
 
-            Button {
-                Task { await purchaseManager.restorePurchases() }
-            } label: {
-                HStack(spacing: 8) {
-                    if purchaseManager.isRestoring {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    Text("access.restore_purchases", bundle: .main)
-                        .font(.footnote.weight(.semibold))
-                }
+            if let offer = status.lifetimeUpgradeOffer, offer.isCodeAvailable {
+                discountedLifetimeButton(offer)
+            } else {
+                standardLifetimeUpgradeButton
             }
-            .buttonStyle(.plain)
-            .disabled(purchaseManager.isRestoring)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    @ViewBuilder
-    private func purchaseOptionRow(
-        title: LocalizedStringKey,
-        subtitle: LocalizedStringKey,
-        priceText: String?,
-        isLoading: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+    private func subscriptionPurchaseButton(_ productID: SyncaProductID) -> some View {
+        let product = product(for: productID)
+        let isEligibleForIntro = purchaseManager.isIntroOfferEligible(for: productID)
+        let currentProductID = purchaseManager.purchasingProductID
+
+        return Button {
+            Task {
+                _ = await purchaseManager.purchase(productID)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(product?.displayName ?? fallbackProductName(for: productID))
                         .font(.subheadline.weight(.semibold))
-                    Text(subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    Spacer(minLength: 12)
+
+                    if currentProductID == productID.rawValue {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if let product {
+                        if isEligibleForIntro {
+                            Text(product.displayPrice)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.8))
+                                .strikethrough()
+                        } else {
+                            Text(product.displayPrice)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
                 }
-                Spacer()
-                if isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if let priceText {
-                    Text(String(format: String(localized: "access.buy_for_price", bundle: .main), priceText))
-                        .font(.footnote.weight(.semibold))
-                } else if purchaseManager.isLoadingProducts {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Text("access.purchase_unavailable_short", bundle: .main)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    Text(subscriptionSubtitle(for: productID, product: product, isEligibleForIntro: isEligibleForIntro))
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.9))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Spacer(minLength: 8)
+
+                    if isEligibleForIntro {
+                        Text("access.intro_offer_badge", bundle: .main)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.18), in: Capsule())
+                    }
                 }
             }
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(PlanActionButtonStyle())
+        .disabled(currentProductID != nil || product == nil || purchaseManager.isLoadingProducts)
+    }
+
+    private func lifetimePurchaseButton() -> some View {
+        let currentProductID = purchaseManager.purchasingProductID
+
+        return Button {
+            Task {
+                _ = await purchaseManager.purchase(.lifetime)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(currentLifetimeName)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Spacer()
+                    if currentProductID == SyncaProductID.lifetime.rawValue {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
+                        Text(price)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                Text("access.option_lifetime_subtitle", bundle: .main)
+                    .font(.caption)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(PlanActionButtonStyle())
+        .disabled(currentProductID != nil || purchaseManager.lifetimeProduct == nil || purchaseManager.isLoadingProducts)
+    }
+
+    private var standardLifetimeUpgradeButton: some View {
+        Button {
+            Task {
+                _ = await purchaseManager.purchase(.lifetime)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(currentLifetimeName)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Spacer()
+                    if purchaseManager.purchasingProductID == SyncaProductID.lifetime.rawValue {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
+                        Text(price)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                Text("access.option_lifetime_subtitle", bundle: .main)
+                    .font(.caption)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(PlanActionButtonStyle())
+        .disabled(purchaseManager.purchasingProductID != nil || purchaseManager.lifetimeProduct == nil || purchaseManager.isLoadingProducts)
+    }
+
+    private func discountedLifetimeButton(_ offer: LifetimeUpgradeOffer) -> some View {
+        Button {
+            Task {
+                _ = await purchaseManager.redeemLifetimeUpgradeOffer(offer)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(currentLifetimeName)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Spacer()
+                    if purchaseManager.redeemingOfferKind == offer.kind {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        HStack(spacing: 6) {
+                            if let original = purchaseManager.lifetimeProduct?.displayPrice {
+                                Text(original)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .strikethrough()
+                            }
+                            Text(offer.discountedPriceLabel)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                }
+
+                Text("access.offer_code_hint", bundle: .main)
+                    .font(.caption)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(PlanActionButtonStyle())
+        .disabled(purchaseManager.redeemingOfferKind != nil)
+    }
+
+    private func subscriptionSwitchButton(for productID: SyncaProductID) -> some View {
+        Button {
+            Task {
+                _ = await purchaseManager.purchase(productID)
+            }
+        } label: {
+            HStack {
+                Text(productID == .yearly ? "access.switch_to_yearly" : "access.switch_to_monthly", bundle: .main)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if purchaseManager.purchasingProductID == productID.rawValue {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if let price = product(for: productID)?.displayPrice {
+                    Text(price)
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(SecondaryPlanButtonStyle())
+        .disabled(purchaseManager.purchasingProductID != nil || product(for: productID) == nil || purchaseManager.isLoadingProducts)
+    }
+
+    private var restoreInlineButton: some View {
+        Button {
+            Task { await purchaseManager.restorePurchases() }
+        } label: {
+            HStack(spacing: 6) {
+                Text("access.restore_purchases", bundle: .main)
+                    .font(.footnote.weight(.semibold))
+                if purchaseManager.isRestoring {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
         }
         .buttonStyle(.plain)
-        .disabled(isLoading || purchaseManager.isLoadingProducts || priceText == nil)
-        .padding(.vertical, 2)
+        .foregroundStyle(Color.accentColor)
+        .disabled(purchaseManager.isRestoring)
+    }
+
+    private var restoreFooterButton: some View {
+        HStack {
+            Spacer()
+            restoreInlineButton
+            Spacer()
+        }
+        .padding(.top, 4)
     }
 
     @ViewBuilder
-    private func purchaseSourceLabel(_ status: AccessStatus) -> some View {
-        if status.unlimitedSource == "lifetime" {
-            Label("access.purchased_lifetime", systemImage: "seal.fill")
-        } else if status.unlimitedSource == "subscription" {
-            if status.storeProductId == SyncaProductID.monthly.rawValue {
-                Label("access.purchased_monthly", systemImage: "calendar.badge.clock")
-            } else {
-                Label("access.purchased_yearly", systemImage: "calendar.badge.clock")
-            }
+    private var statusMessageView: some View {
+        if let message = purchaseManager.lastErrorMessage, !message.isEmpty {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 
     @ViewBuilder
-    private func unlimitedBenefitsCard(_ status: AccessStatus) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("access.unlimited_title", bundle: .main)
+    private func moduleHeader(title: LocalizedStringKey, badge: AccessStatusPill?) -> some View {
+        HStack(alignment: .center) {
+            Text(title)
                 .font(.headline)
-
-            Label("access.unlock_benefit_unlimited", systemImage: "infinity")
-            Label("access.unlock_benefit_cross_device", systemImage: "ipad.and.iphone")
-            Label("access.unlock_benefit_capture_anytime", systemImage: "bolt")
-            Label("access.purchase_shared_account", systemImage: "person.crop.circle.badge.checkmark")
-            purchaseSourceLabel(status)
-
-            if let purchaseDate = status.purchaseDate {
-                Label(String(format: String(localized: "access.purchase_date", bundle: .main), formatDate(purchaseDate)), systemImage: "calendar")
+            Spacer()
+            if let badge {
+                badge
             }
-
-            if let subscriptionExpiresAt = status.subscriptionExpiresAt {
-                Label(String(format: String(localized: "access.subscription_expires", bundle: .main), formatDate(subscriptionExpiresAt)), systemImage: "clock")
-            }
-
-            Divider()
-
-            Button {
-                Task { await purchaseManager.restorePurchases() }
-            } label: {
-                HStack(spacing: 8) {
-                    if purchaseManager.isRestoring {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    Text("access.restore_purchases", bundle: .main)
-                        .font(.footnote.weight(.semibold))
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(purchaseManager.isRestoring)
         }
-        .font(.subheadline)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [Color.orange.opacity(0.14), Color.yellow.opacity(0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-        )
     }
+
+    private func benefitRow(systemImage: String, text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18, alignment: .center)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+        }
+    }
+
+    private func detailRow(_ key: LocalizedStringKey, value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(key)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.medium))
+        }
+    }
+
+    private func product(for productID: SyncaProductID) -> Product? {
+        switch productID {
+        case .monthly:
+            return purchaseManager.monthlyProduct
+        case .yearly:
+            return purchaseManager.yearlyProduct
+        case .lifetime:
+            return purchaseManager.lifetimeProduct
+        }
+    }
+
+    private func alternateSubscriptionProduct(for status: AccessStatus) -> SyncaProductID? {
+        switch status.storeProductId {
+        case SyncaProductID.monthly.rawValue:
+            return .yearly
+        case SyncaProductID.yearly.rawValue:
+            return .monthly
+        default:
+            return nil
+        }
+    }
+
+    private func currentSubscriptionName(_ status: AccessStatus) -> String {
+        switch status.storeProductId {
+        case SyncaProductID.monthly.rawValue:
+            return purchaseManager.monthlyProduct?.displayName ?? String(localized: "access.purchased_monthly", bundle: .main)
+        case SyncaProductID.yearly.rawValue:
+            return purchaseManager.yearlyProduct?.displayName ?? String(localized: "access.purchased_yearly", bundle: .main)
+        default:
+            return String(localized: "access.status_unlimited", bundle: .main)
+        }
+    }
+
+    private var currentLifetimeName: String {
+        purchaseManager.lifetimeProduct?.displayName ?? String(localized: "access.purchased_lifetime", bundle: .main)
+    }
+
+    private func fallbackProductName(for productID: SyncaProductID) -> String {
+        switch productID {
+        case .monthly:
+            return String(localized: "access.option_monthly_title", bundle: .main)
+        case .yearly:
+            return String(localized: "access.option_yearly_title", bundle: .main)
+        case .lifetime:
+            return currentLifetimeName
+        }
+    }
+
+    private func productSubtitle(for productID: SyncaProductID) -> String {
+        switch productID {
+        case .monthly:
+            return String(localized: "access.option_monthly_subtitle", bundle: .main)
+        case .yearly:
+            return String(localized: "access.option_yearly_subtitle", bundle: .main)
+        case .lifetime:
+            return String(localized: "access.option_lifetime_subtitle", bundle: .main)
+        }
+    }
+
+    private func subscriptionSubtitle(for productID: SyncaProductID, product: Product?, isEligibleForIntro: Bool) -> String {
+        guard isEligibleForIntro, let price = product?.displayPrice else {
+            return productSubtitle(for: productID)
+        }
+
+        switch productID {
+        case .monthly:
+            return String(format: String(localized: "access.option_monthly_intro_subtitle", bundle: .main), price)
+        case .yearly:
+            return String(format: String(localized: "access.option_yearly_intro_subtitle", bundle: .main), price)
+        case .lifetime:
+            return productSubtitle(for: productID)
+        }
+    }
+
+    #if os(macOS)
+    private var preferredMacHeight: CGFloat {
+        guard let status = accessManager.status else { return 420 }
+        if status.unlimitedSource == "lifetime" {
+            return 320
+        }
+        if status.unlimitedSource == "subscription" {
+            return 430
+        }
+        return 560
+    }
+    #endif
 
     private func formatDate(_ isoString: String) -> String {
         let formatter = ISO8601DateFormatter()
@@ -301,84 +560,169 @@ struct AccessCenterView: View {
     }
 }
 
-struct AccessStatusPill: View {
+struct HeaderAccessBadge: View {
     let status: AccessStatus
-    var emphasizeUpgrade = false
-    var compact = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            if !compact {
-                Image(systemName: iconName)
-                    .font(.system(size: 11, weight: .semibold))
-            }
+        HStack(spacing: 3) {
             Text(labelText)
-                .font(.system(size: compact ? 10.5 : 12, weight: .semibold))
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(status.isUnlimited ? Color.accentColor : .primary)
                 .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            if !status.isUnlimited {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(Color.accentColor)
+            }
         }
-        .foregroundStyle(foregroundColor)
-        .padding(.horizontal, compact ? 7 : 10)
-        .padding(.vertical, compact ? 4 : 6)
-        .background {
-            Capsule()
-                .fill(backgroundFillStyle)
-        }
-        .overlay(
-            Capsule()
-                .strokeBorder(borderColor, lineWidth: emphasizeUpgrade ? 1.2 : 0)
-        )
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Color.secondary.opacity(0.10)))
         #if os(macOS)
-        .help(fullLabelText)
+        .help(helpText)
         #endif
     }
 
     private var labelText: String {
-        if compact {
-            if status.isUnlimited {
-                return String(localized: "access.status_unlimited_compact", bundle: .main)
-            }
-            if status.isTrial {
-                return String(format: String(localized: "access.status_trial_compact", bundle: .main), status.daysLeft ?? 0)
-            }
-            return String(format: String(localized: "access.status_free_compact", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+        if status.isUnlimited {
+            return String(localized: "access.status_unlimited_inline", bundle: .main)
         }
-        return fullLabelText
+        if status.isTrial {
+            return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
+        }
+        return String(format: String(localized: "access.status_free_inline", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 
-    private var fullLabelText: String {
-        if status.isUnlimited {
-            return String(localized: "access.status_unlimited", bundle: .main)
-        }
+    private var helpText: String {
+        if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
         if status.isTrial {
             return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
         }
         return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
+}
 
-    private var iconName: String {
-        if status.isUnlimited { return "crown.fill" }
-        if status.isTrial { return "sparkles" }
-        return "bolt.badge.clock"
-    }
+struct AccessStatusPill: View {
+    let status: AccessStatus
+    var compact = false
+    var emphasizeUpgrade = false
+    var showUpgradeIndicator = false
 
-    private var foregroundColor: Color {
-        if status.isUnlimited { return .orange }
-        return .accentColor
-    }
+    var body: some View {
+        HStack(spacing: compact ? 4 : 6) {
+            Text(labelText)
+                .font(.system(size: compact ? 11 : 12, weight: .semibold))
+                .foregroundStyle(status.isUnlimited ? Color.accentColor : .primary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
-    private var backgroundFillStyle: AnyShapeStyle {
-        if status.isUnlimited {
-            return AnyShapeStyle(LinearGradient(
-                colors: [Color.orange.opacity(0.20), Color.yellow.opacity(0.12)],
-                startPoint: .leading,
-                endPoint: .trailing
-            ))
-        } else {
-            return AnyShapeStyle(Color.accentColor.opacity(emphasizeUpgrade ? 0.18 : 0.12))
+            if showUpgradeIndicator {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: compact ? 12 : 13, weight: .bold))
+                    .foregroundStyle(Color.accentColor)
+            }
         }
+        .padding(.horizontal, compact ? 9 : 10)
+        .padding(.vertical, compact ? 4 : 6)
+        .background(
+            Capsule()
+                .fill(status.isUnlimited ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.06))
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(borderColor, lineWidth: showUpgradeIndicator && emphasizeUpgrade ? 1 : 0)
+        )
+        #if os(macOS)
+        .help(helpText)
+        #endif
+    }
+
+    private var labelText: String {
+        if status.isUnlimited {
+            return String(localized: "access.status_unlimited_inline", bundle: .main)
+        }
+        if status.isTrial {
+            return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
+        }
+        return String(format: String(localized: "access.status_free_inline", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 
     private var borderColor: Color {
-        status.isUnlimited ? Color.orange.opacity(0.38) : Color.accentColor.opacity(0.32)
+        status.isUnlimited ? Color.clear : Color.accentColor.opacity(emphasizeUpgrade ? 0.25 : 0)
+    }
+
+    private var helpText: String {
+        if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
+        if status.isTrial {
+            return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
+        }
+        return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+    }
+}
+
+private struct AccessModuleCard<Content: View>: View {
+    enum Style {
+        case neutral
+        case accent
+    }
+
+    let style: Style
+    private let content: Content
+
+    init(style: Style, @ViewBuilder content: () -> Content) {
+        self.style = style
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var background: AnyShapeStyle {
+        switch style {
+        case .neutral:
+            return AnyShapeStyle(Color.secondary.opacity(0.08))
+        case .accent:
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.14), Color.accentColor.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+    }
+}
+
+private struct PlanActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.75 : 1))
+            )
+            .foregroundStyle(.white)
+    }
+}
+
+private struct SecondaryPlanButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.16 : 0.10))
+            )
+            .foregroundStyle(Color.accentColor)
     }
 }

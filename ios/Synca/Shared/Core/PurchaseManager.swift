@@ -1,5 +1,10 @@
 import Foundation
 import StoreKit
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 enum SyncaProductID: String, CaseIterable {
     case monthly = "org.haerth.synca.unlimited.monthly"
@@ -17,7 +22,9 @@ final class PurchaseManager: ObservableObject {
     @Published var isLoadingProducts = false
     @Published var purchasingProductID: String?
     @Published var isRestoring = false
+    @Published var redeemingOfferKind: LifetimeUpgradeOfferKind?
     @Published var lastErrorMessage: String?
+    @Published private(set) var introEligibilityByID: [String: Bool] = [:]
 
     private var updatesTask: Task<Void, Never>?
 
@@ -42,7 +49,10 @@ final class PurchaseManager: ObservableObject {
     }
 
     func loadProducts() async {
-        if !productsByID.isEmpty { return }
+        if !productsByID.isEmpty {
+            await refreshIntroEligibility(for: Array(productsByID.values))
+            return
+        }
         lastErrorMessage = nil
         isLoadingProducts = true
         defer { isLoadingProducts = false }
@@ -50,6 +60,7 @@ final class PurchaseManager: ObservableObject {
         do {
             let products = try await Product.products(for: Array(SyncaProductID.allIDs))
             productsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+            await refreshIntroEligibility(for: products)
         } catch {
             lastErrorMessage = String(localized: "access.purchase_fetch_failed", bundle: .main)
             print("[purchase] loadProducts failed: \(error)")
@@ -111,6 +122,28 @@ final class PurchaseManager: ObservableObject {
             }
             lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "access.restore_failed", bundle: .main)
             print("[purchase] restore failed: \(error)")
+        }
+    }
+
+    @discardableResult
+    func redeemLifetimeUpgradeOffer(_ offer: LifetimeUpgradeOffer) async -> Bool {
+        lastErrorMessage = nil
+        redeemingOfferKind = offer.kind
+        defer { redeemingOfferKind = nil }
+
+        do {
+            let response = try await APIClient.shared.requestLifetimeUpgradeOfferCode(kind: offer.kind)
+            copyOfferCodeToPasteboard(response.code)
+            try await presentOfferCodeRedeemSheet()
+            lastErrorMessage = String(localized: "access.lifetime_offer_copied", bundle: .main)
+            return true
+        } catch {
+            guard !isUserCancelledPurchase(error) else {
+                return false
+            }
+            lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "access.offer_unavailable", bundle: .main)
+            print("[purchase] redeem offer failed: \(error)")
+            return false
         }
     }
 
@@ -200,12 +233,57 @@ final class PurchaseManager: ObservableObject {
         let localized = nsError.localizedDescription.lowercased()
         return localized.contains("request canceled") || localized.contains("request cancelled")
     }
+
+    private func refreshIntroEligibility(for products: [Product]) async {
+        var eligibility: [String: Bool] = [:]
+        for product in products {
+            guard let subscription = product.subscription,
+                  subscription.introductoryOffer != nil else {
+                continue
+            }
+            eligibility[product.id] = await subscription.isEligibleForIntroOffer
+        }
+        introEligibilityByID = eligibility
+    }
+
+    func isIntroOfferEligible(for productID: SyncaProductID) -> Bool {
+        introEligibilityByID[productID.rawValue] == true
+    }
+
+    private func presentOfferCodeRedeemSheet() async throws {
+        #if canImport(UIKit)
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }) else {
+            throw PurchaseError.missingRedeemContext
+        }
+        try await AppStore.presentOfferCodeRedeemSheet(in: scene)
+        #elseif canImport(AppKit)
+        guard #available(macOS 15.0, *) else {
+            throw PurchaseError.missingRedeemContext
+        }
+        guard let controller = NSApp.keyWindow?.contentViewController ?? NSApp.windows.first?.contentViewController else {
+            throw PurchaseError.missingRedeemContext
+        }
+        try await AppStore.presentOfferCodeRedeemSheet(from: controller)
+        #endif
+    }
+
+    private func copyOfferCodeToPasteboard(_ code: String) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = code
+        #elseif canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(code, forType: .string)
+        #endif
+    }
 }
 
 enum PurchaseError: LocalizedError {
     case missingAccountToken
     case productsUnavailable
     case unverifiedTransaction
+    case missingRedeemContext
 
     var errorDescription: String? {
         switch self {
@@ -215,6 +293,8 @@ enum PurchaseError: LocalizedError {
             return String(localized: "access.purchase_unavailable", bundle: .main)
         case .unverifiedTransaction:
             return String(localized: "access.purchase_verification_failed", bundle: .main)
+        case .missingRedeemContext:
+            return String(localized: "access.offer_unavailable", bundle: .main)
         }
     }
 }

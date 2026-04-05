@@ -35,26 +35,13 @@ struct MessageListView: View {
                 Divider()
                 inputBar
             }
-            .navigationTitle("Synca")
-            #if os(iOS)
+            .navigationTitle("")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
+#endif
             .toolbar {
-                ToolbarItem(placement: accessToolbarPlacement) {
-                    if let status = accessManager.status {
-                        Button {
-                            accessManager.showAccessCenter = true
-                        } label: {
-                            AccessStatusPill(status: status, compact: isCompactMacToolbar)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    refreshButton
-                    clearAllButton
-                    settingsMenu
-                }
+                titleToolbarItem
+                actionToolbarItems
             }
             .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
                 Button("common.cancel", role: .cancel) {}
@@ -151,6 +138,50 @@ struct MessageListView: View {
             .opacity(0)
             .allowsHitTesting(false)
         )
+        #endif
+    }
+
+    @ToolbarContentBuilder
+    private var titleToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 8) {
+                Text("Synca")
+                    .font(.system(size: 17, weight: .semibold))
+
+                if let status = accessManager.status {
+                    Button {
+                        accessManager.showAccessCenter = true
+                    } label: {
+                        HeaderAccessBadge(status: status)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var actionToolbarItems: some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .topBarTrailing) {
+            refreshButton
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            clearAllButton
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            settingsMenu
+        }
+        #else
+        ToolbarItem(id: "refresh", placement: .primaryAction) {
+            refreshButton
+        }
+        ToolbarItem(id: "clear", placement: .primaryAction) {
+            clearAllButton
+        }
+        ToolbarItem(id: "menu", placement: .primaryAction) {
+            settingsMenu
+        }
         #endif
     }
 
@@ -346,28 +377,13 @@ struct MessageListView: View {
 
     // MARK: - Toolbar Items
 
-    private var accessToolbarPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-        return .topBarLeading
-        #else
-        return .navigation
-        #endif
-    }
-
-    private var isCompactMacToolbar: Bool {
-        #if os(macOS)
-        true
-        #else
-        false
-        #endif
-    }
-
     private var refreshButton: some View {
         Button {
             Task { await self.syncManager.refresh() }
         } label: {
             Image(systemName: "arrow.clockwise")
         }
+        .buttonStyle(.plain)
         .disabled(self.syncManager.isRefreshing)
     }
 
@@ -377,6 +393,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "trash")
         }
+        .buttonStyle(.plain)
         .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
     }
 
@@ -406,6 +423,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
     }
 

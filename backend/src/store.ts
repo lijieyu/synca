@@ -1,7 +1,7 @@
 import { db } from './db.js';
 import { v4 as uuidv4 } from 'uuid';
-import { SyncaUser, SyncaMessage } from './types.js';
-import { UsersTable, MessagesTable, IapTransactionsTable } from './db_types.js';
+import { SyncaUser, SyncaMessage, SyncaLifetimeUpgradeOfferKind } from './types.js';
+import { UsersTable, MessagesTable, IapTransactionsTable, LifetimeUpgradeOfferCodesTable } from './db_types.js';
 
 // ── Mappers ──
 
@@ -181,6 +181,129 @@ export async function updateUserPurchaseAccess(input: {
         })
         .where('id', '=', input.userId)
         .execute();
+}
+
+export async function countAvailableLifetimeUpgradeCodes(kind: SyncaLifetimeUpgradeOfferKind): Promise<number> {
+    const result = await db.selectFrom('lifetime_upgrade_offer_codes')
+        .select(({ fn }) => fn.count<string>('id').as('count'))
+        .where('offer_kind', '=', kind)
+        .where('is_active', '=', 1)
+        .where('redeemed_at', 'is', null)
+        .where('assigned_user_id', 'is', null)
+        .executeTakeFirst();
+
+    return Number(result?.count ?? 0);
+}
+
+export async function getAssignedLifetimeUpgradeCode(userId: string, kind: SyncaLifetimeUpgradeOfferKind): Promise<LifetimeUpgradeOfferCodesTable | undefined> {
+    return db.selectFrom('lifetime_upgrade_offer_codes')
+        .selectAll()
+        .where('offer_kind', '=', kind)
+        .where('assigned_user_id', '=', userId)
+        .where('is_active', '=', 1)
+        .where('redeemed_at', 'is', null)
+        .orderBy('assigned_at', 'asc')
+        .executeTakeFirst();
+}
+
+export async function assignLifetimeUpgradeCode(userId: string, kind: SyncaLifetimeUpgradeOfferKind, now: string): Promise<LifetimeUpgradeOfferCodesTable | undefined> {
+    return db.transaction().execute(async (trx) => {
+        const existing = await trx.selectFrom('lifetime_upgrade_offer_codes')
+            .selectAll()
+            .where('offer_kind', '=', kind)
+            .where('assigned_user_id', '=', userId)
+            .where('is_active', '=', 1)
+            .where('redeemed_at', 'is', null)
+            .orderBy('assigned_at', 'asc')
+            .executeTakeFirst();
+
+        if (existing) return existing;
+
+        const candidate = await trx.selectFrom('lifetime_upgrade_offer_codes')
+            .select(['id'])
+            .where('offer_kind', '=', kind)
+            .where('is_active', '=', 1)
+            .where('redeemed_at', 'is', null)
+            .where('assigned_user_id', 'is', null)
+            .orderBy('created_at', 'asc')
+            .executeTakeFirst();
+
+        if (!candidate) return undefined;
+
+        await trx.updateTable('lifetime_upgrade_offer_codes')
+            .set({
+                assigned_user_id: userId,
+                assigned_at: now,
+                updated_at: now,
+            })
+            .where('id', '=', candidate.id)
+            .where('assigned_user_id', 'is', null)
+            .execute();
+
+        return trx.selectFrom('lifetime_upgrade_offer_codes')
+            .selectAll()
+            .where('id', '=', candidate.id)
+            .where('assigned_user_id', '=', userId)
+            .executeTakeFirst();
+    });
+}
+
+export async function markAssignedLifetimeUpgradeCodesRedeemed(userId: string, now: string): Promise<void> {
+    await db.updateTable('lifetime_upgrade_offer_codes')
+        .set({
+            redeemed_at: now,
+            updated_at: now,
+        })
+        .where('assigned_user_id', '=', userId)
+        .where('redeemed_at', 'is', null)
+        .execute();
+}
+
+export async function importLifetimeUpgradeCodes(input: {
+    kind: SyncaLifetimeUpgradeOfferKind;
+    codes: string[];
+    now: string;
+}): Promise<{ inserted: number; existing: number }> {
+    const uniqueCodes = Array.from(
+        new Set(
+            input.codes
+                .map((code) => code.trim())
+                .filter((code) => code.length > 0)
+        )
+    );
+
+    if (uniqueCodes.length === 0) {
+        return { inserted: 0, existing: 0 };
+    }
+
+    let inserted = 0;
+    let existing = 0;
+
+    for (const code of uniqueCodes) {
+        const result = await db.insertInto('lifetime_upgrade_offer_codes')
+            .values({
+                id: uuidv4(),
+                offer_kind: input.kind,
+                code,
+                assigned_user_id: null,
+                assigned_at: null,
+                redeemed_at: null,
+                is_active: 1,
+                created_at: input.now,
+                updated_at: input.now,
+            })
+            .onConflict((oc) => oc.column('code').doNothing())
+            .executeTakeFirst();
+
+        const affectedRows = Number(result.numInsertedOrUpdatedRows ?? 0);
+        if (affectedRows > 0) {
+            inserted += 1;
+        } else {
+            existing += 1;
+        }
+    }
+
+    return { inserted, existing };
 }
 
 export async function createFeedback(input: {

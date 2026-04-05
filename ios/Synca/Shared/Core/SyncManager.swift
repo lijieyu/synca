@@ -88,9 +88,9 @@ final class SyncManager: ObservableObject {
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
+            await AccessManager.shared.refresh()
             if appendedRemotely {
                 remoteAppendEvent = UUID()
-                await AccessManager.shared.refresh()
             }
             if manual && showSuccessStatus { updateStatus(.success) }
         } catch {
@@ -138,9 +138,9 @@ final class SyncManager: ObservableObject {
                 lastRefreshDate = Date()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
+            await AccessManager.shared.refresh()
             if appendedRemotely && hasCompletedInitialLoad {
                 remoteAppendEvent = UUID()
-                await AccessManager.shared.refresh()
             }
             if manual { updateStatus(.success) }
         } catch {

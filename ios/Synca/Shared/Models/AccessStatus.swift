@@ -1,5 +1,16 @@
 import Foundation
 
+enum LifetimeUpgradeOfferKind: String, Codable, Equatable {
+    case monthlyToLifetime = "monthly_to_lifetime"
+    case yearlyToLifetime = "yearly_to_lifetime"
+}
+
+struct LifetimeUpgradeOffer: Codable, Equatable {
+    let kind: LifetimeUpgradeOfferKind
+    let discountedPriceLabel: String
+    let isCodeAvailable: Bool
+}
+
 struct AccessStatus: Codable, Equatable {
     let plan: String
     let isUnlimited: Bool
@@ -13,6 +24,7 @@ struct AccessStatus: Codable, Equatable {
     let purchaseDate: String?
     let subscriptionExpiresAt: String?
     let storeProductId: String?
+    let lifetimeUpgradeOffer: LifetimeUpgradeOffer?
 
     var isFree: Bool {
         !isUnlimited && !isTrial

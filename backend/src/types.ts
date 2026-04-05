@@ -9,6 +9,13 @@ export interface SyncaUser {
 
 export type SyncaAccessPlan = 'trial' | 'free' | 'unlimited';
 export type SyncaUnlimitedSource = 'subscription' | 'lifetime' | null;
+export type SyncaLifetimeUpgradeOfferKind = 'monthly_to_lifetime' | 'yearly_to_lifetime';
+
+export interface SyncaLifetimeUpgradeOffer {
+    kind: SyncaLifetimeUpgradeOfferKind;
+    discountedPriceLabel: string;
+    isCodeAvailable: boolean;
+}
 
 export interface SyncaAccessStatus {
     plan: SyncaAccessPlan;
@@ -23,6 +30,7 @@ export interface SyncaAccessStatus {
     purchaseDate?: string | null;
     subscriptionExpiresAt?: string | null;
     storeProductId?: string | null;
+    lifetimeUpgradeOffer?: SyncaLifetimeUpgradeOffer | null;
 }
 
 export interface SyncaMessage {

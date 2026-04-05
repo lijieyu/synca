@@ -6,6 +6,8 @@ export const MONTHLY_PRODUCT_ID = 'org.haerth.synca.unlimited.monthly';
 export const YEARLY_PRODUCT_ID = 'org.haerth.synca.unlimited.yearly';
 export const LIFETIME_PRODUCT_ID = 'org.haerth.synca.unlimited.lifetime';
 export const SUPPORTED_PRODUCT_IDS = new Set([MONTHLY_PRODUCT_ID, YEARLY_PRODUCT_ID, LIFETIME_PRODUCT_ID]);
+export const MONTHLY_TO_LIFETIME_DISCOUNT_LABEL = process.env.LIFETIME_UPGRADE_MONTHLY_PRICE_LABEL ?? '¥78';
+export const YEARLY_TO_LIFETIME_DISCOUNT_LABEL = process.env.LIFETIME_UPGRADE_YEARLY_PRICE_LABEL ?? '¥58';
 
 const bundleId = process.env.APPLE_CLIENT_ID ?? 'org.haerth.synca';
 const appleAppId = process.env.APP_STORE_APPLE_ID ? Number(process.env.APP_STORE_APPLE_ID) : undefined;

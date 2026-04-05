@@ -208,4 +208,66 @@ describe('Purchase Sync API', () => {
         expect(res.body.accessStatus.isUnlimited).toBe(false);
         expect(res.body.accessStatus.todayLimit).toBe(20);
     });
+
+    it('should include a lifetime upgrade offer for an active monthly subscriber when codes are available', async () => {
+        const now = new Date().toISOString();
+        const { userId, authHeader } = await createTestUser({
+            purchaseDate: now,
+            subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            storeProductId: 'org.haerth.synca.unlimited.monthly',
+        });
+
+        await db.insertInto('lifetime_upgrade_offer_codes').values({
+            id: uuidv4(),
+            offer_kind: 'monthly_to_lifetime',
+            code: 'MONTHLYUPGRADE001',
+            assigned_user_id: null,
+            assigned_at: null,
+            redeemed_at: null,
+            is_active: 1,
+            created_at: now,
+            updated_at: now,
+        }).execute();
+
+        const res = await request(app)
+            .get('/me/access-status')
+            .set('Authorization', authHeader);
+
+        expect(res.status).toBe(200);
+        expect(res.body.accessStatus.lifetimeUpgradeOffer).toEqual({
+            kind: 'monthly_to_lifetime',
+            discountedPriceLabel: '¥78',
+            isCodeAvailable: true,
+        });
+    });
+
+    it('should assign a one-time lifetime upgrade code to an eligible subscriber', async () => {
+        const now = new Date().toISOString();
+        const { authHeader } = await createTestUser({
+            purchaseDate: now,
+            subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            storeProductId: 'org.haerth.synca.unlimited.yearly',
+        });
+
+        await db.insertInto('lifetime_upgrade_offer_codes').values({
+            id: uuidv4(),
+            offer_kind: 'yearly_to_lifetime',
+            code: 'YEARLYUPGRADE001',
+            assigned_user_id: null,
+            assigned_at: null,
+            redeemed_at: null,
+            is_active: 1,
+            created_at: now,
+            updated_at: now,
+        }).execute();
+
+        const res = await request(app)
+            .post('/me/lifetime-upgrade-offer-code')
+            .set('Authorization', authHeader)
+            .send({ kind: 'yearly_to_lifetime' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.code).toBe('YEARLYUPGRADE001');
+        expect(res.body.discountedPriceLabel).toBe('¥58');
+    });
 });
