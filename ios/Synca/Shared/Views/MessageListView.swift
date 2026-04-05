@@ -42,8 +42,8 @@ struct MessageListView: View {
             .toolbar {
 #if os(iOS)
                 titleToolbarItem
-#endif
                 actionToolbarItems
+#endif
             }
             .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
                 Button("common.cancel", role: .cancel) {}
@@ -131,6 +131,15 @@ struct MessageListView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestClearAll)) { _ in
+            showClearAllConfirm = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestFeedbackComposer)) { _ in
+            showFeedbackComposer = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
+            showLogoutConfirm = true
+        }
         #if os(macOS)
         .background(
             Button("") {
@@ -162,9 +171,9 @@ struct MessageListView: View {
         }
     }
 
+    #if os(iOS)
     @ToolbarContentBuilder
     private var actionToolbarItems: some ToolbarContent {
-        #if os(iOS)
         ToolbarItem(placement: .topBarTrailing) {
             refreshButton
         }
@@ -174,18 +183,8 @@ struct MessageListView: View {
         ToolbarItem(placement: .topBarTrailing) {
             settingsMenu
         }
-        #else
-        ToolbarItem(id: "refresh", placement: .primaryAction) {
-            refreshButton
-        }
-        ToolbarItem(id: "clear", placement: .primaryAction) {
-            clearAllButton
-        }
-        ToolbarItem(id: "menu", placement: .primaryAction) {
-            settingsMenu
-        }
-        #endif
     }
+    #endif
 
     // MARK: - Subviews
 
@@ -703,8 +702,11 @@ struct MessageListView: View {
     }
 }
 
-private extension Notification.Name {
+extension Notification.Name {
     static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
+    static let syncaRequestClearAll = Notification.Name("syncaRequestClearAll")
+    static let syncaRequestFeedbackComposer = Notification.Name("syncaRequestFeedbackComposer")
+    static let syncaRequestSignOut = Notification.Name("syncaRequestSignOut")
 }
 
 extension View {
