@@ -38,7 +38,10 @@ export const AdminLayout: React.FC = () => {
   };
 
   useEffect(() => {
+    const originalTitle = document.title;
+    document.title = 'Synca Admin';
     fetchData();
+    return () => { document.title = originalTitle; };
   }, [activeTab]);
 
   return (
