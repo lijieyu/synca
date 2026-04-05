@@ -4,11 +4,13 @@ import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, RefreshCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const MessageListView: React.FC = () => {
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { logout } = useAuth();
+  const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async (scrollToBottom = true) => {
@@ -57,19 +59,19 @@ export const MessageListView: React.FC = () => {
   return (
     <div className="app-container">
       <div className="header">
-        <h1 className="header-title">Synca Web</h1>
+        <h1 className="header-title">{t('app.name', 'Synca')}</h1>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <button className="logout-btn" onClick={() => fetchMessages(false)} style={{ color: 'var(--text-main)' }}>
             <RefreshCcw size={18} />
           </button>
-          <button className="logout-btn" onClick={logout}>
+          <button className="logout-btn" onClick={() => window.confirm(t('message_list.logout_confirm_message')) && logout()} title={t('message_list.logout')}>
             <LogOut size={18} />
           </button>
         </div>
       </div>
 
       <div className="message-list" ref={listRef}>
-        {isLoading && <p style={{ textAlign: 'center', opacity: 0.5 }}>Loading...</p>}
+        {isLoading && <p style={{ textAlign: 'center', opacity: 0.5 }}>{t('message_list.loading', 'Loading...')}</p>}
         
         {completed.map(msg => (
           <MessageBubble key={msg.id} message={msg} onUpdate={() => fetchMessages(false)} />
@@ -78,7 +80,7 @@ export const MessageListView: React.FC = () => {
         {uncompleted.length > 0 && (
           <div style={{ marginTop: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', background: 'var(--border-color)', padding: '2px 8px', borderRadius: '4px' }}>
-              Pending
+              {t('message_list.todo_section', 'Inbox')}
             </span>
           </div>
         )}
