@@ -442,10 +442,33 @@ struct AccessCenterView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .frame(width: 18, alignment: .center)
+                .offset(y: benefitIconOffset(for: systemImage))
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.primary)
         }
+    }
+
+    private func benefitIconOffset(for systemImage: String) -> CGFloat {
+        #if os(iOS)
+        switch systemImage {
+        case "infinity":
+            return 3.6
+        case "ipad.and.iphone":
+            return 2.2
+        case "sparkles.rectangle.stack":
+            return 1.4
+        default:
+            return 1
+        }
+        #else
+        switch systemImage {
+        case "infinity":
+            return 1.4
+        default:
+            return 0
+        }
+        #endif
     }
 
     private func detailRow(_ key: LocalizedStringKey, value: String) -> some View {
