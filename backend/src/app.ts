@@ -102,6 +102,17 @@ async function auth(req: express.Request, res: express.Response, next: express.N
     next();
 }
 
+async function adminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    await auth(req, res, async () => {
+        const userId = getUserId(req);
+        const user = await getUser(userId);
+        if (!user || !user.isAdmin) {
+            return res.status(403).json({ error: 'forbidden_admin_only' });
+        }
+        next();
+    });
+}
+
 function getUserId(req: express.Request): string {
     return (req as any).userId;
 }
@@ -284,8 +295,11 @@ app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) 
         content: parsed.data.content,
         email: parsed.data.email,
         imagePaths: files.map((file) => file.filename),
+        deviceModel: req.body.deviceModel,
+        osVersion: req.body.osVersion,
+        appVersion: req.body.appVersion,
         now,
-    });
+    } as any);
 
     res.status(201).json({ ok: true });
 });
@@ -347,11 +361,39 @@ app.get('/messages/uncleared-count', auth, async (req, res) => {
     res.json({ count });
 });
 
+// ── Admin Routes ──
+
+app.get('/admin/overview', adminAuth, async (req, res) => {
+    const stats = await import('./store.js').then(s => s.getAdminOverviewStats());
+    res.json(stats);
+});
+
+app.get('/admin/users', adminAuth, async (req, res) => {
+    const users = await import('./store.js').then(s => s.getAdminUserList());
+    res.json({ users });
+});
+
+app.get('/admin/messages/stats', adminAuth, async (req, res) => {
+    const stats = await import('./store.js').then(s => s.getAdminMessageStats());
+    res.json(stats);
+});
+
+app.get('/admin/revenue/stats', adminAuth, async (req, res) => {
+    const stats = await import('./store.js').then(s => s.getAdminRevenueStats());
+    res.json(stats);
+});
+
+app.get('/admin/feedback', adminAuth, async (req, res) => {
+    const feedbacks = await import('./store.js').then(s => s.getAdminFeedbackList());
+    res.json({ feedbacks });
+});
+
+
 app.get('/me/access-status', auth, async (req, res) => {
     const userId = getUserId(req);
     const accessStatus = await buildResponseAccessStatus(userId);
     const user = await getUser(userId);
-    res.json({ userId, email: user?.email ?? null, accessStatus });
+    res.json({ userId, email: user?.email ?? null, isAdmin: user?.isAdmin ?? false, accessStatus });
 });
 
 app.post('/me/purchases/sync', auth, async (req, res) => {
