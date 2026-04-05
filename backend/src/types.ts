@@ -5,6 +5,7 @@ export interface SyncaUser {
     nickname: string;
     createdAt: string;
     updatedAt: string;
+    isAdmin: boolean;
 }
 
 export type SyncaAccessPlan = 'trial' | 'free' | 'unlimited';

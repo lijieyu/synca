@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncaUser, SyncaMessage } from './types.js';
 import { UsersTable, MessagesTable, IapTransactionsTable } from './db_types.js';
@@ -13,6 +14,7 @@ function toUser(row: UsersTable): SyncaUser {
         nickname: row.nickname,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        isAdmin: row.is_admin === 1,
     };
 }
 
@@ -82,6 +84,7 @@ export async function createUser(user: {
         subscription_expires_at: null,
         lifetime_purchased_at: null,
         store_product_id: null,
+        is_admin: 0,
         created_at: user.now,
         updated_at: user.now,
     }).execute();
@@ -197,6 +200,9 @@ export async function createFeedback(input: {
         content: input.content,
         email: input.email,
         image_paths: input.imagePaths.length > 0 ? JSON.stringify(input.imagePaths) : null,
+        device_model: (input as any).deviceModel ?? null,
+        os_version: (input as any).osVersion ?? null,
+        app_version: (input as any).appVersion ?? null,
         created_at: input.now,
         updated_at: input.now,
     }).execute();
@@ -487,3 +493,135 @@ export async function resetDb() {
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
 }
+
+// ── Admin DAO ──
+
+export async function getAdminOverviewStats() {
+    const userCount = await db.selectFrom('users').select((eb) => eb.fn.countAll().as('count')).executeTakeFirst();
+    const todoCount = await db.selectFrom('messages').select((eb) => eb.fn.countAll().as('count')).where('is_deleted', '=', 0).executeTakeFirst();
+    const feedbackCount = await db.selectFrom('feedbacks').select((eb) => eb.fn.countAll().as('count')).executeTakeFirst();
+    
+    // Revenue calculation (¥6, ¥30, ¥98)
+    const transactions = await db.selectFrom('iap_transactions').select(['product_id']).execute();
+    let totalRevenue = 0;
+    for (const tx of transactions) {
+        if (tx.product_id.includes('monthly')) totalRevenue += 6;
+        else if (tx.product_id.includes('yearly')) totalRevenue += 30;
+        else if (tx.product_id.includes('lifetime')) totalRevenue += 98;
+    }
+
+    return {
+        totalUsers: Number(userCount?.count ?? 0),
+        totalTodos: Number(todoCount?.count ?? 0),
+        totalFeedback: Number(feedbackCount?.count ?? 0),
+        totalRevenue,
+    };
+}
+
+export async function getAdminUserList() {
+    // We join users with message counts and last activity
+    const users = await db.selectFrom('users')
+        .selectAll()
+        .execute();
+
+    const result = [];
+    for (const u of users) {
+        const msgCount = await db.selectFrom('messages')
+            .select((eb) => eb.fn.countAll().as('count'))
+            .where('user_id', '=', u.id)
+            .where('is_deleted', '=', 0)
+            .executeTakeFirst();
+            
+        const lastMsg = await db.selectFrom('messages')
+            .select('created_at')
+            .where('user_id', '=', u.id)
+            .orderBy('created_at', 'desc')
+            .executeTakeFirst();
+
+        let plan = 'Free';
+        if (u.lifetime_purchased_at) plan = 'Lifetime';
+        else if (u.subscription_expires_at && new Date(u.subscription_expires_at) > new Date()) {
+            plan = u.store_product_id?.includes('yearly') ? 'Yearly' : 'Monthly';
+        }
+
+        result.push({
+            id: u.id,
+            email: u.email,
+            plan,
+            todoCount: Number(msgCount?.count ?? 0),
+            lastActive: lastMsg?.created_at ?? u.created_at,
+            registeredAt: u.created_at,
+        });
+    }
+    return result;
+}
+
+export async function getAdminMessageStats() {
+    const dailyVolume = await db.selectFrom('messages')
+        .select([
+            sql<string>`date(created_at)`.as('date'),
+            (eb) => eb.fn.countAll().as('count')
+        ])
+        .groupBy('date')
+        .orderBy('date', 'desc')
+        .limit(30)
+        .execute();
+
+    const typeDistribution = await db.selectFrom('messages')
+        .select([
+            'type',
+            (eb) => eb.fn.countAll().as('count')
+        ])
+        .groupBy('type')
+        .execute();
+
+    return { 
+        dailyVolume: dailyVolume.map(d => ({ date: d.date, count: Number(d.count) })),
+        distribution: typeDistribution.map(t => ({ type: t.type, count: Number(t.count) }))
+    };
+}
+
+export async function getAdminRevenueStats() {
+    const transactions = await db.selectFrom('iap_transactions')
+        .select(['product_id', 'purchase_date'])
+        .execute();
+
+    const dailyMap: Record<string, number> = {};
+    for (const tx of transactions) {
+        if (!tx.purchase_date) continue;
+        const date = tx.purchase_date.split('T')[0];
+        let price = 0;
+        if (tx.product_id.includes('monthly')) price = 6;
+        else if (tx.product_id.includes('yearly')) price = 30;
+        else if (tx.product_id.includes('lifetime')) price = 98;
+        
+        dailyMap[date] = (dailyMap[date] || 0) + price;
+    }
+
+    const dailyRevenue = Object.entries(dailyMap)
+        .map(([date, amount]) => ({ date, amount }))
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 30);
+
+    return { dailyRevenue };
+}
+
+export async function getAdminFeedbackList() {
+    const rows = await db.selectFrom('feedbacks')
+        .leftJoin('users', 'feedbacks.user_id', 'users.id')
+        .select([
+            'feedbacks.id',
+            'feedbacks.content',
+            'feedbacks.email',
+            'feedbacks.device_model',
+            'feedbacks.os_version',
+            'feedbacks.app_version',
+            'feedbacks.created_at',
+            'users.email as userEmail'
+        ])
+        .orderBy('feedbacks.created_at', 'desc')
+        .execute();
+
+    return rows;
+}
+

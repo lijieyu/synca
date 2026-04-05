@@ -41,6 +41,16 @@ export async function runMigrations() {
         await sql`ALTER TABLE users ADD COLUMN store_product_id TEXT`.execute(db);
     } catch (_e) {}
 
+    try {
+        await sql`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`.execute(db);
+    } catch (_e) {}
+
+    // Set initial admin
+    try {
+        await sql`UPDATE users SET is_admin = 1 WHERE email = 'jieyu.li@icloud.com'`.execute(db);
+        console.log('[migrate] Ensured jieyu.li@icloud.com is admin.');
+    } catch (_e) {}
+
     // Create messages table
     await sql`
         CREATE TABLE IF NOT EXISTS messages (
@@ -124,10 +134,24 @@ export async function runMigrations() {
             content TEXT NOT NULL,
             email TEXT NOT NULL,
             image_paths TEXT,
+            device_model TEXT,
+            os_version TEXT,
+            app_version TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
     `.execute(db);
+    
+    try {
+        await sql`ALTER TABLE feedbacks ADD COLUMN device_model TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE feedbacks ADD COLUMN os_version TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE feedbacks ADD COLUMN app_version TEXT`.execute(db);
+    } catch (_e) {}
+
     await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_user_id ON feedbacks(user_id)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at)`.execute(db);
 
