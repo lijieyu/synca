@@ -11,6 +11,7 @@ export interface UsersTable {
     subscription_expires_at: string | null;
     lifetime_purchased_at: string | null;
     store_product_id: string | null;
+    is_admin: number; // 0 | 1
     created_at: string;
     updated_at: string;
 }
@@ -73,6 +74,9 @@ export interface FeedbacksTable {
     content: string;
     email: string;
     image_paths: string | null;
+    device_model: string | null;
+    os_version: string | null;
+    app_version: string | null;
     created_at: string;
     updated_at: string;
 }

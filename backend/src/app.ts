@@ -363,27 +363,27 @@ app.get('/messages/uncleared-count', auth, async (req, res) => {
 
 // ── Admin Routes ──
 
-app.get('/admin/overview', adminAuth, async (req, res) => {
+app.get('/api/admin/overview', adminAuth, async (req, res) => {
     const stats = await import('./store.js').then(s => s.getAdminOverviewStats());
     res.json(stats);
 });
 
-app.get('/admin/users', adminAuth, async (req, res) => {
+app.get('/api/admin/users', adminAuth, async (req, res) => {
     const users = await import('./store.js').then(s => s.getAdminUserList());
     res.json({ users });
 });
 
-app.get('/admin/messages/stats', adminAuth, async (req, res) => {
+app.get('/api/admin/messages/stats', adminAuth, async (req, res) => {
     const stats = await import('./store.js').then(s => s.getAdminMessageStats());
     res.json(stats);
 });
 
-app.get('/admin/revenue/stats', adminAuth, async (req, res) => {
+app.get('/api/admin/revenue/stats', adminAuth, async (req, res) => {
     const stats = await import('./store.js').then(s => s.getAdminRevenueStats());
     res.json(stats);
 });
 
-app.get('/admin/feedback', adminAuth, async (req, res) => {
+app.get('/api/admin/feedback', adminAuth, async (req, res) => {
     const feedbacks = await import('./store.js').then(s => s.getAdminFeedbackList());
     res.json({ feedbacks });
 });
