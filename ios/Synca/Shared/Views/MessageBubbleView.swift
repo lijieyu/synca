@@ -165,7 +165,7 @@ struct MessageBubbleView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 240, maxHeight: 300)
+                            .frame(maxWidth: 320, maxHeight: 450)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .onTapGesture { onImageTap() }
                             .contextMenu {

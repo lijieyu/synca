@@ -22,7 +22,7 @@ struct SyncaApp: App {
                 .environmentObject(purchaseManager)
             #if os(macOS)
                 .background(MacWindowAccessor())
-                .frame(minWidth: 460, idealWidth: 500, minHeight: 500, idealHeight: 700)
+                .frame(minWidth: 400, idealWidth: 500, minHeight: 500, idealHeight: 700)
             #endif
         }
         #if os(macOS)
