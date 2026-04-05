@@ -95,33 +95,57 @@ export const MessageListView: React.FC = () => {
           <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
           <h1 className="header-title">{t('app.name', 'Synca')}</h1>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {/* Action Group */}
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {isAdmin && (
+              <button className="header-btn" onClick={() => window.location.href = '/admin'} title="Admin Dashboard">
+                <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)', padding: '0 4px' }}>Manage</span>
+              </button>
+            )}
+            <button className="header-btn" onClick={handleRefresh} title={t('message_list.sync_success', 'Sync')}>
+              <RefreshCcw size={18} />
+            </button>
+            <button 
+              className="header-btn" 
+              onClick={() => setShowClearAllModal(true)} 
+              disabled={completed.length === 0}
+              title={t('message_list.clear_all_confirm_title', 'Clear All')}
+              style={{ opacity: completed.length === 0 ? 0.3 : 1 }}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+
+          <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 8px', opacity: 0.8 }}></div>
+
+          {/* Account Group */}
           {email && (
-            <div style={{ display: 'flex', alignItems: 'center', marginRight: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              {email}
-              {getPlanInfo()}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              padding: '4px 8px 4px 12px',
+              borderRadius: '20px',
+              background: 'rgba(0,0,0,0.03)',
+              border: '1px solid var(--border-color)'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.8 }}>{email}</span>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {getPlanInfo()}
+                </div>
+              </div>
+              <button 
+                className="header-btn" 
+                onClick={() => setShowLogoutModal(true)} 
+                title={t('message_list.logout', 'Sign Out')}
+                style={{ width: '28px', height: '28px', minWidth: '28px', background: 'transparent', margin: 0 }}
+              >
+                <LogOut size={14} />
+              </button>
             </div>
           )}
-          {isAdmin && (
-            <button className="header-btn" onClick={() => window.location.href = '/admin'} title="Admin Dashboard">
-              <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)' }}>Manage</span>
-            </button>
-          )}
-          <button className="header-btn" onClick={handleRefresh} title={t('message_list.sync_success', 'Sync')}>
-            <RefreshCcw size={18} />
-          </button>
-          <button 
-            className="header-btn" 
-            onClick={() => setShowClearAllModal(true)} 
-            disabled={completed.length === 0}
-            title={t('message_list.clear_all_confirm_title', 'Clear All')}
-            style={{ opacity: completed.length === 0 ? 0.3 : 1 }}
-          >
-            <Trash2 size={18} />
-          </button>
-          <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')}>
-            <LogOut size={18} />
-          </button>
         </div>
       </div>
 
