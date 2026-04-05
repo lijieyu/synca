@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { RefreshCcw, LogOut, ChevronLeft, User, MessageSquare, BarChart3, Heart, CreditCard } from 'lucide-react';
+import { RefreshCcw, LogOut, User, MessageSquare, BarChart3, Heart, CreditCard } from 'lucide-react';
 import { Modal } from './Modal';
 
 export const AdminLayout: React.FC = () => {
@@ -54,11 +54,9 @@ export const AdminLayout: React.FC = () => {
         />
       )}
       <div className="header" style={{ borderBottom: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button className="header-btn" onClick={() => window.location.href = '/'} title="Back to App">
-            <ChevronLeft size={20} />
-          </button>
-          <h1 className="header-title">Admin Dashboard</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
+          <h1 className="header-title" style={{ fontSize: '18px' }}>Synca Admin</h1>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="header-btn" onClick={fetchData} title="Refresh">
