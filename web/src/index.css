@@ -16,7 +16,8 @@
     --text-main: #ffffff;
     --text-secondary: #8E8E93;
     --border-color: rgba(255, 255, 255, 0.05);
-    --synca-mint-light: rgba(48, 209, 88, 0.05); /* Very muted green shadow */
+    --synca-mint-light: rgba(52, 199, 89, 0.03); /* Almost invisible green */
+    --send-icon-arrow-color: #1c1c1e; /* Dark arrow in dark mode */
   }
 }
 
