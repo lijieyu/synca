@@ -85,11 +85,14 @@ export const MessageListView: React.FC = () => {
           <button className="header-btn" onClick={handleRefresh} title={t('message_list.sync_success', 'Sync')}>
             <RefreshCcw size={18} />
           </button>
-          {completed.length > 0 && (
-            <button className="header-btn" onClick={() => setShowClearAllModal(true)} title={t('message_list.clear_all_confirm_title', 'Clear All')}>
-              <Trash2 size={18} />
-            </button>
-          )}
+          <button 
+            className="header-btn" 
+            onClick={() => setShowClearAllModal(true)} 
+            disabled={completed.length === 0}
+            title={t('message_list.clear_all_confirm_title', 'Clear All')}
+          >
+            <Trash2 size={18} style={{ opacity: completed.length === 0 ? 0.3 : 1 }} />
+          </button>
           <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')}>
             <LogOut size={18} />
           </button>

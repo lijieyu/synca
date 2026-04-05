@@ -16,6 +16,13 @@ const CheckCircleFill = ({ size = 20, color = 'currentColor' }: { size?: number;
   </svg>
 );
 
+const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.8" />
+    <path d="M8 12L11 15L16 9" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -81,7 +88,11 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
               onClick={handleClear} 
               disabled={message.isCleared || isProcessing}
             >
-              <CheckCircleFill size={18} color={message.isCleared ? 'var(--synca-mint)' : 'var(--text-secondary)'} />
+              {message.isCleared ? (
+                <CheckCircleFill size={18} color="var(--synca-mint)" />
+              ) : (
+                <CheckCircleOutline size={18} color="var(--text-secondary)" />
+              )}
             </button>
           </div>
         </div>
