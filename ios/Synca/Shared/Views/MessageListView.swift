@@ -214,8 +214,10 @@ struct MessageListView: View {
                 #if os(iOS)
                 .scrollDismissesKeyboard(.immediately)
                 .refreshable {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    await syncManager.refresh()
+                    let task = Task {
+                        await syncManager.refresh()
+                    }
+                    _ = await task.result
                 }
                 #endif
                 .onChange(of: syncManager.isSending) { isSending in
