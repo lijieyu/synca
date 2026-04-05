@@ -127,7 +127,17 @@ body {
 
 .message-bubble.cleared {
   background-color: var(--synca-mint-light);
-  border-color: rgba(48, 209, 88, 0.3);
+  border-color: rgba(48, 209, 88, 0.2);
+  opacity: 0.85; /* Subdue the whole bubble */
+}
+
+.message-bubble.cleared .message-content {
+  color: var(--text-main);
+  opacity: 0.7; /* Greying out the text */
+}
+
+.message-bubble.cleared .message-image {
+  opacity: 0.8; /* Dim images slightly */
 }
 
 .message-header {
