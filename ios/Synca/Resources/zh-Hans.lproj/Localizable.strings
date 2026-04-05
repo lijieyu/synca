@@ -28,7 +28,7 @@
 "message_list.logout_confirm_message" = "退出后需要重新登录";
 "message_list.logout" = "退出";
 "message_list.about" = "关于 Synca";
-"message_list.feedback" = "反馈";
+"message_list.feedback" = "提交反馈";
 "message_list.sign_out" = "退出登录";
 "message_list.session_expired_title" = "登录已过期";
 "message_list.session_expired_message" = "请重新登录以继续使用";
