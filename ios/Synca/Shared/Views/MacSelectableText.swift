@@ -73,6 +73,51 @@ class CustomContextMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in self.trackingAreas { self.removeTrackingArea(area) }
+        let options: NSTrackingArea.Options = [.mouseMoved, .cursorUpdate, .activeInActiveApp, .inVisibleRect]
+        let area = NSTrackingArea(rect: self.bounds, options: options, owner: self, userInfo: nil)
+        self.addTrackingArea(area)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        self.updateCursor(with: event)
+        super.mouseMoved(with: event)
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        self.updateCursor(with: event)
+    }
+
+    private func updateCursor(with event: NSEvent) {
+        guard let layoutManager = self.layoutManager, let textContainer = self.textContainer else { return }
+        
+        let point = self.convert(event.locationInWindow, from: nil)
+        
+        // Adjust for any text container insets if they were not zero
+        let textContainerPoint = NSPoint(x: point.x - textContainerInset.width, y: point.y - textContainerInset.height)
+        
+        var fraction: CGFloat = 0
+        let charIndex = layoutManager.characterIndex(for: textContainerPoint, in: textContainer, fractionOfDistanceBetweenInsertionPoints: &fraction)
+        
+        // Ensure the charIndex is valid and actually within the glyph rect to avoid hover-hand near end of lines
+        if charIndex < (self.textStorage?.length ?? 0) {
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: charIndex)
+            let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
+            
+            if glyphRect.contains(textContainerPoint) {
+                let attribute = self.textStorage?.attribute(.link, at: charIndex, effectiveRange: nil)
+                if attribute != nil {
+                    NSCursor.pointingHand.set()
+                    return
+                }
+            }
+        }
+        
+        NSCursor.iBeam.set()
+    }
+
     override func resetCursorRects() {
         super.resetCursorRects()
 
@@ -82,11 +127,11 @@ class CustomContextMenuTextView: NSTextView {
             let textContainer
         else { return }
 
+        layoutManager.ensureLayout(for: textContainer)
         let fullRange = NSRange(location: 0, length: textStorage.length)
         textStorage.enumerateAttribute(.link, in: fullRange) { value, range, _ in
             guard value != nil else { return }
             let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            // Fix: Use NSNotFound for 'not found' behavior as .notFound is not available in standard NSRange for SwiftUI contexts
             layoutManager.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: textContainer) { rect, _ in
                 self.addCursorRect(rect, cursor: .pointingHand)
             }
