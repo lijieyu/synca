@@ -6,6 +6,7 @@ import AppKit
 struct MacInputTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
+    let isSending: Bool
     let onPasteImage: (Data) -> Void
     var onSubmit: (() -> Void)? = nil
 
@@ -36,6 +37,8 @@ struct MacInputTextView: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.onPasteImage = onPasteImage
         textView.onSubmit = onSubmit
+        textView.isEditable = !isSending
+        textView.isSelectable = !isSending
         textView.isRichText = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -73,6 +76,8 @@ struct MacInputTextView: NSViewRepresentable {
         context.coordinator.onSubmit = onSubmit
         textView.onSubmit = onSubmit
         textView.onPasteImage = onPasteImage
+        textView.isEditable = !isSending
+        textView.isSelectable = !isSending
         scrollView.syncTextViewWidthAndContainer()
         // Do not overwrite the text view while IME composition is active (e.g. Chinese input).
         if !textView.hasMarkedText(), textView.string != text {

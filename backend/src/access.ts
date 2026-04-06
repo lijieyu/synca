@@ -1,4 +1,5 @@
 import {
+    assignLifetimeUpgradeCode,
     countAvailableLifetimeUpgradeCodes,
     countMessagesCreatedBetween,
     getAssignedLifetimeUpgradeCode,
@@ -171,15 +172,22 @@ export async function buildLifetimeUpgradeOffer(userId: string, status: SyncaAcc
         return null;
     }
 
-    const [assignedCode, availableCount] = await Promise.all([
-        getAssignedLifetimeUpgradeCode(userId, kind),
-        countAvailableLifetimeUpgradeCodes(kind),
-    ]);
+    let assignedCode = await getAssignedLifetimeUpgradeCode(userId, kind);
+    let availableCount = 0;
+
+    if (!assignedCode) {
+        availableCount = await countAvailableLifetimeUpgradeCodes(kind);
+        if (availableCount > 0) {
+            assignedCode = await assignLifetimeUpgradeCode(userId, kind, new Date().toISOString());
+            availableCount = assignedCode ? 1 : availableCount;
+        }
+    }
 
     return {
         kind,
         discountedPriceLabel: discountedPriceLabelForKind(kind),
         isCodeAvailable: Boolean(assignedCode || availableCount > 0),
+        code: assignedCode?.code ?? null,
     };
 }
 

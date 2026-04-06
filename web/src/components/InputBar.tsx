@@ -147,7 +147,8 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
         
         <textarea
           ref={textareaRef}
-          placeholder={t('message_list.input_placeholder', 'Capture your thoughts...')}
+          className={isSending ? 'sending' : ''}
+          placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
           value={text}
           onChange={(e) => { setText(e.target.value); autoGrow(); }}
           onKeyDown={handleKeyDown}

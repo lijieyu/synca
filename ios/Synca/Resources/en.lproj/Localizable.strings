@@ -38,6 +38,7 @@
 "message_list.about_website_hint" = "Open Synca Web in your default browser";
 "message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "Capture your thoughts...";
+"message_list.sending_placeholder" = "Sending...";
 "sync.error_context.sync" = "Sync";
 "sync.error_context.send" = "Send";
 "sync.error_context.send_image" = "Image Send";
@@ -119,7 +120,11 @@
 "access.lifetime_upgrade_title" = "Upgrade to Lifetime";
 "access.upgrade_to_lifetime" = "Upgrade to Lifetime";
 "access.upgrade_to_lifetime_offer" = "Upgrade to Lifetime (Special Offer)";
+"access.offer_code_subtitle" = "A special offer for subscribers. Tap below to enter the code and redeem it right away.";
+"access.offer_code_label" = "Exclusive offer code";
+"access.copy_offer_code" = "Copy";
 "access.offer_code_hint" = "We'll copy your one-time code and open the in-app redemption sheet.";
+"access.offer_code_redeem_hint" = "Tap to redeem now. We'll still copy the code first so it's easier to paste.";
 "access.intro_offer_badge" = "1 month free";
 "access.limit_reached_title" = "Today's free limit reached";
 

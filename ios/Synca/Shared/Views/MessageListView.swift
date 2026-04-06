@@ -429,6 +429,8 @@ struct MessageListView: View {
                     .font(.system(size: 22))
             }
             .buttonStyle(.plain)
+            .disabled(syncManager.isSending)
+            .opacity(syncManager.isSending ? 0.5 : 1.0)
             .onChange(of: self.selectedPhotoItems) { items in
                 guard !items.isEmpty else { return }
                 Task {
@@ -483,16 +485,17 @@ struct MessageListView: View {
     private var inputField: some View {
         #if os(iOS)
         ZStack(alignment: .leading) {
-            PasteAwareTextView(text: $inputText, height: $inputHeight, onImagePaste: { imageData in
+            PasteAwareTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, onImagePaste: { imageData in
                 shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData) }
             }, onSubmit: {
                 self.submitText()
             })
             .frame(height: max(44, min(inputHeight, 150)))
+            .opacity(syncManager.isSending ? 0.5 : 1.0)
 
             if inputText.isEmpty {
-                Text("message_list.input_placeholder", bundle: .main)
+                Text(syncManager.isSending ? "message_list.sending_placeholder" : "message_list.input_placeholder", bundle: .main)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 8)
@@ -507,7 +510,7 @@ struct MessageListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         #else
         ZStack(alignment: .leading) {
-            MacInputTextView(text: $inputText, height: $inputHeight, onPasteImage: { imageData in
+            MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, onPasteImage: { imageData in
                 shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData) }
             }, onSubmit: {
@@ -515,11 +518,12 @@ struct MessageListView: View {
             })
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: max(34, min(inputHeight, 104)))
+            .opacity(syncManager.isSending ? 0.5 : 1.0)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
 
             if inputText.isEmpty {
-                Text("message_list.input_placeholder", bundle: .main)
+                Text(syncManager.isSending ? "message_list.sending_placeholder" : "message_list.input_placeholder", bundle: .main)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 12)

@@ -9,6 +9,7 @@ struct LifetimeUpgradeOffer: Codable, Equatable {
     let kind: LifetimeUpgradeOfferKind
     let discountedPriceLabel: String
     let isCodeAvailable: Bool
+    let code: String?
 }
 
 struct AccessStatus: Codable, Equatable {

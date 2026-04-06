@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct PasteAwareTextView: UIViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
+    let isSending: Bool
     let onImagePaste: (Data) -> Void
     let onSubmit: () -> Void
 
@@ -23,8 +24,8 @@ struct PasteAwareTextView: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
         textView.textContainer.lineFragmentPadding = 0
         textView.isScrollEnabled = false // Important for self-sizing
-        textView.isEditable = true
-        textView.isSelectable = true
+        textView.isEditable = !isSending
+        textView.isSelectable = !isSending
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.returnKeyType = .send
         textView.enablesReturnKeyAutomatically = true
@@ -39,6 +40,9 @@ struct PasteAwareTextView: UIViewRepresentable {
         if uiView.text != text {
             uiView.text = text
         }
+        uiView.isEditable = !isSending
+        uiView.isSelectable = !isSending
+        
         // Force height update
         DispatchQueue.main.async {
             self.updateHeight(uiView)

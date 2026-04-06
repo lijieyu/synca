@@ -201,6 +201,7 @@ struct AccessCenterView: View {
                 .font(.headline)
 
             if let offer = status.lifetimeUpgradeOffer, offer.isCodeAvailable {
+                lifetimeOfferCodeBlock(offer)
                 discountedLifetimeButton(offer)
             } else {
                 standardLifetimeUpgradeButton
@@ -371,16 +372,57 @@ struct AccessCenterView: View {
                     }
                 }
 
-                Text("access.offer_code_hint", bundle: .main)
+                Text("access.offer_code_redeem_hint", bundle: .main)
                     .font(.caption)
                     .foregroundStyle(.secondary.opacity(0.9))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(PlanActionButtonStyle())
         .planPurchaseInteractivity(isInteractionEnabled: !isBusy, isBusy: isBusy)
+    }
+
+    @ViewBuilder
+    private func lifetimeOfferCodeBlock(_ offer: LifetimeUpgradeOffer) -> some View {
+        if let code = offer.code, !code.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("access.offer_code_subtitle", bundle: .main)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("access.offer_code_label", bundle: .main)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(code)
+                            .font(.system(.body, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    Button {
+                        purchaseManager.copyLifetimeOfferCode(code)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.on.doc")
+                            Text(String(localized: "access.copy_offer_code", bundle: .main))
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
     }
 
     private var planOptionTitleFont: Font {

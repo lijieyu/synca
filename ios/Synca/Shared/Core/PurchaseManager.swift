@@ -169,6 +169,11 @@ final class PurchaseManager: ObservableObject {
         activeToast = nil
     }
 
+    func copyLifetimeOfferCode(_ code: String) {
+        copyOfferCodeToPasteboard(code)
+        showToast(String(localized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
+    }
+
     func syncLatestTransactions() async throws -> RestoreOutcome {
         guard APIClient.shared.isAuthenticated else { return .noPurchasesFound }
 

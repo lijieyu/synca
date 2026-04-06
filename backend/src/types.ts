@@ -16,6 +16,7 @@ export interface SyncaLifetimeUpgradeOffer {
     kind: SyncaLifetimeUpgradeOfferKind;
     discountedPriceLabel: string;
     isCodeAvailable: boolean;
+    code?: string | null;
 }
 
 export interface SyncaAccessStatus {
