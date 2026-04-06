@@ -301,13 +301,43 @@ struct FeedbackComposerView: View {
             try await api.submitFeedback(
                 content: trimmedContent,
                 email: trimmedEmail,
-                imageDatas: attachments.map(\.data)
+                imageDatas: attachments.map(\.data),
+                deviceModel: Self.deviceModel,
+                osVersion: Self.osVersionString,
+                appVersion: Self.appVersionString
             )
             NotificationCenter.default.post(name: .syncaFeedbackSubmitted, object: nil)
             dismiss()
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "feedback.submit_failed", bundle: .main)
         }
+    }
+
+    private static var deviceModel: String {
+        #if os(iOS)
+        return UIDevice.current.model
+        #else
+        var size = 0
+        sysctlbyname("hw.model", nil, &size, nil, 0)
+        var model = [CChar](repeating: 0, count: size)
+        sysctlbyname("hw.model", &model, &size, nil, 0)
+        return String(cString: model)
+        #endif
+    }
+
+    private static var osVersionString: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        #if os(iOS)
+        return "iOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        #else
+        return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        #endif
+    }
+
+    private static var appVersionString: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "\(version) (\(build))"
     }
 
     private func isValidEmail(_ email: String) -> Bool {

@@ -190,7 +190,8 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await post("/me/push-token", body: body)
     }
 
-    func submitFeedback(content: String, email: String, imageDatas: [Data]) async throws {
+    func submitFeedback(content: String, email: String, imageDatas: [Data],
+                         deviceModel: String, osVersion: String, appVersion: String) async throws {
         let url = URL(string: "\(baseURL)/feedback")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -212,6 +213,9 @@ final class APIClient: ObservableObject {
 
         appendField(name: "content", value: content)
         appendField(name: "email", value: email)
+        appendField(name: "deviceModel", value: deviceModel)
+        appendField(name: "osVersion", value: osVersion)
+        appendField(name: "appVersion", value: appVersion)
 
         for (index, imageData) in imageDatas.enumerated() {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
