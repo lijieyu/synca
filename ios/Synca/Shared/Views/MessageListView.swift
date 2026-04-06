@@ -99,6 +99,7 @@ struct MessageListView: View {
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
             shouldScrollToBottomAfterInitialLoad = true
+            syncManager.restoreCachedMessagesIfAvailable()
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
             await purchaseManager.loadProducts()
             await purchaseManager.syncLatestTransactions()

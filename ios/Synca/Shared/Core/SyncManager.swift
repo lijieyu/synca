@@ -58,8 +58,25 @@ final class SyncManager: ObservableObject {
     private var isSyncingInternal = false // Concurrency lock
     private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
     private var pollCycleCount = 0
+    private let cacheDirectoryURL: URL = {
+        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let directoryURL = baseURL.appendingPathComponent("Synca", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        return directoryURL
+    }()
 
     private init() {}
+
+    func restoreCachedMessagesIfAvailable() {
+        guard api.isAuthenticated else { return }
+        guard messages.isEmpty else { return }
+        guard let cachedMessages = loadCachedMessages(), !cachedMessages.isEmpty else { return }
+
+        messages = cachedMessages
+        unclearedCount = cachedMessages.filter { !$0.isCleared }.count
+        lastSyncTimestamp = cachedMessages.compactMap(\.updatedAt).max()
+        hasCompletedInitialLoad = true
+    }
 
     // MARK: - Full Sync
 
@@ -87,6 +104,7 @@ final class SyncManager: ObservableObject {
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
+            persistMessages()
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
             if appendedRemotely {
                 remoteAppendEvent = UUID()
@@ -136,6 +154,7 @@ final class SyncManager: ObservableObject {
                 messages.sort { $0.createdAt < $1.createdAt }
                 lastSyncTimestamp = messages.compactMap(\.updatedAt).max() ?? lastSyncTimestamp
                 lastRefreshDate = Date()
+                persistMessages()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
             if appendedRemotely && hasCompletedInitialLoad {
@@ -223,6 +242,7 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
+            persistMessages()
             await AccessManager.shared.refresh()
             isSending = false
             return .sent
@@ -253,6 +273,7 @@ final class SyncManager: ObservableObject {
             unclearedCount += 1
             lastSyncTimestamp = message.updatedAt
             lastRefreshDate = Date()
+            persistMessages()
             await AccessManager.shared.refresh()
         } catch APIError.dailyLimitReached(let status) {
             AccessManager.shared.presentUpgrade(using: status)
@@ -278,6 +299,7 @@ final class SyncManager: ObservableObject {
                 unclearedCount += 1
                 lastSyncTimestamp = message.updatedAt
                 sentCount += 1
+                persistMessages()
             } catch APIError.dailyLimitReached(let status) {
                 AccessManager.shared.presentUpgrade(using: status)
                 break
@@ -309,6 +331,7 @@ final class SyncManager: ObservableObject {
                 updated.updatedAt = Date().ISO8601Format()
                 messages[index] = updated
                 objectWillChange.send()
+                persistMessages()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
         } catch {
@@ -321,6 +344,7 @@ final class SyncManager: ObservableObject {
             try await api.deleteMessage(id: id)
             messages.removeAll { $0.id == id }
             unclearedCount = messages.filter { !$0.isCleared }.count
+            persistMessages()
         } catch {
             handleError(error, contextKey: "sync.error_context.delete")
         }
@@ -330,6 +354,8 @@ final class SyncManager: ObservableObject {
         do {
             _ = try await api.deleteCompletedMessages()
             messages.removeAll { $0.isCleared }
+            unclearedCount = messages.filter { !$0.isCleared }.count
+            persistMessages()
         } catch {
             handleError(error, contextKey: "sync.error_context.delete")
         }
@@ -346,6 +372,7 @@ final class SyncManager: ObservableObject {
         sessionExpired = false
         syncStatus = .idle
         lastRefreshDate = nil
+        removeCachedMessages()
         resumeRefreshWaiters()
     }
 
@@ -430,5 +457,49 @@ final class SyncManager: ObservableObject {
         #else
         return "Unknown"
         #endif
+    }
+
+    private func persistMessages() {
+        guard api.isAuthenticated else { return }
+        guard let cacheURL = messagesCacheURL() else { return }
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            let data = try encoder.encode(messages)
+            try data.write(to: cacheURL, options: .atomic)
+        } catch {
+            print("[SyncManager] Failed to persist messages cache: \(error)")
+        }
+    }
+
+    private func loadCachedMessages() -> [SyncaMessage]? {
+        guard let cacheURL = messagesCacheURL(),
+              FileManager.default.fileExists(atPath: cacheURL.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: cacheURL)
+            let decoder = JSONDecoder()
+            return try decoder.decode([SyncaMessage].self, from: data)
+        } catch {
+            print("[SyncManager] Failed to load messages cache: \(error)")
+            return nil
+        }
+    }
+
+    private func removeCachedMessages() {
+        guard let cacheURL = messagesCacheURL(),
+              FileManager.default.fileExists(atPath: cacheURL.path) else {
+            return
+        }
+
+        try? FileManager.default.removeItem(at: cacheURL)
+    }
+
+    private func messagesCacheURL() -> URL? {
+        guard let userID = api.currentUserId, !userID.isEmpty else { return nil }
+        return cacheDirectoryURL.appendingPathComponent("messages-\(userID).json")
     }
 }
