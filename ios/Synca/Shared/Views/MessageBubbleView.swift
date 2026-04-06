@@ -30,9 +30,9 @@ struct MessageBubbleView: View {
     }
 
     private var linkedNSAttributedText: NSAttributedString {
-        Self.makeLinkedNSAttributedText(
+        Self.makeLinkedIOSAttributedText(
             from: messageText,
-            baseColor: message.isCleared ? NSColor.secondaryLabelColor : NSColor.labelColor
+            baseColor: message.isCleared ? .secondaryLabel : .label
         )
     }
     #endif
@@ -41,7 +41,7 @@ struct MessageBubbleView: View {
     private var linkedNSAttributedText: NSAttributedString {
         Self.makeLinkedNSAttributedText(
             from: messageText,
-            baseColor: message.isCleared ? NSColor.secondaryLabelColor : NSColor.labelColor
+            baseColor: message.isCleared ? .secondaryLabelColor : .labelColor
         )
     }
     #endif
