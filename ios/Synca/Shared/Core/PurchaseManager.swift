@@ -16,6 +16,11 @@ enum SyncaProductID: String, CaseIterable {
 
 @MainActor
 final class PurchaseManager: ObservableObject {
+    enum RestoreOutcome {
+        case restoredPurchases
+        case noPurchasesFound
+    }
+
     static let shared = PurchaseManager()
 
     @Published private(set) var productsByID: [String: Product] = [:]
@@ -115,7 +120,13 @@ final class PurchaseManager: ObservableObject {
 
         do {
             try await AppStore.sync()
-            await syncLatestTransactions()
+            let outcome = try await syncLatestTransactions()
+            switch outcome {
+            case .restoredPurchases:
+                lastErrorMessage = String(localized: "access.restore_success", bundle: .main)
+            case .noPurchasesFound:
+                lastErrorMessage = String(localized: "access.restore_no_purchases", bundle: .main)
+            }
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return
@@ -147,8 +158,8 @@ final class PurchaseManager: ObservableObject {
         }
     }
 
-    func syncLatestTransactions() async {
-        guard APIClient.shared.isAuthenticated else { return }
+    func syncLatestTransactions() async throws -> RestoreOutcome {
+        guard APIClient.shared.isAuthenticated else { return .noPurchasesFound }
 
         var signedTransactions: [String] = []
         for productID in SyncaProductID.allCases.map(\.rawValue) {
@@ -158,17 +169,15 @@ final class PurchaseManager: ObservableObject {
             }
         }
 
-        do {
-            if signedTransactions.isEmpty {
-                let status = try await APIClient.shared.getAccessStatus()
-                AccessManager.shared.apply(status)
-            } else {
-                let status = try await APIClient.shared.syncPurchases(signedTransactions: signedTransactions)
-                AccessManager.shared.apply(status)
-            }
-        } catch {
-            print("[purchase] syncLatestTransactions failed: \(error)")
+        if signedTransactions.isEmpty {
+            let status = try await APIClient.shared.getAccessStatus()
+            AccessManager.shared.apply(status)
+            return .noPurchasesFound
         }
+
+        let status = try await APIClient.shared.syncPurchases(signedTransactions: signedTransactions)
+        AccessManager.shared.apply(status)
+        return .restoredPurchases
     }
 
     private func loadProductsIfNeeded() async throws {

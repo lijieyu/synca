@@ -92,7 +92,7 @@ struct MessageListView: View {
             syncManager.restoreCachedMessagesIfAvailable()
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
             await purchaseManager.loadProducts()
-            await purchaseManager.syncLatestTransactions()
+            _ = try? await purchaseManager.syncLatestTransactions()
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
             if !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
@@ -136,6 +136,9 @@ struct MessageListView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestFeedbackComposer)) { _ in
             showFeedbackComposer = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestAbout)) { _ in
+            showAboutInfo = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
             showLogoutConfirm = true
@@ -676,8 +679,6 @@ struct MessageListView: View {
     }
 }
 
-
-
 private struct AboutSyncaSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -790,7 +791,6 @@ private struct AboutSyncaSheet: View {
         #endif
     }
 }
-
 
 extension View {
     @ViewBuilder

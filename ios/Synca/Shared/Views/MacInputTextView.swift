@@ -9,6 +9,17 @@ struct MacInputTextView: NSViewRepresentable {
     let onPasteImage: (Data) -> Void
     var onSubmit: (() -> Void)? = nil
 
+    private static var textFont: NSFont {
+        NSFont.preferredFont(forTextStyle: .body)
+    }
+
+    private static var textAttributes: [NSAttributedString.Key: Any] {
+        [
+            .font: textFont,
+            .foregroundColor: NSColor.textColor,
+        ]
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text, height: $height, onPasteImage: onPasteImage, onSubmit: onSubmit)
     }
@@ -35,13 +46,10 @@ struct MacInputTextView: NSViewRepresentable {
         // Let SwiftUI own the field surface so AppKit doesn't create an inner nested background.
         textView.drawsBackground = false
         textView.backgroundColor = .clear
-        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textView.font = Self.textFont
         textView.textColor = .textColor
         textView.insertionPointColor = .textColor
-        textView.typingAttributes = [
-            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
-            .foregroundColor: NSColor.textColor
-        ]
+        textView.typingAttributes = Self.textAttributes
         // Vertical inset is set in recalculateHeight so min-height fields center the line optically.
         textView.textContainerInset = NSSize(width: 0, height: 5)
         textView.textContainer?.lineFragmentPadding = 0
@@ -51,6 +59,7 @@ struct MacInputTextView: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.string = text
+        Self.applyPlainTextStyle(to: textView)
 
         scrollView.documentView = textView
         DispatchQueue.main.async {
@@ -70,15 +79,22 @@ struct MacInputTextView: NSViewRepresentable {
             // Use replaceCharacters instead of string= to preserve typingAttributes
             let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
             textView.textStorage?.replaceCharacters(in: fullRange, with: text)
-            textView.typingAttributes = [
-                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
-                .foregroundColor: NSColor.textColor
-            ]
         }
+        Self.applyPlainTextStyle(to: textView)
         // Defer binding updates to the next run loop so AppKit sizing doesn't mutate SwiftUI state during view updates.
         DispatchQueue.main.async {
             context.coordinator.recalculateHeight(for: textView)
         }
+    }
+
+    private static func applyPlainTextStyle(to textView: NSTextView) {
+        let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
+        textView.font = textFont
+        textView.textColor = .textColor
+        textView.insertionPointColor = .textColor
+        textView.defaultParagraphStyle = .default
+        textView.typingAttributes = textAttributes
+        textView.textStorage?.setAttributes(textAttributes, range: fullRange)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -104,7 +120,7 @@ struct MacInputTextView: NSViewRepresentable {
         func recalculateHeight(for textView: NSTextView) {
             guard let lm = textView.layoutManager, let tc = textView.textContainer else { return }
             lm.ensureLayout(for: tc)
-            let font = textView.font ?? .systemFont(ofSize: NSFont.systemFontSize)
+            let font = textView.font ?? MacInputTextView.textFont
             let lineH = lm.defaultLineHeight(for: font)
             // Empty (or not yet laid out) usedRect is often 0; using line height keeps padding + caret position stable after clear/send.
             var usedHeight = lm.usedRect(for: tc).height

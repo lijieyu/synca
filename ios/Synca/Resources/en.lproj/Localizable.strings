@@ -53,7 +53,7 @@
 "access.status_free" = "Free · %d/%d today";
 "access.status_unlimited" = "Unlimited";
 "access.status_trial_inline" = "Trial %dd";
-"access.status_free_inline" = "%d/%d";
+"access.status_free_inline" = "Free %d/%d";
 "access.status_unlimited_inline" = "∞";
 "access.status_trial_compact" = "Trial %dd";
 "access.status_free_compact" = "Free %d/%d";
@@ -100,6 +100,8 @@
 "access.purchase_account_missing" = "Your account needs to be refreshed before purchasing.";
 "access.offer_unavailable" = "This special offer isn't available right now.";
 "access.lifetime_offer_copied" = "Your offer code has been copied. Paste it into the redemption sheet.";
+"access.restore_success" = "Your App Store purchases have been restored.";
+"access.restore_no_purchases" = "No purchases were found to restore for this account.";
 "access.restore_failed" = "Unable to restore purchases right now.";
 "access.purchased_monthly" = "Unlimited (Monthly)";
 "access.purchased_yearly" = "Unlimited (Yearly)";
