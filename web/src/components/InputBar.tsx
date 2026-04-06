@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api } from '../api/client';
 import { ImagePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,12 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
+  useEffect(() => {
+    // Focus when not sending (initial mount and after message sent)
+    if (!isSending) {
+      textareaRef.current?.focus();
+    }
+  }, [isSending]);
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current;
