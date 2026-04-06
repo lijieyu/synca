@@ -558,74 +558,7 @@ private struct InternalLinkTextView: UIViewRepresentable {
 }
 #endif
 
-#if os(macOS)
-private class CustomContextMenuTextView: NSTextView {
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        for area in self.trackingAreas { self.removeTrackingArea(area) }
-        let options: NSTrackingArea.Options = [.cursorUpdate, .activeInActiveApp, .inVisibleRect]
-        let area = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
-        self.addTrackingArea(area)
-    }
 
-    override func cursorUpdate(with event: NSEvent) {
-        guard let layoutManager = self.layoutManager, let textContainer = self.textContainer else {
-            NSCursor.iBeam.set()
-            return
-        }
-        
-        let point = self.convert(event.locationInWindow, from: nil)
-        let textContainerPoint = NSPoint(x: point.x - textContainerInset.width, y: point.y - textContainerInset.height)
-        
-        var fraction: CGFloat = 0
-        let charIndex = layoutManager.characterIndex(for: textContainerPoint, in: textContainer, fractionOfDistanceBetweenInsertionPoints: &fraction)
-        
-        if charIndex < (self.textStorage?.length ?? 0) {
-            let glyphIndex = layoutManager.glyphIndexForCharacter(at: charIndex)
-            let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
-            
-            if glyphRect.contains(textContainerPoint) {
-                let attribute = self.textStorage?.attribute(.link, at: charIndex, effectiveRange: nil)
-                if attribute != nil {
-                    NSCursor.pointingHand.set()
-                    return
-                }
-            }
-        }
-        
-        NSCursor.iBeam.set()
-    }
-
-    override func resetCursorRects() {
-        super.resetCursorRects()
-        self.addCursorRect(self.bounds, cursor: .iBeam)
-        
-        guard
-            let textStorage,
-            let layoutManager,
-            let textContainer
-        else { return }
-
-        layoutManager.ensureLayout(for: textContainer)
-        let fullRange = NSRange(location: 0, length: textStorage.length)
-        textStorage.enumerateAttribute(.link, in: fullRange) { value, range, _ in
-            guard value != nil else { return }
-            let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            layoutManager.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: textContainer) { rect, _ in
-                self.addCursorRect(rect, cursor: .pointingHand)
-            }
-        }
-    }
-
-    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType?, returnType: NSPasteboard.PasteboardType?) -> Any? {
-        return nil
-    }
-
-    override func menu(for event: NSEvent) -> NSMenu? {
-        return nil
-    }
-}
-#endif
 
 /// A cross-platform wrapper for a linkable text view.
 struct LinkTextView: View {
