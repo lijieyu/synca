@@ -14,7 +14,7 @@ struct AccessCenterView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("common.ok") {
                         dismiss()
                     }

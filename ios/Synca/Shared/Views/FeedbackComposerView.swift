@@ -302,42 +302,15 @@ struct FeedbackComposerView: View {
                 content: trimmedContent,
                 email: trimmedEmail,
                 imageDatas: attachments.map(\.data),
-                deviceModel: Self.deviceModel,
-                osVersion: Self.osVersionString,
-                appVersion: Self.appVersionString
+                deviceModel: DeviceInfo.displayModelName,
+                osVersion: DeviceInfo.osVersionString,
+                appVersion: DeviceInfo.appVersionString
             )
             NotificationCenter.default.post(name: .syncaFeedbackSubmitted, object: nil)
             dismiss()
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "feedback.submit_failed", bundle: .main)
         }
-    }
-
-    private static var deviceModel: String {
-        #if os(iOS)
-        return UIDevice.current.model
-        #else
-        var size = 0
-        sysctlbyname("hw.model", nil, &size, nil, 0)
-        var model = [UInt8](repeating: 0, count: size)
-        sysctlbyname("hw.model", &model, &size, nil, 0)
-        return String(decoding: model.prefix(size - 1), as: UTF8.self)
-        #endif
-    }
-
-    private static var osVersionString: String {
-        let v = ProcessInfo.processInfo.operatingSystemVersion
-        #if os(iOS)
-        return "iOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
-        #else
-        return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
-        #endif
-    }
-
-    private static var appVersionString: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        return "v\(version) (\(build))"
     }
 
     private func isValidEmail(_ email: String) -> Bool {

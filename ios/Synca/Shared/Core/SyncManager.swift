@@ -450,13 +450,7 @@ final class SyncManager: ObservableObject {
     }
 
     private func currentDeviceName() -> String {
-        #if os(iOS)
-        return UIDevice.current.name
-        #elseif os(macOS)
-        return Host.current().localizedName ?? "Mac"
-        #else
-        return "Unknown"
-        #endif
+        DeviceInfo.displayModelName
     }
 
     private func persistMessages() {

@@ -137,6 +137,9 @@ struct MessageListView: View {
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestFeedbackComposer)) { _ in
             showFeedbackComposer = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestAbout)) { _ in
+            showAboutInfo = true
+        }
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
             showLogoutConfirm = true
         }
@@ -790,6 +793,7 @@ extension Notification.Name {
     static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
     static let syncaRequestClearAll = Notification.Name("syncaRequestClearAll")
     static let syncaRequestFeedbackComposer = Notification.Name("syncaRequestFeedbackComposer")
+    static let syncaRequestAbout = Notification.Name("syncaRequestAbout")
     static let syncaRequestSignOut = Notification.Name("syncaRequestSignOut")
 }
 
