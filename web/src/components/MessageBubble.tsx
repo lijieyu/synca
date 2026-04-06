@@ -28,6 +28,26 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { t } = useTranslation();
 
+  const linkify = (text: string): React.ReactNode[] => {
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, i) =>
+      urlRegex.test(part) ? (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="message-link"
+        >
+          {part}
+        </a>
+      ) : (
+        <React.Fragment key={i}>{part}</React.Fragment>
+      )
+    );
+  };
+
   const formatTime = (isoString: string) => {
     const d = new Date(isoString);
     return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -61,7 +81,7 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
     <>
       <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
         {message.type === 'text' && (
-          <div className="message-content">{message.textContent}</div>
+          <div className="message-content">{linkify(message.textContent ?? '')}</div>
         )}
         
         {message.type === 'image' && message.imageUrl && (

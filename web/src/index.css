@@ -159,6 +159,18 @@ body {
   word-break: break-word;
 }
 
+.message-link {
+  color: var(--synca-purple);
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.message-link:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
 .message-image {
   max-width: 320px;
   max-height: 450px;
