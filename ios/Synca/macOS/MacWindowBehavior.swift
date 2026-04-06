@@ -71,7 +71,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.layoutAttribute = .right
 
         let hostingView = NSHostingView(rootView: MacTitlebarControlsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 228, height: 40)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 154, height: 40)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -107,50 +107,54 @@ private struct MacTitlebarControlsView: View {
     @ObservedObject private var syncManager = SyncManager.shared
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button {
-                Task { await syncManager.refresh() }
-            } label: {
-                titlebarIcon("arrow.clockwise")
-            }
-            .buttonStyle(.plain)
-            .disabled(syncManager.isRefreshing)
-
-            Button {
-                NotificationCenter.default.post(name: .syncaRequestClearAll, object: nil)
-            } label: {
-                titlebarIcon("trash")
-            }
-            .buttonStyle(.plain)
-            .disabled(syncManager.messages.filter { $0.isCleared }.isEmpty)
-
-            Menu {
+        ZStack(alignment: .trailing) {
+            HStack(spacing: 14) {
                 Button {
-                    NotificationCenter.default.post(name: .syncaRequestFeedbackComposer, object: nil)
+                    Task { await syncManager.refresh() }
                 } label: {
-                    Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+                    titlebarIcon("arrow.clockwise")
                 }
+                .buttonStyle(.plain)
+                .disabled(syncManager.isRefreshing)
 
                 Button {
-                    showAboutOnMac()
+                    NotificationCenter.default.post(name: .syncaRequestClearAll, object: nil)
                 } label: {
-                    Label("message_list.about", systemImage: "info.circle")
+                    titlebarIcon("trash")
                 }
+                .buttonStyle(.plain)
+                .disabled(syncManager.messages.filter { $0.isCleared }.isEmpty)
 
-                Button(role: .destructive) {
-                    NotificationCenter.default.post(name: .syncaRequestSignOut, object: nil)
+                Menu {
+                    Button {
+                        NotificationCenter.default.post(name: .syncaRequestFeedbackComposer, object: nil)
+                    } label: {
+                        Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+                    }
+
+                    Button {
+                        showAboutOnMac()
+                    } label: {
+                        Label("message_list.about", systemImage: "info.circle")
+                    }
+
+                    Button(role: .destructive) {
+                        NotificationCenter.default.post(name: .syncaRequestSignOut, object: nil)
+                    } label: {
+                        Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
                 } label: {
-                    Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
+                    titlebarIcon("ellipsis.circle")
                 }
-            } label: {
-                titlebarIcon("ellipsis.circle")
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
             }
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
+            .fixedSize()
+            .padding(.trailing, 5)
+            .padding(.vertical, 5)
         }
-        .frame(width: 202, alignment: .trailing)
-        .padding(.trailing, 5)
-        .padding(.vertical, 5)
+        .frame(width: 154, alignment: .trailing)
     }
 
     @ViewBuilder
