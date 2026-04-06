@@ -135,6 +135,7 @@ struct MessageBubbleView: View {
                 .font(.body)
                 .lineLimit(nil)
                 .opacity(0)
+                .allowsHitTesting(false)
             
             // AppKit Text overlay for selection and custom context menu
             MacSelectableText(
