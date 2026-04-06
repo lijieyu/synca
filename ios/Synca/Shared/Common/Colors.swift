@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 extension Color {
     /// Synca's primary brand color: Comet Purple
@@ -9,4 +14,62 @@ extension Color {
     
     /// Light version of mint green for backgrounds
     static let syncaMintLight = Color.green.opacity(0.06)
+
+    #if os(iOS)
+    /// App page background that keeps message cards visually elevated in both light and dark mode.
+    static let syncaPageBackground = Color(uiColor: .systemGroupedBackground)
+    /// Default card background for uncleared messages, matched to grouped list cells.
+    static let syncaCardBackground = Color(uiColor: .secondarySystemGroupedBackground)
+    static let syncaCardBorder = Color.black.opacity(0.08)
+    static let syncaInputFieldBackground = Color(uiColor: .secondarySystemGroupedBackground)
+    static let syncaInputFieldBorder = Color.black.opacity(0.08)
+    #elseif os(macOS)
+    /// Slightly gray in light mode, near-black in dark mode, so cards stay visually elevated.
+    static let syncaPageBackground = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 0.055, alpha: 1)
+            } else {
+                return NSColor(calibratedWhite: 0.972, alpha: 1)
+            }
+        }
+    )
+    /// White-ish card in light mode, noticeably lighter gray card in dark mode.
+    static let syncaCardBackground = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 0.115, alpha: 1)
+            } else {
+                return NSColor(calibratedWhite: 0.992, alpha: 1)
+            }
+        }
+    )
+    static let syncaCardBorder = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 1.0, alpha: 0.14)
+            } else {
+                return NSColor(calibratedWhite: 0.0, alpha: 0.08)
+            }
+        }
+    )
+    static let syncaInputFieldBackground = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 0.105, alpha: 1)
+            } else {
+                return NSColor(calibratedWhite: 0.992, alpha: 1)
+            }
+        }
+    )
+    static let syncaInputFieldBorder = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 1.0, alpha: 0.16)
+            } else {
+                return NSColor(calibratedWhite: 0.0, alpha: 0.08)
+            }
+        }
+    )
+    #endif
 }

@@ -9,8 +9,8 @@ struct AccessCenterView: View {
     var body: some View {
         NavigationStack {
             contentContainer
-            .navigationTitle(String(localized: "access.center_title", bundle: .main))
             #if os(iOS)
+            .navigationTitle(String(localized: "access.center_title", bundle: .main))
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
@@ -53,6 +53,10 @@ struct AccessCenterView: View {
         if let status = accessManager.status {
             #if os(macOS)
             VStack(alignment: .leading, spacing: 16) {
+                Text("access.center_title", bundle: .main)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+
                 content(for: status)
             }
             .padding(20)

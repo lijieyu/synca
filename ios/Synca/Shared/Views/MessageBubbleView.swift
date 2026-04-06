@@ -78,7 +78,7 @@ struct MessageBubbleView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(message.isCleared 
                         ? Color.syncaMint.opacity(0.3) 
-                        : Color.gray.opacity(0.15), lineWidth: 0.5)
+                        : Color.syncaCardBorder, lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
         .alert(Text("message_bubble.delete_confirm_title", bundle: .main), isPresented: $showDeleteConfirm) {
@@ -93,11 +93,7 @@ struct MessageBubbleView: View {
     }
 
     private var cardBackground: Color {
-        #if os(iOS)
-        Color(uiColor: .systemBackground)
-        #else
-        Color(nsColor: .controlBackgroundColor)
-        #endif
+        Color.syncaCardBackground
     }
 
     // MARK: - Subviews

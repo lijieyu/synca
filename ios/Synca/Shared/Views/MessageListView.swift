@@ -35,6 +35,7 @@ struct MessageListView: View {
                 Divider()
                 inputBar
             }
+            .background(Color.syncaPageBackground.ignoresSafeArea())
             .navigationTitle("")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -140,16 +141,6 @@ struct MessageListView: View {
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
             showLogoutConfirm = true
         }
-        #if os(macOS)
-        .background(
-            Button("") {
-                handlePasteShortcut()
-            }
-            .keyboardShortcut("v", modifiers: .command)
-            .opacity(0)
-            .allowsHitTesting(false)
-        )
-        #endif
     }
 
     @ToolbarContentBuilder
@@ -483,7 +474,7 @@ struct MessageListView: View {
         #if os(iOS)
         .background(.bar)
         #else
-        .background(.background)
+        .background(Color.syncaPageBackground)
         #endif
     }
 
@@ -535,10 +526,10 @@ struct MessageListView: View {
                     .allowsHitTesting(false)
             }
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(Color.syncaInputFieldBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                .strokeBorder(Color.syncaInputFieldBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16))
         #endif
@@ -632,36 +623,6 @@ struct MessageListView: View {
     }
 
     #if os(macOS)
-    private func handlePasteShortcut() {
-        let pb = NSPasteboard.general
-
-        if let rawPngData = pb.data(forType: .png) {
-            shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawPngData) }
-            return
-        }
-        if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
-            shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawJpegData) }
-            return
-        }
-        if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
-            shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawHeicData) }
-            return
-        }
-        if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage,
-           let tiffData = image.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
-            shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(pngData) }
-            return
-        }
-
-        NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
-    }
-
     private func showAboutOnMac() {
         let alert = NSAlert()
         alert.alertStyle = .informational
