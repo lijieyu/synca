@@ -160,7 +160,7 @@ body {
 }
 
 .message-link {
-  color: var(--synca-purple);
+  color: #2563eb;
   text-decoration: none;
   cursor: pointer;
   transition: opacity 0.15s;
