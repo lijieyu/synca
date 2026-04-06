@@ -63,10 +63,8 @@ struct MessageListView: View {
             } message: {
                 Text("message_list.logout_confirm_message")
             }
-            .alert("message_list.about", isPresented: $showAboutInfo) {
-                Button("message_list.got_it", role: .cancel) {}
-            } message: {
-                Text(aboutMessage)
+            .sheet(isPresented: $showAboutInfo) {
+                AboutSyncaSheet()
             }
             .alert("message_list.session_expired_title", isPresented: $showSessionExpired) {
                 Button("message_list.sign_in_again") {
@@ -140,6 +138,9 @@ struct MessageListView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
             showLogoutConfirm = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestAbout)) { _ in
+            showAboutInfo = true
         }
     }
 
@@ -398,11 +399,7 @@ struct MessageListView: View {
             }
 
             Button {
-                #if os(macOS)
-                showAboutOnMac()
-                #else
                 self.showAboutInfo = true
-                #endif
             } label: {
                 Label("message_list.about", systemImage: "info.circle")
             }
@@ -616,20 +613,38 @@ struct MessageListView: View {
         #endif
     }
     
-    private var aboutMessage: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-        return String(format: String(localized: "message_list.about_message", bundle: .main), version, build)
-    }
-
     #if os(macOS)
-    private func showAboutOnMac() {
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = String(localized: "message_list.about", bundle: .main)
-        alert.informativeText = aboutMessage
-        alert.addButton(withTitle: String(localized: "message_list.got_it", bundle: .main))
-        alert.runModal()
+    #if os(macOS)
+    private func handlePasteShortcut() {
+        let pb = NSPasteboard.general
+
+        if let rawPngData = pb.data(forType: .png) {
+            shouldScrollToBottomAfterSend = true
+            Task { await syncManager.sendImage(rawPngData) }
+            return
+        }
+        if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
+            shouldScrollToBottomAfterSend = true
+            Task { await syncManager.sendImage(rawJpegData) }
+            return
+        }
+        if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
+            shouldScrollToBottomAfterSend = true
+            Task { await syncManager.sendImage(rawHeicData) }
+            return
+        }
+        if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage,
+           let tiffData = image.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffData),
+           let pngData = bitmap.representation(using: .png, properties: [:]) {
+            shouldScrollToBottomAfterSend = true
+            Task { await syncManager.sendImage(pngData) }
+            return
+        }
+
+        NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+    }
+    #endif
     }
     #endif
 
@@ -664,10 +679,125 @@ struct MessageListView: View {
 }
 
 extension Notification.Name {
-    static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
+    static let syncaFeedbackSubmitted = Notification.Name("syncaFeedbackSubmitted")
     static let syncaRequestClearAll = Notification.Name("syncaRequestClearAll")
     static let syncaRequestFeedbackComposer = Notification.Name("syncaRequestFeedbackComposer")
     static let syncaRequestSignOut = Notification.Name("syncaRequestSignOut")
+    static let syncaRequestAbout = Notification.Name("syncaRequestAbout")
+    static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
+}
+
+private struct AboutSyncaSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let websiteURL = URL(string: "https://synca.haerth.cn/")!
+
+    #if os(iOS)
+    private let systemLinkColor = Color(uiColor: .link)
+    #elseif os(macOS)
+    private let systemLinkColor = Color(nsColor: .linkColor)
+    #endif
+
+    private var sheetBackgroundColor: Color {
+        #if os(iOS)
+        Color(uiColor: .systemBackground)
+        #elseif os(macOS)
+        Color(nsColor: .windowBackgroundColor)
+        #endif
+    }
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return String(
+            format: String(localized: "message_list.about_version_format", bundle: .main),
+            version,
+            build
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 14) {
+                        Image("LoginLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 76, height: 76)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
+
+                        VStack(spacing: 6) {
+                            Text("Synca")
+                                .font(.title2.weight(.semibold))
+
+                            Text(String(localized: "app.slogan", bundle: .main))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(versionText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Link(destination: websiteURL) {
+                            HStack(alignment: .center, spacing: 12) {
+                                Text(websiteURL.absoluteString)
+                                    .font(.body)
+                                    .foregroundStyle(systemLinkColor)
+                                    .multilineTextAlignment(.leading)
+
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(Text("message_list.about_website_hint"))
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+            }
+            .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.accentColor.opacity(0.10),
+                        sheetBackgroundColor
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .navigationTitle(Text("message_list.about"))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("message_list.got_it") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 460, idealWidth: 460, minHeight: 360, idealHeight: 380)
+        #endif
+    }
 }
 
 extension View {

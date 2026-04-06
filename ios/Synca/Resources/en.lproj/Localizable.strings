@@ -34,7 +34,9 @@
 "message_list.session_expired_message" = "Please sign in again to continue";
 "message_list.sign_in_again" = "Sign In Again";
 "message_list.got_it" = "Got It";
-"message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)";
+"message_list.about_version_format" = "Version %@ (%@)";
+"message_list.about_website_hint" = "Open Synca Web in your default browser";
+"message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "Capture your thoughts...";
 "sync.error_context.sync" = "Sync";
 "sync.error_context.send" = "Send";
