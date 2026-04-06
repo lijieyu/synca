@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "migrate:prod": "node dist/src/migrate.js",
     "migrate": "tsx src/migrate.ts",
+    "offer-codes:import": "tsx src/importLifetimeUpgradeCodes.ts",
     "test": "rm -f data/synca.test.sqlite && DB_PATH=synca.test.sqlite npm run migrate && DB_PATH=synca.test.sqlite vitest run",
     "test:watch": "rm -f data/synca.test.sqlite && DB_PATH=synca.test.sqlite npm run migrate && DB_PATH=synca.test.sqlite vitest"
   },

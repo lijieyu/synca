@@ -17,6 +17,35 @@ struct MessageBubbleView: View {
     @State private var showDeleteConfirm = false
     @State private var loadID = UUID() // #1: 重显失败图片的关键
 
+    private var messageText: String {
+        message.textContent ?? ""
+    }
+
+    #if os(iOS)
+    private var linkedAttributedText: AttributedString {
+        Self.makeLinkedAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? UIColor.secondaryLabel : UIColor.label
+        )
+    }
+
+    private var linkedNSAttributedText: NSAttributedString {
+        Self.makeLinkedIOSAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? .secondaryLabel : .label
+        )
+    }
+    #endif
+
+    #if os(macOS)
+    private var linkedNSAttributedText: NSAttributedString {
+        Self.makeLinkedNSAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? .secondaryLabelColor : .labelColor
+        )
+    }
+    #endif
+
     enum SaveStatus {
         case none, saving, success, error
     }
@@ -78,9 +107,10 @@ struct MessageBubbleView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(message.isCleared 
                         ? Color.syncaMint.opacity(0.3) 
-                        : Color.gray.opacity(0.15), lineWidth: 0.5)
+                        : Color.syncaCardBorder, lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
+        .contextMenu { messageContextMenu }
         .alert(Text("message_bubble.delete_confirm_title", bundle: .main), isPresented: $showDeleteConfirm) {
             Button("common.cancel", role: .cancel) {}
             Button("common.delete", role: .destructive) {
@@ -93,58 +123,79 @@ struct MessageBubbleView: View {
     }
 
     private var cardBackground: Color {
-        #if os(iOS)
-        Color(uiColor: .systemBackground)
-        #else
-        Color(nsColor: .controlBackgroundColor)
-        #endif
+        Color.syncaCardBackground
     }
 
     // MARK: - Subviews
     
     private var textContent: some View {
         #if os(macOS)
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: Alignment.topLeading) {
             // Invisible native Text to guarantee perfect SwiftUI auto-layout height & wrapping
-            Text(message.textContent ?? "")
+            Text(messageText)
                 .font(.body)
                 .lineLimit(nil)
                 .opacity(0)
+                .allowsHitTesting(false)
             
             // AppKit Text overlay for selection and custom context menu
             MacSelectableText(
-                text: message.textContent ?? "",
+                attributedText: linkedNSAttributedText,
                 color: message.isCleared ? Color.secondary : Color.primary,
-                font: .body,
-                onCopy: { copyText(message.textContent ?? "") },
-                onDelete: { showDeleteConfirm = true }
+                font: .body
             )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
         #else
-        Text(message.textContent ?? "")
-            .font(.body)
-            .foregroundStyle(message.isCleared ? Color.primary.opacity(0.6) : .primary)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contextMenu {
-                Button {
-                    copyText(message.textContent ?? "")
-                } label: {
-                    Label("common.copy", systemImage: "doc.on.doc")
-                }
-                
-                Divider()
-                
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Label("common.delete", systemImage: "trash")
-                }
-            }
+        LinkTextView(attributedText: linkedNSAttributedText)
+            .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
         #endif
     }
 
+    @ViewBuilder
+    private var messageContextMenu: some View {
+        if message.type == .text {
+            Button {
+                copyText(messageText)
+            } label: {
+                Label("common.copy", systemImage: "doc.on.doc")
+            }
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        } else if message.type == .image, let urlString = message.imageUrl, let url = URL(string: urlString) {
+            Button {
+                self.copyImage(from: url)
+            } label: {
+                Label("common.copy", systemImage: "doc.on.doc")
+            }
+
+            Button {
+                Task { await self.saveImage(from: url) }
+            } label: {
+                Label("common.save", systemImage: "square.and.arrow.down")
+            }
+
+            #if os(macOS)
+            Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
+            Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
+            #endif
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        }
+    }
+    
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
@@ -157,38 +208,7 @@ struct MessageBubbleView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .frame(maxWidth: 320, maxHeight: 450, alignment: .leading)
                             .onTapGesture { onImageTap() }
-                            .contextMenu {
-                                Button {
-                                    self.copyImage(from: url)
-                                } label: {
-                                    Label("common.copy", systemImage: "doc.on.doc")
-                                }
-
-                                Button {
-                                    Task { await self.saveImage(from: url) }
-                                } label: {
-                                    Label("common.save", systemImage: "square.and.arrow.down")
-                                }
-
-                                #if os(macOS)
-                                Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
-                                Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
-
-                                Button {
-                                    Task { await self.saveImageAs(from: url) }
-                                } label: {
-                                    Label("message_bubble.save_as", systemImage: "folder.badge.plus")
-                                }
-                                #endif
-                                
-                                Divider()
-                                
-                                Button(role: .destructive) {
-                                    showDeleteConfirm = true
-                                } label: {
-                                    Label("common.delete", systemImage: "trash")
-                                }
-                            }
+                            .contextMenu { messageContextMenu }
                     case .failure:
                         VStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle")
@@ -216,7 +236,7 @@ struct MessageBubbleView: View {
     
     private var copyTextButton: some View {
         Button {
-            copyText(message.textContent ?? "")
+            copyText(messageText)
             withAnimation { copied = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
@@ -410,4 +430,145 @@ struct MessageBubbleView: View {
         }
     }
     #endif
+}
+
+private extension MessageBubbleView {
+    #if os(iOS)
+    static func makeLinkedAttributedText(from text: String, baseColor: UIColor) -> AttributedString {
+        let mutable = makeLinkedIOSAttributedText(
+            from: text,
+            baseColor: baseColor
+        )
+        return (try? AttributedString(mutable, including: \.uiKit)) ?? AttributedString(text)
+    }
+    #endif
+
+    #if os(iOS)
+    static func makeLinkedIOSAttributedText(from text: String, baseColor: UIColor) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(string: text)
+        mutable.addAttributes(
+            [
+                .foregroundColor: baseColor,
+                .font: UIFont.preferredFont(forTextStyle: .body)
+            ],
+            range: NSRange(location: 0, length: mutable.length)
+        )
+
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let range = NSRange(location: 0, length: mutable.length)
+            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
+                guard let result, let url = result.url else { return }
+                mutable.addAttributes(
+                    [
+                        .link: url,
+                        .foregroundColor: UIColor.link,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ],
+                    range: result.range
+                )
+            }
+        }
+
+        return mutable
+    }
+    #endif
+
+    #if os(macOS)
+    static func makeLinkedNSAttributedText(from text: String, baseColor: NSColor) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(string: text)
+        mutable.addAttributes(
+            [
+                .foregroundColor: baseColor,
+                .font: NSFont.systemFont(ofSize: 13)
+            ],
+            range: NSRange(location: 0, length: mutable.length)
+        )
+
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let range = NSRange(location: 0, length: mutable.length)
+            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
+                guard let result, let url = result.url else { return }
+                mutable.addAttributes(
+                    [
+                        .link: url,
+                        .foregroundColor: NSColor.linkColor,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ],
+                    range: result.range
+                )
+            }
+        }
+
+        return mutable
+    }
+    #endif
+}
+// MARK: - LinkTextView Implementation
+
+#if os(iOS)
+private struct InternalLinkTextView: UIViewRepresentable {
+    let attributedText: NSAttributedString
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.adjustsFontForContentSizeCategory = true
+        textView.dataDetectorTypes = []
+        textView.delegate = context.coordinator
+        textView.linkTextAttributes = [
+            .foregroundColor: UIColor.link,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.attributedText != attributedText {
+            uiView.attributedText = attributedText
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let targetWidth = proposal.width ?? uiView.bounds.width
+        guard targetWidth > 0 else { return nil }
+        let fittingSize = uiView.sizeThatFits(CGSize(width: targetWidth, height: .greatestFiniteMagnitude))
+        return CGSize(width: targetWidth, height: ceil(fittingSize.height))
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        func textView(
+            _ textView: UITextView,
+            shouldInteractWith url: URL,
+            in characterRange: NSRange,
+            interaction: UITextItemInteraction
+        ) -> Bool {
+            UIApplication.shared.open(url)
+            return false
+        }
+    }
+}
+#endif
+
+
+
+/// A cross-platform wrapper for a linkable text view.
+struct LinkTextView: View {
+    let attributedText: NSAttributedString
+
+    var body: some View {
+        #if os(iOS)
+        InternalLinkTextView(attributedText: attributedText)
+        #else
+        EmptyView()
+        #endif
+    }
 }

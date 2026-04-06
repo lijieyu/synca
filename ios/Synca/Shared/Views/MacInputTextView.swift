@@ -17,7 +17,7 @@ struct MacInputTextView: NSViewRepresentable {
         let scrollView = ClickForwardingScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = false
+        scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
 
@@ -32,9 +32,9 @@ struct MacInputTextView: NSViewRepresentable {
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.allowsUndo = true
-        // Draw field background in AppKit so it stays visible regardless of SwiftUI layering.
-        textView.drawsBackground = true
-        textView.backgroundColor = .textBackgroundColor
+        // Let SwiftUI own the field surface so AppKit doesn't create an inner nested background.
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
         textView.font = .systemFont(ofSize: NSFont.systemFontSize)
         textView.textColor = .textColor
         textView.insertionPointColor = .textColor
@@ -47,8 +47,8 @@ struct MacInputTextView: NSViewRepresentable {
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
-        // Height is driven by Coordinator.recalculateHeight so content isn't top-aligned in excess vertical space.
-        textView.isVerticallyResizable = false
+        // Allow the document view to grow beyond the visible field height so NSScrollView can scroll once capped.
+        textView.isVerticallyResizable = true
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.string = text
 
@@ -136,7 +136,7 @@ struct MacInputTextView: NSViewRepresentable {
             lm.ensureLayout(for: tc)
 
             var f = textView.frame
-            f.size.height = fieldH
+            f.size.height = ceil(max(fieldH, usedHeight + 2 * verticalPad))
             textView.frame = f
             if abs(height - fieldH) > 0.5 {
                 height = fieldH
@@ -154,6 +154,18 @@ final class ClickForwardingScrollView: NSScrollView {
     override func layout() {
         super.layout()
         syncTextViewWidthAndContainer()
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "v",
+           let textView = documentView as? PasteAwareMacTextView {
+            window?.makeFirstResponder(textView)
+            textView.paste(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -182,6 +194,15 @@ final class ClickForwardingScrollView: NSScrollView {
 final class PasteAwareMacTextView: NSTextView {
     var onPasteImage: ((Data) -> Void)?
     var onSubmit: (() -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags == .command, event.charactersIgnoringModifiers?.lowercased() == "v" {
+            paste(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 
     override func keyDown(with event: NSEvent) {
         // Plain Return / keypad Enter = send; any modifier (Shift, Command, Option, Control) = newline.

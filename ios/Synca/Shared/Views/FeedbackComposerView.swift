@@ -105,30 +105,35 @@ struct FeedbackComposerView: View {
         )
     }
 
+    @ViewBuilder
     private var imageAttachmentSection: some View {
+        let currentAttachments = attachments
+        let currentRemainingAttachmentSlots = remainingAttachmentSlots
+        let currentEditorBackground = editorBackground
+
         VStack(alignment: .leading, spacing: 12) {
             PhotosPicker(
                 selection: $photoItems,
-                maxSelectionCount: remainingAttachmentSlots,
+                maxSelectionCount: currentRemainingAttachmentSlots,
                 matching: .images
             ) {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.badge.plus")
-                    Text(attachments.isEmpty ? String(localized: "feedback.add_images", bundle: .main) : String(localized: "feedback.add_more_images", bundle: .main))
+                    Text(currentAttachments.isEmpty ? String(localized: "feedback.add_images", bundle: .main) : String(localized: "feedback.add_more_images", bundle: .main))
                 }
                 .font(.body.weight(.medium))
-                .foregroundStyle(remainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
+                .foregroundStyle(currentRemainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
-                .background(editorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(currentEditorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
-            .disabled(remainingAttachmentSlots == 0 || isSubmitting)
+            .disabled(currentRemainingAttachmentSlots == 0 || isSubmitting)
             .onChange(of: photoItems) { items in
                 guard !items.isEmpty else { return }
                 Task { await loadSelectedPhotos(items) }
@@ -296,13 +301,43 @@ struct FeedbackComposerView: View {
             try await api.submitFeedback(
                 content: trimmedContent,
                 email: trimmedEmail,
-                imageDatas: attachments.map(\.data)
+                imageDatas: attachments.map(\.data),
+                deviceModel: Self.deviceModel,
+                osVersion: Self.osVersionString,
+                appVersion: Self.appVersionString
             )
             NotificationCenter.default.post(name: .syncaFeedbackSubmitted, object: nil)
             dismiss()
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "feedback.submit_failed", bundle: .main)
         }
+    }
+
+    private static var deviceModel: String {
+        #if os(iOS)
+        return UIDevice.current.model
+        #else
+        var size = 0
+        sysctlbyname("hw.model", nil, &size, nil, 0)
+        var model = [UInt8](repeating: 0, count: size)
+        sysctlbyname("hw.model", &model, &size, nil, 0)
+        return String(decoding: model.prefix(size - 1), as: UTF8.self)
+        #endif
+    }
+
+    private static var osVersionString: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        #if os(iOS)
+        return "iOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        #else
+        return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        #endif
+    }
+
+    private static var appVersionString: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "v\(version) (\(build))"
     }
 
     private func isValidEmail(_ email: String) -> Bool {
@@ -399,6 +434,7 @@ private struct MacFeedbackTextEditor: NSViewRepresentable {
             }
         }
 
+        @MainActor
         func updateLayout(for textView: NSTextView, in scrollView: NSScrollView) {
             let contentWidth = max(0, scrollView.contentSize.width)
             textView.textContainer?.containerSize = NSSize(width: contentWidth, height: CGFloat.greatestFiniteMagnitude)

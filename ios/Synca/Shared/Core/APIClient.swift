@@ -85,6 +85,12 @@ final class APIClient: ObservableObject {
         return response.accessStatus
     }
 
+    func requestLifetimeUpgradeOfferCode(kind: LifetimeUpgradeOfferKind) async throws -> LifetimeUpgradeOfferCodeResponse {
+        try await post("/me/lifetime-upgrade-offer-code", body: [
+            "kind": kind.rawValue,
+        ])
+    }
+
     // MARK: - Messages
 
     func listMessages(since: String? = nil, limit: Int? = nil) async throws -> [SyncaMessage] {
@@ -184,7 +190,8 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await post("/me/push-token", body: body)
     }
 
-    func submitFeedback(content: String, email: String, imageDatas: [Data]) async throws {
+    func submitFeedback(content: String, email: String, imageDatas: [Data],
+                         deviceModel: String, osVersion: String, appVersion: String) async throws {
         let url = URL(string: "\(baseURL)/feedback")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -206,6 +213,9 @@ final class APIClient: ObservableObject {
 
         appendField(name: "content", value: content)
         appendField(name: "email", value: email)
+        appendField(name: "deviceModel", value: deviceModel)
+        appendField(name: "osVersion", value: osVersion)
+        appendField(name: "appVersion", value: appVersion)
 
         for (index, imageData) in imageDatas.enumerated() {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -315,6 +325,16 @@ final class APIClient: ObservableObject {
             }
         }
 
+        if (statusCode == 403 || statusCode == 409),
+           let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
+            switch serverError.error {
+            case "offer_not_eligible", "offer_code_unavailable":
+                return .offerUnavailable
+            default:
+                break
+            }
+        }
+
         if statusCode == 403,
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data),
            serverError.error == "daily_limit_reached" {
@@ -331,6 +351,7 @@ enum APIError: LocalizedError {
     case dailyLimitReached(AccessStatus?)
     case messageTooLong(Int)
     case feedbackTooLong(Int)
+    case offerUnavailable
     case httpError(Int, String?)
 
     var errorDescription: String? {
@@ -342,6 +363,8 @@ enum APIError: LocalizedError {
             return String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)
         case .feedbackTooLong(let limit):
             return String(format: String(localized: "feedback.error_content_too_long", bundle: .main), limit)
+        case .offerUnavailable:
+            return String(localized: "access.offer_unavailable", bundle: .main)
         case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")
         }
     }
@@ -350,4 +373,11 @@ enum APIError: LocalizedError {
 private struct ServerErrorResponse: Decodable {
     let error: String
     let accessStatus: AccessStatus?
+}
+
+struct LifetimeUpgradeOfferCodeResponse: Codable {
+    let ok: Bool
+    let kind: LifetimeUpgradeOfferKind
+    let code: String
+    let discountedPriceLabel: String
 }

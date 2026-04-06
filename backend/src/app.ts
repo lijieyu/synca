@@ -6,12 +6,12 @@ import fs from 'fs';
 import cors from 'cors';
 import multer from 'multer';
 import { loginWithApple, getUserIdFromToken } from './auth.js';
-import { assertCanCreateMessage, buildAccessStatus, DailyLimitError, reconcilePurchaseAccess } from './access.js';
+import { assertCanCreateMessage, buildAccessStatus, buildLifetimeUpgradeOffer, DailyLimitError, reconcilePurchaseAccess } from './access.js';
 import { appleMsToIso, isSupportedProduct, verifySignedTransactionInfo } from './iap.js';
 import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
-    upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser,
+    upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -391,7 +391,7 @@ app.get('/api/admin/feedback', adminAuth, async (req, res) => {
 
 app.get('/me/access-status', auth, async (req, res) => {
     const userId = getUserId(req);
-    const accessStatus = await buildAccessStatus(userId);
+    const accessStatus = await buildResponseAccessStatus(userId);
     const user = await getUser(userId);
     res.json({ userId, email: user?.email ?? null, isAdmin: user?.isAdmin ?? false, accessStatus });
 });
@@ -449,9 +449,43 @@ app.post('/me/purchases/sync', auth, async (req, res) => {
     }
 
     await reconcilePurchaseAccess(userId, now);
-    const accessStatus = await buildAccessStatus(userId, now);
+    const accessStatus = await buildResponseAccessStatus(userId, now);
     const user = await getUser(userId);
+    notifyOtherDevices(userId, req.header('Authorization')).catch((err) => {
+        console.error('[purchase/sync] notify failed:', err);
+    });
     res.json({ ok: true, userId, email: user?.email ?? null, accessStatus });
+});
+
+app.post('/me/lifetime-upgrade-offer-code', auth, async (req, res) => {
+    const parsed = z.object({
+        kind: z.enum(['monthly_to_lifetime', 'yearly_to_lifetime']),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const userId = getUserId(req);
+    const accessStatus = await buildResponseAccessStatus(userId);
+    const offer = accessStatus.lifetimeUpgradeOffer;
+
+    if (!offer || offer.kind !== parsed.data.kind) {
+        return res.status(403).json({ error: 'offer_not_eligible' });
+    }
+
+    const now = new Date().toISOString();
+    const assigned = await assignLifetimeUpgradeCode(userId, parsed.data.kind, now);
+    if (!assigned) {
+        return res.status(409).json({ error: 'offer_code_unavailable' });
+    }
+
+    return res.json({
+        ok: true,
+        kind: parsed.data.kind,
+        code: assigned.code,
+        discountedPriceLabel: offer.discountedPriceLabel,
+    });
 });
 
 // Register/update push token
@@ -509,6 +543,12 @@ async function notifyOtherDevices(userId: string, authHeader?: string): Promise<
             topic: t.topic,
         })),
     );
+}
+
+async function buildResponseAccessStatus(userId: string, now?: Date) {
+    const accessStatus = await buildAccessStatus(userId, now);
+    accessStatus.lifetimeUpgradeOffer = await buildLifetimeUpgradeOffer(userId, accessStatus);
+    return accessStatus;
 }
 
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {

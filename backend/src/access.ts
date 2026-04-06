@@ -1,6 +1,22 @@
-import { countMessagesCreatedBetween, getUserAccessFields, listUserIapTransactions, updateUserPurchaseAccess } from './store.js';
-import { SyncaAccessStatus } from './types.js';
-import { isLifetimeProduct, isSupportedProduct, isSubscriptionProduct } from './iap.js';
+import {
+    countAvailableLifetimeUpgradeCodes,
+    countMessagesCreatedBetween,
+    getAssignedLifetimeUpgradeCode,
+    getUserAccessFields,
+    listUserIapTransactions,
+    markAssignedLifetimeUpgradeCodesRedeemed,
+    updateUserPurchaseAccess,
+} from './store.js';
+import { SyncaAccessStatus, SyncaLifetimeUpgradeOffer, SyncaLifetimeUpgradeOfferKind } from './types.js';
+import {
+    isLifetimeProduct,
+    isSupportedProduct,
+    isSubscriptionProduct,
+    MONTHLY_PRODUCT_ID,
+    MONTHLY_TO_LIFETIME_DISCOUNT_LABEL,
+    YEARLY_PRODUCT_ID,
+    YEARLY_TO_LIFETIME_DISCOUNT_LABEL,
+} from './iap.js';
 
 export const FREE_DAILY_MESSAGE_LIMIT = 20;
 const TRIAL_LENGTH_DAYS = 7;
@@ -139,6 +155,32 @@ export async function reconcilePurchaseAccess(userId: string, now = new Date()):
         storeProductId: lifetimeTransaction?.product_id ?? activeSubscription?.product_id ?? null,
         now: now.toISOString(),
     });
+
+    if (lifetimeTransaction) {
+        await markAssignedLifetimeUpgradeCodesRedeemed(userId, now.toISOString());
+    }
+}
+
+export async function buildLifetimeUpgradeOffer(userId: string, status: SyncaAccessStatus): Promise<SyncaLifetimeUpgradeOffer | null> {
+    if (status.unlimitedSource != 'subscription') {
+        return null;
+    }
+
+    const kind = lifetimeUpgradeKindForProduct(status.storeProductId);
+    if (!kind) {
+        return null;
+    }
+
+    const [assignedCode, availableCount] = await Promise.all([
+        getAssignedLifetimeUpgradeCode(userId, kind),
+        countAvailableLifetimeUpgradeCodes(kind),
+    ]);
+
+    return {
+        kind,
+        discountedPriceLabel: discountedPriceLabelForKind(kind),
+        isCodeAvailable: Boolean(assignedCode || availableCount > 0),
+    };
 }
 
 function daysLeft(trialEndsAt: string | null, now: Date): number | null {
@@ -171,4 +213,16 @@ function compareSubscriptionDesc(
     const expiryDiff = new Date(b.expires_at ?? 0).getTime() - new Date(a.expires_at ?? 0).getTime();
     if (expiryDiff !== 0) return expiryDiff;
     return new Date(b.purchase_date ?? 0).getTime() - new Date(a.purchase_date ?? 0).getTime();
+}
+
+function lifetimeUpgradeKindForProduct(productId: string | null | undefined): SyncaLifetimeUpgradeOfferKind | null {
+    if (productId === MONTHLY_PRODUCT_ID) return 'monthly_to_lifetime';
+    if (productId === YEARLY_PRODUCT_ID) return 'yearly_to_lifetime';
+    return null;
+}
+
+function discountedPriceLabelForKind(kind: SyncaLifetimeUpgradeOfferKind): string {
+    return kind === 'monthly_to_lifetime'
+        ? MONTHLY_TO_LIFETIME_DISCOUNT_LABEL
+        : YEARLY_TO_LIFETIME_DISCOUNT_LABEL;
 }

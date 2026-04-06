@@ -35,26 +35,16 @@ struct MessageListView: View {
                 Divider()
                 inputBar
             }
-            .navigationTitle("Synca")
-            #if os(iOS)
+            .background(Color.syncaPageBackground.ignoresSafeArea())
+            .navigationTitle("")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
+#endif
             .toolbar {
-                ToolbarItem(placement: accessToolbarPlacement) {
-                    if let status = accessManager.status {
-                        Button {
-                            accessManager.showAccessCenter = true
-                        } label: {
-                            AccessStatusPill(status: status, compact: isCompactMacToolbar)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    refreshButton
-                    clearAllButton
-                    settingsMenu
-                }
+#if os(iOS)
+                titleToolbarItem
+                actionToolbarItems
+#endif
             }
             .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
                 Button("common.cancel", role: .cancel) {}
@@ -141,17 +131,50 @@ struct MessageListView: View {
                 }
             }
         }
-        #if os(macOS)
-        .background(
-            Button("") {
-                handlePasteShortcut()
-            }
-            .keyboardShortcut("v", modifiers: .command)
-            .opacity(0)
-            .allowsHitTesting(false)
-        )
-        #endif
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestClearAll)) { _ in
+            showClearAllConfirm = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestFeedbackComposer)) { _ in
+            showFeedbackComposer = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .syncaRequestSignOut)) { _ in
+            showLogoutConfirm = true
+        }
     }
+
+    @ToolbarContentBuilder
+    private var titleToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 8) {
+                Text("Synca")
+                    .font(.system(size: 17, weight: .semibold))
+
+                if let status = accessManager.status {
+                    Button {
+                        accessManager.showAccessCenter = true
+                    } label: {
+                        HeaderAccessBadge(status: status)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    #if os(iOS)
+    @ToolbarContentBuilder
+    private var actionToolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            refreshButton
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            clearAllButton
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            settingsMenu
+        }
+    }
+    #endif
 
     // MARK: - Subviews
 
@@ -345,28 +368,13 @@ struct MessageListView: View {
 
     // MARK: - Toolbar Items
 
-    private var accessToolbarPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-        return .topBarLeading
-        #else
-        return .navigation
-        #endif
-    }
-
-    private var isCompactMacToolbar: Bool {
-        #if os(macOS)
-        true
-        #else
-        false
-        #endif
-    }
-
     private var refreshButton: some View {
         Button {
             Task { await self.syncManager.refresh() }
         } label: {
             Image(systemName: "arrow.clockwise")
         }
+        .buttonStyle(.plain)
         .disabled(self.syncManager.isRefreshing)
     }
 
@@ -376,6 +384,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "trash")
         }
+        .buttonStyle(.plain)
         .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
     }
 
@@ -401,6 +410,7 @@ struct MessageListView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
     }
 
@@ -459,7 +469,7 @@ struct MessageListView: View {
         #if os(iOS)
         .background(.bar)
         #else
-        .background(.background)
+        .background(Color.syncaPageBackground)
         #endif
     }
 
@@ -511,10 +521,10 @@ struct MessageListView: View {
                     .allowsHitTesting(false)
             }
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(Color.syncaInputFieldBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                .strokeBorder(Color.syncaInputFieldBorder, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16))
         #endif
@@ -776,8 +786,11 @@ private struct AboutSyncaSheet: View {
     }
 }
 
-private extension Notification.Name {
+extension Notification.Name {
     static let syncaScrollToBottomAfterImageLoad = Notification.Name("syncaScrollToBottomAfterImageLoad")
+    static let syncaRequestClearAll = Notification.Name("syncaRequestClearAll")
+    static let syncaRequestFeedbackComposer = Notification.Name("syncaRequestFeedbackComposer")
+    static let syncaRequestSignOut = Notification.Name("syncaRequestSignOut")
 }
 
 extension View {

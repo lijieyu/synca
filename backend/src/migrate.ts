@@ -155,6 +155,22 @@ export async function runMigrations() {
     await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_user_id ON feedbacks(user_id)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_feedbacks_created_at ON feedbacks(created_at)`.execute(db);
 
+    await sql`
+        CREATE TABLE IF NOT EXISTS lifetime_upgrade_offer_codes (
+            id TEXT PRIMARY KEY,
+            offer_kind TEXT NOT NULL CHECK(offer_kind IN ('monthly_to_lifetime', 'yearly_to_lifetime')),
+            code TEXT UNIQUE NOT NULL,
+            assigned_user_id TEXT REFERENCES users(id),
+            assigned_at TEXT,
+            redeemed_at TEXT,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    `.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_lifetime_offer_codes_kind ON lifetime_upgrade_offer_codes(offer_kind)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_lifetime_offer_codes_assigned_user ON lifetime_upgrade_offer_codes(assigned_user_id)`.execute(db);
+
     console.log('[migrate] Migrations complete.');
 }
 
