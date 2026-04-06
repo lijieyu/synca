@@ -10,6 +10,10 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
     private let accessoryIdentifier = NSUserInterfaceItemIdentifier("synca.titlebar.accessory")
     private let controlsAccessoryIdentifier = NSUserInterfaceItemIdentifier("synca.titlebar.controls")
 
+    private var metrics: MacTitlebarMetrics {
+        MacTitlebarMetrics.current
+    }
+
     func configure(window: NSWindow) {
         window.delegate = self
         window.setFrameAutosaveName(autosaveName)
@@ -54,8 +58,8 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.identifier = accessoryIdentifier
         accessory.layoutAttribute = .left
 
-        let hostingView = NSHostingView(rootView: MacTitlebarIdentityView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 212, height: 40)
+        let hostingView = NSHostingView(rootView: MacTitlebarIdentityView(metrics: metrics))
+        hostingView.frame = NSRect(x: 0, y: 0, width: metrics.identityWidth, height: metrics.height)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -70,21 +74,69 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.identifier = controlsAccessoryIdentifier
         accessory.layoutAttribute = .right
 
-        let hostingView = NSHostingView(rootView: MacTitlebarControlsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 168, height: 40)
+        let hostingView = NSHostingView(rootView: MacTitlebarControlsView(metrics: metrics))
+        hostingView.frame = NSRect(x: 0, y: 0, width: metrics.controlsWidth, height: metrics.height)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
     }
 }
 
+private struct MacTitlebarMetrics {
+    let height: CGFloat
+    let identityWidth: CGFloat
+    let controlsWidth: CGFloat
+    let titleFontSize: CGFloat
+    let leadingPadding: CGFloat
+    let verticalPadding: CGFloat
+    let controlsTrailingPadding: CGFloat
+    let controlsSpacing: CGFloat
+    let iconFontSize: CGFloat
+    let menuIconFontSize: CGFloat
+    let iconFrame: CGFloat
+
+    static var current: MacTitlebarMetrics {
+        let majorVersion = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        if majorVersion <= 15 {
+            return MacTitlebarMetrics(
+                height: 42,
+                identityWidth: 224,
+                controlsWidth: 188,
+                titleFontSize: 17,
+                leadingPadding: 18,
+                verticalPadding: 6,
+                controlsTrailingPadding: 18,
+                controlsSpacing: 14,
+                iconFontSize: 17,
+                menuIconFontSize: 19,
+                iconFrame: 34
+            )
+        } else {
+            return MacTitlebarMetrics(
+                height: 40,
+                identityWidth: 212,
+                controlsWidth: 176,
+                titleFontSize: 16,
+                leadingPadding: 18,
+                verticalPadding: 5,
+                controlsTrailingPadding: 16,
+                controlsSpacing: 14,
+                iconFontSize: 16,
+                menuIconFontSize: 18,
+                iconFrame: 32
+            )
+        }
+    }
+}
+
 private struct MacTitlebarIdentityView: View {
     @ObservedObject private var accessManager = AccessManager.shared
+    let metrics: MacTitlebarMetrics
 
     var body: some View {
         HStack(spacing: 8) {
             Text("Synca")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: metrics.titleFontSize, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
@@ -97,18 +149,19 @@ private struct MacTitlebarIdentityView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(width: 212, alignment: .leading)
-        .padding(.leading, 18)
-        .padding(.vertical, 5)
+        .frame(width: metrics.identityWidth, alignment: .leading)
+        .padding(.leading, metrics.leadingPadding)
+        .padding(.vertical, metrics.verticalPadding)
     }
 }
 
 private struct MacTitlebarControlsView: View {
     @ObservedObject private var syncManager = SyncManager.shared
+    let metrics: MacTitlebarMetrics
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            HStack(spacing: 14) {
+            HStack(spacing: metrics.controlsSpacing) {
                 Button {
                     Task { await syncManager.refresh() }
                 } label: {
@@ -151,25 +204,25 @@ private struct MacTitlebarControlsView: View {
                 .fixedSize()
             }
             .fixedSize()
-            .padding(.trailing, 16)
-            .padding(.vertical, 5)
+            .padding(.trailing, metrics.controlsTrailingPadding)
+            .padding(.vertical, metrics.verticalPadding)
         }
-        .frame(width: 176, alignment: .trailing)
+        .frame(width: metrics.controlsWidth, alignment: .trailing)
     }
 
     @ViewBuilder
     private func titlebarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 16, weight: .regular))
-            .frame(width: 32, height: 32)
+            .font(.system(size: metrics.iconFontSize, weight: .regular))
+            .frame(width: metrics.iconFrame, height: metrics.iconFrame)
             .contentShape(Rectangle())
     }
 
     @ViewBuilder
     private func titlebarMenuIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 18, weight: .medium))
-            .frame(width: 32, height: 32)
+            .font(.system(size: metrics.menuIconFontSize, weight: .medium))
+            .frame(width: metrics.iconFrame, height: metrics.iconFrame)
             .contentShape(Rectangle())
     }
 
