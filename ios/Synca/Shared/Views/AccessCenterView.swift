@@ -102,7 +102,7 @@ struct AccessCenterView: View {
     private func unlockUnlimitedCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .accent) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center) {
                     Text("access.unlock_title", bundle: .main)
                         .font(.headline)
                     Spacer()
@@ -403,10 +403,14 @@ struct AccessCenterView: View {
             HStack(spacing: 6) {
                 Text("access.restore_purchases", bundle: .main)
                     .font(.footnote.weight(.semibold))
-                if purchaseManager.isRestoring {
-                    ProgressView()
-                        .controlSize(.small)
+                ZStack {
+                    if purchaseManager.isRestoring {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                 }
+                .frame(width: 14, height: 14)
+                .accessibilityHidden(!purchaseManager.isRestoring)
             }
         }
         .buttonStyle(.plain)
@@ -623,7 +627,7 @@ struct HeaderAccessBadge: View {
         if status.isTrial {
             return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
         }
-        return String(format: String(localized: "access.status_free_inline", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+        return freeInlineLabel
     }
 
     private var helpText: String {
@@ -632,6 +636,10 @@ struct HeaderAccessBadge: View {
             return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
         }
         return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+    }
+
+    private var freeInlineLabel: String {
+        "\(String(localized: "access.free_title", bundle: .main)) \(status.todayUsed)/\(status.todayLimit ?? 20)"
     }
 }
 
@@ -677,7 +685,7 @@ struct AccessStatusPill: View {
         if status.isTrial {
             return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
         }
-        return String(format: String(localized: "access.status_free_inline", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+        return freeInlineLabel
     }
 
     private var borderColor: Color {
@@ -690,6 +698,10 @@ struct AccessStatusPill: View {
             return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
         }
         return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+    }
+
+    private var freeInlineLabel: String {
+        "\(String(localized: "access.free_title", bundle: .main)) \(status.todayUsed)/\(status.todayLimit ?? 20)"
     }
 }
 

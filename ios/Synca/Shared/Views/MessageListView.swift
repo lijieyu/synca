@@ -92,7 +92,7 @@ struct MessageListView: View {
             syncManager.restoreCachedMessagesIfAvailable()
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
             await purchaseManager.loadProducts()
-            await purchaseManager.syncLatestTransactions()
+            _ = try? await purchaseManager.syncLatestTransactions()
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
             if !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()

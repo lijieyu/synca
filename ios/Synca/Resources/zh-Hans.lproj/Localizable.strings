@@ -53,7 +53,7 @@
 "access.status_free" = "免费版 · 今日 %d/%d";
 "access.status_unlimited" = "无限版";
 "access.status_trial_inline" = "Trial %d天";
-"access.status_free_inline" = "%d/%d";
+"access.status_free_inline" = "免费版 %d/%d";
 "access.status_unlimited_inline" = "∞";
 "access.status_trial_compact" = "试用 %d天";
 "access.status_free_compact" = "免费 %d/%d";
@@ -100,6 +100,8 @@
 "access.purchase_account_missing" = "需要先刷新账号状态后才能购买。";
 "access.offer_unavailable" = "当前还没有可用的终身升级优惠。";
 "access.lifetime_offer_copied" = "优惠码已复制，请在兑换面板中粘贴使用。";
+"access.restore_success" = "已恢复此 App Store 账号下的购买记录。";
+"access.restore_no_purchases" = "这个账号当前没有可恢复的购买记录。";
 "access.restore_failed" = "暂时无法恢复购买。";
 "access.purchased_monthly" = "无限版（月付）";
 "access.purchased_yearly" = "无限版（年付）";

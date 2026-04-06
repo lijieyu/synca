@@ -62,7 +62,7 @@ final class AuthService: NSObject, ObservableObject {
         APIClient.shared.setCurrentUserEmail(response.user.email)
         AccessManager.shared.apply(response.accessStatus)
         await PushTokenManager.shared.uploadCachedTokenIfPossible()
-        await PurchaseManager.shared.syncLatestTransactions()
+        _ = try? await PurchaseManager.shared.syncLatestTransactions()
 
         return response
     }
