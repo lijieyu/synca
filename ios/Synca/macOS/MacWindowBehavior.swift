@@ -71,7 +71,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.layoutAttribute = .right
 
         let hostingView = NSHostingView(rootView: MacTitlebarControlsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 170, height: 40)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 228, height: 40)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -107,7 +107,7 @@ private struct MacTitlebarControlsView: View {
     @ObservedObject private var syncManager = SyncManager.shared
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             Button {
                 Task { await syncManager.refresh() }
             } label: {
@@ -148,16 +148,16 @@ private struct MacTitlebarControlsView: View {
             .buttonStyle(.plain)
             .menuIndicator(.hidden)
         }
-        .frame(width: 170, alignment: .trailing)
-        .padding(.trailing, 26)
+        .frame(width: 202, alignment: .trailing)
+        .padding(.trailing, 5)
         .padding(.vertical, 5)
     }
 
     @ViewBuilder
     private func titlebarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 15, weight: .regular))
-            .frame(width: 30, height: 30)
+            .font(.system(size: 16, weight: .regular))
+            .frame(width: 32, height: 32)
             .contentShape(Rectangle())
     }
 
