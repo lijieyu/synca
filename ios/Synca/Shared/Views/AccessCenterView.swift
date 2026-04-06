@@ -386,42 +386,38 @@ struct AccessCenterView: View {
     @ViewBuilder
     private func lifetimeOfferCodeBlock(_ offer: LifetimeUpgradeOffer) -> some View {
         if let code = offer.code, !code.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("access.offer_code_subtitle", bundle: .main)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("access.offer_code_label", bundle: .main)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(code)
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .textSelection(.enabled)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-
-                    Spacer(minLength: 12)
-
-                    Button {
-                        purchaseManager.copyLifetimeOfferCode(code)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "doc.on.doc")
-                            Text(String(localized: "access.copy_offer_code", bundle: .main))
-                        }
-                        .font(.footnote.weight(.semibold))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("access.offer_code_label", bundle: .main)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(code)
+                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Spacer(minLength: 12)
+
+                Button {
+                    purchaseManager.copyLifetimeOfferCode(code)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.on.doc")
+                        Text(String(localized: "access.copy_offer_code", bundle: .main))
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.black)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "access.copy_offer_code", bundle: .main))
             }
+            .padding(.vertical, 2)
         }
     }
 

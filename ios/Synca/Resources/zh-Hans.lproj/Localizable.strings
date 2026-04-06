@@ -120,11 +120,10 @@
 "access.lifetime_upgrade_title" = "升级终身版";
 "access.upgrade_to_lifetime" = "按原价升级终身版";
 "access.upgrade_to_lifetime_offer" = "优惠升级终身版";
-"access.offer_code_subtitle" = "这是提供给订阅用户的专属优惠，点击下方即可立即输入优惠码兑换。";
-"access.offer_code_label" = "专属优惠码";
+"access.offer_code_label" = "订阅用户专属优惠码";
 "access.copy_offer_code" = "复制";
 "access.offer_code_hint" = "将自动复制一次性优惠码，并在 app 内打开兑换面板。";
-"access.offer_code_redeem_hint" = "点击后会立即进入兑换流程，并先帮你复制一次优惠码，输入更方便。";
+"access.offer_code_redeem_hint" = "点击兑换你的专属优惠，升级为终身版。";
 "access.intro_offer_badge" = "首月免费";
 "access.limit_reached_title" = "今日免费额度已用完";
 
