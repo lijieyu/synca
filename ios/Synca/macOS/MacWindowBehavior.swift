@@ -55,7 +55,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.layoutAttribute = .left
 
         let hostingView = NSHostingView(rootView: MacTitlebarIdentityView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 190, height: 34)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 212, height: 40)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -71,7 +71,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.layoutAttribute = .right
 
         let hostingView = NSHostingView(rootView: MacTitlebarControlsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 154, height: 34)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 170, height: 40)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -97,9 +97,9 @@ private struct MacTitlebarIdentityView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(width: 190, alignment: .leading)
-        .padding(.leading, 14)
-        .padding(.vertical, 2)
+        .frame(width: 212, alignment: .leading)
+        .padding(.leading, 18)
+        .padding(.vertical, 5)
     }
 }
 
@@ -107,7 +107,7 @@ private struct MacTitlebarControlsView: View {
     @ObservedObject private var syncManager = SyncManager.shared
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Button {
                 Task { await syncManager.refresh() }
             } label: {
@@ -148,16 +148,16 @@ private struct MacTitlebarControlsView: View {
             .buttonStyle(.plain)
             .menuIndicator(.hidden)
         }
-        .frame(width: 154, alignment: .trailing)
+        .frame(width: 170, alignment: .trailing)
         .padding(.trailing, 26)
-        .padding(.vertical, 2)
+        .padding(.vertical, 5)
     }
 
     @ViewBuilder
     private func titlebarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .font(.system(size: 15, weight: .regular))
-            .frame(width: 28, height: 28)
+            .frame(width: 30, height: 30)
             .contentShape(Rectangle())
     }
 
