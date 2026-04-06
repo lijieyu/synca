@@ -76,32 +76,23 @@ class CustomContextMenuTextView: NSTextView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         for area in self.trackingAreas { self.removeTrackingArea(area) }
-        let options: NSTrackingArea.Options = [.mouseMoved, .cursorUpdate, .activeInActiveApp, .inVisibleRect]
+        let options: NSTrackingArea.Options = [.cursorUpdate, .activeInActiveApp, .inVisibleRect]
         let area = NSTrackingArea(rect: self.bounds, options: options, owner: self, userInfo: nil)
         self.addTrackingArea(area)
     }
 
-    override func mouseMoved(with event: NSEvent) {
-        self.updateCursor(with: event)
-        super.mouseMoved(with: event)
-    }
-
     override func cursorUpdate(with event: NSEvent) {
-        self.updateCursor(with: event)
-    }
-
-    private func updateCursor(with event: NSEvent) {
-        guard let layoutManager = self.layoutManager, let textContainer = self.textContainer else { return }
+        guard let layoutManager = self.layoutManager, let textContainer = self.textContainer else {
+            NSCursor.arrow.set()
+            return
+        }
         
         let point = self.convert(event.locationInWindow, from: nil)
-        
-        // Adjust for any text container insets if they were not zero
         let textContainerPoint = NSPoint(x: point.x - textContainerInset.width, y: point.y - textContainerInset.height)
         
         var fraction: CGFloat = 0
         let charIndex = layoutManager.characterIndex(for: textContainerPoint, in: textContainer, fractionOfDistanceBetweenInsertionPoints: &fraction)
         
-        // Ensure the charIndex is valid and actually within the glyph rect to avoid hover-hand near end of lines
         if charIndex < (self.textStorage?.length ?? 0) {
             let glyphIndex = layoutManager.glyphIndexForCharacter(at: charIndex)
             let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
@@ -115,12 +106,14 @@ class CustomContextMenuTextView: NSTextView {
             }
         }
         
-        NSCursor.iBeam.set()
+        NSCursor.arrow.set()
     }
 
     override func resetCursorRects() {
         super.resetCursorRects()
-
+        // Default to arrow for the entire view to stop the I-Beam flickering
+        self.addCursorRect(self.bounds, cursor: .arrow)
+        
         guard
             let textStorage,
             let layoutManager,
