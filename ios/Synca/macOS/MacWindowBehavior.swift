@@ -186,7 +186,7 @@ private struct MacTitlebarControlsView: View {
                     }
 
                     Button {
-                        showAboutOnMac()
+                        NotificationCenter.default.post(name: .syncaRequestAbout, object: nil)
                     } label: {
                         Label("message_list.about", systemImage: "info.circle")
                     }
@@ -223,20 +223,6 @@ private struct MacTitlebarControlsView: View {
             .font(.system(size: metrics.iconFontSize, weight: .regular))
             .frame(width: metrics.iconFrame, height: metrics.iconFrame)
             .contentShape(Rectangle())
-    }
-
-
-
-    private func showAboutOnMac() {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
-
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = String(localized: "message_list.about", bundle: .main)
-        alert.informativeText = String(format: String(localized: "message_list.about_message", bundle: .main), version, build)
-        alert.addButton(withTitle: String(localized: "message_list.got_it", bundle: .main))
-        alert.runModal()
     }
 }
 

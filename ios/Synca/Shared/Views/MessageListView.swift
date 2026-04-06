@@ -615,7 +615,6 @@ struct MessageListView: View {
     }
     
     #if os(macOS)
-    #if os(macOS)
     private func handlePasteShortcut() {
         let pb = NSPasteboard.general
 
@@ -644,8 +643,6 @@ struct MessageListView: View {
         }
 
         NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
-    }
-    #endif
     }
     #endif
 
@@ -800,6 +797,7 @@ private struct AboutSyncaSheet: View {
         #endif
     }
 }
+
 
 extension View {
     @ViewBuilder
