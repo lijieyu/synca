@@ -2,8 +2,27 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
-struct LinkTextView: UIViewRepresentable {
+/// A cross-platform wrapper for a linkable text view.
+/// On iOS, it uses a native UITextView via UIViewRepresentable to support link detection.
+/// On other platforms, it renders as an EmptyView (macOS uses MacSelectableText directly).
+struct LinkTextView: View {
+    let attributedText: NSAttributedString
+
+    var body: some View {
+        #if os(iOS)
+        InternalLinkTextView(attributedText: attributedText)
+        #else
+        EmptyView()
+        #endif
+    }
+}
+
+#if os(iOS)
+private struct InternalLinkTextView: UIViewRepresentable {
     let attributedText: NSAttributedString
 
     func makeCoordinator() -> Coordinator {
@@ -53,20 +72,5 @@ struct LinkTextView: UIViewRepresentable {
         }
     }
 }
-
-#elseif os(macOS)
-import AppKit
-
-// Dummy view for macOS to maintain cross-platform compilation
-// macOS uses MacSelectableText directly in MessageBubbleView
-struct LinkTextView: View {
-    let attributedText: NSAttributedString
-    var body: some View { EmptyView() }
-}
-#else
-// Fallback for other platforms
-struct LinkTextView: View {
-    let attributedText: NSAttributedString
-    var body: some View { EmptyView() }
-}
 #endif
+
