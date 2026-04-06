@@ -4,7 +4,8 @@
   --synca-mint-light: rgba(52, 199, 89, 0.1);
   --bg-color: #f2f2f7; /* Mac grey background */
   --card-bg-color: #ffffff; /* Mac white cards */
-  --text-main: #000000;
+  --panel-bg-color: #ffffff; /* Secondary panels */
+  --text-main: #1c1c1e;
   --text-secondary: #8E8E93;
   --border-color: rgba(0, 0, 0, 0.05);
   --send-icon-arrow-color: #ffffff;
@@ -12,13 +13,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #2c2c2e; /* Mac list background - dark grey */
-    --card-bg-color: #121212; /* Mac card background - nearly black */
-    --text-main: #ffffff;
-    --text-secondary: #8E8E93;
-    --border-color: rgba(255, 255, 255, 0.05);
-    --synca-mint-light: rgba(52, 199, 89, 0.03); /* Almost invisible green */
-    --send-icon-arrow-color: #1c1c1e; /* Dark arrow in dark mode */
+    --bg-color: #000000; /* Deep black background */
+    --card-bg-color: #1c1c1e; /* Grey cards */
+    --panel-bg-color: #2c2c2e; /* Lighter secondary panels/inputs */
+    --text-main: #e5e5e7; /* Soft white */
+    --text-secondary: #86868b;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --synca-mint-light: rgba(52, 199, 89, 0.15); /* Keep green state visible in dark */
+    --send-icon-arrow-color: #1c1c1e;
   }
 }
 
@@ -199,7 +201,7 @@ body {
 
 .input-bar textarea {
   flex: 1;
-  background-color: var(--card-bg-color);
+  background-color: var(--panel-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 18px;
   padding: 10px 14px;
@@ -264,7 +266,7 @@ body {
 }
 
 .modal-content {
-  background: var(--card-bg-color);
+  background: var(--panel-bg-color);
   border-radius: 14px;
   padding: 24px;
   min-width: 280px;
@@ -417,7 +419,7 @@ body {
 .admin-table th {
   text-align: left;
   padding: 12px;
-  background: rgba(0,0,0,0.02);
+  background: rgba(125, 125, 125, 0.05);
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
   font-weight: 500;
@@ -437,7 +439,8 @@ body {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  background: var(--border-color);
+  background: var(--panel-bg-color);
+  border: 1px solid var(--border-color);
 }
 
 .admin-tag.unlimited {
