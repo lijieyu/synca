@@ -83,10 +83,11 @@
 "access.purchase_shared_hint" = "Available across all your devices on the same account.";
 "access.option_monthly_title" = "Unlimited (Monthly)";
 "access.option_monthly_subtitle" = "Monthly subscription. Cancel anytime.";
-"access.option_monthly_intro_subtitle" = "First month free, then %@ / month.";
 "access.option_yearly_title" = "Unlimited (Yearly)";
 "access.option_yearly_subtitle" = "Yearly subscription. Renews once a year.";
-"access.option_yearly_intro_subtitle" = "First month free, then %@ / year.";
+"access.intro_free_trial_then_template" = "%@ free, then %@ / %@.";
+"access.intro_payg_then_template" = "Intro offer for %@, then %@ / %@.";
+"access.intro_payupfront_then_template" = "Intro price for %@, then %@ / %@.";
 "access.option_lifetime_title" = "Lifetime";
 "access.option_lifetime_subtitle" = "One-time purchase. Permanent access.";
 "access.purchase_setup_pending" = "App Store purchase setup is the next step.";

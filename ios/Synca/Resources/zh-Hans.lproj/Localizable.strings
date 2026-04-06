@@ -83,10 +83,11 @@
 "access.purchase_shared_hint" = "同一账号下，所有设备均可通用。";
 "access.option_monthly_title" = "无限版（月付）";
 "access.option_monthly_subtitle" = "按月自动续费，可随时取消。";
-"access.option_monthly_intro_subtitle" = "首月免费，之后按 %@ / 月续费。";
 "access.option_yearly_title" = "无限版（年付）";
 "access.option_yearly_subtitle" = "按年自动续费，每年续费一次。";
-"access.option_yearly_intro_subtitle" = "首月免费，之后按 %@ / 年续费。";
+"access.intro_free_trial_then_template" = "%@ 免费试用，之后按 %@ / %@ 续费。";
+"access.intro_payg_then_template" = "前 %@ 享受优惠，之后按 %@ / %@ 续费。";
+"access.intro_payupfront_then_template" = "优惠价覆盖 %@，之后按 %@ / %@ 续费。";
 "access.option_lifetime_title" = "终身版";
 "access.option_lifetime_subtitle" = "一次性买断，永久可用。";
 "access.purchase_setup_pending" = "App Store 购买通道是下一步接入内容。";

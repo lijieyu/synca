@@ -527,17 +527,89 @@ struct AccessCenterView: View {
     }
 
     private func subscriptionSubtitle(for productID: SyncaProductID, product: Product?, isEligibleForIntro: Bool) -> String {
-        guard isEligibleForIntro, let price = product?.displayPrice else {
+        guard
+            isEligibleForIntro,
+            let product,
+            let introductoryOffer = product.subscription?.introductoryOffer
+        else {
             return productSubtitle(for: productID)
+        }
+
+        return introductorySubtitle(for: productID, product: product, offer: introductoryOffer)
+    }
+
+    private func introductorySubtitle(
+        for productID: SyncaProductID,
+        product: Product,
+        offer: Product.SubscriptionOffer
+    ) -> String {
+        let duration = localizedSubscriptionPeriod(offer.period)
+        let renewalUnit = renewalUnitLabel(for: productID)
+
+        switch offer.paymentMode {
+        case .freeTrial:
+            return String(
+                format: String(localized: "access.intro_free_trial_then_template", bundle: .main),
+                duration,
+                product.displayPrice,
+                renewalUnit
+            )
+        case .payAsYouGo:
+            return String(
+                format: String(localized: "access.intro_payg_then_template", bundle: .main),
+                duration,
+                product.displayPrice,
+                renewalUnit
+            )
+        case .payUpFront:
+            return String(
+                format: String(localized: "access.intro_payupfront_then_template", bundle: .main),
+                duration,
+                product.displayPrice,
+                renewalUnit
+            )
+        default:
+            return productSubtitle(for: productID)
+        }
+    }
+
+    private func renewalUnitLabel(for productID: SyncaProductID) -> String {
+        if Locale.current.language.languageCode?.identifier == "zh" {
+            switch productID {
+            case .monthly:
+                return "月"
+            case .yearly:
+                return "年"
+            case .lifetime:
+                return ""
+            }
         }
 
         switch productID {
         case .monthly:
-            return String(format: String(localized: "access.option_monthly_intro_subtitle", bundle: .main), price)
+            return "month"
         case .yearly:
-            return String(format: String(localized: "access.option_yearly_intro_subtitle", bundle: .main), price)
+            return "year"
         case .lifetime:
-            return productSubtitle(for: productID)
+            return ""
+        }
+    }
+
+    private func localizedSubscriptionPeriod(_ period: Product.SubscriptionPeriod) -> String {
+        let value = period.value
+        let isChinese = Locale.current.language.languageCode?.identifier == "zh"
+
+        switch period.unit {
+        case .day:
+            return isChinese ? "\(value)天" : "\(value) \(value == 1 ? "day" : "days")"
+        case .week:
+            return isChinese ? "\(value)周" : "\(value) \(value == 1 ? "week" : "weeks")"
+        case .month:
+            return isChinese ? "\(value)个月" : "\(value) \(value == 1 ? "month" : "months")"
+        case .year:
+            return isChinese ? "\(value)年" : "\(value) \(value == 1 ? "year" : "years")"
+        @unknown default:
+            return "\(value)"
         }
     }
 
