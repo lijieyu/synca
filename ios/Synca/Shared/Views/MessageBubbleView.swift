@@ -492,7 +492,7 @@ private extension MessageBubbleView {
                 guard let result, let url = result.url else { return }
                 mutable.addAttributes(
                     [
-                        .link: url.absoluteString,
+                        .link: url,
                         .foregroundColor: NSColor.linkColor,
                         .underlineStyle: NSUnderlineStyle.single.rawValue
                     ],

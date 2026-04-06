@@ -57,11 +57,14 @@ struct MacSelectableText: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-            guard let string = link as? String, let url = URL(string: string) else {
-                return false
+            if let url = link as? URL {
+                NSWorkspace.shared.open(url)
+                return true
+            } else if let string = link as? String, let url = URL(string: string) {
+                NSWorkspace.shared.open(url)
+                return true
             }
-            NSWorkspace.shared.open(url)
-            return true
+            return false
         }
     }
 }
