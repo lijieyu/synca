@@ -71,7 +71,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.layoutAttribute = .right
 
         let hostingView = NSHostingView(rootView: MacTitlebarControlsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 154, height: 40)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 168, height: 40)
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
@@ -144,23 +144,31 @@ private struct MacTitlebarControlsView: View {
                         Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
-                    titlebarIcon("ellipsis.circle")
+                    titlebarMenuIcon("ellipsis.circle")
                 }
                 .buttonStyle(.plain)
                 .menuIndicator(.hidden)
                 .fixedSize()
             }
             .fixedSize()
-            .padding(.trailing, 5)
+            .padding(.trailing, 12)
             .padding(.vertical, 5)
         }
-        .frame(width: 154, alignment: .trailing)
+        .frame(width: 168, alignment: .trailing)
     }
 
     @ViewBuilder
     private func titlebarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .font(.system(size: 16, weight: .regular))
+            .frame(width: 32, height: 32)
+            .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func titlebarMenuIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 17.5, weight: .regular))
             .frame(width: 32, height: 32)
             .contentShape(Rectangle())
     }

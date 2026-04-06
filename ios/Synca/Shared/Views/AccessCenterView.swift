@@ -212,7 +212,7 @@ struct AccessCenterView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(product?.displayName ?? fallbackProductName(for: productID))
-                        .font(.subheadline.weight(.semibold))
+                        .font(planOptionTitleFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
 
@@ -269,7 +269,7 @@ struct AccessCenterView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(currentLifetimeName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(planOptionTitleFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                     Spacer()
@@ -302,7 +302,7 @@ struct AccessCenterView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(currentLifetimeName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(planOptionTitleFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                     Spacer()
@@ -335,7 +335,7 @@ struct AccessCenterView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(currentLifetimeName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(planOptionTitleFont)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
                     Spacer()
@@ -366,6 +366,10 @@ struct AccessCenterView: View {
         }
         .buttonStyle(PlanActionButtonStyle())
         .disabled(purchaseManager.redeemingOfferKind != nil)
+    }
+
+    private var planOptionTitleFont: Font {
+        .system(size: 17, weight: .semibold)
     }
 
     private func subscriptionSwitchButton(for productID: SyncaProductID) -> some View {
