@@ -29,10 +29,11 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
   const { t } = useTranslation();
 
   const linkify = (text: string): React.ReactNode[] => {
-    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
-    const parts = text.split(urlRegex);
+    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：])/g;
+    const parts = text.split(urlPattern);
+    const isUrl = /^https?:\/\//;
     return parts.map((part, i) =>
-      urlRegex.test(part) ? (
+      isUrl.test(part) ? (
         <a
           key={i}
           href={part}
