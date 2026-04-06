@@ -108,7 +108,7 @@ private struct MacTitlebarMetrics {
                 controlsTrailingPadding: 18,
                 controlsSpacing: 14,
                 iconFontSize: 17,
-                menuIconFontSize: 19,
+                menuIconFontSize: 21,
                 iconFrame: 34
             )
         } else {
@@ -221,7 +221,7 @@ private struct MacTitlebarControlsView: View {
     @ViewBuilder
     private func titlebarMenuIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: metrics.menuIconFontSize, weight: .medium))
+            .font(.system(size: metrics.menuIconFontSize, weight: .regular))
             .frame(width: metrics.iconFrame, height: metrics.iconFrame)
             .contentShape(Rectangle())
     }
