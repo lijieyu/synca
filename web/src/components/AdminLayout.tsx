@@ -1,23 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { RefreshCcw, LogOut, User, MessageSquare, BarChart3, Heart, CreditCard } from 'lucide-react';
 import { Modal } from './Modal';
 
 export const AdminLayout: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { logout } = useAuth();
 
   const tabs = [
-    { name: 'Dashboard', icon: <BarChart3 size={18} /> },
-    { name: 'Users', icon: <User size={18} /> },
-    { name: 'Messages', icon: <MessageSquare size={18} /> },
-    { name: 'Revenue', icon: <CreditCard size={18} /> },
-    { name: 'Feedback', icon: <Heart size={18} /> },
+    { name: 'Dashboard', slug: 'overview', icon: <BarChart3 size={18} /> },
+    { name: 'Users', slug: 'users', icon: <User size={18} /> },
+    { name: 'Messages', slug: 'messages', icon: <MessageSquare size={18} /> },
+    { name: 'Revenue', slug: 'revenue', icon: <CreditCard size={18} /> },
+    { name: 'Feedback', slug: 'feedback', icon: <Heart size={18} /> },
   ];
+
+  // Derive activeTab from URL search params
+  const currentTabSlug = searchParams.get('tab') || 'overview';
+  const activeTab = Math.max(0, tabs.findIndex(t => t.slug === currentTabSlug));
+
+  const setActiveTab = (idx: number) => {
+    setSearchParams({ tab: tabs[idx].slug }, { replace: true });
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
