@@ -139,32 +139,32 @@ struct AccessCenterView: View {
     }
 
     private func subscriptionCurrentCard(_ status: AccessStatus) -> some View {
-        AccessModuleCard(style: .accent) {
+        let showsTime = shouldShowTimeForPurchaseDetails(status)
+
+        return AccessModuleCard(style: .accent) {
             VStack(alignment: .leading, spacing: 16) {
                 moduleHeader(
                     title: "access.current_plan_title",
                     badge: AccessStatusPill(status: status)
                 )
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text(currentSubscriptionName(status))
                         .font(.title3.weight(.semibold))
 
-                    if let purchaseDate = status.purchaseDate {
-                        detailRow("access.purchase_date_label", value: formatDate(purchaseDate))
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let purchaseDate = status.purchaseDate {
+                            detailRow("access.purchase_date_label", value: formatDate(purchaseDate, includeTime: showsTime), compact: true)
+                        }
+                        if let renewalDate = status.subscriptionExpiresAt {
+                            detailRow("access.subscription_expires_label", value: formatDate(renewalDate, includeTime: showsTime), compact: true)
+                        }
                     }
-                    if let renewalDate = status.subscriptionExpiresAt {
-                        detailRow("access.subscription_expires_label", value: formatDate(renewalDate))
-                    }
-                    benefitRow(systemImage: "checkmark.seal", text: "access.shared_base_feature")
                 }
 
-                if let switchProductID = alternateSubscriptionProduct(for: status) {
-                    subscriptionSwitchButton(for: switchProductID)
-                }
+                currentPlanBenefits
 
                 lifetimeUpgradeSection(status)
-                restoreFooterButton
             }
         }
     }
@@ -177,16 +177,17 @@ struct AccessCenterView: View {
                     badge: AccessStatusPill(status: status)
                 )
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text(currentLifetimeName)
                         .font(.title3.weight(.semibold))
-                    if let purchaseDate = status.purchaseDate {
-                        detailRow("access.purchase_date_label", value: formatDate(purchaseDate))
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let purchaseDate = status.purchaseDate {
+                            detailRow("access.purchase_date_label", value: formatDate(purchaseDate), compact: true)
+                        }
                     }
-                    benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
-                    benefitRow(systemImage: "checkmark.seal", text: "access.shared_base_feature")
                 }
-                restoreFooterButton
+
+                currentPlanBenefits
             }
         }
     }
@@ -211,6 +212,7 @@ struct AccessCenterView: View {
         let product = product(for: productID)
         let isEligibleForIntro = purchaseManager.isIntroOfferEligible(for: productID)
         let currentProductID = purchaseManager.purchasingProductID
+        let isBusy = currentProductID != nil
 
         return Button {
             Task {
@@ -263,11 +265,12 @@ struct AccessCenterView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(PlanActionButtonStyle())
-        .disabled(currentProductID != nil || product == nil || purchaseManager.isLoadingProducts)
+        .planPurchaseInteractivity(isInteractionEnabled: !isBusy && product != nil && !purchaseManager.isLoadingProducts, isBusy: isBusy)
     }
 
     private func lifetimePurchaseButton() -> some View {
         let currentProductID = purchaseManager.purchasingProductID
+        let isBusy = currentProductID != nil
 
         return Button {
             Task {
@@ -298,11 +301,13 @@ struct AccessCenterView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(PlanActionButtonStyle())
-        .disabled(currentProductID != nil || purchaseManager.lifetimeProduct == nil || purchaseManager.isLoadingProducts)
+        .planPurchaseInteractivity(isInteractionEnabled: !isBusy && purchaseManager.lifetimeProduct != nil && !purchaseManager.isLoadingProducts, isBusy: isBusy)
     }
 
     private var standardLifetimeUpgradeButton: some View {
-        Button {
+        let isBusy = purchaseManager.purchasingProductID != nil
+
+        return Button {
             Task {
                 _ = await purchaseManager.purchase(.lifetime)
             }
@@ -331,11 +336,13 @@ struct AccessCenterView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(PlanActionButtonStyle())
-        .disabled(purchaseManager.purchasingProductID != nil || purchaseManager.lifetimeProduct == nil || purchaseManager.isLoadingProducts)
+        .planPurchaseInteractivity(isInteractionEnabled: !isBusy && purchaseManager.lifetimeProduct != nil && !purchaseManager.isLoadingProducts, isBusy: isBusy)
     }
 
     private func discountedLifetimeButton(_ offer: LifetimeUpgradeOffer) -> some View {
-        Button {
+        let isBusy = purchaseManager.redeemingOfferKind != nil
+
+        return Button {
             Task {
                 _ = await purchaseManager.redeemLifetimeUpgradeOffer(offer)
             }
@@ -373,35 +380,11 @@ struct AccessCenterView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(PlanActionButtonStyle())
-        .disabled(purchaseManager.redeemingOfferKind != nil)
+        .planPurchaseInteractivity(isInteractionEnabled: !isBusy, isBusy: isBusy)
     }
 
     private var planOptionTitleFont: Font {
         .system(size: 17, weight: .semibold)
-    }
-
-    private func subscriptionSwitchButton(for productID: SyncaProductID) -> some View {
-        Button {
-            Task {
-                _ = await purchaseManager.purchase(productID)
-            }
-        } label: {
-            HStack {
-                Text(productID == .yearly ? "access.switch_to_yearly" : "access.switch_to_monthly", bundle: .main)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                if purchaseManager.purchasingProductID == productID.rawValue {
-                    ProgressView()
-                        .controlSize(.small)
-                } else if let price = product(for: productID)?.displayPrice {
-                    Text(price)
-                        .font(.subheadline.weight(.semibold))
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(SecondaryPlanButtonStyle())
-        .disabled(purchaseManager.purchasingProductID != nil || product(for: productID) == nil || purchaseManager.isLoadingProducts)
     }
 
     private var restoreInlineButton: some View {
@@ -425,15 +408,6 @@ struct AccessCenterView: View {
         .buttonStyle(.plain)
         .foregroundStyle(Color.accentColor)
         .disabled(purchaseManager.isRestoring)
-    }
-
-    private var restoreFooterButton: some View {
-        HStack {
-            Spacer()
-            restoreInlineButton
-            Spacer()
-        }
-        .padding(.top, 4)
     }
 
     @ViewBuilder
@@ -493,6 +467,17 @@ struct AccessCenterView: View {
         }
     }
 
+    private func detailRow(_ key: LocalizedStringKey, value: String, compact: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(key)
+                .font(compact ? .footnote : .subheadline)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(compact ? .footnote.weight(.medium) : .subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+        }
+    }
+
     private func product(for productID: SyncaProductID) -> Product? {
         switch productID {
         case .monthly:
@@ -501,17 +486,6 @@ struct AccessCenterView: View {
             return purchaseManager.yearlyProduct
         case .lifetime:
             return purchaseManager.lifetimeProduct
-        }
-    }
-
-    private func alternateSubscriptionProduct(for status: AccessStatus) -> SyncaProductID? {
-        switch status.storeProductId {
-        case SyncaProductID.monthly.rawValue:
-            return .yearly
-        case SyncaProductID.yearly.rawValue:
-            return .monthly
-        default:
-            return nil
         }
     }
 
@@ -580,7 +554,7 @@ struct AccessCenterView: View {
     }
     #endif
 
-    private func formatDate(_ isoString: String) -> String {
+    private func formatDate(_ isoString: String, includeTime: Bool = false) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let fallbackFormatter = ISO8601DateFormatter()
@@ -590,8 +564,45 @@ struct AccessCenterView: View {
 
         let output = DateFormatter()
         output.locale = .current
-        output.setLocalizedDateFormatFromTemplate("yMMMd")
+        output.setLocalizedDateFormatFromTemplate(includeTime ? "yMMMdjm" : "yMMMd")
         return output.string(from: date)
+    }
+
+    private func shouldShowTimeForPurchaseDetails(_ status: AccessStatus) -> Bool {
+        guard
+            let purchaseDateString = status.purchaseDate,
+            let renewalDateString = status.subscriptionExpiresAt,
+            let purchaseDate = parseISODate(purchaseDateString),
+            let renewalDate = parseISODate(renewalDateString)
+        else {
+            return false
+        }
+
+        let calendar = Calendar.current
+        if calendar.isDate(purchaseDate, inSameDayAs: renewalDate) {
+            return true
+        }
+
+        guard let dayDelta = calendar.dateComponents([.day], from: calendar.startOfDay(for: purchaseDate), to: calendar.startOfDay(for: renewalDate)).day else {
+            return false
+        }
+        return abs(dayDelta) == 1
+    }
+
+    private func parseISODate(_ isoString: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fallbackFormatter = ISO8601DateFormatter()
+        fallbackFormatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: isoString) ?? fallbackFormatter.date(from: isoString)
+    }
+
+    private var currentPlanBenefits: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
+            benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
+            benefitRow(systemImage: "sparkles.rectangle.stack", text: "access.shared_future_feature")
+        }
     }
 
     @ViewBuilder
@@ -651,7 +662,11 @@ struct HeaderAccessBadge: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-            if !status.isUnlimited {
+            if status.isUnlimited {
+                Image(systemName: "infinity")
+                    .font(.system(size: 11.5, weight: .bold))
+                    .foregroundStyle(Color.accentColor)
+            } else {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.accentColor)
@@ -667,7 +682,7 @@ struct HeaderAccessBadge: View {
 
     private var labelText: String {
         if status.isUnlimited {
-            return String(localized: "access.status_unlimited_inline", bundle: .main)
+            return String(localized: "access.status_unlimited_badge", bundle: .main)
         }
         if status.isTrial {
             return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
@@ -702,7 +717,11 @@ struct AccessStatusPill: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-            if showUpgradeIndicator {
+            if status.isUnlimited {
+                Image(systemName: "infinity")
+                    .font(.system(size: compact ? 11 : 12, weight: .bold))
+                    .foregroundStyle(Color.accentColor)
+            } else if showUpgradeIndicator {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: compact ? 12 : 13, weight: .bold))
                     .foregroundStyle(Color.accentColor)
@@ -725,7 +744,7 @@ struct AccessStatusPill: View {
 
     private var labelText: String {
         if status.isUnlimited {
-            return String(localized: "access.status_unlimited_inline", bundle: .main)
+            return String(localized: "access.status_unlimited_badge", bundle: .main)
         }
         if status.isTrial {
             return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
@@ -802,15 +821,24 @@ private struct PlanActionButtonStyle: ButtonStyle {
     }
 }
 
-private struct SecondaryPlanButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.16 : 0.10))
-            )
-            .foregroundStyle(Color.accentColor)
+private struct PlanPurchaseInteractivity: ViewModifier {
+    let isInteractionEnabled: Bool
+    let isBusy: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .allowsHitTesting(isInteractionEnabled)
+            .overlay {
+                if isBusy {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.black.opacity(0.03))
+                }
+            }
+    }
+}
+
+private extension View {
+    func planPurchaseInteractivity(isInteractionEnabled: Bool, isBusy: Bool) -> some View {
+        modifier(PlanPurchaseInteractivity(isInteractionEnabled: isInteractionEnabled, isBusy: isBusy))
     }
 }

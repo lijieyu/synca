@@ -52,6 +52,7 @@
 "access.status_trial" = "Trial · %d days left";
 "access.status_free" = "Free · %d/%d today";
 "access.status_unlimited" = "Unlimited";
+"access.status_unlimited_badge" = "Unlimited";
 "access.status_trial_inline" = "Trial %dd";
 "access.status_free_inline" = "Free %d/%d";
 "access.status_unlimited_inline" = "∞";

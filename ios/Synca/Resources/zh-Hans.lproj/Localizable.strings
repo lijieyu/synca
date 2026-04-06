@@ -52,6 +52,7 @@
 "access.status_trial" = "试用中 · 剩余 %d 天";
 "access.status_free" = "免费版 · 今日 %d/%d";
 "access.status_unlimited" = "无限版";
+"access.status_unlimited_badge" = "无限版";
 "access.status_trial_inline" = "Trial %d天";
 "access.status_free_inline" = "免费版 %d/%d";
 "access.status_unlimited_inline" = "∞";
