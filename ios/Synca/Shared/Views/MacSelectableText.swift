@@ -7,7 +7,7 @@ import AppKit
 /// in a ZStack. It relies entirely on the SwiftUI frame for sizing and
 /// only provides the custom context menu and selection capabilities.
 struct MacSelectableText: NSViewRepresentable {
-    let text: String
+    let attributedText: NSAttributedString
     let color: Color
     let font: Font
     let onCopy: () -> Void
@@ -29,6 +29,11 @@ struct MacSelectableText: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width, .height]
         textView.textContainer?.widthTracksTextView = true
+        textView.delegate = context.coordinator
+        textView.linkTextAttributes = [
+            .foregroundColor: NSColor.linkColor,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]
         
         textView.onCopy = onCopy
         textView.onDelete = onDelete
@@ -36,16 +41,53 @@ struct MacSelectableText: NSViewRepresentable {
         return textView
     }
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func updateNSView(_ nsView: CustomContextMenuTextView, context: Context) {
-        nsView.string = text
+        if nsView.textStorage?.string != attributedText.string {
+            nsView.textStorage?.setAttributedString(attributedText)
+        } else {
+            nsView.textStorage?.setAttributedString(attributedText)
+        }
         nsView.textColor = NSColor(color)
         nsView.font = NSFont.systemFont(ofSize: 13) // SwiftUI .body roughly maps to 13pt
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            guard let string = link as? String, let url = URL(string: string) else {
+                return false
+            }
+            NSWorkspace.shared.open(url)
+            return true
+        }
     }
 }
 
 class CustomContextMenuTextView: NSTextView {
     var onCopy: (() -> Void)?
     var onDelete: (() -> Void)?
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+
+        guard
+            let textStorage,
+            let layoutManager,
+            let textContainer
+        else { return }
+
+        let fullRange = NSRange(location: 0, length: textStorage.length)
+        textStorage.enumerateAttribute(.link, in: fullRange) { value, range, _ in
+            guard value != nil else { return }
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            layoutManager.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: .notFound, in: textContainer) { rect, _ in
+                self.addCursorRect(rect, cursor: .pointingHand)
+            }
+        }
+    }
 
     override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType?, returnType: NSPasteboard.PasteboardType?) -> Any? {
         // By returning nil, we tell the system this responder does not provide any data
@@ -87,7 +129,7 @@ class CustomContextMenuTextView: NSTextView {
 #else
 // Dummy view for iOS to maintain cross-platform compilation
 struct MacSelectableText: View {
-    let text: String
+    let attributedText: NSAttributedString
     let color: Color
     let font: Font
     let onCopy: () -> Void

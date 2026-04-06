@@ -17,6 +17,35 @@ struct MessageBubbleView: View {
     @State private var showDeleteConfirm = false
     @State private var loadID = UUID() // #1: 重显失败图片的关键
 
+    private var messageText: String {
+        message.textContent ?? ""
+    }
+
+    #if os(iOS)
+    private var linkedAttributedText: AttributedString {
+        Self.makeLinkedAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? UIColor.secondaryLabel : UIColor.label
+        )
+    }
+
+    private var linkedNSAttributedText: NSAttributedString {
+        Self.makeLinkedNSAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? NSColor.secondaryLabelColor : NSColor.labelColor
+        )
+    }
+    #endif
+
+    #if os(macOS)
+    private var linkedNSAttributedText: NSAttributedString {
+        Self.makeLinkedNSAttributedText(
+            from: messageText,
+            baseColor: message.isCleared ? NSColor.secondaryLabelColor : NSColor.labelColor
+        )
+    }
+    #endif
+
     enum SaveStatus {
         case none, saving, success, error
     }
@@ -102,30 +131,27 @@ struct MessageBubbleView: View {
         #if os(macOS)
         ZStack(alignment: .topLeading) {
             // Invisible native Text to guarantee perfect SwiftUI auto-layout height & wrapping
-            Text(message.textContent ?? "")
+            Text(messageText)
                 .font(.body)
                 .lineLimit(nil)
                 .opacity(0)
             
             // AppKit Text overlay for selection and custom context menu
             MacSelectableText(
-                text: message.textContent ?? "",
+                attributedText: linkedNSAttributedText,
                 color: message.isCleared ? Color.secondary : Color.primary,
                 font: .body,
-                onCopy: { copyText(message.textContent ?? "") },
+                onCopy: { copyText(messageText) },
                 onDelete: { showDeleteConfirm = true }
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         #else
-        Text(message.textContent ?? "")
-            .font(.body)
-            .foregroundStyle(message.isCleared ? Color.primary.opacity(0.6) : .primary)
-            .textSelection(.enabled)
+        LinkTextView(attributedText: linkedNSAttributedText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contextMenu {
                 Button {
-                    copyText(message.textContent ?? "")
+                    copyText(messageText)
                 } label: {
                     Label("common.copy", systemImage: "doc.on.doc")
                 }
@@ -212,7 +238,7 @@ struct MessageBubbleView: View {
     
     private var copyTextButton: some View {
         Button {
-            copyText(message.textContent ?? "")
+            copyText(messageText)
             withAnimation { copied = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
@@ -404,6 +430,78 @@ struct MessageBubbleView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             saveStatus = .none
         }
+    }
+    #endif
+}
+
+private extension MessageBubbleView {
+    #if os(iOS)
+    static func makeLinkedAttributedText(from text: String, baseColor: UIColor) -> AttributedString {
+        let mutable = makeLinkedIOSAttributedText(
+            from: text,
+            baseColor: baseColor
+        )
+        return (try? AttributedString(mutable, including: \.uiKit)) ?? AttributedString(text)
+    }
+    #endif
+
+    #if os(iOS)
+    static func makeLinkedIOSAttributedText(from text: String, baseColor: UIColor) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(string: text)
+        mutable.addAttributes(
+            [
+                .foregroundColor: baseColor,
+                .font: UIFont.preferredFont(forTextStyle: .body)
+            ],
+            range: NSRange(location: 0, length: mutable.length)
+        )
+
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let range = NSRange(location: 0, length: mutable.length)
+            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
+                guard let result, let url = result.url else { return }
+                mutable.addAttributes(
+                    [
+                        .link: url,
+                        .foregroundColor: UIColor.link,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ],
+                    range: result.range
+                )
+            }
+        }
+
+        return mutable
+    }
+    #endif
+
+    #if os(macOS)
+    static func makeLinkedNSAttributedText(from text: String, baseColor: NSColor) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(string: text)
+        mutable.addAttributes(
+            [
+                .foregroundColor: baseColor,
+                .font: NSFont.systemFont(ofSize: 13)
+            ],
+            range: NSRange(location: 0, length: mutable.length)
+        )
+
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            let range = NSRange(location: 0, length: mutable.length)
+            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
+                guard let result, let url = result.url else { return }
+                mutable.addAttributes(
+                    [
+                        .link: url.absoluteString,
+                        .foregroundColor: NSColor.linkColor,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue
+                    ],
+                    range: result.range
+                )
+            }
+        }
+
+        return mutable
     }
     #endif
 }
