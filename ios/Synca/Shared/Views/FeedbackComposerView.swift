@@ -319,9 +319,7 @@ struct FeedbackComposerView: View {
     }
 }
 
-extension Notification.Name {
-    static let syncaFeedbackSubmitted = Notification.Name("syncaFeedbackSubmitted")
-}
+
 
 #if os(macOS)
 private struct MacFeedbackTextEditor: NSViewRepresentable {
