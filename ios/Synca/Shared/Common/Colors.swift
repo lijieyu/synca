@@ -28,7 +28,7 @@ extension Color {
     static let syncaPageBackground = Color(
         nsColor: NSColor(name: nil) { appearance in
             if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
-                return NSColor(calibratedWhite: 0.055, alpha: 1)
+                return NSColor(calibratedWhite: 0.018, alpha: 1)
             } else {
                 return NSColor(calibratedWhite: 0.972, alpha: 1)
             }
@@ -38,7 +38,7 @@ extension Color {
     static let syncaCardBackground = Color(
         nsColor: NSColor(name: nil) { appearance in
             if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
-                return NSColor(calibratedWhite: 0.115, alpha: 1)
+                return NSColor(calibratedWhite: 0.102, alpha: 1)
             } else {
                 return NSColor(calibratedWhite: 0.992, alpha: 1)
             }
@@ -47,7 +47,7 @@ extension Color {
     static let syncaCardBorder = Color(
         nsColor: NSColor(name: nil) { appearance in
             if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
-                return NSColor(calibratedWhite: 1.0, alpha: 0.14)
+                return NSColor(calibratedWhite: 1.0, alpha: 0.12)
             } else {
                 return NSColor(calibratedWhite: 0.0, alpha: 0.08)
             }
@@ -56,7 +56,7 @@ extension Color {
     static let syncaInputFieldBackground = Color(
         nsColor: NSColor(name: nil) { appearance in
             if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
-                return NSColor(calibratedWhite: 0.105, alpha: 1)
+                return NSColor(calibratedWhite: 0.096, alpha: 1)
             } else {
                 return NSColor(calibratedWhite: 0.992, alpha: 1)
             }
@@ -65,7 +65,7 @@ extension Color {
     static let syncaInputFieldBorder = Color(
         nsColor: NSColor(name: nil) { appearance in
             if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
-                return NSColor(calibratedWhite: 1.0, alpha: 0.16)
+                return NSColor(calibratedWhite: 1.0, alpha: 0.13)
             } else {
                 return NSColor(calibratedWhite: 0.0, alpha: 0.08)
             }
