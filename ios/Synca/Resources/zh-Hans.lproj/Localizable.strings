@@ -34,7 +34,9 @@
 "message_list.session_expired_message" = "请重新登录以继续使用";
 "message_list.sign_in_again" = "重新登录";
 "message_list.got_it" = "知道了";
-"message_list.about_message" = "\nSynca · 灵感记录 即刻同步\n\n版本 %@ (%@)";
+"message_list.about_version_format" = "版本 %@ (%@)";
+"message_list.about_website_hint" = "在默认浏览器中打开 Synca 网页版";
+"message_list.about_message" = "\nSynca · 灵感记录，即刻同步\n\n版本 %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "记录此刻的想法...";
 "sync.error_context.sync" = "同步";
 "sync.error_context.send" = "发送";
