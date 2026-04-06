@@ -83,7 +83,8 @@ class CustomContextMenuTextView: NSTextView {
         textStorage.enumerateAttribute(.link, in: fullRange) { value, range, _ in
             guard value != nil else { return }
             let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            layoutManager.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: .notFound, in: textContainer) { rect, _ in
+            // Fix: Use NSNotFound for 'not found' behavior as .notFound is not available in standard NSRange for SwiftUI contexts
+            layoutManager.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: textContainer) { rect, _ in
                 self.addCursorRect(rect, cursor: .pointingHand)
             }
         }

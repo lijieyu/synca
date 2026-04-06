@@ -129,7 +129,7 @@ struct MessageBubbleView: View {
     
     private var textContent: some View {
         #if os(macOS)
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: Alignment.topLeading) {
             // Invisible native Text to guarantee perfect SwiftUI auto-layout height & wrapping
             Text(messageText)
                 .font(.body)
@@ -145,10 +145,10 @@ struct MessageBubbleView: View {
                 onDelete: { showDeleteConfirm = true }
             )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
         #else
         LinkTextView(attributedText: linkedNSAttributedText)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
             .contextMenu {
                 Button {
                     copyText(messageText)

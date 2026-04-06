@@ -319,9 +319,9 @@ struct FeedbackComposerView: View {
         #else
         var size = 0
         sysctlbyname("hw.model", nil, &size, nil, 0)
-        var model = [CChar](repeating: 0, count: size)
+        var model = [UInt8](repeating: 0, count: size)
         sysctlbyname("hw.model", &model, &size, nil, 0)
-        return String(cString: model)
+        return String(decoding: model.prefix(size - 1), as: UTF8.self)
         #endif
     }
 
