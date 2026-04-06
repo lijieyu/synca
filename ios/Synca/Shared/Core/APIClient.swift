@@ -107,6 +107,34 @@ final class APIClient: ObservableObject {
         return try await post("/messages", body: body)
     }
 
+    private func detectMimeType(for data: Data) -> (mime: String, ext: String) {
+        if data.count >= 8 {
+            let header = data.prefix(8)
+            // PNG: 89 50 4E 47 0D 0A 1A 0A
+            if header.prefix(4) == Data([0x89, 0x50, 0x4E, 0x47]) {
+                return ("image/png", ".png")
+            }
+            // JPEG: FF D8 FF
+            if header.prefix(3) == Data([0xFF, 0xD8, 0xFF]) {
+                return ("image/jpeg", ".jpg")
+            }
+            // GIF: 47 49 46 38
+            if header.prefix(4) == Data([0x47, 0x49, 0x46, 0x38]) {
+                return ("image/gif", ".gif")
+            }
+        }
+        if data.count >= 12 {
+            // HEIC/HEIF: Look for "ftypheic", "ftypheif", "ftypmif1", etc at offset 4
+            let sub = data[4..<12]
+            if let brand = String(data: sub, encoding: .ascii) {
+                if brand.hasPrefix("ftyp") && (brand.contains("heic") || brand.contains("heif") || brand.contains("mif1") || brand.contains("heix") || brand.contains("hevc")) {
+                    return ("image/heic", ".heic")
+                }
+            }
+        }
+        return ("image/jpeg", ".jpg") // Default to JPEG
+    }
+
     func sendImageMessage(imageData: Data, sourceDevice: String? = nil) async throws -> SyncaMessage {
         let url = URL(string: "\(baseURL)/messages/image")!
         var request = URLRequest(url: url)
@@ -118,11 +146,13 @@ final class APIClient: ObservableObject {
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
+        let format = detectMimeType(for: imageData)
+
         var data = Data()
         // Image part
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"image\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-        data.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"image\"; filename=\"photo\(format.ext)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Type: \(format.mime)\r\n\r\n".data(using: .utf8)!)
         data.append(imageData)
         data.append("\r\n".data(using: .utf8)!)
 
@@ -218,9 +248,10 @@ final class APIClient: ObservableObject {
         appendField(name: "appVersion", value: appVersion)
 
         for (index, imageData) in imageDatas.enumerated() {
+            let format = detectMimeType(for: imageData)
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"images\"; filename=\"feedback-\(index).jpg\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"images\"; filename=\"feedback-\(index)\(format.ext)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(format.mime)\r\n\r\n".data(using: .utf8)!)
             body.append(imageData)
             body.append("\r\n".data(using: .utf8)!)
         }
