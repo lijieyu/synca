@@ -93,6 +93,7 @@ private struct MacTitlebarMetrics {
     let controlsSpacing: CGFloat
     let iconFontSize: CGFloat
     let menuIconFontSize: CGFloat
+    let menuIconScale: CGFloat
     let iconFrame: CGFloat
 
     static var current: MacTitlebarMetrics {
@@ -109,6 +110,7 @@ private struct MacTitlebarMetrics {
                 controlsSpacing: 14,
                 iconFontSize: 17,
                 menuIconFontSize: 21,
+                menuIconScale: 1.16,
                 iconFrame: 34
             )
         } else {
@@ -123,6 +125,7 @@ private struct MacTitlebarMetrics {
                 controlsSpacing: 14,
                 iconFontSize: 16,
                 menuIconFontSize: 18,
+                menuIconScale: 1.0,
                 iconFrame: 32
             )
         }
@@ -222,6 +225,7 @@ private struct MacTitlebarControlsView: View {
     private func titlebarMenuIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .font(.system(size: metrics.menuIconFontSize, weight: .regular))
+            .scaleEffect(metrics.menuIconScale)
             .frame(width: metrics.iconFrame, height: metrics.iconFrame)
             .contentShape(Rectangle())
     }
