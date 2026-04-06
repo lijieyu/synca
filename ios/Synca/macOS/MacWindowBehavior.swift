@@ -93,7 +93,6 @@ private struct MacTitlebarMetrics {
     let controlsSpacing: CGFloat
     let iconFontSize: CGFloat
     let menuIconFontSize: CGFloat
-    let menuIconScale: CGFloat
     let iconFrame: CGFloat
 
     static var current: MacTitlebarMetrics {
@@ -109,8 +108,7 @@ private struct MacTitlebarMetrics {
                 controlsTrailingPadding: 18,
                 controlsSpacing: 14,
                 iconFontSize: 17,
-                menuIconFontSize: 21,
-                menuIconScale: 1.16,
+                menuIconFontSize: 18,
                 iconFrame: 34
             )
         } else {
@@ -125,7 +123,6 @@ private struct MacTitlebarMetrics {
                 controlsSpacing: 14,
                 iconFontSize: 16,
                 menuIconFontSize: 18,
-                menuIconScale: 1.0,
                 iconFrame: 32
             )
         }
@@ -200,11 +197,18 @@ private struct MacTitlebarControlsView: View {
                         Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } label: {
-                    titlebarMenuIcon("ellipsis.circle")
+                    Color.clear
+                        .frame(width: metrics.iconFrame, height: metrics.iconFrame)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
-                .fixedSize()
+                .frame(width: metrics.iconFrame, height: metrics.iconFrame)
+                .overlay(alignment: .center) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: metrics.menuIconFontSize, weight: .regular))
+                        .allowsHitTesting(false)
+                }
             }
             .fixedSize()
             .padding(.trailing, metrics.controlsTrailingPadding)
@@ -221,14 +225,7 @@ private struct MacTitlebarControlsView: View {
             .contentShape(Rectangle())
     }
 
-    @ViewBuilder
-    private func titlebarMenuIcon(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: metrics.menuIconFontSize, weight: .regular))
-            .scaleEffect(metrics.menuIconScale)
-            .frame(width: metrics.iconFrame, height: metrics.iconFrame)
-            .contentShape(Rectangle())
-    }
+
 
     private func showAboutOnMac() {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
