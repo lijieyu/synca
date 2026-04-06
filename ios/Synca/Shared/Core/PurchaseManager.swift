@@ -21,6 +21,17 @@ final class PurchaseManager: ObservableObject {
         case noPurchasesFound
     }
 
+    enum ToastTone {
+        case neutral
+        case error
+    }
+
+    struct ToastState: Identifiable, Equatable {
+        let id = UUID()
+        let message: String
+        let tone: ToastTone
+    }
+
     static let shared = PurchaseManager()
 
     @Published private(set) var productsByID: [String: Product] = [:]
@@ -28,7 +39,7 @@ final class PurchaseManager: ObservableObject {
     @Published var purchasingProductID: String?
     @Published var isRestoring = false
     @Published var redeemingOfferKind: LifetimeUpgradeOfferKind?
-    @Published var lastErrorMessage: String?
+    @Published var activeToast: ToastState?
     @Published private(set) var introEligibilityByID: [String: Bool] = [:]
 
     private var updatesTask: Task<Void, Never>?
@@ -58,7 +69,6 @@ final class PurchaseManager: ObservableObject {
             await refreshIntroEligibility(for: Array(productsByID.values))
             return
         }
-        lastErrorMessage = nil
         isLoadingProducts = true
         defer { isLoadingProducts = false }
 
@@ -67,18 +77,17 @@ final class PurchaseManager: ObservableObject {
             productsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
             await refreshIntroEligibility(for: products)
         } catch {
-            lastErrorMessage = String(localized: "access.purchase_fetch_failed", bundle: .main)
+            showToast(String(localized: "access.purchase_fetch_failed", bundle: .main), tone: .error)
             print("[purchase] loadProducts failed: \(error)")
         }
     }
 
     @discardableResult
     func purchase(_ productID: SyncaProductID) async -> Bool {
-        lastErrorMessage = nil
         do {
             try await loadProductsIfNeeded()
             guard let product = productsByID[productID.rawValue] else {
-                lastErrorMessage = String(localized: "access.purchase_unavailable", bundle: .main)
+                showToast(String(localized: "access.purchase_unavailable", bundle: .main), tone: .error)
                 return false
             }
 
@@ -95,26 +104,25 @@ final class PurchaseManager: ObservableObject {
                 await transaction.finish()
                 return true
             case .pending:
-                lastErrorMessage = String(localized: "access.purchase_pending", bundle: .main)
+                showToast(String(localized: "access.purchase_pending", bundle: .main), tone: .neutral)
                 return false
             case .userCancelled:
                 return false
             @unknown default:
-                lastErrorMessage = String(localized: "access.purchase_failed", bundle: .main)
+                showToast(String(localized: "access.purchase_failed", bundle: .main), tone: .error)
                 return false
             }
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return false
             }
-            lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "access.purchase_failed", bundle: .main)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.purchase_failed", bundle: .main), tone: .error)
             print("[purchase] purchase failed: \(error)")
             return false
         }
     }
 
     func restorePurchases() async {
-        lastErrorMessage = nil
         isRestoring = true
         defer { isRestoring = false }
 
@@ -123,22 +131,21 @@ final class PurchaseManager: ObservableObject {
             let outcome = try await syncLatestTransactions()
             switch outcome {
             case .restoredPurchases:
-                lastErrorMessage = String(localized: "access.restore_success", bundle: .main)
+                showToast(String(localized: "access.restore_success", bundle: .main), tone: .neutral)
             case .noPurchasesFound:
-                lastErrorMessage = String(localized: "access.restore_no_purchases", bundle: .main)
+                showToast(String(localized: "access.restore_no_purchases", bundle: .main), tone: .neutral)
             }
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return
             }
-            lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "access.restore_failed", bundle: .main)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.restore_failed", bundle: .main), tone: .error)
             print("[purchase] restore failed: \(error)")
         }
     }
 
     @discardableResult
     func redeemLifetimeUpgradeOffer(_ offer: LifetimeUpgradeOffer) async -> Bool {
-        lastErrorMessage = nil
         redeemingOfferKind = offer.kind
         defer { redeemingOfferKind = nil }
 
@@ -146,16 +153,20 @@ final class PurchaseManager: ObservableObject {
             let response = try await APIClient.shared.requestLifetimeUpgradeOfferCode(kind: offer.kind)
             copyOfferCodeToPasteboard(response.code)
             try await presentOfferCodeRedeemSheet()
-            lastErrorMessage = String(localized: "access.lifetime_offer_copied", bundle: .main)
+            showToast(String(localized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
             return true
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return false
             }
-            lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "access.offer_unavailable", bundle: .main)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.offer_unavailable", bundle: .main), tone: .error)
             print("[purchase] redeem offer failed: \(error)")
             return false
         }
+    }
+
+    func clearToast() {
+        activeToast = nil
     }
 
     func syncLatestTransactions() async throws -> RestoreOutcome {
@@ -257,6 +268,10 @@ final class PurchaseManager: ObservableObject {
 
     func isIntroOfferEligible(for productID: SyncaProductID) -> Bool {
         introEligibilityByID[productID.rawValue] == true
+    }
+
+    private func showToast(_ message: String, tone: ToastTone) {
+        activeToast = ToastState(message: message, tone: tone)
     }
 
     private func presentOfferCodeRedeemSheet() async throws {

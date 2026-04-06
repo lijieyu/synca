@@ -5,6 +5,7 @@ struct AccessCenterView: View {
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
+    @State private var toastDismissTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -25,6 +26,8 @@ struct AccessCenterView: View {
                 await accessManager.refresh()
             }
             .onDisappear {
+                toastDismissTask?.cancel()
+                purchaseManager.clearToast()
                 accessManager.clearUpgradeHighlight()
             }
         }
@@ -34,6 +37,17 @@ struct AccessCenterView: View {
         #else
         .frame(minHeight: 420, idealHeight: 560)
         #endif
+        .overlay { purchaseToastOverlay }
+        .onChange(of: purchaseManager.activeToast) { toast in
+            toastDismissTask?.cancel()
+            guard toast != nil else { return }
+            toastDismissTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    purchaseManager.clearToast()
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -120,8 +134,6 @@ struct AccessCenterView: View {
                     subscriptionPurchaseButton(.yearly)
                     lifetimePurchaseButton()
                 }
-
-                statusMessageView
             }
         }
     }
@@ -152,9 +164,7 @@ struct AccessCenterView: View {
                 }
 
                 lifetimeUpgradeSection(status)
-
                 restoreFooterButton
-                statusMessageView
             }
         }
     }
@@ -176,9 +186,7 @@ struct AccessCenterView: View {
                     benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
                     benefitRow(systemImage: "checkmark.seal", text: "access.shared_base_feature")
                 }
-
                 restoreFooterButton
-                statusMessageView
             }
         }
     }
@@ -401,17 +409,18 @@ struct AccessCenterView: View {
             Task { await purchaseManager.restorePurchases() }
         } label: {
             HStack(spacing: 6) {
-                Text("access.restore_purchases", bundle: .main)
-                    .font(.footnote.weight(.semibold))
-                ZStack {
-                    if purchaseManager.isRestoring {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
+                if purchaseManager.isRestoring {
+                    Text("message_list.loading", bundle: .main)
+                        .font(.footnote.weight(.semibold))
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Text("access.restore_purchases", bundle: .main)
+                        .font(.footnote.weight(.semibold))
                 }
-                .frame(width: 14, height: 14)
-                .accessibilityHidden(!purchaseManager.isRestoring)
             }
+            .frame(minWidth: 88, alignment: .trailing)
+            .animation(.easeOut(duration: 0.16), value: purchaseManager.isRestoring)
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.accentColor)
@@ -425,15 +434,6 @@ struct AccessCenterView: View {
             Spacer()
         }
         .padding(.top, 4)
-    }
-
-    @ViewBuilder
-    private var statusMessageView: some View {
-        if let message = purchaseManager.lastErrorMessage, !message.isEmpty {
-            Text(message)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
     }
 
     @ViewBuilder
@@ -592,6 +592,51 @@ struct AccessCenterView: View {
         output.locale = .current
         output.setLocalizedDateFormatFromTemplate("yMMMd")
         return output.string(from: date)
+    }
+
+    @ViewBuilder
+    private var purchaseToastOverlay: some View {
+        if let toast = purchaseManager.activeToast {
+            HStack(spacing: 8) {
+                Image(systemName: toast.tone == .error ? "xmark.circle.fill" : "checkmark.circle.fill")
+                Text(toast.message)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(toastForegroundColor(for: toast.tone))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(toastBackground(for: toast.tone))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .strokeBorder(toastBorderColor(for: toast.tone), lineWidth: toast.tone == .error ? 0 : 0.8)
+            )
+            .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
+            .padding(.horizontal, 24)
+            .transition(.scale(scale: 0.96).combined(with: .opacity))
+            .zIndex(10)
+        }
+    }
+
+    private func toastForegroundColor(for tone: PurchaseManager.ToastTone) -> Color {
+        tone == .error ? .white : .primary
+    }
+
+    private func toastBackground(for tone: PurchaseManager.ToastTone) -> AnyShapeStyle {
+        if tone == .error {
+            return AnyShapeStyle(Color.red)
+        }
+        #if os(iOS)
+        return AnyShapeStyle(Color(uiColor: .systemBackground))
+        #elseif os(macOS)
+        return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        #endif
+    }
+
+    private func toastBorderColor(for tone: PurchaseManager.ToastTone) -> Color {
+        tone == .error ? .clear : Color.primary.opacity(0.12)
     }
 }
 
