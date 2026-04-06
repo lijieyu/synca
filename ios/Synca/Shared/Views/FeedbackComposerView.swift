@@ -337,7 +337,7 @@ struct FeedbackComposerView: View {
     private static var appVersionString: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        return "\(version) (\(build))"
+        return "v\(version) · \(build)"
     }
 
     private func isValidEmail(_ email: String) -> Bool {
