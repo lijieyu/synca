@@ -5,13 +5,11 @@ import AppKit
 
 /// A selectable text view for macOS designed specifically to act as an overlay
 /// in a ZStack. It relies entirely on the SwiftUI frame for sizing and
-/// only provides the custom context menu and selection capabilities.
+/// only provides selection and link-clicking capabilities.
 struct MacSelectableText: NSViewRepresentable {
     let attributedText: NSAttributedString
     let color: Color
     let font: Font
-    let onCopy: () -> Void
-    let onDelete: () -> Void
 
     func makeNSView(context: Context) -> CustomContextMenuTextView {
         let textView = CustomContextMenuTextView()
@@ -34,9 +32,6 @@ struct MacSelectableText: NSViewRepresentable {
             .foregroundColor: NSColor.linkColor,
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
-        
-        textView.onCopy = onCopy
-        textView.onDelete = onDelete
         
         return textView
     }
@@ -70,20 +65,17 @@ struct MacSelectableText: NSViewRepresentable {
 }
 
 class CustomContextMenuTextView: NSTextView {
-    var onCopy: (() -> Void)?
-    var onDelete: (() -> Void)?
-
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         for area in self.trackingAreas { self.removeTrackingArea(area) }
         let options: NSTrackingArea.Options = [.cursorUpdate, .activeInActiveApp, .inVisibleRect]
-        let area = NSTrackingArea(rect: self.bounds, options: options, owner: self, userInfo: nil)
+        let area = NSTrackingArea(rect: .zero, options: options, owner: self, userInfo: nil)
         self.addTrackingArea(area)
     }
 
     override func cursorUpdate(with event: NSEvent) {
         guard let layoutManager = self.layoutManager, let textContainer = self.textContainer else {
-            NSCursor.arrow.set()
+            NSCursor.iBeam.set()
             return
         }
         
@@ -106,13 +98,13 @@ class CustomContextMenuTextView: NSTextView {
             }
         }
         
-        NSCursor.arrow.set()
+        NSCursor.iBeam.set()
     }
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        // Default to arrow for the entire view to stop the I-Beam flickering
-        self.addCursorRect(self.bounds, cursor: .arrow)
+        // Default to I-Beam for the entire view to match macOS standard
+        self.addCursorRect(self.bounds, cursor: .iBeam)
         
         guard
             let textStorage,
@@ -138,33 +130,9 @@ class CustomContextMenuTextView: NSTextView {
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
-        let menu = NSMenu()
-        let copyItem = NSMenuItem(title: String(localized: "common.copy", bundle: .main), action: #selector(handleCopy(_:)), keyEquivalent: "c")
-        copyItem.target = self
-        menu.addItem(copyItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Ensure no plugins or system additions are allowed on this specific menu
-        menu.allowsContextMenuPlugIns = false
-        
-        let deleteItem = NSMenuItem(title: String(localized: "common.delete", bundle: .main), action: #selector(handleDelete(_:)), keyEquivalent: "")
-        deleteItem.target = self
-        menu.addItem(deleteItem)
-        
-        return menu
-    }
-
-    @objc func handleCopy(_ sender: Any?) {
-        if self.selectedRange().length > 0 {
-            self.copy(sender)
-        } else {
-            onCopy?()
-        }
-    }
-
-    @objc func handleDelete(_ sender: Any?) {
-        onDelete?()
+        // Returning nil allows the right-click event to bubble up to the SwiftUI container,
+        // which handles the consistent card-level context menu.
+        return nil
     }
 }
 
@@ -174,8 +142,7 @@ struct MacSelectableText: View {
     let attributedText: NSAttributedString
     let color: Color
     let font: Font
-    let onCopy: () -> Void
-    let onDelete: () -> Void
     var body: some View { EmptyView() }
 }
 #endif
+
