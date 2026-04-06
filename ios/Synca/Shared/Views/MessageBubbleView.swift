@@ -110,6 +110,7 @@ struct MessageBubbleView: View {
                         : Color.syncaCardBorder, lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
+        .contextMenu { messageContextMenu }
         .alert(Text("message_bubble.delete_confirm_title", bundle: .main), isPresented: $showDeleteConfirm) {
             Button("common.cancel", role: .cancel) {}
             Button("common.delete", role: .destructive) {
@@ -150,24 +151,53 @@ struct MessageBubbleView: View {
         #else
         LinkTextView(attributedText: linkedNSAttributedText)
             .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
-            .contextMenu {
-                Button {
-                    copyText(messageText)
-                } label: {
-                    Label("common.copy", systemImage: "doc.on.doc")
-                }
-                
-                Divider()
-                
-                Button(role: .destructive) {
-                    showDeleteConfirm = true
-                } label: {
-                    Label("common.delete", systemImage: "trash")
-                }
-            }
         #endif
     }
 
+    @ViewBuilder
+    private var messageContextMenu: some View {
+        if message.type == .text {
+            Button {
+                copyText(messageText)
+            } label: {
+                Label("common.copy", systemImage: "doc.on.doc")
+            }
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        } else if message.type == .image, let urlString = message.imageUrl, let url = URL(string: urlString) {
+            Button {
+                self.copyImage(from: url)
+            } label: {
+                Label("common.copy", systemImage: "doc.on.doc")
+            }
+
+            Button {
+                Task { await self.saveImage(from: url) }
+            } label: {
+                Label("common.save", systemImage: "square.and.arrow.down")
+            }
+
+            #if os(macOS)
+            Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
+            Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
+            #endif
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        }
+    }
+    
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
@@ -180,38 +210,7 @@ struct MessageBubbleView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .frame(maxWidth: 320, maxHeight: 450, alignment: .leading)
                             .onTapGesture { onImageTap() }
-                            .contextMenu {
-                                Button {
-                                    self.copyImage(from: url)
-                                } label: {
-                                    Label("common.copy", systemImage: "doc.on.doc")
-                                }
-
-                                Button {
-                                    Task { await self.saveImage(from: url) }
-                                } label: {
-                                    Label("common.save", systemImage: "square.and.arrow.down")
-                                }
-
-                                #if os(macOS)
-                                Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
-                                Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
-
-                                Button {
-                                    Task { await self.saveImageAs(from: url) }
-                                } label: {
-                                    Label("message_bubble.save_as", systemImage: "folder.badge.plus")
-                                }
-                                #endif
-                                
-                                Divider()
-                                
-                                Button(role: .destructive) {
-                                    showDeleteConfirm = true
-                                } label: {
-                                    Label("common.delete", systemImage: "trash")
-                                }
-                            }
+                            .contextMenu { messageContextMenu }
                     case .failure:
                         VStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle")
