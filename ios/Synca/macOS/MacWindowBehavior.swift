@@ -151,10 +151,10 @@ private struct MacTitlebarControlsView: View {
                 .fixedSize()
             }
             .fixedSize()
-            .padding(.trailing, 12)
+            .padding(.trailing, 16)
             .padding(.vertical, 5)
         }
-        .frame(width: 168, alignment: .trailing)
+        .frame(width: 176, alignment: .trailing)
     }
 
     @ViewBuilder
@@ -168,7 +168,7 @@ private struct MacTitlebarControlsView: View {
     @ViewBuilder
     private func titlebarMenuIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 17.5, weight: .regular))
+            .font(.system(size: 18, weight: .medium))
             .frame(width: 32, height: 32)
             .contentShape(Rectangle())
     }
