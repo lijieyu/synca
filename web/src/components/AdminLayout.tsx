@@ -210,7 +210,7 @@ export const AdminLayout: React.FC = () => {
                         <td>
                           <div style={{ fontWeight: 500 }}>{f.email || f.userEmail}</div>
                           <div style={{ fontSize: '11px', opacity: 0.6 }}>
-                            {f.device_model || 'Unknown Device'} · {f.os_version || 'Unknown OS'} (v{f.app_version || '?'})
+                            {f.device_model || 'Unknown Device'} · {f.os_version || 'Unknown OS'} · {f.app_version || '?'}
                           </div>
                         </td>
                         <td>{new Date(f.created_at).toLocaleString()}</td>
