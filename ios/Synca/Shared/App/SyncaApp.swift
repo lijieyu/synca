@@ -21,7 +21,7 @@ struct SyncaApp: App {
                 .environmentObject(accessManager)
                 .environmentObject(purchaseManager)
             #if os(macOS)
-                .background(MacWindowAccessor())
+                .background(MacWindowAccessor(isAuthenticated: api.isAuthenticated))
                 .frame(minWidth: 400, idealWidth: 500, minHeight: 500, idealHeight: 700)
             #endif
         }

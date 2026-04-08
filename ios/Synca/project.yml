@@ -106,6 +106,7 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         ITSAppUsesNonExemptEncryption: false
+        LSApplicationCategoryType: public.app-category.productivity
         APIBaseURL: $(API_BASE_URL)
         APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
         CFBundleLocalizations:

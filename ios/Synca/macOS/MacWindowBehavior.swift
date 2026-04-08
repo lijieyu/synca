@@ -14,16 +14,23 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         MacTitlebarMetrics.current
     }
 
-    func configure(window: NSWindow) {
+    func configure(window: NSWindow, isAuthenticated: Bool) {
         window.delegate = self
         window.setFrameAutosaveName(autosaveName)
         window.isReleasedWhenClosed = false
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = false
-        installToolbarIfNeeded(on: window)
-        window.toolbarStyle = .unified
-        installTitlebarAccessoryIfNeeded(on: window)
-        installControlsAccessoryIfNeeded(on: window)
+        window.title = ""
+
+        if isAuthenticated {
+            installToolbarIfNeeded(on: window)
+            window.toolbarStyle = .unified
+            installTitlebarAccessoryIfNeeded(on: window)
+            installControlsAccessoryIfNeeded(on: window)
+        } else {
+            removeTitlebarAccessories(from: window)
+            window.toolbar = nil
+        }
     }
 
     func restoreMainWindow() {
@@ -79,6 +86,17 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         accessory.view = hostingView
 
         window.addTitlebarAccessoryViewController(accessory)
+    }
+
+    private func removeTitlebarAccessories(from window: NSWindow) {
+        let removableIndexes = window.titlebarAccessoryViewControllers.indices.filter { index in
+            let identifier = window.titlebarAccessoryViewControllers[index].identifier
+            return identifier == accessoryIdentifier || identifier == controlsAccessoryIdentifier
+        }
+
+        removableIndexes.sorted(by: >).forEach { index in
+            window.removeTitlebarAccessoryViewController(at: index)
+        }
     }
 }
 
@@ -227,11 +245,13 @@ private struct MacTitlebarControlsView: View {
 }
 
 struct MacWindowAccessor: NSViewRepresentable {
+    let isAuthenticated: Bool
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
             if let window = view.window {
-                MacWindowBehaviorController.shared.configure(window: window)
+                MacWindowBehaviorController.shared.configure(window: window, isAuthenticated: isAuthenticated)
             }
         }
         return view
@@ -240,7 +260,7 @@ struct MacWindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = nsView.window {
-                MacWindowBehaviorController.shared.configure(window: window)
+                MacWindowBehaviorController.shared.configure(window: window, isAuthenticated: isAuthenticated)
             }
         }
     }
