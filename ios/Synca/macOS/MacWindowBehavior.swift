@@ -18,18 +18,19 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.setFrameAutosaveName(autosaveName)
         window.isReleasedWhenClosed = false
-        window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = false
-        window.title = ""
+        installToolbarIfNeeded(on: window)
+        window.toolbarStyle = .unified
 
         if isAuthenticated {
-            installToolbarIfNeeded(on: window)
-            window.toolbarStyle = .unified
+            window.titleVisibility = .hidden
+            window.title = ""
             installTitlebarAccessoryIfNeeded(on: window)
             installControlsAccessoryIfNeeded(on: window)
         } else {
+            window.titleVisibility = .visible
+            window.title = "Synca"
             removeTitlebarAccessories(from: window)
-            window.toolbar = nil
         }
     }
 
