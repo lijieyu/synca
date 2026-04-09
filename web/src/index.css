@@ -311,55 +311,64 @@ body {
 
 .modal-content {
   background: var(--panel-bg-color);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 24px;
-  min-width: 280px;
-  max-width: 340px;
+  width: 90%;
+  max-width: 360px;
   text-align: center;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  animation: modalScale 0.2s ease-out;
 }
 
 .modal-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  color: var(--text-main);
 }
 
 .modal-message {
   font-size: 14px;
   color: var(--text-secondary);
-  margin-bottom: 20px;
-  line-height: 1.4;
+  margin-bottom: 24px;
+  line-height: 1.5;
 }
 
 .modal-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .modal-btn {
   flex: 1;
-  padding: 10px;
+  padding: 10px 16px;
   border-radius: 10px;
   border: none;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .modal-btn:hover {
-  opacity: 0.85;
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.modal-btn:active {
+  transform: translateY(0);
 }
 
 .modal-btn-cancel {
-  background: var(--border-color);
+  background: rgba(142, 142, 147, 0.15);
   color: var(--text-main);
 }
 
 .modal-btn-confirm {
   background: var(--synca-purple);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(125, 77, 255, 0.25);
 }
 
 .modal-btn-destructive {
@@ -514,5 +523,10 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
