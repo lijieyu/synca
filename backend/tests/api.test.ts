@@ -280,6 +280,51 @@ describe('Synca API', () => {
             expect(blockedRes.body.accessStatus.todayUsed).toBe(20);
             expect(blockedRes.body.accessStatus.todayLimit).toBe(20);
         });
+
+        it('should not restore free quota after completed messages are cleared and deleted', async () => {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { authHeader } = await createTestUser({
+                trialStartedAt: yesterday,
+                trialEndsAt: yesterday,
+            });
+
+            for (let i = 0; i < 20; i += 1) {
+                const createRes = await request(app)
+                    .post('/messages')
+                    .set('Authorization', authHeader)
+                    .send({ textContent: `消息${i}` });
+                expect(createRes.status).toBe(201);
+            }
+
+            const clearRes = await request(app)
+                .post('/messages/clear-all')
+                .set('Authorization', authHeader);
+            expect(clearRes.status).toBe(200);
+            expect(clearRes.body.clearedCount).toBe(20);
+
+            const deleteCompletedRes = await request(app)
+                .post('/messages/delete-completed')
+                .set('Authorization', authHeader);
+            expect(deleteCompletedRes.status).toBe(200);
+            expect(deleteCompletedRes.body.deletedCount).toBe(20);
+
+            const accessStatusRes = await request(app)
+                .get('/me/access-status')
+                .set('Authorization', authHeader);
+            expect(accessStatusRes.status).toBe(200);
+            expect(accessStatusRes.body.accessStatus.plan).toBe('free');
+            expect(accessStatusRes.body.accessStatus.todayUsed).toBe(20);
+            expect(accessStatusRes.body.accessStatus.todayLimit).toBe(20);
+
+            const blockedRes = await request(app)
+                .post('/messages')
+                .set('Authorization', authHeader)
+                .send({ textContent: '删完后再发一条' });
+
+            expect(blockedRes.status).toBe(403);
+            expect(blockedRes.body.error).toBe('daily_limit_reached');
+            expect(blockedRes.body.accessStatus.todayUsed).toBe(20);
+        });
     });
 
     describe('Push Token API', () => {

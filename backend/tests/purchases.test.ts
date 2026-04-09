@@ -234,11 +234,12 @@ describe('Purchase Sync API', () => {
             .set('Authorization', authHeader);
 
         expect(res.status).toBe(200);
-        expect(res.body.accessStatus.lifetimeUpgradeOffer).toEqual({
+        expect(res.body.accessStatus.lifetimeUpgradeOffer).toMatchObject({
             kind: 'monthly_to_lifetime',
             discountedPriceLabel: '¥78',
             isCodeAvailable: true,
         });
+        expect(res.body.accessStatus.lifetimeUpgradeOffer.code).toBe('MONTHLYUPGRADE001');
     });
 
     it('should assign a one-time lifetime upgrade code to an eligible subscriber', async () => {

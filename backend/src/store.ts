@@ -377,18 +377,27 @@ export async function createMessage(message: {
     sourceDevice?: string | null;
     now: string;
 }): Promise<void> {
-    await db.insertInto('messages').values({
-        id: message.id,
-        user_id: message.userId,
-        type: message.type,
-        text_content: message.textContent ?? null,
-        image_path: message.imagePath ?? null,
-        is_cleared: 0,
-        is_deleted: 0,
-        source_device: message.sourceDevice ?? null,
-        created_at: message.now,
-        updated_at: message.now,
-    }).execute();
+    await db.transaction().execute(async (trx) => {
+        await trx.insertInto('messages').values({
+            id: message.id,
+            user_id: message.userId,
+            type: message.type,
+            text_content: message.textContent ?? null,
+            image_path: message.imagePath ?? null,
+            is_cleared: 0,
+            is_deleted: 0,
+            source_device: message.sourceDevice ?? null,
+            created_at: message.now,
+            updated_at: message.now,
+        }).execute();
+
+        await trx.insertInto('message_usage_events').values({
+            message_id: message.id,
+            user_id: message.userId,
+            created_at: message.now,
+            recorded_at: message.now,
+        }).execute();
+    });
 }
 
 export async function clearMessage(id: string, userId: string): Promise<boolean> {
@@ -454,12 +463,49 @@ export async function clearAllMessages(userId: string): Promise<number> {
     return Number(result[0].numUpdatedRows);
 }
 
-export async function deleteCompletedMessages(userId: string): Promise<number> {
-    const result = await db.deleteFrom('messages')
+export async function deleteCompletedMessages(userId: string, uploadsDir: string): Promise<number> {
+    const now = new Date().toISOString();
+
+    const completedMessages = await db.selectFrom('messages')
+        .select(['id', 'image_path'])
         .where('user_id', '=', userId)
         .where('is_cleared', '=', 1)
+        .where('is_deleted', '=', 0)
         .execute();
-    return Number(result[0].numDeletedRows);
+
+    if (completedMessages.length === 0) {
+        return 0;
+    }
+
+    const ids = completedMessages.map((message) => message.id);
+    const imagePaths = completedMessages
+        .map((message) => message.image_path)
+        .filter((path): path is string => Boolean(path));
+
+    const result = await db.updateTable('messages')
+        .set({
+            is_deleted: 1,
+            updated_at: now,
+            text_content: null,
+            image_path: null,
+        })
+        .where('user_id', '=', userId)
+        .where('id', 'in', ids)
+        .execute();
+
+    if (imagePaths.length > 0) {
+        import('fs').then((fs) => {
+            imagePaths.forEach((imagePath) => {
+                const fullPath = uploadsDir + '/' + imagePath;
+                fs.unlink(fullPath, (err) => {
+                    if (err) console.error(`[delete] Failed to remove file ${fullPath}:`, err);
+                    else console.log(`[delete] Physically removed file ${fullPath}`);
+                });
+            });
+        });
+    }
+
+    return Number(result[0].numUpdatedRows);
 }
 
 export async function getUnclearedCount(userId: string): Promise<number> {
@@ -472,8 +518,8 @@ export async function getUnclearedCount(userId: string): Promise<number> {
 }
 
 export async function countMessagesCreatedBetween(userId: string, startInclusive: string, endExclusive: string): Promise<number> {
-    const row = await db.selectFrom('messages')
-        .select((eb) => eb.fn.count<string>('id').as('count'))
+    const row = await db.selectFrom('message_usage_events')
+        .select((eb) => eb.fn.count<string>('message_id').as('count'))
         .where('user_id', '=', userId)
         .where('created_at', '>=', startInclusive)
         .where('created_at', '<', endExclusive)
@@ -612,6 +658,8 @@ export async function resetDb() {
     await db.deleteFrom('feedbacks').execute();
     await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();
+    await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
+    await db.deleteFrom('message_usage_events').execute();
     await db.deleteFrom('messages').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
@@ -747,4 +795,3 @@ export async function getAdminFeedbackList() {
 
     return rows;
 }
-

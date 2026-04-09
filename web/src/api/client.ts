@@ -26,6 +26,22 @@ export interface SyncaUser {
   isAdmin: boolean;
 }
 
+export interface AccessStatus {
+  plan: 'free' | 'trial' | 'unlimited';
+  isUnlimited: boolean;
+  isTrial: boolean;
+  daysLeft: number | null;
+  todayUsed: number;
+  todayLimit: number | null;
+}
+
+export interface ProfileResponse {
+  userId: string;
+  email: string | null;
+  isAdmin: boolean;
+  accessStatus: AccessStatus;
+}
+
 export interface AuthResponse {
   token: string;
   user: {
@@ -165,8 +181,8 @@ class APIClient {
     return this.fetch('/api/admin/feedback');
   }
 
-  async getMyProfile(): Promise<any> {
-    return this.fetch('/me/access-status');
+  async getMyProfile(): Promise<ProfileResponse> {
+    return this.fetch<ProfileResponse>('/me/access-status');
   }
 }
 

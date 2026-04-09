@@ -346,7 +346,7 @@ app.post('/messages/clear-all', auth, async (req, res) => {
 // Delete completed messages
 app.post('/messages/delete-completed', auth, async (req, res) => {
     const userId = getUserId(req);
-    const count = await deleteCompletedMessages(userId);
+    const count = await deleteCompletedMessages(userId, uploadsDir);
 
     // Notify other devices
     notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});

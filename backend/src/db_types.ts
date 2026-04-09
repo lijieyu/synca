@@ -29,6 +29,13 @@ export interface MessagesTable {
     updated_at: string;
 }
 
+export interface MessageUsageEventsTable {
+    message_id: string;
+    user_id: string;
+    created_at: string;
+    recorded_at: string;
+}
+
 export interface SessionsTable {
     token: string;
     user_id: string;
@@ -96,6 +103,7 @@ export interface LifetimeUpgradeOfferCodesTable {
 export interface Database {
     users: UsersTable;
     messages: MessagesTable;
+    message_usage_events: MessageUsageEventsTable;
     sessions: SessionsTable;
     device_push_tokens: DevicePushTokensTable;
     iap_transactions: IapTransactionsTable;

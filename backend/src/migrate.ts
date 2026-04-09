@@ -78,6 +78,22 @@ export async function runMigrations() {
         // Column may already exist
     }
 
+    await sql`
+        CREATE TABLE IF NOT EXISTS message_usage_events (
+            message_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            created_at TEXT NOT NULL,
+            recorded_at TEXT NOT NULL
+        )
+    `.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_message_usage_events_user_created ON message_usage_events(user_id, created_at)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_message_usage_events_created_at ON message_usage_events(created_at)`.execute(db);
+    await sql`
+        INSERT OR IGNORE INTO message_usage_events (message_id, user_id, created_at, recorded_at)
+        SELECT id, user_id, created_at, created_at
+        FROM messages
+    `.execute(db);
+
     // Create sessions table
     await sql`
         CREATE TABLE IF NOT EXISTS sessions (

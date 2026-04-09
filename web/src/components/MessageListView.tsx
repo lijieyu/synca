@@ -11,7 +11,7 @@ import { Modal } from './Modal';
 export const MessageListView: React.FC = () => {
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { logout, isAdmin, email, plan } = useAuth();
+  const { logout, isAdmin, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   
@@ -42,6 +42,9 @@ export const MessageListView: React.FC = () => {
           }
         }, 100);
       }
+      
+      // Refresh badge information in background
+      refreshAccessStatus();
     } catch (err) {
       console.error(err);
     } finally {
@@ -50,14 +53,36 @@ export const MessageListView: React.FC = () => {
   };
 
   const getPlanInfo = () => {
-    if (!plan) return null;
-    const planMap: Record<string, { label: string, color: string }> = {
-      'free': { label: 'Free', color: 'rgba(142, 142, 147, 0.15)' },
-      'trial': { label: 'Trial', color: 'rgba(255, 159, 10, 0.15)' },
-      'unlimited': { label: 'Unlimited', color: 'rgba(125, 77, 255, 0.15)' },
-    };
-    const info = planMap[plan] || { label: plan, color: 'rgba(142, 142, 147, 0.15)' };
-    return <span className="admin-tag" style={{ background: info.color, marginLeft: '6px', fontSize: '10px' }}>{info.label}</span>;
+    if (!plan || !accessStatus) return null;
+    
+    let label = plan;
+    let color = 'rgba(142, 142, 147, 0.15)';
+    let isUnlimited = false;
+
+    if (plan === 'unlimited') {
+      label = t('access.status_unlimited_compact');
+      color = 'rgba(125, 77, 255, 0.15)';
+      isUnlimited = true;
+    } else if (plan === 'trial') {
+      label = t('access.status_trial_compact', { days: accessStatus.daysLeft ?? 0 });
+      color = 'rgba(255, 159, 10, 0.15)';
+    } else if (plan === 'free') {
+      label = t('access.status_free_compact', { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 });
+    }
+
+    return (
+      <span className="admin-tag" style={{ 
+        background: color, 
+        marginLeft: '6px', 
+        fontSize: '10px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        {label}
+        {isUnlimited && <span style={{ fontSize: '12px', lineHeight: 1 }}>∞</span>}
+      </span>
+    );
   };
 
   const handleRefresh = async () => {
