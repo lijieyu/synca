@@ -3,7 +3,7 @@ import { api, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, RefreshCcw, Trash2 } from 'lucide-react';
+import { LogOut, RefreshCcw, Trash2, Lightbulb } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -149,23 +149,35 @@ export const MessageListView: React.FC = () => {
       </div>
 
       <div className="message-list" ref={listRef}>
-        {isLoading && <p style={{ textAlign: 'center', opacity: 0.5 }}>{t('message_list.loading', 'Loading...')}</p>}
+        {isLoading && messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}>{t('message_list.loading', 'Loading...')}</p>}
         
-        {completed.map(msg => (
-          <MessageBubble key={msg.id} message={msg} onUpdate={() => fetchMessages(false)} />
-        ))}
-
-        {uncompleted.length > 0 && (
-          <div style={{ marginTop: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', background: 'var(--border-color)', padding: '2px 8px', borderRadius: '4px' }}>
-              {t('message_list.todo_section', 'Inbox')}
-            </span>
+        {!isLoading && messages.length === 0 && (
+          <div className="empty-state">
+            <Lightbulb className="empty-state-icon" size={60} />
+            <h2 className="empty-state-title">{t('app.name')}</h2>
+            <p className="empty-state-slogan">{t('app.slogan')}</p>
           </div>
         )}
 
-        {uncompleted.map(msg => (
-          <MessageBubble key={msg.id} message={msg} onUpdate={() => fetchMessages(false)} />
-        ))}
+        {messages.length > 0 && (
+          <>
+            {completed.map(msg => (
+              <MessageBubble key={msg.id} message={msg} onUpdate={() => fetchMessages(false)} />
+            ))}
+
+            {uncompleted.length > 0 && (
+              <div style={{ marginTop: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', background: 'var(--border-color)', padding: '2px 8px', borderRadius: '4px' }}>
+                  {t('message_list.todo_section', 'Inbox')}
+                </span>
+              </div>
+            )}
+
+            {uncompleted.map(msg => (
+              <MessageBubble key={msg.id} message={msg} onUpdate={() => fetchMessages(false)} />
+            ))}
+          </>
+        )}
       </div>
 
       <InputBar onSent={() => fetchMessages(true)} />

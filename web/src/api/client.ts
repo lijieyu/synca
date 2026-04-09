@@ -13,6 +13,13 @@ export interface SyncaMessage {
   updatedAt: string;
 }
 
+export class DailyLimitError extends Error {
+  constructor() {
+    super('Daily limit reached');
+    this.name = 'DailyLimitError';
+  }
+}
+
 export interface SyncaUser {
   id: string;
   email: string;
@@ -56,6 +63,14 @@ class APIClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (response.status === 403 && errorJson.error === 'daily_limit_reached') {
+          throw new DailyLimitError();
+        }
+      } catch (e) {
+        if (e instanceof DailyLimitError) throw e;
+      }
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
 
@@ -97,6 +112,15 @@ class APIClient {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (response.status === 403 && errorJson.error === 'daily_limit_reached') {
+          throw new DailyLimitError();
+        }
+      } catch (e) {
+        if (e instanceof DailyLimitError) throw e;
+      }
       throw new Error(`Failed to upload: ${response.statusText}`);
     }
 

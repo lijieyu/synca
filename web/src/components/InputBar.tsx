@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { api } from '../api/client';
+import { api, DailyLimitError } from '../api/client';
 import { ImagePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
+import { Modal } from './Modal';
 
 interface Props {
   onSent: () => void;
@@ -21,6 +22,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
@@ -53,8 +55,12 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       onSent();
     } catch (e) {
       console.error(e);
-      setToastMsg(t('sync.error_context.send', 'Send failed'));
-      setShowToast(true);
+      if (e instanceof DailyLimitError) {
+        setShowLimitModal(true);
+      } else {
+        setToastMsg(t('sync.error_context.send', 'Send failed'));
+        setShowToast(true);
+      }
     }
     setIsSending(false);
   };
@@ -67,8 +73,12 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       onSent();
     } catch (err) {
       console.error(err);
-      setToastMsg(t('sync.error_context.send_image', 'Image send failed'));
-      setShowToast(true);
+      if (err instanceof DailyLimitError) {
+        setShowLimitModal(true);
+      } else {
+        setToastMsg(t('sync.error_context.send_image', 'Image send failed'));
+        setShowToast(true);
+      }
     }
     setIsSending(false);
     if (fileInputRef.current) {
@@ -167,6 +177,17 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       </div>
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
+
+      {showLimitModal && (
+        <Modal
+          title={t('access.limit_reached_title', 'Daily Quota Reached')}
+          message={t('access.limit_reached_message', "Today's quota has been used up. Please download Synca from the App Store to complete the purchase and upgrade in-app.")}
+          confirmText={t('access.go_to_appstore', 'View on App Store')}
+          cancelText={t('common.ok', 'OK')}
+          onConfirm={() => window.open('https://apps.apple.com/app/id6478204620', '_blank')}
+          onCancel={() => setShowLimitModal(false)}
+        />
+      )}
     </>
   );
 };
