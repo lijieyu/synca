@@ -304,7 +304,7 @@ struct AccessCenterView: View {
                             .controlSize(.small)
                     } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
                         Text(price)
-                            .font(.subheadline.weight(.semibold))
+                            .font(planOptionPriceFont)
                     }
                 }
                 HStack(spacing: 8) {
@@ -351,7 +351,7 @@ struct AccessCenterView: View {
                             .controlSize(.small)
                     } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
                         Text(price)
-                            .font(.subheadline.weight(.semibold))
+                            .font(planOptionPriceFont)
                     }
                 }
                 HStack(spacing: 8) {
@@ -403,7 +403,7 @@ struct AccessCenterView: View {
                                     .strikethrough(true, color: .secondary)
                             }
                             Text(offer.discountedPriceLabel)
-                                .font(.subheadline.weight(.semibold))
+                                .font(planOptionPriceFont)
                         }
                     }
                 }
@@ -459,6 +459,10 @@ struct AccessCenterView: View {
 
     private var planOptionTitleFont: Font {
         .system(size: 17, weight: .semibold)
+    }
+
+    private var planOptionPriceFont: Font {
+        .title3.weight(.semibold)
     }
 
     private var restoreInlineButton: some View {
