@@ -163,8 +163,11 @@ struct MacInputTextView: NSViewRepresentable {
                 height = fieldH
             }
 
-            let len = (textView.string as NSString).length
-            textView.scrollRangeToVisible(NSRange(location: len, length: 0))
+            let selection = textView.selectedRange()
+            let textLength = (textView.string as NSString).length
+            let clampedLocation = min(selection.location, textLength)
+            let clampedLength = min(selection.length, max(0, textLength - clampedLocation))
+            textView.scrollRangeToVisible(NSRange(location: clampedLocation, length: clampedLength))
             textView.updateInsertionPointStateAndRestartTimer(true)
         }
     }
@@ -172,9 +175,20 @@ struct MacInputTextView: NSViewRepresentable {
 
 /// Forwards mouse clicks to the inner NSTextView so SwiftUI doesn't swallow them.
 final class ClickForwardingScrollView: NSScrollView {
+    override var acceptsFirstResponder: Bool { false }
+
     override func layout() {
         super.layout()
         syncTextViewWidthAndContainer()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let textView = documentView as? PasteAwareMacTextView {
+            window?.makeFirstResponder(textView)
+            textView.keyDown(with: event)
+            return
+        }
+        super.keyDown(with: event)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
