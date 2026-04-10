@@ -75,6 +75,11 @@ final class PurchaseManager: ObservableObject {
         do {
             let products = try await Product.products(for: Array(SyncaProductID.allIDs))
             productsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+            #if DEBUG
+            for product in products.sorted(by: { $0.id < $1.id }) {
+                print("[purchase] StoreKit product loaded id=\(product.id) displayName=\(product.displayName) description=\(product.description) displayPrice=\(product.displayPrice)")
+            }
+            #endif
             await refreshIntroEligibility(for: products)
         } catch {
             showToast(String(localized: "access.purchase_fetch_failed", bundle: .main), tone: .error)

@@ -237,7 +237,9 @@ struct AccessCenterView: View {
                     Text(product?.displayName ?? fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+                        .minimumScaleFactor(0.92)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
 
                     Spacer(minLength: 12)
 
@@ -265,7 +267,7 @@ struct AccessCenterView: View {
 
                 HStack(spacing: 8) {
                     Text(subscriptionSubtitle(for: productID, product: product, isEligibleForIntro: isEligibleForIntro))
-                        .font(.caption)
+                        .font(planOptionSubtitleFont)
                         .foregroundStyle(.secondary.opacity(0.9))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -318,7 +320,7 @@ struct AccessCenterView: View {
                 }
                 HStack(spacing: 8) {
                     Text("access.option_lifetime_subtitle", bundle: .main)
-                        .font(.caption)
+                        .font(planOptionSubtitleFont)
                         .foregroundStyle(.secondary.opacity(0.9))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -368,7 +370,7 @@ struct AccessCenterView: View {
                 }
                 HStack(spacing: 8) {
                     Text("access.option_lifetime_subtitle", bundle: .main)
-                        .font(.caption)
+                        .font(planOptionSubtitleFont)
                         .foregroundStyle(.secondary.opacity(0.9))
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -473,11 +475,15 @@ struct AccessCenterView: View {
     }
 
     private var planOptionTitleFont: Font {
-        .system(size: 17, weight: .semibold)
+        .system(size: 15, weight: .semibold)
     }
 
     private var planOptionPriceFont: Font {
-        .system(size: 17, weight: .semibold)
+        .system(size: 15, weight: .semibold)
+    }
+
+    private var planOptionSubtitleFont: Font {
+        .system(size: 11.5, weight: .regular)
     }
 
     private var restoreInlineButton: some View {
