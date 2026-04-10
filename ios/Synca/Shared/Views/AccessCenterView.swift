@@ -247,12 +247,18 @@ struct AccessCenterView: View {
                     } else if let product {
                         if isEligibleForIntro {
                             Text(product.displayPrice)
-                                .font(.title3.weight(.semibold))
+                                .font(planOptionPriceFont)
                                 .foregroundStyle(.white.opacity(0.8))
                                 .strikethrough(true, color: .white.opacity(0.72))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .minimumScaleFactor(0.8)
                         } else {
                             Text(product.displayPrice)
-                                .font(.title3.weight(.semibold))
+                                .font(planOptionPriceFont)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .minimumScaleFactor(0.8)
                         }
                     }
                 }
@@ -305,6 +311,9 @@ struct AccessCenterView: View {
                     } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
                         Text(price)
                             .font(planOptionPriceFont)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .minimumScaleFactor(0.8)
                     }
                 }
                 HStack(spacing: 8) {
@@ -352,6 +361,9 @@ struct AccessCenterView: View {
                     } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
                         Text(price)
                             .font(planOptionPriceFont)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .minimumScaleFactor(0.8)
                     }
                 }
                 HStack(spacing: 8) {
@@ -404,6 +416,9 @@ struct AccessCenterView: View {
                             }
                             Text(offer.discountedPriceLabel)
                                 .font(planOptionPriceFont)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .minimumScaleFactor(0.8)
                         }
                     }
                 }
@@ -462,7 +477,7 @@ struct AccessCenterView: View {
     }
 
     private var planOptionPriceFont: Font {
-        .title3.weight(.semibold)
+        .system(size: 17, weight: .semibold)
     }
 
     private var restoreInlineButton: some View {
