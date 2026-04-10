@@ -80,6 +80,13 @@
 "access.purchase_shared_account" = "一次购买，同步解锁 iPhone 和 Mac";
 "access.shared_base_feature" = "所有套餐都支持同步、图片附件和历史记录访问";
 "access.shared_future_feature" = "并包含未来上线的所有高级功能";
+"access.subscription_info_title" = "订阅信息";
+"access.subscription_info_format" = "自动续费周期：%@，价格：%@。";
+"access.billing_period_monthly" = "1 个月";
+"access.billing_period_yearly" = "1 年";
+"access.subscription_manage_hint" = "除非在当前订阅周期结束前至少 24 小时取消，否则订阅将自动续费。你可随时在 App Store 账户设置中管理或取消订阅。";
+"access.privacy_policy_link_title" = "隐私政策";
+"access.terms_link_title" = "使用条款";
 "access.purchase_options_title" = "购买方式";
 "access.purchase_shared_hint" = "同一账号下，所有设备均可通用。";
 "access.option_monthly_title" = "无限版（月付）";
@@ -111,6 +118,7 @@
 "access.purchased_lifetime" = "终身版";
 "access.unlimited_title" = "无限版权益";
 "access.unlimited_description" = "你已解锁不限量记录权益，并可在所有设备上使用。";
+"access.subscription_billing_label" = "计费方式";
 "access.purchase_date_label" = "购买日期";
 "access.subscription_expires_label" = "下次续费";
 "access.purchase_date" = "购买时间：%@";

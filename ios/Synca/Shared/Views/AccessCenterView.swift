@@ -5,6 +5,7 @@ struct AccessCenterView: View {
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var toastDismissTask: Task<Void, Never>?
 
     var body: some View {
@@ -134,6 +135,8 @@ struct AccessCenterView: View {
                     subscriptionPurchaseButton(.yearly)
                     lifetimePurchaseButton()
                 }
+
+                legalLinksSection
             }
         }
     }
@@ -153,6 +156,13 @@ struct AccessCenterView: View {
                         .font(.title3.weight(.semibold))
 
                     VStack(alignment: .leading, spacing: 4) {
+                        if let activeProductID = activeSubscriptionProductID(for: status) {
+                            detailRow(
+                                "access.subscription_billing_label",
+                                value: subscriptionComplianceDetail(for: activeProductID),
+                                compact: true
+                            )
+                        }
                         if let purchaseDate = status.purchaseDate {
                             detailRow("access.purchase_date_label", value: formatDate(purchaseDate, includeTime: showsTime), compact: true)
                         }
@@ -163,6 +173,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
+                legalLinksSection
 
                 lifetimeUpgradeSection(status)
             }
@@ -188,6 +199,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
+                legalLinksSection
             }
         }
     }
@@ -220,8 +232,8 @@ struct AccessCenterView: View {
                 _ = await purchaseManager.purchase(productID)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
                     Text(product?.displayName ?? fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
                         .lineLimit(1)
@@ -233,15 +245,8 @@ struct AccessCenterView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else if let product {
-                        if isEligibleForIntro {
-                            Text(product.displayPrice)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.8))
-                                .strikethrough()
-                        } else {
-                            Text(product.displayPrice)
-                                .font(.subheadline.weight(.semibold))
-                        }
+                        Text(product.displayPrice)
+                            .font(.title3.weight(.semibold))
                     }
                 }
 
@@ -516,6 +521,30 @@ struct AccessCenterView: View {
         }
     }
 
+    private func legalLinkButton(titleKey: LocalizedStringKey, url: URL) -> some View {
+        Button {
+            openURL(url)
+        } label: {
+            HStack(spacing: 6) {
+                Text(titleKey)
+                    .underline()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.footnote)
+            .foregroundStyle(Color.secondary.opacity(0.9))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var legalLinksSection: some View {
+        HStack(spacing: 12) {
+            legalLinkButton(titleKey: "access.privacy_policy_link_title", url: AppLinks.privacyPolicyURL)
+            legalLinkButton(titleKey: "access.terms_link_title", url: AppLinks.termsOfUseURL)
+        }
+        .padding(.top, 10)
+    }
+
     private func product(for productID: SyncaProductID) -> Product? {
         switch productID {
         case .monthly:
@@ -535,6 +564,17 @@ struct AccessCenterView: View {
             return purchaseManager.yearlyProduct?.displayName ?? String(localized: "access.purchased_yearly", bundle: .main)
         default:
             return String(localized: "access.status_unlimited", bundle: .main)
+        }
+    }
+
+    private func activeSubscriptionProductID(for status: AccessStatus) -> SyncaProductID? {
+        switch status.storeProductId {
+        case SyncaProductID.monthly.rawValue:
+            return .monthly
+        case SyncaProductID.yearly.rawValue:
+            return .yearly
+        default:
+            return nil
         }
     }
 
@@ -561,6 +601,32 @@ struct AccessCenterView: View {
             return String(localized: "access.option_yearly_subtitle", bundle: .main)
         case .lifetime:
             return String(localized: "access.option_lifetime_subtitle", bundle: .main)
+        }
+    }
+
+    private func subscriptionComplianceDetail(for productID: SyncaProductID) -> String {
+        let product = product(for: productID)
+        let price = product?.displayPrice ?? String(localized: "access.purchase_unavailable_short", bundle: .main)
+        let period = localizedBillingPeriod(for: productID, product: product)
+        return String(
+            format: String(localized: "access.subscription_info_format", bundle: .main),
+            period,
+            price
+        )
+    }
+
+    private func localizedBillingPeriod(for productID: SyncaProductID, product: Product?) -> String {
+        if let period = product?.subscription?.subscriptionPeriod {
+            return localizedSubscriptionPeriod(period)
+        }
+
+        switch productID {
+        case .monthly:
+            return String(localized: "access.billing_period_monthly", bundle: .main)
+        case .yearly:
+            return String(localized: "access.billing_period_yearly", bundle: .main)
+        case .lifetime:
+            return String(localized: "access.option_lifetime_title", bundle: .main)
         }
     }
 

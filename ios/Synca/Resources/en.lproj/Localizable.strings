@@ -80,6 +80,13 @@
 "access.purchase_shared_account" = "One purchase unlocks Synca across iPhone and Mac";
 "access.shared_base_feature" = "All plans include sync, image attachments, and history access";
 "access.shared_future_feature" = "Includes all future premium features as they ship";
+"access.subscription_info_title" = "Subscription Information";
+"access.subscription_info_format" = "Auto-renewing %@ subscription at %@.";
+"access.billing_period_monthly" = "1 month";
+"access.billing_period_yearly" = "1 year";
+"access.subscription_manage_hint" = "Subscriptions renew automatically unless canceled at least 24 hours before the end of the current period. Manage or cancel anytime in your App Store account settings.";
+"access.privacy_policy_link_title" = "Privacy Policy";
+"access.terms_link_title" = "Terms of Use";
 "access.purchase_options_title" = "Purchase Options";
 "access.purchase_shared_hint" = "Available across all your devices on the same account.";
 "access.option_monthly_title" = "Unlimited (Monthly)";
@@ -111,6 +118,7 @@
 "access.purchased_lifetime" = "Lifetime";
 "access.unlimited_title" = "Unlimited";
 "access.unlimited_description" = "You have unlimited capture access across all your devices.";
+"access.subscription_billing_label" = "Billing";
 "access.purchase_date_label" = "Purchase date";
 "access.subscription_expires_label" = "Next renewal";
 "access.purchase_date" = "Purchased on %@";
