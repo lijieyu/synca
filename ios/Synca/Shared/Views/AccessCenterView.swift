@@ -245,8 +245,15 @@ struct AccessCenterView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else if let product {
-                        Text(product.displayPrice)
-                            .font(.title3.weight(.semibold))
+                        if isEligibleForIntro {
+                            Text(product.displayPrice)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.8))
+                                .strikethrough(true, color: .white.opacity(0.72))
+                        } else {
+                            Text(product.displayPrice)
+                                .font(.title3.weight(.semibold))
+                        }
                     }
                 }
 
@@ -283,13 +290,15 @@ struct AccessCenterView: View {
                 _ = await purchaseManager.purchase(.lifetime)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                    Spacer()
+                        .minimumScaleFactor(0.92)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
+                    Spacer(minLength: 12)
                     if currentProductID == SyncaProductID.lifetime.rawValue {
                         ProgressView()
                             .controlSize(.small)
@@ -298,11 +307,21 @@ struct AccessCenterView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                 }
-                Text("access.option_lifetime_subtitle", bundle: .main)
-                    .font(.caption)
-                    .foregroundStyle(.secondary.opacity(0.9))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                HStack(spacing: 8) {
+                    Text("access.option_lifetime_subtitle", bundle: .main)
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.9))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Spacer(minLength: 8)
+
+                    Text("access.intro_offer_badge", bundle: .main)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .hidden()
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -318,13 +337,15 @@ struct AccessCenterView: View {
                 _ = await purchaseManager.purchase(.lifetime)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                    Spacer()
+                        .minimumScaleFactor(0.92)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
+                    Spacer(minLength: 12)
                     if purchaseManager.purchasingProductID == SyncaProductID.lifetime.rawValue {
                         ProgressView()
                             .controlSize(.small)
@@ -333,11 +354,21 @@ struct AccessCenterView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                 }
-                Text("access.option_lifetime_subtitle", bundle: .main)
-                    .font(.caption)
-                    .foregroundStyle(.secondary.opacity(0.9))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                HStack(spacing: 8) {
+                    Text("access.option_lifetime_subtitle", bundle: .main)
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.9))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Spacer(minLength: 8)
+
+                    Text("access.intro_offer_badge", bundle: .main)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .hidden()
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -369,7 +400,7 @@ struct AccessCenterView: View {
                                 Text(original)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                    .strikethrough()
+                                    .strikethrough(true, color: .secondary)
                             }
                             Text(offer.discountedPriceLabel)
                                 .font(.subheadline.weight(.semibold))
