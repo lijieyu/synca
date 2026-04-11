@@ -19,6 +19,9 @@ struct ImagePreviewView: View {
     @State private var loadID = UUID()
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
+    #if os(macOS)
+    @State private var keyMonitor: Any?
+    #endif
     
     // Swipe to close & paging state
     @State private var backgroundOpacity: Double = 1.0
@@ -66,7 +69,7 @@ struct ImagePreviewView: View {
         }
         .onAppear {
             #if os(macOS)
-            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.keyCode == 123 { // Left arrow
                     prevImage()
                     return nil
@@ -75,6 +78,14 @@ struct ImagePreviewView: View {
                     return nil
                 }
                 return event
+            }
+            #endif
+        }
+        .onDisappear {
+            #if os(macOS)
+            if let monitor = keyMonitor {
+                NSEvent.removeMonitor(monitor)
+                keyMonitor = nil
             }
             #endif
         }
