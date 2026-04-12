@@ -86,12 +86,15 @@ targets:
       configs:
         Local:
           API_BASE_URL: http://127.0.0.1:3002
+          APS_ENVIRONMENT: development
           APNS_UPLOAD_ENV: sandbox
         Production:
           API_BASE_URL: https://synca.haerth.cn
+          APS_ENVIRONMENT: production
           APNS_UPLOAD_ENV: production
         Release:
           API_BASE_URL: https://synca.haerth.cn
+          APS_ENVIRONMENT: production
           APNS_UPLOAD_ENV: production
       base:
         PRODUCT_NAME: Synca
