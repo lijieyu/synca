@@ -1,7 +1,9 @@
 :root {
   --synca-purple: #7d4dff;
   --synca-mint: #34c759;
-  --synca-mint-light: rgba(52, 199, 89, 0.1);
+  --synca-mint-light: rgba(28, 28, 30, 0.05);
+  --cleared-border-color: rgba(60, 60, 67, 0.22);
+  --cleared-icon-color: rgba(60, 60, 67, 0.82);
   --bg-color: #f2f2f7; /* Mac grey background */
   --card-bg-color: #ffffff; /* Mac white cards */
   --panel-bg-color: #ffffff; /* Secondary panels */
@@ -19,7 +21,9 @@
     --text-main: #e5e5e7; /* Soft white */
     --text-secondary: #86868b;
     --border-color: rgba(255, 255, 255, 0.08);
-    --synca-mint-light: rgba(52, 199, 89, 0.15); /* Keep green state visible in dark */
+    --synca-mint-light: rgba(255, 255, 255, 0.05);
+    --cleared-border-color: rgba(235, 235, 245, 0.2);
+    --cleared-icon-color: rgba(235, 235, 245, 0.7);
     --send-icon-arrow-color: #1c1c1e;
   }
 }
@@ -157,7 +161,7 @@ body {
 
 .message-bubble.cleared {
   background-color: var(--synca-mint-light);
-  border-color: rgba(48, 209, 88, 0.1);
+  border-color: var(--cleared-border-color);
   opacity: 0.8; /* More subdued */
 }
 
@@ -224,7 +228,7 @@ body {
 }
 
 .action-btn.cleared-icon {
-  color: #30d158;
+  color: var(--cleared-icon-color);
 }
 
 /* ── Input Bar ── */
@@ -529,4 +533,3 @@ body {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-

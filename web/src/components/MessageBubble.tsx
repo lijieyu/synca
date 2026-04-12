@@ -111,7 +111,7 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
               disabled={message.isCleared || isProcessing}
             >
               {message.isCleared ? (
-                <CheckCircleFill size={18} color="var(--synca-mint)" />
+                <CheckCircleFill size={18} color="var(--cleared-icon-color)" />
               ) : (
                 <CheckCircleOutline size={18} color="var(--text-secondary)" />
               )}

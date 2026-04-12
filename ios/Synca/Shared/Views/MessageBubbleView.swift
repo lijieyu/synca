@@ -99,14 +99,14 @@ struct MessageBubbleView: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(message.isCleared
-                      ? Color.syncaMintLight
+                      ? Color.primary.opacity(0.05)
                       : cardBackground)
                 .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(message.isCleared 
-                        ? Color.syncaMint.opacity(0.3) 
+                        ? Color.secondary.opacity(0.22)
                         : Color.syncaCardBorder, lineWidth: 0.5)
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
@@ -301,7 +301,7 @@ struct MessageBubbleView: View {
     private var checkFillIcon: some View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 16))
-            .foregroundStyle(Color.green.opacity(0.8))
+            .foregroundStyle(Color.secondary.opacity(0.85))
     }
 
     // MARK: - Helper Methods
