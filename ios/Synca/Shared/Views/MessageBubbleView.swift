@@ -319,7 +319,11 @@ struct MessageBubbleView: View {
     private func copyImage(from url: URL) {
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                var request = URLRequest(url: url)
+                if let token = await APIClient.shared.token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                let (data, _) = try await URLSession.shared.data(for: request)
                 #if os(iOS)
                 if let image = UIImage(data: data) {
                     UIPasteboard.general.image = image
@@ -344,7 +348,11 @@ struct MessageBubbleView: View {
     private func saveImage(from url: URL) async {
         saveStatus = .saving
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            if let token = await APIClient.shared.token {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, _) = try await URLSession.shared.data(for: request)
             #if os(iOS)
             if let image = UIImage(data: data) {
                 UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
@@ -397,7 +405,11 @@ struct MessageBubbleView: View {
     }
 
     private func downloadToTemp(url: URL) async throws -> URL {
-        let (data, _) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        if let token = await APIClient.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await URLSession.shared.data(for: request)
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
         try data.write(to: tempURL)
         return tempURL
@@ -405,7 +417,11 @@ struct MessageBubbleView: View {
 
     private func saveImageAs(from url: URL) async {
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            if let token = await APIClient.shared.token {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, _) = try await URLSession.shared.data(for: request)
             let panel = NSOpenPanel()
             panel.canChooseDirectories = true
             panel.canChooseFiles = false

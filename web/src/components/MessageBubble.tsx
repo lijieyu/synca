@@ -3,6 +3,7 @@ import { api, type SyncaMessage } from '../api/client';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
+import { AuthImage } from './AuthImage';
 
 interface Props {
   message: SyncaMessage;
@@ -86,8 +87,8 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
         )}
         
         {message.type === 'image' && message.imageUrl && (
-          <img 
-            src={message.imageUrl} 
+          <AuthImage 
+            url={message.imageUrl} 
             alt="Shared content" 
             className="message-image" 
           />

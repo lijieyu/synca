@@ -12,10 +12,13 @@ import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
+    canUserAccessImage,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 // CORS
 app.use(cors({
@@ -126,6 +129,31 @@ function getBaseUrl(req: express.Request): string {
 // Health check
 app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'synca', now: new Date().toISOString() });
+});
+
+// Protected media access
+app.get('/api/media/:filename', auth, async (req, res) => {
+    const filename = req.params.filename;
+    
+    // Prevent directory traversal
+    if (filename.includes('/') || filename.includes('..')) {
+        return res.status(400).json({ error: 'invalid_filename' });
+    }
+
+    const userId = getUserId(req);
+    const user = await getUser(userId);
+    
+    const authorized = await canUserAccessImage(userId, filename, user?.isAdmin ?? false);
+    if (!authorized) {
+        return res.status(403).json({ error: 'forbidden' });
+    }
+
+    const filePath = path.join(uploadsDir, filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'not_found' });
+    }
+
+    res.sendFile(filePath);
 });
 
 // Public legal and support pages

@@ -60,7 +60,12 @@ struct CachedAsyncImage<Content: View>: View {
         
         loadTask = Task {
             do {
-                let (data, response) = try await URLSession.shared.data(from: url)
+                var request = URLRequest(url: url)
+                if let token = await APIClient.shared.token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse,
                       (200...299).contains(httpResponse.statusCode) else {

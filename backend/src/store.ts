@@ -25,7 +25,7 @@ function toMessage(row: MessagesTable, baseUrl?: string): SyncaMessage {
         type: row.type as 'text' | 'image',
         textContent: row.text_content ?? undefined,
         imagePath: row.image_path ?? undefined,
-        imageUrl: row.image_path && baseUrl ? `${baseUrl}/uploads/${row.image_path}` : undefined,
+        imageUrl: row.image_path && baseUrl ? `${baseUrl}/api/media/${row.image_path}` : undefined,
         isCleared: row.is_cleared === 1,
         isDeleted: row.is_deleted === 1,
         sourceDevice: row.source_device ?? undefined,
@@ -653,6 +653,29 @@ export async function updateDevicePushTokenEnvironment(input: {
 }
 
 // ── Reset (test only) ──
+
+export async function canUserAccessImage(userId: string, filename: string, isAdmin: boolean): Promise<boolean> {
+    if (isAdmin) return true;
+
+    // Check messages
+    const messageHit = await db.selectFrom('messages')
+        .select('id')
+        .where('user_id', '=', userId)
+        .where('image_path', '=', filename)
+        .where('is_deleted', '=', 0) // Deleted messages might not have image access
+        .executeTakeFirst();
+        
+    if (messageHit) return true;
+
+    // Check feedbacks (using LIKE is okay since we store ["filename.jpg"])
+    const feedbackHit = await db.selectFrom('feedbacks')
+        .select('id')
+        .where('user_id', '=', userId)
+        .where('image_paths', 'like', `%${filename}%`)
+        .executeTakeFirst();
+
+    return Boolean(feedbackHit);
+}
 
 export async function resetDb() {
     await db.deleteFrom('feedbacks').execute();

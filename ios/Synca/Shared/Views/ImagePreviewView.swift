@@ -361,7 +361,11 @@ struct ImagePreviewView: View {
     private func copyImage(from url: URL) {
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                var request = URLRequest(url: url)
+                if let token = await APIClient.shared.token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                let (data, _) = try await URLSession.shared.data(for: request)
                 #if os(iOS)
                 if let image = UIImage(data: data) { UIPasteboard.general.image = image }
                 #elseif os(macOS)
@@ -378,7 +382,11 @@ struct ImagePreviewView: View {
     private func saveImage(from url: URL) async {
         saveStatus = .saving
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            if let token = await APIClient.shared.token {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, _) = try await URLSession.shared.data(for: request)
             #if os(iOS)
             if let image = UIImage(data: data) {
                 UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
@@ -413,7 +421,11 @@ struct ImagePreviewView: View {
     }
 
     private func downloadToTemp(url: URL) async throws -> URL {
-        let (data, _) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        if let token = await APIClient.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await URLSession.shared.data(for: request)
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
         try data.write(to: tempURL)
         return tempURL
@@ -421,7 +433,11 @@ struct ImagePreviewView: View {
 
     private func saveImageAs(from url: URL) async {
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            if let token = await APIClient.shared.token {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, _) = try await URLSession.shared.data(for: request)
             let panel = NSSavePanel()
             panel.nameFieldStringValue = url.lastPathComponent
             if panel.runModal() == .OK, let saveURL = panel.url {
