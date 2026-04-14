@@ -362,7 +362,7 @@ struct ImagePreviewView: View {
         Task {
             do {
                 var request = URLRequest(url: url)
-                if let token = await APIClient.shared.token {
+                if let token = APIClient.shared.token {
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 }
                 let (data, _) = try await URLSession.shared.data(for: request)
@@ -383,7 +383,7 @@ struct ImagePreviewView: View {
         saveStatus = .saving
         do {
             var request = URLRequest(url: url)
-            if let token = await APIClient.shared.token {
+            if let token = APIClient.shared.token {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -422,7 +422,7 @@ struct ImagePreviewView: View {
 
     private func downloadToTemp(url: URL) async throws -> URL {
         var request = URLRequest(url: url)
-        if let token = await APIClient.shared.token {
+        if let token = APIClient.shared.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         let (data, _) = try await URLSession.shared.data(for: request)
@@ -434,7 +434,7 @@ struct ImagePreviewView: View {
     private func saveImageAs(from url: URL) async {
         do {
             var request = URLRequest(url: url)
-            if let token = await APIClient.shared.token {
+            if let token = APIClient.shared.token {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
             let (data, _) = try await URLSession.shared.data(for: request)

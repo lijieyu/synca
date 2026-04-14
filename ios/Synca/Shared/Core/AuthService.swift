@@ -15,30 +15,10 @@ final class AuthService: NSObject, ObservableObject {
 
     private var continuation: CheckedContinuation<ASAuthorization, Error>?
 
-    func signInWithApple() async throws -> AuthResponse {
+    func handleAuthorization(_ authorization: ASAuthorization) async throws -> AuthResponse {
         isSigningIn = true
         errorMessage = nil
         defer { isSigningIn = false }
-
-        let authorization = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ASAuthorization, Error>) in
-            self.continuation = continuation
-
-            let provider = ASAuthorizationAppleIDProvider()
-            let request = provider.createRequest()
-            request.requestedScopes = [.email]
-
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            #if os(macOS)
-            controller.presentationContextProvider = self
-            #endif
-            
-            // Using a standard Task on @MainActor instead of detached helps keep the context 
-            // synchronized with the UI while still allowing the call to be asynchronous.
-            Task {
-                controller.performRequests()
-            }
-        }
 
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
               let identityTokenData = credential.identityToken,
@@ -65,6 +45,28 @@ final class AuthService: NSObject, ObservableObject {
         _ = try? await PurchaseManager.shared.syncLatestTransactions()
 
         return response
+    }
+
+    func signInWithApple() async throws -> AuthResponse {
+        let authorization = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ASAuthorization, Error>) in
+            self.continuation = continuation
+
+            let provider = ASAuthorizationAppleIDProvider()
+            let request = provider.createRequest()
+            request.requestedScopes = [.email]
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            #if os(macOS)
+            controller.presentationContextProvider = self
+            #endif
+            
+            Task {
+                controller.performRequests()
+            }
+        }
+
+        return try await handleAuthorization(authorization)
     }
 
     func signOut() {

@@ -36,46 +36,39 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: 16) {
-                Button {
-                    Task {
-                        do {
-                            _ = try await authService.signInWithApple()
-                        } catch {
-                            if (error as NSError).code != 1001 { // User cancelled
-                                authService.errorMessage = error.localizedDescription
-                                showError = true
+                AppleSignInButton(
+                    isEnabled: !authService.isSigningIn,
+                    colorScheme: colorScheme,
+                    onCompletion: { result in
+                        Task {
+                            switch result {
+                            case .success(let authorization):
+                                do {
+                                    _ = try await authService.handleAuthorization(authorization)
+                                } catch {
+                                    let nsError = error as NSError
+                                    // ASAuthorizationError.canceled = 1001
+                                    if nsError.domain == ASAuthorizationErrorDomain && nsError.code == 1001 {
+                                        return
+                                    }
+                                    authService.errorMessage = error.localizedDescription
+                                    showError = true
+                                }
+                            case .failure(let error):
+                                let nsError = error as NSError
+                                if nsError.domain == ASAuthorizationErrorDomain && nsError.code == 1001 {
+                                    // User cancelled
+                                } else {
+                                    authService.errorMessage = error.localizedDescription
+                                    showError = true
+                                }
                             }
                         }
                     }
-                } label: {
-                    ZStack {
-                        HStack(spacing: 8) {
-                            Image(systemName: "apple.logo")
-                                .font(.system(size: 18))
-                            Text("login.sign_in_with_apple", bundle: .main)
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .opacity(authService.isSigningIn ? 0 : 1)
-
-                        if authService.isSigningIn {
-                            ProgressView()
-                                .controlSize(.regular)
-                                .tint(signInForegroundColor)
-                        }
-                    }
-                    .foregroundStyle(signInForegroundColor)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(signInBackgroundColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(signInBorderColor, lineWidth: colorScheme == .dark ? 1 : 0.5)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(authService.isSigningIn)
-                .opacity(authService.isSigningIn ? 0.92 : 1)
+                )
+                .id(colorScheme) // Ensure native component recreates on color scheme change
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 60)
@@ -100,17 +93,5 @@ struct LoginView: View {
         #else
         return Color(uiColor: .systemBackground)
         #endif
-    }
-
-    private var signInBackgroundColor: Color {
-        .black
-    }
-
-    private var signInForegroundColor: Color {
-        colorScheme == .dark ? .white : .white
-    }
-
-    private var signInBorderColor: Color {
-        .clear
     }
 }

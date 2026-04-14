@@ -61,7 +61,7 @@ struct CachedAsyncImage<Content: View>: View {
         loadTask = Task {
             do {
                 var request = URLRequest(url: url)
-                if let token = await APIClient.shared.token {
+                if let token = APIClient.shared.token {
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 }
                 
