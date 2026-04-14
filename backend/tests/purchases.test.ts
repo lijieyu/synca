@@ -179,12 +179,8 @@ describe('Purchase Sync API', () => {
         expect(res.body.error).toBe('purchase_account_mismatch');
     });
 
-    it('should ignore unsupported products and keep the user on Free after trial ends', async () => {
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { userId, authHeader } = await createTestUser({
-            trialStartedAt: yesterday,
-            trialEndsAt: yesterday,
-        });
+    it('should ignore unsupported products and keep the user on Free', async () => {
+        const { userId, authHeader } = await createTestUser();
 
         verifySignedTransactionInfoMock.mockResolvedValue({
             transactionId: '200000000000004',

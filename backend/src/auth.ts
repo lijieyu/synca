@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, updateUserEmail } from './store.js';
-import { buildAccessStatus, buildTrialWindow } from './access.js';
+import { buildAccessStatus } from './access.js';
 
 /**
  * Verify Apple identity token on the server side.
@@ -40,15 +40,14 @@ export async function loginWithApple(params: {
     let user = await getUserByAppleId(appleUserId);
 
     if (!user) {
-        const trialWindow = buildTrialWindow(now);
         user = await createUser({
             id: uuidv4(),
             appleUserId,
             email,
             nickname: 'Synca 用户',
             now: nowIso,
-            trialStartedAt: trialWindow.trialStartedAt,
-            trialEndsAt: trialWindow.trialEndsAt,
+            trialStartedAt: null,
+            trialEndsAt: null,
         });
     } else if (email && user.email !== email) {
         user = (await updateUserEmail(user.id, email, nowIso)) ?? user;

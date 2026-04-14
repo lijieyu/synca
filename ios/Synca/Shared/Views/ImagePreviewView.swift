@@ -396,7 +396,9 @@ struct ImagePreviewView: View {
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
             let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
-            try data.write(to: fileURL)
+            try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
+                try data.write(to: fileURL, options: .atomic)
+            }
             saveStatus = .success
             #endif
         } catch { saveStatus = .error }
@@ -440,8 +442,18 @@ struct ImagePreviewView: View {
             let (data, _) = try await URLSession.shared.data(for: request)
             let panel = NSSavePanel()
             panel.nameFieldStringValue = url.lastPathComponent
+            panel.title = String(localized: "message_bubble.save_as", bundle: .main)
+            panel.prompt = String(localized: "common.save", bundle: .main)
+            panel.canCreateDirectories = true
+            if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
+                panel.directoryURL = defaultDirectory
+            }
             if panel.runModal() == .OK, let saveURL = panel.url {
-                try data.write(to: saveURL)
+                let parentURL = saveURL.deletingLastPathComponent()
+                SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
+                try SettingsManager.shared.withSecurityScopedAccess(to: parentURL) {
+                    try data.write(to: saveURL, options: .atomic)
+                }
                 saveStatus = .success
             }
         } catch { saveStatus = .error }

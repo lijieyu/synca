@@ -61,12 +61,10 @@
 "access.status_free_compact" = "Free %d/%d";
 "access.status_unlimited_compact" = "Unlimited";
 "access.trial_description" = "You are still in your 7-day unlimited trial. %d day(s) remaining.";
-"access.free_description" = "Your 7-day trial has ended. You can add up to %d/%d messages today.";
+"access.free_description" = "You can add up to %d/%d messages today.";
 "access.current_plan_title" = "Current Plan";
-"access.current_trial_summary" = "Trial · %d day(s) left";
 "access.current_free_summary" = "Today %d/%d";
-"access.free_trial_rule" = "Unlimited capture during your first 7 days";
-"access.free_daily_rule" = "After that, add up to 20 new messages per day";
+"access.free_daily_rule" = "Add up to 20 new messages per day";
 "access.free_title" = "Free";
 "access.trial_rule" = "Unlimited captures during trial · %d day(s) left";
 "access.free_rule" = "Add up to %d new messages per day";
@@ -93,9 +91,10 @@
 "access.option_monthly_subtitle" = "Monthly subscription. Cancel anytime.";
 "access.option_yearly_title" = "Unlimited (Yearly)";
 "access.option_yearly_subtitle" = "Yearly subscription. Renews once a year.";
-"access.intro_free_trial_then_template" = "%@ free, then %@ / %@.";
+"access.intro_free_trial_then_template" = "%@ free, then %@ / %@. Auto-renews until canceled.";
 "access.intro_payg_then_template" = "Intro offer for %@, then %@ / %@.";
 "access.intro_payupfront_then_template" = "Intro price for %@, then %@ / %@.";
+"access.subscription_renews_template" = "%@ / %@. Auto-renews until canceled.";
 "access.option_lifetime_title" = "Lifetime";
 "access.option_lifetime_subtitle" = "One-time purchase. Permanent access.";
 "access.purchase_setup_pending" = "App Store purchase setup is the next step.";

@@ -184,6 +184,11 @@ struct MessageBubbleView: View {
             #if os(macOS)
             Button { self.openWithPreview(url: url) } label: { Label("message_bubble.open_with_preview", systemImage: "eye") }
             Button { self.showInFinder(url: url) } label: { Label("message_bubble.show_in_finder", systemImage: "folder") }
+            Button {
+                Task { await self.saveImageAs(from: url) }
+            } label: {
+                Label("message_bubble.save_as", systemImage: "folder.badge.plus")
+            }
             #endif
             
             Divider()
@@ -261,30 +266,59 @@ struct MessageBubbleView: View {
     }
 
     private var downloadImageButton: some View {
-        Button {
-            if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
-                Task { await self.saveImage(from: url) }
-            }
-        } label: {
-            Group {
-                switch saveStatus {
-                case .none:
-                    Image(systemName: "square.and.arrow.down")
-                        .foregroundStyle(.secondary)
-                case .saving:
-                    ProgressView().scaleEffect(0.6)
-                case .success:
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.green)
-                case .error:
-                    Image(systemName: "xmark.circle")
-                        .foregroundStyle(.red)
+        Group {
+            #if os(macOS)
+            Menu {
+                if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
+                    Button {
+                        Task { await self.saveImage(from: url) }
+                    } label: {
+                        Label("common.save", systemImage: "square.and.arrow.down")
+                    }
+
+                    Button {
+                        Task { await self.saveImageAs(from: url) }
+                    } label: {
+                        Label("message_bubble.save_as", systemImage: "folder.badge.plus")
+                    }
                 }
+            } label: {
+                saveIconLabel
             }
-            .font(.system(size: 16))
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .disabled(saveStatus == .saving)
+            #else
+            Button {
+                if let urlStr = message.imageUrl, let url = URL(string: urlStr) {
+                    Task { await self.saveImage(from: url) }
+                }
+            } label: {
+                saveIconLabel
+            }
+            .buttonStyle(.plain)
+            .disabled(saveStatus == .saving)
+            #endif
         }
-        .buttonStyle(.plain)
-        .disabled(saveStatus == .saving)
+    }
+
+    private var saveIconLabel: some View {
+        Group {
+            switch saveStatus {
+            case .none:
+                Image(systemName: "square.and.arrow.down")
+                    .foregroundStyle(.secondary)
+            case .saving:
+                ProgressView().scaleEffect(0.6)
+            case .success:
+                Image(systemName: "checkmark")
+                    .foregroundStyle(.green)
+            case .error:
+                Image(systemName: "xmark.circle")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.system(size: 16))
     }
 
     private var clearButton: some View {
@@ -364,7 +398,9 @@ struct MessageBubbleView: View {
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
             let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
-            try data.write(to: fileURL)
+            try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
+                try data.write(to: fileURL, options: .atomic)
+            }
             NSWorkspace.shared.activateFileViewerSelecting([fileURL])
             withAnimation { saveStatus = .success }
             #endif
@@ -378,7 +414,12 @@ struct MessageBubbleView: View {
             alert.informativeText = String(localized: "message_bubble.save_failed_message", bundle: .main).replacingOccurrences(of: "%@", with: error.localizedDescription)
             alert.alertStyle = .warning
             alert.addButton(withTitle: String(localized: "common.ok", bundle: .main))
-            alert.runModal()
+            alert.addButton(withTitle: String(localized: "message_bubble.save_as", bundle: .main))
+            let response = alert.runModal()
+            if response == .alertSecondButtonReturn {
+                await saveImageAs(from: url)
+                return
+            }
             #endif
         }
         
@@ -422,18 +463,22 @@ struct MessageBubbleView: View {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
             let (data, _) = try await URLSession.shared.data(for: request)
-            let panel = NSOpenPanel()
-            panel.canChooseDirectories = true
-            panel.canChooseFiles = false
-            panel.allowsMultipleSelection = false
-            panel.title = String(localized: "message_bubble.choose_save_directory", bundle: .main)
-            panel.prompt = String(localized: "message_bubble.save_to_directory", bundle: .main)
-            
-            if panel.runModal() == .OK, let selectedURL = panel.url {
-                SettingsManager.shared.macOSDefaultSavePath = selectedURL
-                let fileURL = selectedURL.appendingPathComponent(url.lastPathComponent)
-                try data.write(to: fileURL)
-                NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = url.lastPathComponent
+            panel.title = String(localized: "message_bubble.save_as", bundle: .main)
+            panel.prompt = String(localized: "common.save", bundle: .main)
+            panel.canCreateDirectories = true
+            if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
+                panel.directoryURL = defaultDirectory
+            }
+
+            if panel.runModal() == .OK, let saveURL = panel.url {
+                let parentURL = saveURL.deletingLastPathComponent()
+                SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
+                try SettingsManager.shared.withSecurityScopedAccess(to: parentURL) {
+                    try data.write(to: saveURL, options: .atomic)
+                }
+                NSWorkspace.shared.activateFileViewerSelecting([saveURL])
                 withAnimation { saveStatus = .success }
             }
         } catch {

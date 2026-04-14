@@ -63,9 +63,6 @@ export const MessageListView: React.FC = () => {
       label = t('access.status_unlimited_compact');
       color = 'rgba(125, 77, 255, 0.15)';
       isUnlimited = true;
-    } else if (plan === 'trial') {
-      label = t('access.status_trial_compact', { days: accessStatus.daysLeft ?? 0 });
-      color = 'rgba(255, 159, 10, 0.15)';
     } else if (plan === 'free') {
       label = t('access.status_free_compact', { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 });
     }

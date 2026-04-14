@@ -61,12 +61,10 @@
 "access.status_free_compact" = "免费 %d/%d";
 "access.status_unlimited_compact" = "无限版";
 "access.trial_description" = "你仍在 7 天不限量试用期内，剩余 %d 天。";
-"access.free_description" = "7 天试用已结束，今天已记录 %d/%d 条。";
+"access.free_description" = "今天已记录 %d/%d 条。";
 "access.current_plan_title" = "当前套餐";
-"access.current_trial_summary" = "Trial · 剩余 %d 天";
 "access.current_free_summary" = "今日 %d/%d";
-"access.free_trial_rule" = "前 7 天不限量记录";
-"access.free_daily_rule" = "试用结束后每天最多新增 20 条";
+"access.free_daily_rule" = "每天最多新增 20 条";
 "access.free_title" = "免费版";
 "access.trial_rule" = "试用期内不限量记录 · 剩余 %d 天";
 "access.free_rule" = "每天最多新增 %d 条消息";
@@ -93,9 +91,10 @@
 "access.option_monthly_subtitle" = "按月自动续费，可随时取消。";
 "access.option_yearly_title" = "无限版（年付）";
 "access.option_yearly_subtitle" = "按年自动续费，每年续费一次。";
-"access.intro_free_trial_then_template" = "%@ 免费试用，之后按 %@ / %@ 续费。";
+"access.intro_free_trial_then_template" = "%@ 免费试用，之后按 %@ / %@ 自动续费，直至取消。";
 "access.intro_payg_then_template" = "前 %@ 享受优惠，之后按 %@ / %@ 续费。";
 "access.intro_payupfront_then_template" = "优惠价覆盖 %@，之后按 %@ / %@ 续费。";
+"access.subscription_renews_template" = "%@ / %@，自动续费，直至取消。";
 "access.option_lifetime_title" = "终身版";
 "access.option_lifetime_subtitle" = "一次性买断，永久可用。";
 "access.purchase_setup_pending" = "App Store 购买通道是下一步接入内容。";

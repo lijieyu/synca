@@ -20,7 +20,6 @@ import {
 } from './iap.js';
 
 export const FREE_DAILY_MESSAGE_LIMIT = 20;
-const TRIAL_LENGTH_DAYS = 7;
 const DAILY_RESET_OFFSET_HOURS = 8;
 
 export class DailyLimitError extends Error {
@@ -45,7 +44,6 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
     const todayUsed = await countMessagesCreatedBetween(userId, usageWindow.start, usageWindow.end);
     const hasLifetime = Boolean(user.lifetime_purchased_at);
     const hasSubscription = Boolean(user.subscription_expires_at && user.subscription_expires_at > nowIso);
-    const isTrial = !hasLifetime && !hasSubscription && Boolean(user.trial_ends_at && user.trial_ends_at > nowIso);
 
     if (hasLifetime) {
         return {
@@ -53,8 +51,8 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
             isUnlimited: true,
             isTrial: false,
             unlimitedSource: 'lifetime',
-            trialEndsAt: user.trial_ends_at,
-            daysLeft: daysLeft(user.trial_ends_at, now),
+            trialEndsAt: null,
+            daysLeft: null,
             todayUsed,
             todayLimit: null,
             dailyResetAt: usageWindow.end,
@@ -70,8 +68,8 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
             isUnlimited: true,
             isTrial: false,
             unlimitedSource: 'subscription',
-            trialEndsAt: user.trial_ends_at,
-            daysLeft: daysLeft(user.trial_ends_at, now),
+            trialEndsAt: null,
+            daysLeft: null,
             todayUsed,
             todayLimit: null,
             dailyResetAt: usageWindow.end,
@@ -81,30 +79,13 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
         };
     }
 
-    if (isTrial) {
-        return {
-            plan: 'trial',
-            isUnlimited: false,
-            isTrial: true,
-            unlimitedSource: null,
-            trialEndsAt: user.trial_ends_at,
-            daysLeft: daysLeft(user.trial_ends_at, now),
-            todayUsed,
-            todayLimit: null,
-            dailyResetAt: usageWindow.end,
-            purchaseDate: null,
-            subscriptionExpiresAt: null,
-            storeProductId: user.store_product_id,
-        };
-    }
-
     return {
         plan: 'free',
         isUnlimited: false,
         isTrial: false,
         unlimitedSource: null,
-        trialEndsAt: user.trial_ends_at,
-        daysLeft: 0,
+        trialEndsAt: null,
+        daysLeft: null,
         todayUsed,
         todayLimit: FREE_DAILY_MESSAGE_LIMIT,
         dailyResetAt: usageWindow.end,
@@ -116,16 +97,10 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
 
 export async function assertCanCreateMessage(userId: string, now = new Date()): Promise<SyncaAccessStatus> {
     const status = await buildAccessStatus(userId, now);
-    if (!status.isUnlimited && !status.isTrial && status.todayUsed >= FREE_DAILY_MESSAGE_LIMIT) {
+    if (!status.isUnlimited && status.todayUsed >= FREE_DAILY_MESSAGE_LIMIT) {
         throw new DailyLimitError(status);
     }
     return status;
-}
-
-export function buildTrialWindow(now = new Date()): { trialStartedAt: string; trialEndsAt: string } {
-    const trialStartedAt = now.toISOString();
-    const trialEndsAt = new Date(now.getTime() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    return { trialStartedAt, trialEndsAt };
 }
 
 export async function reconcilePurchaseAccess(userId: string, now = new Date()): Promise<void> {
@@ -189,14 +164,6 @@ export async function buildLifetimeUpgradeOffer(userId: string, status: SyncaAcc
         isCodeAvailable: Boolean(assignedCode || availableCount > 0),
         code: assignedCode?.code ?? null,
     };
-}
-
-function daysLeft(trialEndsAt: string | null, now: Date): number | null {
-    if (!trialEndsAt) return null;
-    const end = new Date(trialEndsAt);
-    const diff = end.getTime() - now.getTime();
-    if (diff <= 0) return 0;
-    return Math.max(1, Math.ceil(diff / (24 * 60 * 60 * 1000)));
 }
 
 function getUsageWindow(now: Date): UsageWindow {

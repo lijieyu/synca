@@ -98,18 +98,12 @@ struct AccessCenterView: View {
                     badge: AccessStatusPill(status: status)
                 )
 
-                if status.isTrial {
-                    Text(String(format: String(localized: "access.current_trial_summary", bundle: .main), status.daysLeft ?? 0))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                } else {
-                    Text(String(format: String(localized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
+                Text(String(format: String(localized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
 
-                benefitRow(systemImage: "sparkles", text: "access.free_trial_rule")
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
+                benefitRow(systemImage: "arrow.clockwise.circle", text: "access.free_reset_hint")
             }
         }
     }
@@ -243,45 +237,27 @@ struct AccessCenterView: View {
 
                     Spacer(minLength: 12)
 
-                    if currentProductID == productID.rawValue {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else if let product {
-                        if isEligibleForIntro {
-                            Text(product.displayPrice)
-                                .font(planOptionPriceFont)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .strikethrough(true, color: .white.opacity(0.72))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .minimumScaleFactor(0.8)
-                        } else {
+                    if let product {
+                        HStack(spacing: 6) {
                             Text(product.displayPrice)
                                 .font(planOptionPriceFont)
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .minimumScaleFactor(0.8)
+
+                            if currentProductID == productID.rawValue {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
                     }
                 }
 
-                HStack(spacing: 8) {
-                    Text(subscriptionSubtitle(for: productID, product: product, isEligibleForIntro: isEligibleForIntro))
-                        .font(planOptionSubtitleFont)
-                        .foregroundStyle(.secondary.opacity(0.9))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-
-                    Spacer(minLength: 8)
-
-                    if isEligibleForIntro {
-                        Text("access.intro_offer_badge", bundle: .main)
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.white.opacity(0.18), in: Capsule())
-                    }
-                }
+                Text(subscriptionSubtitle(for: productID, product: product, isEligibleForIntro: isEligibleForIntro))
+                    .font(planOptionSubtitleFont)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -318,21 +294,10 @@ struct AccessCenterView: View {
                             .minimumScaleFactor(0.8)
                     }
                 }
-                HStack(spacing: 8) {
-                    Text("access.option_lifetime_subtitle", bundle: .main)
-                        .font(planOptionSubtitleFont)
-                        .foregroundStyle(.secondary.opacity(0.9))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-
-                    Spacer(minLength: 8)
-
-                    Text("access.intro_offer_badge", bundle: .main)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .hidden()
-                }
+                Text("access.option_lifetime_subtitle", bundle: .main)
+                    .font(planOptionSubtitleFont)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -368,21 +333,10 @@ struct AccessCenterView: View {
                             .minimumScaleFactor(0.8)
                     }
                 }
-                HStack(spacing: 8) {
-                    Text("access.option_lifetime_subtitle", bundle: .main)
-                        .font(planOptionSubtitleFont)
-                        .foregroundStyle(.secondary.opacity(0.9))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-
-                    Spacer(minLength: 8)
-
-                    Text("access.intro_offer_badge", bundle: .main)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .hidden()
-                }
+                Text("access.option_lifetime_subtitle", bundle: .main)
+                    .font(planOptionSubtitleFont)
+                    .foregroundStyle(.secondary.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -479,11 +433,11 @@ struct AccessCenterView: View {
     }
 
     private var planOptionPriceFont: Font {
-        .system(size: 15, weight: .semibold)
+        .system(size: 18, weight: .bold)
     }
 
     private var planOptionSubtitleFont: Font {
-        .system(size: 11.5, weight: .regular)
+        .system(size: 12, weight: .regular)
     }
 
     private var restoreInlineButton: some View {
@@ -692,7 +646,7 @@ struct AccessCenterView: View {
             let product,
             let introductoryOffer = product.subscription?.introductoryOffer
         else {
-            return productSubtitle(for: productID)
+            return subscriptionRenewalDisclosure(for: productID, product: product)
         }
 
         return introductorySubtitle(for: productID, product: product, offer: introductoryOffer)
@@ -731,6 +685,16 @@ struct AccessCenterView: View {
         default:
             return productSubtitle(for: productID)
         }
+    }
+
+    private func subscriptionRenewalDisclosure(for productID: SyncaProductID, product: Product?) -> String {
+        let price = product?.displayPrice ?? String(localized: "access.purchase_unavailable_short", bundle: .main)
+        let renewalUnit = renewalUnitLabel(for: productID)
+        return String(
+            format: String(localized: "access.subscription_renews_template", bundle: .main),
+            price,
+            renewalUnit
+        )
     }
 
     private func renewalUnitLabel(for productID: SyncaProductID) -> String {
@@ -916,17 +880,11 @@ struct HeaderAccessBadge: View {
         if status.isUnlimited {
             return String(localized: "access.status_unlimited_badge", bundle: .main)
         }
-        if status.isTrial {
-            return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
-        }
         return freeInlineLabel
     }
 
     private var helpText: String {
         if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
-        if status.isTrial {
-            return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
-        }
         return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 
@@ -978,9 +936,6 @@ struct AccessStatusPill: View {
         if status.isUnlimited {
             return String(localized: "access.status_unlimited_badge", bundle: .main)
         }
-        if status.isTrial {
-            return String(format: String(localized: "access.status_trial_inline", bundle: .main), status.daysLeft ?? 0)
-        }
         return freeInlineLabel
     }
 
@@ -990,9 +945,6 @@ struct AccessStatusPill: View {
 
     private var helpText: String {
         if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
-        if status.isTrial {
-            return String(format: String(localized: "access.status_trial", bundle: .main), status.daysLeft ?? 0)
-        }
         return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 

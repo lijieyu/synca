@@ -73,7 +73,7 @@ describe('Synca API', () => {
             expect(res.status).toBe(200);
             expect(res.headers['content-type']).toContain('text/html');
             expect(res.text).toContain('Synca 支持页面');
-            expect(res.text).toContain('Synca 现已提供 7 天免费试用');
+            expect(res.text).toContain('免费版用户每日最多可新增 20 条内容');
         });
     });
 
@@ -241,7 +241,7 @@ describe('Synca API', () => {
             expect(res.status).toBe(400);
         });
 
-        it('should return access status for trial users', async () => {
+        it('should return free access status for new users', async () => {
             const { authHeader } = await createTestUser();
 
             const res = await request(app)
@@ -249,17 +249,13 @@ describe('Synca API', () => {
                 .set('Authorization', authHeader);
 
             expect(res.status).toBe(200);
-            expect(res.body.accessStatus.plan).toBe('trial');
-            expect(res.body.accessStatus.isTrial).toBe(true);
-            expect(res.body.accessStatus.todayLimit).toBeNull();
+            expect(res.body.accessStatus.plan).toBe('free');
+            expect(res.body.accessStatus.isTrial).toBe(false);
+            expect(res.body.accessStatus.todayLimit).toBe(20);
         });
 
-        it('should enforce the daily free limit after trial ends', async () => {
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const { authHeader } = await createTestUser({
-                trialStartedAt: yesterday,
-                trialEndsAt: yesterday,
-            });
+        it('should enforce the daily free limit', async () => {
+            const { authHeader } = await createTestUser();
 
             for (let i = 0; i < 20; i += 1) {
                 const createRes = await request(app)
@@ -282,11 +278,7 @@ describe('Synca API', () => {
         });
 
         it('should not restore free quota after completed messages are cleared and deleted', async () => {
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const { authHeader } = await createTestUser({
-                trialStartedAt: yesterday,
-                trialEndsAt: yesterday,
-            });
+            const { authHeader } = await createTestUser();
 
             for (let i = 0; i < 20; i += 1) {
                 const createRes = await request(app)

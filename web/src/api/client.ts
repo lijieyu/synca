@@ -27,7 +27,7 @@ export interface SyncaUser {
 }
 
 export interface AccessStatus {
-  plan: 'free' | 'trial' | 'unlimited';
+  plan: 'free' | 'unlimited';
   isUnlimited: boolean;
   isTrial: boolean;
   daysLeft: number | null;
