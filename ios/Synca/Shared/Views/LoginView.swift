@@ -68,7 +68,7 @@ struct LoginView: View {
                 )
                 .id(colorScheme) // Ensure native component recreates on color scheme change
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .frame(height: 50)
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 60)

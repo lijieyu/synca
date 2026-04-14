@@ -23,7 +23,7 @@ struct AppleSignInButton: PlatformViewRepresentable {
     #if os(iOS)
     func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
         let button = ASAuthorizationAppleIDButton(type: .signIn, style: appleButtonStyle)
-        button.cornerRadius = 14
+        button.cornerRadius = 12
         button.addTarget(context.coordinator, action: #selector(Coordinator.tapped), for: .touchUpInside)
         return button
     }
@@ -34,7 +34,7 @@ struct AppleSignInButton: PlatformViewRepresentable {
     #elseif os(macOS)
     func makeNSView(context: Context) -> ASAuthorizationAppleIDButton {
         let button = ASAuthorizationAppleIDButton(type: .signIn, style: appleButtonStyle)
-        button.cornerRadius = 14
+        button.cornerRadius = 12
         button.target = context.coordinator
         button.action = #selector(Coordinator.tapped)
         return button
