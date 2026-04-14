@@ -25,6 +25,7 @@ final class SettingsManager: ObservableObject {
 
         UserDefaults.standard.set(url.path, forKey: macOSDefaultSavePathKey)
 
+        #if os(macOS)
         do {
             let bookmark = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
             UserDefaults.standard.set(bookmark, forKey: macOSDefaultSaveBookmarkKey)
@@ -32,19 +33,25 @@ final class SettingsManager: ObservableObject {
             UserDefaults.standard.removeObject(forKey: macOSDefaultSaveBookmarkKey)
             print("[settings] Failed to persist security-scoped bookmark: \(error)")
         }
+        #else
+        UserDefaults.standard.removeObject(forKey: macOSDefaultSaveBookmarkKey)
+        #endif
     }
 
     func withSecurityScopedAccess<T>(to url: URL, perform: () throws -> T) rethrows -> T {
+        #if os(macOS)
         let didAccess = url.startAccessingSecurityScopedResource()
         defer {
             if didAccess {
                 url.stopAccessingSecurityScopedResource()
             }
         }
+        #endif
         return try perform()
     }
 
     private func resolveStoredSavePath() -> URL? {
+        #if os(macOS)
         if let bookmarkData = UserDefaults.standard.data(forKey: macOSDefaultSaveBookmarkKey) {
             do {
                 var isStale = false
@@ -62,6 +69,7 @@ final class SettingsManager: ObservableObject {
                 print("[settings] Failed to resolve security-scoped bookmark: \(error)")
             }
         }
+        #endif
 
         if let path = UserDefaults.standard.string(forKey: macOSDefaultSavePathKey) {
             return URL(fileURLWithPath: path)
