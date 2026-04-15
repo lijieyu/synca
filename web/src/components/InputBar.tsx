@@ -184,7 +184,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
           message={t('access.limit_reached_message', "Today's quota has been used up. Please download Synca from the App Store to complete the purchase and upgrade in-app.")}
           confirmText={t('access.go_to_appstore', 'View on App Store')}
           cancelText={t('common.ok', 'OK')}
-          onConfirm={() => window.open('https://apps.apple.com/app/id6478204620', '_blank')}
+          onConfirm={() => window.open('https://apps.apple.com/app/synca-sync-your-aha-moment/id6761647007', '_blank')}
           onCancel={() => setShowLimitModal(false)}
         />
       )}
