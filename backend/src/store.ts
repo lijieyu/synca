@@ -696,7 +696,10 @@ export async function getAdminOverviewStats() {
     const feedbackCount = await db.selectFrom('feedbacks').select((eb) => eb.fn.countAll().as('count')).executeTakeFirst();
     
     // Revenue calculation (¥6, ¥30, ¥98)
-    const transactions = await db.selectFrom('iap_transactions').select(['product_id']).execute();
+    const transactions = await db.selectFrom('iap_transactions')
+        .select(['product_id'])
+        .where('environment', '=', 'Production')
+        .execute();
     let totalRevenue = 0;
     for (const tx of transactions) {
         if (tx.product_id.includes('monthly')) totalRevenue += 6;
@@ -778,6 +781,7 @@ export async function getAdminMessageStats() {
 export async function getAdminRevenueStats() {
     const transactions = await db.selectFrom('iap_transactions')
         .select(['product_id', 'purchase_date'])
+        .where('environment', '=', 'Production')
         .execute();
 
     const dailyMap: Record<string, number> = {};
