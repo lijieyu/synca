@@ -183,47 +183,49 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   return (
     <>
       <div className="input-bar">
-        <div className="photo-upload">
-          <ImagePlus size={24} />
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-            ref={imageInputRef} 
-            disabled={isSending}
-          />
-        </div>
+        <div className="input-shell">
+          <div className="photo-upload">
+            <ImagePlus size={24} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              ref={imageInputRef}
+              disabled={isSending}
+            />
+          </div>
 
-        <div className="photo-upload file-upload">
-          <Paperclip size={22} />
-          <input
-            type="file"
-            accept={supportedDocumentExtensions}
-            onChange={handleDocumentChange}
-            ref={documentInputRef}
+          <div className="photo-upload file-upload">
+            <Paperclip size={22} />
+            <input
+              type="file"
+              accept={supportedDocumentExtensions}
+              onChange={handleDocumentChange}
+              ref={documentInputRef}
+              disabled={isSending}
+            />
+          </div>
+
+          <textarea
+            ref={textareaRef}
+            className={isSending ? 'sending' : ''}
+            placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
+            value={text}
+            onChange={(e) => { setText(e.target.value); autoGrow(); }}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={isSending}
+            rows={1}
           />
+
+          <button
+            className="send-btn"
+            onClick={handleSendText}
+            disabled={!text.trim() || isSending}
+          >
+            <SendIcon size={30} color={text.trim() && !isSending ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
+          </button>
         </div>
-        
-        <textarea
-          ref={textareaRef}
-          className={isSending ? 'sending' : ''}
-          placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
-          value={text}
-          onChange={(e) => { setText(e.target.value); autoGrow(); }}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={isSending}
-          rows={1}
-        />
-        
-        <button 
-          className="send-btn"
-          onClick={handleSendText} 
-          disabled={!text.trim() || isSending}
-        >
-          <SendIcon size={30} color={text.trim() && !isSending ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
-        </button>
       </div>
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />

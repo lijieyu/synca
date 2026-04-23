@@ -128,6 +128,7 @@ export const MessageListView: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
+  const [draftCategoryNames, setDraftCategoryNames] = useState<Record<string, string>>({});
   const listRef = useRef<HTMLDivElement>(null);
 
   const { logout, isAdmin, email, plan, accessStatus, refreshAccessStatus } = useAuth();
@@ -196,6 +197,16 @@ export const MessageListView: React.FC = () => {
     }
   }, [email, defaultSendCategoryId]);
 
+  useEffect(() => {
+    setDraftCategoryNames((current) => {
+      const next: Record<string, string> = {};
+      for (const category of categories) {
+        next[category.id] = current[category.id] ?? category.name;
+      }
+      return next;
+    });
+  }, [categories]);
+
   const defaultCategory = useMemo(
     () => categories.find((category) => category.isDefault) ?? categories[0] ?? null,
     [categories]
@@ -205,6 +216,7 @@ export const MessageListView: React.FC = () => {
   const selectedScopeIsAll = selectedCategoryId === ALL_CATEGORY_ID;
   const activeSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
   const displayedSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : activeSendCategoryId;
+  const displayedSendCategory = categories.find((category) => category.id === displayedSendCategoryId) ?? defaultCategory;
 
   const filteredMessages = useMemo(() => {
     if (selectedCategoryId === ALL_CATEGORY_ID) return messages;
@@ -358,22 +370,19 @@ export const MessageListView: React.FC = () => {
           </button>
         </div>
 
-        {displayedSendCategoryId && (
-          <label className={`default-send-picker ${selectedScopeIsAll ? '' : 'is-readonly'}`}>
-            <span>{t('message_list.default_send_category', 'Send from All to')}</span>
-            <select
-              value={displayedSendCategoryId}
-              onChange={(e) => setDefaultSendCategoryId(e.target.value)}
-              disabled={!selectedScopeIsAll}
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <div className="default-send-picker is-readonly">
+          <span className="default-send-picker-label">{t('message_list.default_send_category', 'Send from All to')}</span>
+          <div className="default-send-picker-field">
+            {displayedSendCategory ? (
+              <span className={`category-color-dot color-${displayedSendCategory.color}`} aria-hidden="true" />
+            ) : (
+              <span className="category-color-dot color-slate" aria-hidden="true" />
+            )}
+            <span className="default-send-picker-value">
+              {displayedSendCategory?.name ?? t('common.all', 'All')}
+            </span>
+          </div>
+        </div>
       </div>
 
       {layoutMode === 'tiled' ? (
@@ -464,38 +473,56 @@ export const MessageListView: React.FC = () => {
         <Modal
           title={t('message_list.manage_categories', 'Manage Categories')}
           message=""
-          confirmText={t('common.ok', 'OK')}
+          confirmText={t('common.done', 'Done')}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => setShowCategoryModal(false)}
           onCancel={() => setShowCategoryModal(false)}
         >
           <div className="category-manager">
-            <div className="category-create-row">
-              <input
-                className="category-name-input"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={t('message_list.new_category_placeholder', 'New category')}
-              />
-              <div className="category-color-select-wrap">
-                <span className={`category-color-dot color-${newCategoryColor}`} />
-                <select value={newCategoryColor} onChange={(e) => setNewCategoryColor(e.target.value as MessageCategoryColor)}>
-                  {CATEGORY_COLORS.map((color) => (
-                    <option key={color} value={color}>{COLOR_LABELS[color]}</option>
-                  ))}
-                </select>
+            <section className="category-panel">
+              <div className="category-panel-header">
+                <div>
+                  <h4>{t('message_category.new_section', 'New Category')}</h4>
+                  <p>{t('message_category.color_label', 'Color')}</p>
+                </div>
               </div>
-              <button className="category-add-action" onClick={() => void handleCreateCategory()}>
-                <Plus size={14} />
-                <span>{t('common.add', 'Add')}</span>
-              </button>
-            </div>
+
+              <div className="category-create-stack">
+                <input
+                  className="category-name-input"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder={t('message_category.name_placeholder', 'Category name')}
+                />
+
+                <div className="category-swatch-grid" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
+                  {CATEGORY_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`category-swatch color-${color} ${newCategoryColor === color ? 'active' : ''}`}
+                      onClick={() => setNewCategoryColor(color)}
+                      aria-checked={newCategoryColor === color}
+                      title={COLOR_LABELS[color]}
+                    />
+                  ))}
+                </div>
+
+                <button className="category-add-action" onClick={() => void handleCreateCategory()}>
+                  <Plus size={14} />
+                  <span>{t('message_category.add_action', 'Add Category')}</span>
+                </button>
+              </div>
+            </section>
 
             <div className="category-manager-list">
               {categories.map((category) => (
-                <div key={category.id} className="category-manager-row">
-                  <span className={`category-chip color-${category.color}`}>{category.name}</span>
-                  {selectedScopeIsAll && (
+                <section key={category.id} className="category-card">
+                  <div className="category-card-header">
+                    <div className="category-card-title">
+                      <span className={`category-chip color-${category.color}`}>{category.name}</span>
+                    </div>
+
                     <label className="category-default-radio">
                       <input
                         type="radio"
@@ -504,36 +531,55 @@ export const MessageListView: React.FC = () => {
                       />
                       <span>{t('message_list.default_send_target', 'Default send')}</span>
                     </label>
-                  )}
+                  </div>
+
                   {!category.isDefault && (
                     <>
                       <input
                         className="category-inline-input"
-                        defaultValue={category.name}
-                        onBlur={(e) => {
-                          const value = e.target.value.trim();
+                        value={draftCategoryNames[category.id] ?? category.name}
+                        onChange={(e) => setDraftCategoryNames((current) => ({ ...current, [category.id]: e.target.value }))}
+                        onBlur={() => {
+                          const value = (draftCategoryNames[category.id] ?? category.name).trim();
                           if (value && value !== category.name) {
                             void handleCategoryUpdate(category, { name: value });
                           }
                         }}
                       />
-                      <div className="category-color-select-wrap">
-                        <span className={`category-color-dot color-${category.color}`} />
-                        <select
-                          value={category.color}
-                          onChange={(e) => void handleCategoryUpdate(category, { color: e.target.value as MessageCategoryColor })}
-                        >
-                          {CATEGORY_COLORS.map((color) => (
-                            <option key={color} value={color}>{COLOR_LABELS[color]}</option>
-                          ))}
-                        </select>
+
+                      <div className="category-swatch-grid" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
+                        {CATEGORY_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`category-swatch color-${color} ${category.color === color ? 'active' : ''}`}
+                            onClick={() => void handleCategoryUpdate(category, { color })}
+                            aria-checked={category.color === color}
+                            title={COLOR_LABELS[color]}
+                          />
+                        ))}
                       </div>
-                      <button className="header-btn" onClick={() => void handleCategoryDelete(category.id)} title={t('common.delete', 'Delete')}>
-                        <Trash2 size={16} />
-                      </button>
+
+                      <div className="category-card-actions">
+                        <button
+                          className="category-secondary-action"
+                          onClick={() => {
+                            const value = (draftCategoryNames[category.id] ?? category.name).trim();
+                            if (value && value !== category.name) {
+                              void handleCategoryUpdate(category, { name: value });
+                            }
+                          }}
+                        >
+                          {t('message_category.save_name', 'Save Name')}
+                        </button>
+                        <button className="category-danger-action" onClick={() => void handleCategoryDelete(category.id)}>
+                          <Trash2 size={16} />
+                          <span>{t('message_category.delete_action', 'Delete Category')}</span>
+                        </button>
+                      </div>
                     </>
                   )}
-                </div>
+                </section>
               ))}
             </div>
           </div>
