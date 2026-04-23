@@ -5,6 +5,8 @@ import { runMigrations } from '../src/migrate.js';
 import { resetDb, createSession as dbCreateSession } from '../src/store.js';
 import { db } from '../src/db.js';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
 
 // Create a test user directly in DB (bypassing Apple auth for testing)
 async function createTestUser(options?: {
@@ -88,6 +90,144 @@ describe('Synca API', () => {
                 .get('/messages')
                 .set('Authorization', 'Bearer invalid-token');
             expect(res.status).toBe(401);
+        });
+
+        it('should delete account and associated data', async () => {
+            const { userId, authHeader, token } = await createTestUser();
+            const now = new Date().toISOString();
+            const uploadsDir = path.resolve(process.cwd(), 'uploads');
+            const filesDir = path.resolve(process.cwd(), 'files');
+            const feedbackUploadsDir = path.resolve(process.cwd(), 'feedback_uploads');
+
+            fs.mkdirSync(uploadsDir, { recursive: true });
+            fs.mkdirSync(filesDir, { recursive: true });
+            fs.mkdirSync(feedbackUploadsDir, { recursive: true });
+
+            const imageFileName = `test-image-${uuidv4()}.png`;
+            const docFileName = `test-doc-${uuidv4()}.pdf`;
+            const feedbackFileName = `feedback-${uuidv4()}.png`;
+
+            fs.writeFileSync(path.join(uploadsDir, imageFileName), 'img');
+            fs.writeFileSync(path.join(filesDir, docFileName), 'doc');
+            fs.writeFileSync(path.join(feedbackUploadsDir, feedbackFileName), 'feedback');
+
+            await db.insertInto('message_categories').values({
+                id: uuidv4(),
+                user_id: userId,
+                name: 'Default',
+                color: 'slate',
+                is_default: 1,
+                created_at: now,
+                updated_at: now,
+            }).execute();
+
+            await db.insertInto('messages').values([
+                {
+                    id: uuidv4(),
+                    user_id: userId,
+                    type: 'image',
+                    text_content: null,
+                    image_path: imageFileName,
+                    file_path: null,
+                    file_name: null,
+                    file_size: null,
+                    file_mime_type: null,
+                    category_id: null,
+                    is_cleared: 0,
+                    is_deleted: 0,
+                    source_device: 'Test',
+                    created_at: now,
+                    updated_at: now,
+                },
+                {
+                    id: uuidv4(),
+                    user_id: userId,
+                    type: 'file',
+                    text_content: null,
+                    image_path: null,
+                    file_path: docFileName,
+                    file_name: 'doc.pdf',
+                    file_size: 3,
+                    file_mime_type: 'application/pdf',
+                    category_id: null,
+                    is_cleared: 0,
+                    is_deleted: 0,
+                    source_device: 'Test',
+                    created_at: now,
+                    updated_at: now,
+                },
+            ]).execute();
+
+            await db.insertInto('feedbacks').values({
+                id: uuidv4(),
+                user_id: userId,
+                content: 'help',
+                email: 'test@example.com',
+                image_paths: JSON.stringify([feedbackFileName]),
+                device_model: 'Mac',
+                os_version: '14.0',
+                app_version: '1.0',
+                created_at: now,
+                updated_at: now,
+            }).execute();
+
+            await db.insertInto('device_push_tokens').values({
+                id: uuidv4(),
+                user_id: userId,
+                platform: 'ios',
+                token: `push-${uuidv4()}`,
+                apns_environment: 'sandbox',
+                topic: null,
+                is_active: 1,
+                last_error: null,
+                last_sent_at: null,
+                created_at: now,
+                updated_at: now,
+            }).execute();
+
+            await db.insertInto('iap_transactions').values({
+                transaction_id: `tx-${uuidv4()}`,
+                original_transaction_id: null,
+                user_id: userId,
+                product_id: 'org.haerth.synca.unlimited.monthly',
+                environment: 'Sandbox',
+                type: 'Auto-Renewable Subscription',
+                app_account_token: null,
+                purchase_date: now,
+                original_purchase_date: now,
+                expires_at: null,
+                revocation_date: null,
+                is_upgraded: 0,
+                signed_transaction_info: 'signed',
+                created_at: now,
+                updated_at: now,
+            }).execute();
+
+            const res = await request(app)
+                .delete('/me/account')
+                .set('Authorization', authHeader);
+
+            expect(res.status).toBe(200);
+            expect(res.body.ok).toBe(true);
+
+            const user = await db.selectFrom('users').select('id').where('id', '=', userId).executeTakeFirst();
+            const messages = await db.selectFrom('messages').select('id').where('user_id', '=', userId).execute();
+            const categories = await db.selectFrom('message_categories').select('id').where('user_id', '=', userId).execute();
+            const feedbacks = await db.selectFrom('feedbacks').select('id').where('user_id', '=', userId).execute();
+            const sessions = await db.selectFrom('sessions').select('token').where('token', '=', token).execute();
+            const pushTokens = await db.selectFrom('device_push_tokens').select('id').where('user_id', '=', userId).execute();
+            const transactions = await db.selectFrom('iap_transactions').select('transaction_id').where('user_id', '=', userId).execute();
+
+            expect(user).toBeUndefined();
+            expect(messages).toHaveLength(0);
+            expect(categories).toHaveLength(0);
+            expect(feedbacks).toHaveLength(0);
+            expect(sessions).toHaveLength(0);
+            expect(pushTokens).toHaveLength(0);
+            expect(transactions).toHaveLength(0);
+            expect(fs.existsSync(path.join(uploadsDir, imageFileName))).toBe(false);
+            expect(fs.existsSync(path.join(filesDir, docFileName))).toBe(false);
+            expect(fs.existsSync(path.join(feedbackUploadsDir, feedbackFileName))).toBe(false);
         });
     });
 

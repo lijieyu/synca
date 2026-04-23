@@ -92,6 +92,15 @@ final class APIClient: ObservableObject {
         ])
     }
 
+    func deleteAccount() async throws {
+        var request = URLRequest(url: URL(string: "\(baseURL)/me/account")!)
+        request.httpMethod = "DELETE"
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let _: OkResponse = try await execute(request)
+    }
+
     // MARK: - Messages
 
     func listMessages(since: String? = nil, limit: Int? = nil) async throws -> [SyncaMessage] {

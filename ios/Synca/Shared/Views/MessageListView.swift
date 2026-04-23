@@ -20,8 +20,12 @@ struct MessageListView: View {
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
     @State private var showAboutInfo = false
+    @State private var showAccountInfo = false
     @State private var showFeedbackComposer = false
     @State private var showSessionExpired = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var showDeleteAccountSuccess = false
+    @State private var deleteAccountErrorMessage: String?
     @State private var inputHeight: CGFloat = 40
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
     @State private var shouldScrollToBottomAfterSend = false
@@ -59,6 +63,45 @@ struct MessageListView: View {
                 }
             } message: {
                 Text("message_list.logout_confirm_message")
+            }
+            .alert("account.delete_confirm_title", isPresented: $showDeleteAccountConfirm) {
+                Button("common.cancel", role: .cancel) {}
+                Button("account.delete_action", role: .destructive) {
+                    Task { await deleteAccount() }
+                }
+            } message: {
+                Text("account.delete_confirm_message")
+            }
+            .alert("account.delete_success_title", isPresented: $showDeleteAccountSuccess) {
+                Button("common.ok") {
+                    syncManager.reset()
+                    AuthService.shared.signOut()
+                }
+            } message: {
+                Text("account.delete_success_message")
+            }
+            .alert("account.delete_failed_title", isPresented: Binding(
+                get: { deleteAccountErrorMessage != nil },
+                set: { if !$0 { deleteAccountErrorMessage = nil } }
+            )) {
+                Button("common.ok", role: .cancel) {
+                    deleteAccountErrorMessage = nil
+                }
+            } message: {
+                Text(deleteAccountErrorMessage ?? String(localized: "account.delete_failed_message", bundle: .main))
+            }
+            .sheet(isPresented: $showAccountInfo) {
+                AccountSheet(
+                    accountEmail: api.currentUserEmail,
+                    onRequestDeleteAccount: {
+                        showAccountInfo = false
+                        showDeleteAccountConfirm = true
+                    },
+                    onRequestSignOut: {
+                        showAccountInfo = false
+                        showLogoutConfirm = true
+                    }
+                )
             }
             .sheet(isPresented: $showAboutInfo) {
                 AboutSyncaSheet()
@@ -658,6 +701,12 @@ struct MessageListView: View {
     private var settingsMenu: some View {
         Menu {
             Button {
+                self.showAccountInfo = true
+            } label: {
+                Label("account.section_title", systemImage: "person.crop.circle")
+            }
+
+            Button {
                 showCategoryManager = true
             } label: {
                 Label("message_list.manage_categories", systemImage: "tag")
@@ -673,12 +722,6 @@ struct MessageListView: View {
                 self.showAboutInfo = true
             } label: {
                 Label("message_list.about", systemImage: "info.circle")
-            }
-
-            Button(role: .destructive) {
-                self.showLogoutConfirm = true
-            } label: {
-                Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -855,6 +898,18 @@ struct MessageListView: View {
             if result != .sent {
                 inputText = text
             }
+        }
+    }
+
+    @MainActor
+    private func deleteAccount() async {
+        do {
+            try await api.deleteAccount()
+            showDeleteAccountSuccess = true
+        } catch {
+            let message = (error as? LocalizedError)?.errorDescription
+                ?? String(localized: "account.delete_failed_message", bundle: .main)
+            deleteAccountErrorMessage = message
         }
     }
 
@@ -1573,6 +1628,148 @@ private struct AboutSyncaSheet: View {
         #if os(macOS)
         .frame(minWidth: 460, idealWidth: 460, minHeight: 360, idealHeight: 380)
         #endif
+    }
+}
+
+private struct AccountSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let accountEmail: String?
+    let onRequestDeleteAccount: () -> Void
+    let onRequestSignOut: () -> Void
+
+    private var normalizedAccountEmail: String? {
+        let trimmed = accountEmail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private var isPrivateRelayEmail: Bool {
+        guard let normalizedAccountEmail else { return false }
+        return normalizedAccountEmail.localizedCaseInsensitiveContains("privaterelay.appleid.com")
+    }
+
+    private var resolvedAccountEmail: String {
+        normalizedAccountEmail
+            ?? String(localized: "account.email_unavailable", bundle: .main)
+    }
+
+    private func runAfterDismiss(_ action: @escaping () -> Void) {
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            action()
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .top, spacing: 14) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 30))
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 36, height: 36)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("account.provider.apple", bundle: .main)
+                                    .font(.subheadline.weight(.semibold))
+
+                                if isPrivateRelayEmail {
+                                    Label {
+                                        Text("account.email_hidden_title", bundle: .main)
+                                    } icon: {
+                                        Image(systemName: "eye.slash.fill")
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+
+                                    Text("account.email_hidden_message", bundle: .main)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                } else {
+                                    Text(resolvedAccountEmail)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .textSelection(.enabled)
+                                        .multilineTextAlignment(.leading)
+                                }
+                            }
+
+                            Spacer(minLength: 0)
+                        }
+
+                        Divider()
+
+                        Button {
+                            runAfterDismiss(onRequestSignOut)
+                        } label: {
+                            accountActionRow(
+                                title: String(localized: "message_list.sign_out", bundle: .main),
+                                systemImage: "rectangle.portrait.and.arrow.right",
+                                tint: .primary
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(role: .destructive) {
+                            runAfterDismiss(onRequestDeleteAccount)
+                        } label: {
+                            accountActionRow(
+                                title: String(localized: "account.delete_action", bundle: .main),
+                                systemImage: "person.crop.circle.badge.xmark",
+                                tint: .red
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+            .navigationTitle(Text("account.section_title"))
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("message_list.got_it") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 460, idealWidth: 460, minHeight: 280, idealHeight: 320)
+        #endif
+    }
+
+    @ViewBuilder
+    private func accountActionRow(title: String, systemImage: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 24)
+
+            Text(title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(tint)
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
     }
 }
 

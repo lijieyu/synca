@@ -13,7 +13,7 @@ import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
     canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
-    updateMessageCategoryAssignment,
+    updateMessageCategoryAssignment, deleteAccount,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -283,6 +283,21 @@ app.post('/auth/apple', async (req, res) => {
         const message = err instanceof Error ? err.message : 'auth_failed';
         res.status(401).json({ error: message });
     }
+});
+
+app.delete('/me/account', auth, async (req, res) => {
+    const deleted = await deleteAccount({
+        userId: getUserId(req),
+        uploadsDir,
+        filesDir,
+        feedbackUploadsDir,
+    });
+
+    if (!deleted) {
+        return res.status(404).json({ error: 'user_not_found' });
+    }
+
+    res.json({ ok: true });
 });
 
 // List messages (with optional since filter for sync)

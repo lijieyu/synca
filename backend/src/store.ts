@@ -1,6 +1,8 @@
 import { db } from './db.js';
 import { sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
 import { SyncaUser, SyncaMessage, SyncaLifetimeUpgradeOfferKind, SyncaMessageCategory, SyncaMessageCategoryColor } from './types.js';
 import { UsersTable, MessagesTable, IapTransactionsTable, LifetimeUpgradeOfferCodesTable, MessageCategoriesTable } from './db_types.js';
 
@@ -347,6 +349,100 @@ export async function createFeedback(input: {
         created_at: input.now,
         updated_at: input.now,
     }).execute();
+}
+
+export async function deleteAccount(input: {
+    userId: string;
+    uploadsDir: string;
+    filesDir: string;
+    feedbackUploadsDir: string;
+}): Promise<boolean> {
+    const messageRows = await db.selectFrom('messages')
+        .select(['image_path', 'file_path'])
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    const feedbackRows = await db.selectFrom('feedbacks')
+        .select(['image_paths'])
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    const storedImagePaths = messageRows
+        .map((row) => row.image_path)
+        .filter((value): value is string => Boolean(value));
+    const storedFilePaths = messageRows
+        .map((row) => row.file_path)
+        .filter((value): value is string => Boolean(value));
+    const feedbackImagePaths = feedbackRows.flatMap((row) => {
+        if (!row.image_paths) return [];
+        try {
+            const parsed = JSON.parse(row.image_paths);
+            return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string' && value.length > 0) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const user = await getUser(input.userId);
+    if (!user) {
+        return false;
+    }
+
+    await db.transaction().execute(async (trx) => {
+        await trx.deleteFrom('feedbacks')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('iap_transactions')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('device_push_tokens')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('lifetime_upgrade_offer_codes')
+            .where('assigned_user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('message_usage_events')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('messages')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('message_categories')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('sessions')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('users')
+            .where('id', '=', input.userId)
+            .execute();
+    });
+
+    const fileTargets = [
+        ...storedImagePaths.map((value) => path.resolve(input.uploadsDir, value)),
+        ...storedFilePaths.map((value) => path.resolve(input.filesDir, value)),
+        ...feedbackImagePaths.map((value) => path.resolve(input.feedbackUploadsDir, value)),
+    ];
+
+    await Promise.all(fileTargets.map(async (target) => {
+        try {
+            await fs.unlink(target);
+        } catch (error: any) {
+            if (error?.code !== 'ENOENT') {
+                console.error(`[account/delete] Failed to remove file ${target}:`, error);
+            }
+        }
+    }));
+
+    return true;
 }
 
 // ── Message Category DAO ──
@@ -953,6 +1049,7 @@ export async function resetDb() {
     await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
     await db.deleteFrom('message_usage_events').execute();
     await db.deleteFrom('messages').execute();
+    await db.deleteFrom('message_categories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
 }
