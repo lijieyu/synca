@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api, DailyLimitError } from '../api/client';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
 
 interface Props {
   onSent: () => void;
+  categoryId?: string | null;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -17,15 +18,18 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
+
+  const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip';
   useEffect(() => {
     // Focus when not sending (initial mount and after message sent)
     if (!isSending) {
@@ -46,7 +50,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     
     setIsSending(true);
     try {
-      await api.sendTextMessage(trimmed);
+      await api.sendTextMessage(trimmed, categoryId);
       setText('');
       // Reset textarea height
       if (textareaRef.current) {
@@ -69,7 +73,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     if (isSending) return;
     setIsSending(true);
     try {
-      await api.sendImageMessage(file);
+      await api.sendImageMessage(file, categoryId);
       onSent();
     } catch (err) {
       console.error(err);
@@ -81,8 +85,29 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       }
     }
     setIsSending(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const sendFile = async (file: File) => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      await api.sendFileMessage(file, categoryId);
+      onSent();
+    } catch (err) {
+      console.error(err);
+      if (err instanceof DailyLimitError) {
+        setShowLimitModal(true);
+      } else {
+        setToastMsg(t('sync.error_context.send_file', 'File send failed'));
+        setShowToast(true);
+      }
+    }
+    setIsSending(false);
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
     }
   };
 
@@ -90,6 +115,13 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     const file = e.target.files?.[0];
     if (file) {
       await sendImage(file);
+    }
+  };
+
+  const handleDocumentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await sendFile(file);
     }
   };
 
@@ -101,9 +133,16 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
         if (file) {
           e.preventDefault();
           await sendImage(file);
-          break; // Send first image found
+          return;
         }
       }
+    }
+
+    const files = Array.from(e.clipboardData.files);
+    const supportedFile = files.find((file) => !file.type.startsWith('image/'));
+    if (supportedFile) {
+      e.preventDefault();
+      await sendFile(supportedFile);
     }
   };
 
@@ -150,7 +189,18 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
             type="file" 
             accept="image/*" 
             onChange={handleFileChange} 
-            ref={fileInputRef} 
+            ref={imageInputRef} 
+            disabled={isSending}
+          />
+        </div>
+
+        <div className="photo-upload file-upload">
+          <Paperclip size={22} />
+          <input
+            type="file"
+            accept={supportedDocumentExtensions}
+            onChange={handleDocumentChange}
+            ref={documentInputRef}
             disabled={isSending}
           />
         </div>

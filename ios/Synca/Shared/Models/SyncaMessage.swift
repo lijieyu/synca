@@ -1,5 +1,11 @@
 import Foundation
 
+struct PendingFileUpload: Equatable {
+    let data: Data
+    let fileName: String
+    let mimeType: String?
+}
+
 struct SyncaMessage: Codable, Identifiable, Equatable {
     let id: String
     let userId: String
@@ -7,6 +13,15 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
     var textContent: String?
     var imagePath: String?
     var imageUrl: String?
+    var filePath: String?
+    var fileUrl: String?
+    var fileName: String?
+    var fileSize: Int?
+    var fileMimeType: String?
+    var categoryId: String?
+    var categoryName: String?
+    var categoryColor: MessageCategoryColor?
+    var categoryIsDefault: Bool?
     var isCleared: Bool
     var isDeleted: Bool
     var sourceDevice: String?
@@ -16,6 +31,7 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
     enum MessageType: String, Codable {
         case text
         case image
+        case file
     }
 
     var displayDate: String {
@@ -64,6 +80,29 @@ struct SyncaMessage: Codable, Identifiable, Equatable {
     }
 }
 
+enum MessageCategoryColor: String, Codable, CaseIterable, Identifiable {
+    case sky
+    case mint
+    case amber
+    case coral
+    case violet
+    case slate
+    case rose
+    case ocean
+
+    var id: String { rawValue }
+}
+
+struct SyncaMessageCategory: Codable, Identifiable, Equatable {
+    let id: String
+    let userId: String
+    var name: String
+    var color: MessageCategoryColor
+    var isDefault: Bool
+    let createdAt: String
+    var updatedAt: String
+}
+
 struct SyncaUser: Codable {
     let id: String
     let appleUserId: String
@@ -81,6 +120,10 @@ struct AuthResponse: Codable {
 
 struct MessagesResponse: Codable {
     let messages: [SyncaMessage]
+}
+
+struct MessageCategoriesResponse: Codable {
+    let categories: [SyncaMessageCategory]
 }
 
 struct UnclearedCountResponse: Codable {

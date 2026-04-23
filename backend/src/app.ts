@@ -12,7 +12,8 @@ import { renderLegalPage } from './legalPages.js';
 import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
-    canUserAccessImage,
+    canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
+    updateMessageCategoryAssignment,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -36,12 +37,36 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
+const filesDir = path.resolve(process.cwd(), 'files');
+if (!fs.existsSync(filesDir)) {
+    fs.mkdirSync(filesDir, { recursive: true });
+}
+
 const feedbackUploadsDir = path.resolve(process.cwd(), 'feedback_uploads');
 if (!fs.existsSync(feedbackUploadsDir)) {
     fs.mkdirSync(feedbackUploadsDir, { recursive: true });
 }
 
 const allowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
+const supportedDocumentMimeTypeByExtension: Record<string, string> = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    csv: 'text/csv',
+    zip: 'application/zip',
+};
+const supportedDocumentExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
+const supportedDocumentMimeTypes = new Set([
+    ...Object.values(supportedDocumentMimeTypeByExtension),
+    'application/x-zip-compressed',
+]);
+const supportedCategoryColors = new Set(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
 
 // Multer for image uploads
 const messageStorage = multer.diskStorage({
@@ -62,6 +87,15 @@ const feedbackStorage = multer.diskStorage({
         cb(null, `feedback-${uuidv4()}${ext}`);
     },
 });
+const fileStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+        cb(null, filesDir);
+    },
+    filename: (_req, file, cb) => {
+        const ext = supportedFileExtension(file);
+        cb(null, `file-${uuidv4()}${ext ? `.${ext}` : ''}`);
+    },
+});
 const upload = multer({
     storage: messageStorage,
     limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
@@ -76,6 +110,13 @@ const feedbackUpload = multer({
         cb(null, allowedImageMimeTypes.includes(file.mimetype));
     },
 });
+const fileUpload = multer({
+    storage: fileStorage,
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        cb(null, isSupportedDocument(file));
+    },
+});
 
 function imageExtensionForMimeType(mimeType: string): string {
     switch (mimeType) {
@@ -86,6 +127,30 @@ function imageExtensionForMimeType(mimeType: string): string {
         case 'image/gif': return '.gif';
         default: return '.png';
     }
+}
+
+function supportedFileExtension(file: Express.Multer.File | Pick<Express.Multer.File, 'mimetype' | 'originalname'>): string {
+    const originalExt = path.extname(file.originalname ?? '').replace('.', '').toLowerCase();
+    if (supportedDocumentExtensions.has(originalExt)) {
+        return originalExt;
+    }
+
+    for (const [ext, mimeType] of Object.entries(supportedDocumentMimeTypeByExtension)) {
+        if (file.mimetype === mimeType) {
+            return ext;
+        }
+    }
+
+    if (file.mimetype === 'application/x-zip-compressed') {
+        return 'zip';
+    }
+
+    return 'bin';
+}
+
+function isSupportedDocument(file: Pick<Express.Multer.File, 'mimetype' | 'originalname'>): boolean {
+    const ext = supportedFileExtension(file);
+    return supportedDocumentExtensions.has(ext) || supportedDocumentMimeTypes.has(file.mimetype ?? '');
 }
 
 function cleanupUploadedFiles(files: Express.Multer.File[] | undefined) {
@@ -143,18 +208,44 @@ app.get('/api/media/:filename', auth, async (req, res) => {
     const userId = getUserId(req);
     const user = await getUser(userId);
     
-    const authorized = await canUserAccessImage(userId, filename, user?.isAdmin ?? false);
+    const authorized = await canUserAccessMedia(userId, filename, user?.isAdmin ?? false);
     if (!authorized) {
         return res.status(403).json({ error: 'forbidden' });
     }
 
-    const filePath = path.join(uploadsDir, filename);
-    if (!fs.existsSync(filePath)) {
+    const candidates = [
+        path.join(uploadsDir, filename),
+        path.join(filesDir, filename),
+    ];
+    const filePath = candidates.find((candidate) => fs.existsSync(candidate));
+    if (!filePath) {
         return res.status(404).json({ error: 'not_found' });
     }
 
+    const contentType = lookupMimeType(filePath);
+    if (contentType) {
+        res.type(contentType);
+    }
     res.sendFile(filePath);
 });
+
+function lookupMimeType(filePath: string): string | null {
+    const ext = path.extname(filePath).replace('.', '').toLowerCase();
+    if (!ext) return null;
+    if (supportedDocumentMimeTypeByExtension[ext]) {
+        return supportedDocumentMimeTypeByExtension[ext];
+    }
+    switch (ext) {
+        case 'png': return 'image/png';
+        case 'jpg':
+        case 'jpeg': return 'image/jpeg';
+        case 'gif': return 'image/gif';
+        case 'webp': return 'image/webp';
+        case 'heic': return 'image/heic';
+        case 'heif': return 'image/heif';
+        default: return null;
+    }
+}
 
 // Public legal and support pages
 app.get('/:locale(en|zh-hans)/:pageKind(privacy-policy|terms-of-use|support)', (req, res) => {
@@ -209,6 +300,78 @@ app.get('/messages', auth, async (req, res) => {
     res.json({ messages });
 });
 
+app.get('/message-categories', auth, async (req, res) => {
+    const categories = await listMessageCategories(getUserId(req));
+    res.json({ categories });
+});
+
+app.post('/message-categories', auth, async (req, res) => {
+    const parsed = z.object({
+        name: z.string().trim().min(1).max(40),
+        color: z.string().trim().min(1).max(20),
+    }).safeParse(req.body);
+
+    if (!parsed.success || !supportedCategoryColors.has(parsed.data.color)) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    try {
+        const category = await createMessageCategory({
+            userId: getUserId(req),
+            name: parsed.data.name,
+            color: parsed.data.color as any,
+            now: new Date().toISOString(),
+        });
+        res.status(201).json(category);
+    } catch (error) {
+        console.error('[message-categories/create] error:', error);
+        res.status(409).json({ error: 'category_name_conflict' });
+    }
+});
+
+app.patch('/message-categories/:id', auth, async (req, res) => {
+    const parsed = z.object({
+        name: z.string().trim().min(1).max(40).optional(),
+        color: z.string().trim().min(1).max(20).optional(),
+    }).safeParse(req.body);
+
+    if (!parsed.success || (parsed.data.color && !supportedCategoryColors.has(parsed.data.color))) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    try {
+        const category = await updateMessageCategory({
+            id: req.params.id,
+            userId: getUserId(req),
+            name: parsed.data.name,
+            color: parsed.data.color as any,
+            now: new Date().toISOString(),
+        });
+        if (!category) {
+            return res.status(404).json({ error: 'category_not_found_or_not_editable' });
+        }
+        res.json(category);
+    } catch (error) {
+        console.error('[message-categories/update] error:', error);
+        res.status(409).json({ error: 'category_name_conflict' });
+    }
+});
+
+app.delete('/message-categories/:id', auth, async (req, res) => {
+    const deleted = await deleteMessageCategory({
+        id: req.params.id,
+        userId: getUserId(req),
+        now: new Date().toISOString(),
+    });
+
+    if (!deleted) {
+        return res.status(404).json({ error: 'category_not_found_or_not_editable' });
+    }
+
+    notifyOtherDevices(getUserId(req), req.header('Authorization')).catch(() => {});
+    res.json({ ok: true });
+});
+
 // Send text message
 app.post('/messages', auth, async (req, res) => {
     if (typeof req.body?.textContent === 'string' && req.body.textContent.length > 2000) {
@@ -218,6 +381,7 @@ app.post('/messages', auth, async (req, res) => {
     const parsed = z.object({
         textContent: z.string().min(1).max(2000),
         sourceDevice: z.string().max(50).optional(),
+        categoryId: z.string().uuid().optional().nullable(),
     }).safeParse(req.body);
 
     if (!parsed.success) {
@@ -242,6 +406,7 @@ app.post('/messages', auth, async (req, res) => {
         userId,
         type: 'text',
         textContent: parsed.data.textContent,
+        categoryId: parsed.data.categoryId,
         sourceDevice: parsed.data.sourceDevice,
         now,
     });
@@ -267,6 +432,7 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
     const id = uuidv4();
     const now = new Date().toISOString();
     const sourceDevice = req.body?.sourceDevice ?? null;
+    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
 
     try {
         await assertCanCreateMessage(userId);
@@ -285,6 +451,7 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
         userId,
         type: 'image',
         imagePath: file.filename,
+        categoryId,
         sourceDevice,
         now,
     });
@@ -292,6 +459,59 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
     const message = await getMessage(id, getBaseUrl(req));
 
     // Send silent push to other devices (fire-and-forget)
+    notifyOtherDevices(userId, req.header('Authorization')).catch((err) => {
+        console.error('[push] notify failed:', err);
+    });
+
+    res.status(201).json(message);
+});
+
+app.post('/messages/file', auth, fileUpload.single('file'), async (req, res) => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) {
+        return res.status(400).json({ error: 'no_file_provided' });
+    }
+
+    if (!isSupportedDocument(file)) {
+        if (file.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+        }
+        return res.status(400).json({ error: 'unsupported_file_type' });
+    }
+
+    const userId = getUserId(req);
+    const id = uuidv4();
+    const now = new Date().toISOString();
+    const sourceDevice = req.body?.sourceDevice ?? null;
+    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
+
+    try {
+        await assertCanCreateMessage(userId);
+    } catch (error) {
+        if (error instanceof DailyLimitError) {
+            if (file.path && fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            return res.status(403).json({ error: 'daily_limit_reached', accessStatus: error.accessStatus });
+        }
+        throw error;
+    }
+
+    await createMessage({
+        id,
+        userId,
+        type: 'file',
+        filePath: file.filename,
+        fileName: req.body?.fileName?.trim() || file.originalname,
+        fileSize: file.size,
+        fileMimeType: file.mimetype,
+        categoryId,
+        sourceDevice,
+        now,
+    });
+
+    const message = await getMessage(id, getBaseUrl(req));
+
     notifyOtherDevices(userId, req.header('Authorization')).catch((err) => {
         console.error('[push] notify failed:', err);
     });
@@ -346,10 +566,35 @@ app.patch('/messages/:id/clear', auth, async (req, res) => {
     res.json({ ok: true });
 });
 
+app.patch('/messages/:id/category', auth, async (req, res) => {
+    const parsed = z.object({
+        categoryId: z.string().uuid().nullable().optional(),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const message = await updateMessageCategoryAssignment({
+        id: req.params.id,
+        userId: getUserId(req),
+        categoryId: parsed.data.categoryId,
+        now: new Date().toISOString(),
+        baseUrl: getBaseUrl(req),
+    });
+
+    if (!message) {
+        return res.status(404).json({ error: 'message_not_found' });
+    }
+
+    notifyOtherDevices(getUserId(req), req.header('Authorization')).catch(() => {});
+    res.json(message);
+});
+
 // Delete single message (True Delete)
 app.delete('/messages/:id', auth, async (req, res) => {
     const userId = getUserId(req);
-    const deleted = await deleteMessage(req.params.id, userId, uploadsDir);
+    const deleted = await deleteMessage(req.params.id, userId, uploadsDir, filesDir);
     if (!deleted) {
         return res.status(404).json({ error: 'message_not_found' });
     }
@@ -363,7 +608,8 @@ app.delete('/messages/:id', auth, async (req, res) => {
 // Clear all messages
 app.post('/messages/clear-all', auth, async (req, res) => {
     const userId = getUserId(req);
-    const count = await clearAllMessages(userId);
+    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
+    const count = await clearAllMessages(userId, categoryId);
 
     // Notify other devices
     notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
@@ -374,7 +620,8 @@ app.post('/messages/clear-all', auth, async (req, res) => {
 // Delete completed messages
 app.post('/messages/delete-completed', auth, async (req, res) => {
     const userId = getUserId(req);
-    const count = await deleteCompletedMessages(userId, uploadsDir);
+    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
+    const count = await deleteCompletedMessages(userId, uploadsDir, filesDir, categoryId);
 
     // Notify other devices
     notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});

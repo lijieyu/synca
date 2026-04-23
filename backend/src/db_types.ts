@@ -19,12 +19,27 @@ export interface UsersTable {
 export interface MessagesTable {
     id: string;
     user_id: string;
-    type: string; // 'text' | 'image'
+    type: string; // 'text' | 'image' | 'file'
     text_content: string | null;
     image_path: string | null;
+    file_path: string | null;
+    file_name: string | null;
+    file_size: number | null;
+    file_mime_type: string | null;
+    category_id: string | null;
     is_cleared: number; // 0 | 1
     is_deleted: number; // 0 | 1
     source_device: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface MessageCategoriesTable {
+    id: string;
+    user_id: string;
+    name: string;
+    color: string;
+    is_default: number; // 0 | 1
     created_at: string;
     updated_at: string;
 }
@@ -103,6 +118,7 @@ export interface LifetimeUpgradeOfferCodesTable {
 export interface Database {
     users: UsersTable;
     messages: MessagesTable;
+    message_categories: MessageCategoriesTable;
     message_usage_events: MessageUsageEventsTable;
     sessions: SessionsTable;
     device_push_tokens: DevicePushTokensTable;

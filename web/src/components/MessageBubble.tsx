@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { api, type SyncaMessage } from '../api/client';
-import { Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { api, type MessageCategory, type SyncaMessage } from '../api/client';
+import { Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { AuthImage } from './AuthImage';
 
 interface Props {
   message: SyncaMessage;
+  categories: MessageCategory[];
   onUpdate: () => void;
 }
 
@@ -24,10 +25,24 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
   </svg>
 );
 
-export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
+export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { t } = useTranslation();
+  const fileExtension = useMemo(() => {
+    if (!message.fileName) return '';
+    const ext = message.fileName.split('.').pop();
+    return ext ? ext.toUpperCase() : '';
+  }, [message.fileName]);
+
+  const fileIcon = useMemo(() => {
+    const ext = fileExtension.toLowerCase();
+    if (ext === 'pdf' || ext === 'txt' || ext === 'md') return <FileText size={22} />;
+    if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') return <FileSpreadsheet size={22} />;
+    if (ext === 'ppt' || ext === 'pptx') return <Presentation size={22} />;
+    if (ext === 'zip') return <FileArchive size={22} />;
+    return <FileType2 size={22} />;
+  }, [fileExtension]);
 
   const linkify = (text: string): React.ReactNode[] => {
     const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：])/g;
@@ -79,6 +94,37 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
     }
   };
 
+  const handleFileDownload = async () => {
+    if (!message.fileUrl || isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await api.downloadProtectedFile(message.fileUrl, message.fileName);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: string) => {
+    if (isProcessing || categoryId === message.categoryId) return;
+    setIsProcessing(true);
+    try {
+      await api.updateMessageCategoryAssignment(message.id, categoryId);
+      onUpdate();
+    } catch (e) {
+      console.error(e);
+      setIsProcessing(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes || bytes <= 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   return (
     <>
       <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
@@ -94,14 +140,50 @@ export const MessageBubble: React.FC<Props> = ({ message, onUpdate }) => {
           />
         )}
 
+        {message.type === 'file' && (
+          <button className="file-card" onClick={handleFileDownload} disabled={isProcessing}>
+            <div className="file-card-icon">{fileIcon}</div>
+            <div className="file-card-meta">
+              <div className="file-card-name">{message.fileName ?? 'Attachment'}</div>
+              <div className="file-card-detail">
+                {fileExtension && <span>{fileExtension}</span>}
+                {message.fileSize != null && <span>{formatFileSize(message.fileSize)}</span>}
+              </div>
+            </div>
+          </button>
+        )}
+
         <div className="message-header">
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span>{formatTime(message.createdAt)}</span>
             <span>·</span>
             <span>{message.sourceDevice}</span>
+            {message.categoryName && (
+              <>
+                <span>·</span>
+                <select
+                  className={`message-category-pill color-${message.categoryColor ?? 'slate'}`}
+                  value={message.categoryId ?? ''}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  disabled={isProcessing}
+                  aria-label="Message category"
+                >
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
           
           <div className="actions">
+            {message.type === 'file' && (
+              <button className="action-btn" onClick={handleFileDownload} disabled={isProcessing} title={t('common.save', 'Save')}>
+                <Download size={16} />
+              </button>
+            )}
             <button className="action-btn" onClick={() => setShowDeleteModal(true)} disabled={isProcessing} title={t('common.delete', 'Delete')}>
               <Trash2 size={16} />
             </button>

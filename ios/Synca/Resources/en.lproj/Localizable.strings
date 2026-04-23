@@ -14,6 +14,8 @@
 "common.delete" = "Delete";
 "common.copy" = "Copy";
 "common.save" = "Save";
+"common.done" = "Done";
+"common.all" = "All";
 "message.date.yesterday" = "Yesterday %@";
 
 /* Message List */
@@ -24,6 +26,9 @@
 "message_list.loading" = "Loading...";
 "message_list.clear_all_confirm_title" = "Confirm Delete";
 "message_list.clear_all_confirm_message" = "This will delete all completed to-dos";
+"message_list.clear_completed_all_categories" = "Delete completed items in all categories.";
+"message_list.clear_completed_category_format" = "Delete completed items in %@.";
+"message_list.clear_completed_all_messages" = "Delete completed items in all messages.";
 "message_list.logout_confirm_title" = "Confirm Sign Out";
 "message_list.logout_confirm_message" = "You will need to sign in again";
 "message_list.logout" = "Sign Out";
@@ -39,9 +44,12 @@
 "message_list.about_message" = "\nSynca · Sync Your Aha Moment\n\nVersion %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "Capture your thoughts...";
 "message_list.sending_placeholder" = "Sending...";
+"message_list.manage_categories" = "Categories";
+"message_list.default_send_category" = "Send from All to";
 "sync.error_context.sync" = "Sync";
 "sync.error_context.send" = "Send";
 "sync.error_context.send_image" = "Image Send";
+"sync.error_context.send_file" = "File Send";
 "sync.error_context.clear" = "Clear";
 "sync.error_context.delete" = "Delete";
 "sync.error_format" = "%@ failed: %@ (Code: %d, Domain: %@)";
@@ -163,6 +171,24 @@
 "message_bubble.save_failed_message" = "Unable to save image to the specified directory: %@\n\nThis is most likely due to insufficient permissions. You can try \"Save As\" to re-authorize.";
 "message_bubble.choose_save_directory" = "Choose Save Directory";
 "message_bubble.save_to_directory" = "Save to This Directory";
+
+/* Message Categories */
+"message_category.section_title" = "Categories";
+"message_category.new_section" = "New Category";
+"message_category.name_placeholder" = "Category name";
+"message_category.color_label" = "Color";
+"message_category.add_action" = "Add Category";
+"message_category.save_name" = "Save Name";
+"message_category.delete_action" = "Delete Category";
+"message_category.default_badge" = "Default";
+"message_category.color.sky" = "Sky";
+"message_category.color.mint" = "Mint";
+"message_category.color.amber" = "Amber";
+"message_category.color.coral" = "Coral";
+"message_category.color.violet" = "Violet";
+"message_category.color.slate" = "Slate";
+"message_category.color.rose" = "Rose";
+"message_category.color.ocean" = "Ocean";
 
 /* Image Preview */
 "image_preview.download_to_local" = "Download";

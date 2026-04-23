@@ -51,14 +51,51 @@ export async function runMigrations() {
         console.log('[migrate] Ensured jieyu.li@icloud.com is admin.');
     } catch (_e) {}
 
+    await sql`
+        CREATE TABLE IF NOT EXISTS message_categories (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            color TEXT NOT NULL DEFAULT 'slate',
+            is_default INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    `.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_message_categories_user_id ON message_categories(user_id)`.execute(db);
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_message_categories_user_name ON message_categories(user_id, name)`.execute(db);
+
+    await sql`
+        INSERT INTO message_categories (id, user_id, name, color, is_default, created_at, updated_at)
+        SELECT lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-' ||
+               substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
+               users.id,
+               'Default',
+               'slate',
+               1,
+               users.created_at,
+               users.updated_at
+        FROM users
+        WHERE NOT EXISTS (
+            SELECT 1 FROM message_categories
+            WHERE message_categories.user_id = users.id
+              AND message_categories.is_default = 1
+        )
+    `.execute(db);
+
     // Create messages table
     await sql`
         CREATE TABLE IF NOT EXISTS messages (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL REFERENCES users(id),
-            type TEXT NOT NULL CHECK(type IN ('text', 'image')),
+            type TEXT NOT NULL CHECK(type IN ('text', 'image', 'file')),
             text_content TEXT,
             image_path TEXT,
+            file_path TEXT,
+            file_name TEXT,
+            file_size INTEGER,
+            file_mime_type TEXT,
+            category_id TEXT REFERENCES message_categories(id),
             is_cleared INTEGER NOT NULL DEFAULT 0,
             source_device TEXT,
             created_at TEXT NOT NULL,
@@ -66,18 +103,81 @@ export async function runMigrations() {
         )
     `.execute(db);
 
-    await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`.execute(db);
-    await sql`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`.execute(db);
-    await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at)`.execute(db);
-    
-    // Add is_deleted column if missing
+    let shouldRebuildMessagesTable = false;
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN file_path TEXT`.execute(db);
+        shouldRebuildMessagesTable = true;
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN file_name TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN file_size INTEGER`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN file_mime_type TEXT`.execute(db);
+    } catch (_e) {}
+    try {
+        await sql`ALTER TABLE messages ADD COLUMN category_id TEXT REFERENCES message_categories(id)`.execute(db);
+    } catch (_e) {}
     try {
         await sql`ALTER TABLE messages ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`.execute(db);
         console.log('[migrate] Added is_deleted column to messages table.');
-    } catch (e) {
-        // Column may already exist
+    } catch (_e) {}
+
+    if (shouldRebuildMessagesTable) {
+        await sql`PRAGMA foreign_keys = OFF`.execute(db);
+        await sql`
+            CREATE TABLE IF NOT EXISTS messages_new (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id),
+                type TEXT NOT NULL CHECK(type IN ('text', 'image', 'file')),
+                text_content TEXT,
+                image_path TEXT,
+                file_path TEXT,
+                file_name TEXT,
+                file_size INTEGER,
+                file_mime_type TEXT,
+                category_id TEXT REFERENCES message_categories(id),
+                is_cleared INTEGER NOT NULL DEFAULT 0,
+                is_deleted INTEGER NOT NULL DEFAULT 0,
+                source_device TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        `.execute(db);
+        await sql`
+            INSERT INTO messages_new (
+                id, user_id, type, text_content, image_path, file_path, file_name, file_size, file_mime_type,
+                category_id, is_cleared, is_deleted, source_device, created_at, updated_at
+            )
+            SELECT
+                id, user_id, type, text_content, image_path, file_path, file_name, file_size, file_mime_type,
+                category_id, is_cleared, COALESCE(is_deleted, 0), source_device, created_at, updated_at
+            FROM messages
+        `.execute(db);
+        await sql`DROP TABLE messages`.execute(db);
+        await sql`ALTER TABLE messages_new RENAME TO messages`.execute(db);
+        await sql`PRAGMA foreign_keys = ON`.execute(db);
     }
 
+    await sql`
+        UPDATE messages
+        SET category_id = (
+            SELECT message_categories.id
+            FROM message_categories
+            WHERE message_categories.user_id = messages.user_id
+              AND message_categories.is_default = 1
+            LIMIT 1
+        )
+        WHERE category_id IS NULL
+    `.execute(db);
+
+    await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_messages_category_id ON messages(category_id)`.execute(db);
+    
     await sql`
         CREATE TABLE IF NOT EXISTS message_usage_events (
             message_id TEXT PRIMARY KEY,

@@ -7,8 +7,10 @@ import AppKit
 
 struct MessageBubbleView: View {
     let message: SyncaMessage
+    let categories: [SyncaMessageCategory]
     let onClear: () -> Void
     let onDelete: () -> Void
+    let onCategoryChange: ((String) -> Void)?
     let onImageTap: () -> Void
     let onImageLoaded: () -> Void
 
@@ -19,6 +21,22 @@ struct MessageBubbleView: View {
 
     private var messageText: String {
         message.textContent ?? ""
+    }
+
+    private var fileName: String {
+        message.fileName ?? "Attachment"
+    }
+
+    private var fileSizeText: String {
+        guard let fileSize = message.fileSize else { return "" }
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(fileSize))
+    }
+
+    private var fileExtensionText: String {
+        URL(fileURLWithPath: fileName).pathExtension.uppercased()
     }
 
     #if os(iOS)
@@ -59,6 +77,8 @@ struct MessageBubbleView: View {
                     textContent
                 case .image:
                     imageContent
+                case .file:
+                    fileContent
                 }
             }
 
@@ -74,6 +94,12 @@ struct MessageBubbleView: View {
                         .font(.caption2)
                 }
 
+                if let categoryName = message.categoryName, let categoryId = message.categoryId {
+                    Text("·")
+                        .font(.caption2)
+                    categoryMenu(name: categoryName, categoryId: categoryId)
+                }
+
                 Spacer()
 
                 // #6: Actions row (Always visible)
@@ -81,6 +107,8 @@ struct MessageBubbleView: View {
                     if message.type == .image {
                         downloadImageButton
                         copyImageButton
+                    } else if message.type == .file {
+                        downloadFileButton
                     }
                     if message.type == .text {
                         copyTextButton
@@ -124,6 +152,84 @@ struct MessageBubbleView: View {
 
     private var cardBackground: Color {
         Color.syncaCardBackground
+    }
+
+    @ViewBuilder
+    private func categoryMenu(name: String, categoryId: String) -> some View {
+        if let onCategoryChange, !categories.isEmpty {
+            Menu {
+                ForEach(categories) { category in
+                    Button {
+                        onCategoryChange(category.id)
+                    } label: {
+                        Label(category.name, systemImage: category.id == categoryId ? "checkmark" : "circle.fill")
+                    }
+                }
+            } label: {
+                categoryBadge(name: name, color: message.categoryColor ?? .slate)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        } else {
+            categoryBadge(name: name, color: message.categoryColor ?? .slate)
+        }
+    }
+
+    private func categoryBadge(name: String, color: MessageCategoryColor) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(categoryAccentColor(for: color))
+                .frame(width: 6, height: 6)
+
+            Text(name)
+                .font(.caption2.weight(.semibold))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(categoryBackgroundColor(for: color))
+        .clipShape(Capsule())
+    }
+
+    private func categoryBackgroundColor(for color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return Color.blue.opacity(0.16)
+        case .mint:
+            return Color.green.opacity(0.16)
+        case .amber:
+            return Color.orange.opacity(0.18)
+        case .coral:
+            return Color.red.opacity(0.16)
+        case .violet:
+            return Color.purple.opacity(0.18)
+        case .slate:
+            return Color.secondary.opacity(0.14)
+        case .rose:
+            return Color.pink.opacity(0.16)
+        case .ocean:
+            return Color.cyan.opacity(0.18)
+        }
+    }
+
+    private func categoryAccentColor(for color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return .blue
+        case .mint:
+            return .green
+        case .amber:
+            return .orange
+        case .coral:
+            return .red
+        case .violet:
+            return .purple
+        case .slate:
+            return .secondary
+        case .rose:
+            return .pink
+        case .ocean:
+            return .cyan
+        }
     }
 
     // MARK: - Subviews
@@ -198,6 +304,28 @@ struct MessageBubbleView: View {
             } label: {
                 Label("common.delete", systemImage: "trash")
             }
+        } else if message.type == .file, let urlString = message.fileUrl, let url = URL(string: urlString) {
+            Button {
+                Task { await self.openFile(from: url, suggestedFileName: fileName) }
+            } label: {
+                Label("common.save", systemImage: "square.and.arrow.down")
+            }
+
+            #if os(macOS)
+            Button {
+                Task { await self.saveFileAs(from: url, suggestedFileName: fileName) }
+            } label: {
+                Label("message_bubble.save_as", systemImage: "folder.badge.plus")
+            }
+            #endif
+
+            Divider()
+
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("common.delete", systemImage: "trash")
+            }
         }
     }
     
@@ -235,6 +363,44 @@ struct MessageBubbleView: View {
                 .id(loadID)
             }
         }
+    }
+
+    private var fileContent: some View {
+        Button {
+            guard let urlString = message.fileUrl, let url = URL(string: urlString) else { return }
+            Task { await openFile(from: url, suggestedFileName: fileName) }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: systemImageNameForFile)
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(fileName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(message.isCleared ? .secondary : .primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    HStack(spacing: 8) {
+                        if !fileExtensionText.isEmpty {
+                            Text(fileExtensionText)
+                        }
+                        if !fileSizeText.isEmpty {
+                            Text(fileSizeText)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Buttons
@@ -302,6 +468,17 @@ struct MessageBubbleView: View {
         }
     }
 
+    private var downloadFileButton: some View {
+        Button {
+            guard let urlString = message.fileUrl, let url = URL(string: urlString) else { return }
+            Task { await openFile(from: url, suggestedFileName: fileName) }
+        } label: {
+            saveIconLabel
+        }
+        .buttonStyle(.plain)
+        .disabled(saveStatus == .saving)
+    }
+
     private var saveIconLabel: some View {
         Group {
             switch saveStatus {
@@ -336,6 +513,21 @@ struct MessageBubbleView: View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 16))
             .foregroundStyle(Color.secondary.opacity(0.85))
+    }
+
+    private var systemImageNameForFile: String {
+        switch fileExtensionText.lowercased() {
+        case "pdf":
+            return "doc.richtext"
+        case "xls", "xlsx", "csv":
+            return "tablecells"
+        case "ppt", "pptx":
+            return "chart.bar.doc.horizontal"
+        case "zip":
+            return "archivebox"
+        default:
+            return "doc"
+        }
     }
 
     // MARK: - Helper Methods
@@ -428,6 +620,26 @@ struct MessageBubbleView: View {
         }
     }
 
+    private func openFile(from url: URL, suggestedFileName: String) async {
+        saveStatus = .saving
+        do {
+            let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
+            #if os(iOS)
+            presentShareSheet(for: localURL)
+            #elseif os(macOS)
+            NSWorkspace.shared.open(localURL)
+            #endif
+            withAnimation { saveStatus = .success }
+        } catch {
+            print("Open file failed: \(error)")
+            saveStatus = .error
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
+        }
+    }
+
     #if os(macOS)
     private func showInFinder(url: URL) {
         Task {
@@ -446,23 +658,23 @@ struct MessageBubbleView: View {
     }
 
     private func downloadToTemp(url: URL) async throws -> URL {
+        try await downloadToLocalFile(url: url, suggestedFileName: url.lastPathComponent)
+    }
+
+    private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
         var request = URLRequest(url: url)
         if let token = APIClient.shared.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         let (data, _) = try await URLSession.shared.data(for: request)
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFileName)
         try data.write(to: tempURL)
         return tempURL
     }
 
     private func saveImageAs(from url: URL) async {
         do {
-            var request = URLRequest(url: url)
-            if let token = APIClient.shared.token {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let localURL = try await downloadToLocalFile(url: url, suggestedFileName: url.lastPathComponent)
             let panel = NSSavePanel()
             panel.nameFieldStringValue = url.lastPathComponent
             panel.title = String(localized: "message_bubble.save_as", bundle: .main)
@@ -476,7 +688,7 @@ struct MessageBubbleView: View {
                 let parentURL = saveURL.deletingLastPathComponent()
                 SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
                 try SettingsManager.shared.withSecurityScopedAccess(to: parentURL) {
-                    try data.write(to: saveURL, options: .atomic)
+                    try FileManager.default.copyItem(at: localURL, to: saveURL)
                 }
                 NSWorkspace.shared.activateFileViewerSelecting([saveURL])
                 withAnimation { saveStatus = .success }
@@ -489,6 +701,62 @@ struct MessageBubbleView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             saveStatus = .none
         }
+    }
+
+    private func saveFileAs(from url: URL, suggestedFileName: String) async {
+        do {
+            let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = suggestedFileName
+            panel.title = String(localized: "message_bubble.save_as", bundle: .main)
+            panel.prompt = String(localized: "common.save", bundle: .main)
+            panel.canCreateDirectories = true
+            if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
+                panel.directoryURL = defaultDirectory
+            }
+
+            if panel.runModal() == .OK, let saveURL = panel.url {
+                let parentURL = saveURL.deletingLastPathComponent()
+                SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
+                try SettingsManager.shared.withSecurityScopedAccess(to: parentURL) {
+                    try? FileManager.default.removeItem(at: saveURL)
+                    try FileManager.default.copyItem(at: localURL, to: saveURL)
+                }
+                NSWorkspace.shared.activateFileViewerSelecting([saveURL])
+                withAnimation { saveStatus = .success }
+            }
+        } catch {
+            print("Save File As failed: \(error)")
+            saveStatus = .error
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            saveStatus = .none
+        }
+    }
+    #endif
+
+    #if os(iOS)
+    private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
+        var request = URLRequest(url: url)
+        if let token = APIClient.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFileName)
+        try? FileManager.default.removeItem(at: tempURL)
+        try data.write(to: tempURL)
+        return tempURL
+    }
+
+    private func presentShareSheet(for url: URL) {
+        guard
+            let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            let root = scene.windows.first(where: \.isKeyWindow)?.rootViewController
+        else { return }
+
+        let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        root.present(activity, animated: true)
     }
     #endif
 }

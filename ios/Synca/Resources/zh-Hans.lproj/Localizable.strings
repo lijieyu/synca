@@ -14,6 +14,8 @@
 "common.delete" = "删除";
 "common.copy" = "拷贝";
 "common.save" = "保存";
+"common.done" = "完成";
+"common.all" = "全部";
 "message.date.yesterday" = "昨天 %@";
 
 /* Message List */
@@ -24,6 +26,9 @@
 "message_list.loading" = "加载中...";
 "message_list.clear_all_confirm_title" = "确认删除";
 "message_list.clear_all_confirm_message" = "将删除所有已完成的待办";
+"message_list.clear_completed_all_categories" = "将删除所有分类中的已完成事项。";
+"message_list.clear_completed_category_format" = "将删除“%@”中的已完成事项。";
+"message_list.clear_completed_all_messages" = "将删除全部消息中的已完成事项。";
 "message_list.logout_confirm_title" = "确认退出";
 "message_list.logout_confirm_message" = "退出后需要重新登录";
 "message_list.logout" = "退出";
@@ -39,9 +44,12 @@
 "message_list.about_message" = "\nSynca · 灵感记录，即刻同步\n\n版本 %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "记录此刻的想法...";
 "message_list.sending_placeholder" = "正在发送...";
+"message_list.manage_categories" = "分类管理";
+"message_list.default_send_category" = "在“全部”下默认发往";
 "sync.error_context.sync" = "同步";
 "sync.error_context.send" = "发送";
 "sync.error_context.send_image" = "图片发送";
+"sync.error_context.send_file" = "文件发送";
 "sync.error_context.clear" = "清理";
 "sync.error_context.delete" = "删除";
 "sync.error_format" = "%@失败: %@ (Code: %d, Domain: %@)";
@@ -164,26 +172,23 @@
 "message_bubble.choose_save_directory" = "选择保存目录";
 "message_bubble.save_to_directory" = "保存到此目录";
 
-/* Image Preview */
-"image_preview.download_to_local" = "下载到本地";
-"image_preview.saving" = "正在保存...";
-"image_preview.save_success" = "保存成功";
-"image_preview.save_failed" = "保存失败";
-"image_preview.load_failed" = "图片加载失败";
-"image_preview.tap_to_retry" = "点击重试";
-
-/* Message Bubble */
-"message_bubble.delete_confirm_title" = "确认删除";
-"message_bubble.delete_confirm_message" = "此操作将从云端永久抹除此记录%@，且不可撤销。";
-"message_bubble.delete_image_suffix" = "和图片文件";
-"message_bubble.load_failed_retry" = "加载失败，点击重试";
-"message_bubble.open_with_preview" = "用预览打开";
-"message_bubble.show_in_finder" = "在访达中显示";
-"message_bubble.save_as" = "另存为...";
-"message_bubble.save_failed_title" = "保存失败";
-"message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
-"message_bubble.choose_save_directory" = "选择保存目录";
-"message_bubble.save_to_directory" = "保存到此目录";
+/* Message Categories */
+"message_category.section_title" = "分类";
+"message_category.new_section" = "新建分类";
+"message_category.name_placeholder" = "分类名称";
+"message_category.color_label" = "颜色";
+"message_category.add_action" = "添加分类";
+"message_category.save_name" = "保存名称";
+"message_category.delete_action" = "删除分类";
+"message_category.default_badge" = "默认";
+"message_category.color.sky" = "天蓝";
+"message_category.color.mint" = "薄荷";
+"message_category.color.amber" = "琥珀";
+"message_category.color.coral" = "珊瑚";
+"message_category.color.violet" = "紫罗兰";
+"message_category.color.slate" = "岩灰";
+"message_category.color.rose" = "玫瑰";
+"message_category.color.ocean" = "海蓝";
 
 /* Image Preview */
 "image_preview.download_to_local" = "下载到本地";

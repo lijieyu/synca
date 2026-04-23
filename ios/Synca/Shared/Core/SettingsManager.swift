@@ -6,10 +6,13 @@ final class SettingsManager: ObservableObject {
 
     private let macOSDefaultSavePathKey = "macOSDefaultSavePath"
     private let macOSDefaultSaveBookmarkKey = "macOSDefaultSaveBookmark"
+    private let messageListLayoutModeKey = "messageListLayoutMode"
 
     @Published var macOSDefaultSavePath: URL?
+    @Published var messageListLayoutMode: MessageListLayoutMode
 
     private init() {
+        messageListLayoutMode = MessageListLayoutMode(rawValue: UserDefaults.standard.string(forKey: messageListLayoutModeKey) ?? "") ?? .single
         macOSDefaultSavePath = resolveStoredSavePath()
             ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
     }
@@ -50,6 +53,49 @@ final class SettingsManager: ObservableObject {
         return try perform()
     }
 
+    func selectedMessageCategoryId(for userId: String?) -> String? {
+        guard let userId, !userId.isEmpty else { return nil }
+        return UserDefaults.standard.string(forKey: selectedMessageCategoryKey(for: userId))
+    }
+
+    func setSelectedMessageCategoryId(_ categoryId: String?, for userId: String?) {
+        guard let userId, !userId.isEmpty else { return }
+        let key = selectedMessageCategoryKey(for: userId)
+        if let categoryId, !categoryId.isEmpty {
+            UserDefaults.standard.set(categoryId, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    func defaultSendCategoryId(for userId: String?) -> String? {
+        guard let userId, !userId.isEmpty else { return nil }
+        return UserDefaults.standard.string(forKey: defaultSendCategoryKey(for: userId))
+    }
+
+    func setDefaultSendCategoryId(_ categoryId: String?, for userId: String?) {
+        guard let userId, !userId.isEmpty else { return }
+        let key = defaultSendCategoryKey(for: userId)
+        if let categoryId, !categoryId.isEmpty {
+            UserDefaults.standard.set(categoryId, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    func setMessageListLayoutMode(_ mode: MessageListLayoutMode) {
+        messageListLayoutMode = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: messageListLayoutModeKey)
+    }
+
+    private func selectedMessageCategoryKey(for userId: String) -> String {
+        "selectedMessageCategoryId.\(userId)"
+    }
+
+    private func defaultSendCategoryKey(for userId: String) -> String {
+        "defaultSendMessageCategoryId.\(userId)"
+    }
+
     private func resolveStoredSavePath() -> URL? {
         #if os(macOS)
         if let bookmarkData = UserDefaults.standard.data(forKey: macOSDefaultSaveBookmarkKey) {
@@ -77,4 +123,9 @@ final class SettingsManager: ObservableObject {
 
         return nil
     }
+}
+
+enum MessageListLayoutMode: String {
+    case single
+    case tiled
 }

@@ -13,8 +13,10 @@ struct MessageListView: View {
     @EnvironmentObject var api: APIClient
     @EnvironmentObject var accessManager: AccessManager
     @EnvironmentObject var purchaseManager: PurchaseManager
+    @ObservedObject private var settings = SettingsManager.shared
     @State private var inputText = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    @State private var showFileImporter = false
     @State private var showLogoutConfirm = false
     @State private var showClearAllConfirm = false
     @State private var showAboutInfo = false
@@ -27,32 +29,27 @@ struct MessageListView: View {
     @State private var shouldScrollToBottomAfterInitialLoad = false
     @State private var initialLoadScrollWindowID = UUID()
     @State private var showFeedbackSuccessToast = false
+    @State private var showCategoryManager = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                messageList
-                Divider()
-                inputBar
-            }
+            rootContent
             .background(Color.syncaPageBackground.ignoresSafeArea())
             .navigationTitle("")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif
             .toolbar {
-#if os(iOS)
                 titleToolbarItem
                 actionToolbarItems
-#endif
             }
             .alert("message_list.clear_all_confirm_title", isPresented: $showClearAllConfirm) {
                 Button("common.cancel", role: .cancel) {}
                 Button("common.delete", role: .destructive) {
-                    Task { await syncManager.clearAll() }
+                    Task { await handleTopClearAction() }
                 }
             } message: {
-                Text("message_list.clear_all_confirm_message")
+                Text(clearActionMessage)
             }
             .alert("message_list.logout_confirm_title", isPresented: $showLogoutConfirm) {
                 Button("common.cancel", role: .cancel) {}
@@ -65,6 +62,10 @@ struct MessageListView: View {
             }
             .sheet(isPresented: $showAboutInfo) {
                 AboutSyncaSheet()
+            }
+            .sheet(isPresented: $showCategoryManager) {
+                MessageCategoryManagerSheet()
+                    .environmentObject(syncManager)
             }
             .alert("message_list.session_expired_title", isPresented: $showSessionExpired) {
                 Button("message_list.sign_in_again") {
@@ -85,6 +86,13 @@ struct MessageListView: View {
         .sheet(isPresented: $showFeedbackComposer) {
             FeedbackComposerView()
                 .environmentObject(api)
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: supportedDocumentTypes,
+            allowsMultipleSelection: true
+        ) { result in
+            Task { await handleImportedFiles(result) }
         }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
@@ -148,6 +156,23 @@ struct MessageListView: View {
         }
     }
 
+    private var rootContent: some View {
+        VStack(spacing: 0) {
+            if !isTiledLayout {
+                categoryToolbar
+            }
+            if isTiledLayout {
+                tiledBoardView
+            } else {
+                VStack(spacing: 0) {
+                    messageList
+                    Divider()
+                    inputBar
+                }
+            }
+        }
+    }
+
     @ToolbarContentBuilder
     private var titleToolbarItem: some ToolbarContent {
         ToolbarItem(placement: .principal) {
@@ -167,9 +192,22 @@ struct MessageListView: View {
         }
     }
 
-    #if os(iOS)
     @ToolbarContentBuilder
     private var actionToolbarItems: some ToolbarContent {
+#if os(macOS)
+        ToolbarItem(placement: .automatic) {
+            layoutToggleButton
+        }
+        ToolbarItem(placement: .automatic) {
+            refreshButton
+        }
+        ToolbarItem(placement: .automatic) {
+            clearAllButton
+        }
+        ToolbarItem(placement: .automatic) {
+            settingsMenu
+        }
+#else
         ToolbarItem(placement: .topBarTrailing) {
             refreshButton
         }
@@ -179,15 +217,207 @@ struct MessageListView: View {
         ToolbarItem(placement: .topBarTrailing) {
             settingsMenu
         }
+#endif
     }
-    #endif
 
     // MARK: - Subviews
 
+    private var isTiledLayout: Bool {
+        #if os(macOS)
+        settings.messageListLayoutMode == .tiled
+        #else
+        false
+        #endif
+    }
+
+    private var selectedFilterCategoryId: String? {
+        let selected = syncManager.selectedCategoryId
+        if selected == syncManager.allCategoryPseudoId {
+            return nil
+        }
+        return selected
+    }
+
+    private var activeSendCategoryId: String? {
+        if syncManager.selectedCategoryId == syncManager.allCategoryPseudoId {
+            return syncManager.defaultSendCategoryId()
+        }
+        return syncManager.selectedCategoryId
+    }
+
+    private var filteredMessages: [SyncaMessage] {
+        syncManager.messages(for: selectedFilterCategoryId)
+    }
+
+    private var clearActionMessage: String {
+        if isTiledLayout {
+            return String(localized: "message_list.clear_completed_all_categories", bundle: .main)
+        }
+        if let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) {
+            return String(
+                format: String(localized: "message_list.clear_completed_category_format", bundle: .main),
+                category.name
+            )
+        }
+        return String(localized: "message_list.clear_completed_all_messages", bundle: .main)
+    }
+
+    private var displayedSendCategory: SyncaMessageCategory? {
+        let targetId = activeSendCategoryId ?? syncManager.defaultCategory?.id
+        return syncManager.categories.first(where: { $0.id == targetId })
+    }
+
+    @ViewBuilder
+    private var categoryToolbar: some View {
+        VStack(spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    categoryChip(title: String(localized: "common.all", bundle: .main), color: .secondary.opacity(0.16), isSelected: syncManager.selectedCategoryId == syncManager.allCategoryPseudoId) {
+                        syncManager.selectCategory(syncManager.allCategoryPseudoId)
+                    }
+
+                    ForEach(syncManager.categories) { category in
+                        categoryChip(title: category.name, color: backgroundColor(for: category.color), isSelected: syncManager.selectedCategoryId == category.id) {
+                            syncManager.selectCategory(category.id)
+                        }
+                    }
+
+                    Button {
+                        showCategoryManager = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(width: 30, height: 30)
+                            .background(Color.secondary.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+            }
+
+            if let displayedSendCategory {
+                defaultSendCategoryRow(for: displayedSendCategory)
+            }
+        }
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private func defaultSendCategoryRow(for category: SyncaMessageCategory) -> some View {
+        Menu {
+            ForEach(syncManager.categories) { candidate in
+                Button {
+                    syncManager.setDefaultSendCategoryId(candidate.id)
+                } label: {
+                    Label(candidate.name, systemImage: candidate.id == category.id ? "checkmark" : "circle")
+                }
+            }
+        } label: {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    defaultSendCategoryLabel(for: category)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    defaultSendCategoryLabel(for: category)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(syncManager.selectedCategoryId != syncManager.allCategoryPseudoId)
+        .opacity(syncManager.selectedCategoryId == syncManager.allCategoryPseudoId ? 1 : 0.6)
+    }
+
+    @ViewBuilder
+    private func defaultSendCategoryLabel(for category: SyncaMessageCategory) -> some View {
+        Text("message_list.default_send_category", bundle: .main)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        categoryBadge(name: category.name, color: category.color)
+    }
+
+    private func categoryChip(title: String, color: Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(color)
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
+                )
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func categoryBadge(name: String, color: MessageCategoryColor) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(categoryAccentColor(for: color))
+                .frame(width: 8, height: 8)
+
+            Text(name)
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(backgroundColor(for: color))
+        .clipShape(Capsule())
+    }
+
+    private func categoryAccentColor(for color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return .blue
+        case .mint:
+            return .green
+        case .amber:
+            return .orange
+        case .coral:
+            return .red
+        case .violet:
+            return .purple
+        case .slate:
+            return .secondary
+        case .rose:
+            return .pink
+        case .ocean:
+            return .cyan
+        }
+    }
+
+    private func backgroundColor(for color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return Color.blue.opacity(0.16)
+        case .mint:
+            return Color.green.opacity(0.16)
+        case .amber:
+            return Color.orange.opacity(0.18)
+        case .coral:
+            return Color.red.opacity(0.16)
+        case .violet:
+            return Color.purple.opacity(0.18)
+        case .slate:
+            return Color.secondary.opacity(0.16)
+        case .rose:
+            return Color.pink.opacity(0.16)
+        case .ocean:
+            return Color.cyan.opacity(0.18)
+        }
+    }
+
     @ViewBuilder
     private var messageList: some View {
-        let completed = syncManager.orderedMessages.filter { $0.isCleared }
-        let uncompleted = syncManager.orderedMessages.filter { !$0.isCleared }
+        let completed = filteredMessages.filter { $0.isCleared }
+        let uncompleted = filteredMessages.filter { !$0.isCleared }
 
         if !syncManager.hasCompletedInitialLoad {
             Color.clear
@@ -224,7 +454,7 @@ struct MessageListView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, 8)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: syncManager.orderedMessages)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: filteredMessages)
                     .background(
                         Color.clear
                             .contentShape(Rectangle())
@@ -254,11 +484,11 @@ struct MessageListView: View {
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onChange(of: syncManager.hasCompletedInitialLoad) { hasCompletedInitialLoad in
-                    guard hasCompletedInitialLoad, !syncManager.orderedMessages.isEmpty else { return }
+                    guard hasCompletedInitialLoad, !filteredMessages.isEmpty else { return }
                     beginInitialLoadScrollWindow()
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
-                .onChange(of: syncManager.orderedMessages.count) { _ in
+                .onChange(of: filteredMessages.count) { _ in
                     guard shouldScrollToBottomAfterInitialLoad else { return }
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
@@ -271,7 +501,7 @@ struct MessageListView: View {
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onAppear {
-                    if syncManager.hasCompletedInitialLoad && !syncManager.orderedMessages.isEmpty {
+                    if syncManager.hasCompletedInitialLoad && !filteredMessages.isEmpty {
                         beginInitialLoadScrollWindow()
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -391,11 +621,17 @@ struct MessageListView: View {
             Image(systemName: "trash")
         }
         .buttonStyle(.plain)
-        .disabled(self.syncManager.messages.filter { $0.isCleared }.isEmpty)
+        .disabled((isTiledLayout ? syncManager.messages : filteredMessages).allSatisfy { !$0.isCleared })
     }
 
     private var settingsMenu: some View {
         Menu {
+            Button {
+                showCategoryManager = true
+            } label: {
+                Label("message_list.manage_categories", systemImage: "tag")
+            }
+
             Button {
                 showFeedbackComposer = true
             } label: {
@@ -418,6 +654,15 @@ struct MessageListView: View {
         }
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
+    }
+
+    private var layoutToggleButton: some View {
+        Button {
+            settings.setMessageListLayoutMode(settings.messageListLayoutMode == .single ? .tiled : .single)
+        } label: {
+            Image(systemName: settings.messageListLayoutMode == .single ? "square.grid.2x2" : "rectangle.split.3x1")
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Input Bar
@@ -446,10 +691,20 @@ struct MessageListView: View {
                     self.selectedPhotoItems = []
                     if !imageDatas.isEmpty {
                         shouldScrollToBottomAfterSend = true
-                        await self.syncManager.sendImages(imageDatas)
+                        await self.syncManager.sendImages(imageDatas, categoryId: activeSendCategoryId)
                     }
                 }
             }
+
+            Button {
+                showFileImporter = true
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 20, weight: .medium))
+            }
+            .buttonStyle(.plain)
+            .disabled(syncManager.isSending)
+            .opacity(syncManager.isSending ? 0.5 : 1.0)
 
             #if os(iOS)
             inputField
@@ -487,7 +742,10 @@ struct MessageListView: View {
         ZStack(alignment: .leading) {
             PasteAwareTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, onImagePaste: { imageData in
                 shouldScrollToBottomAfterSend = true
-                Task { await syncManager.sendImage(imageData) }
+                Task { await syncManager.sendImage(imageData, categoryId: activeSendCategoryId) }
+            }, onFilePaste: { pendingFile in
+                shouldScrollToBottomAfterSend = true
+                Task { await sendPendingFile(pendingFile, categoryId: activeSendCategoryId) }
             }, onSubmit: {
                 self.submitText()
             })
@@ -512,7 +770,10 @@ struct MessageListView: View {
         ZStack(alignment: .leading) {
             MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, onPasteImage: { imageData in
                 shouldScrollToBottomAfterSend = true
-                Task { await syncManager.sendImage(imageData) }
+                Task { await syncManager.sendImage(imageData, categoryId: activeSendCategoryId) }
+            }, onPasteFile: { pendingFile in
+                shouldScrollToBottomAfterSend = true
+                Task { await sendPendingFile(pendingFile, categoryId: activeSendCategoryId) }
             }, onSubmit: {
                 self.submitText()
             })
@@ -559,11 +820,55 @@ struct MessageListView: View {
         inputHeight = defaultComposerHeight
         shouldScrollToBottomAfterSend = true
         Task {
-            let result = await syncManager.sendText(text)
+            let result = await syncManager.sendText(text, categoryId: activeSendCategoryId)
             if result != .sent {
                 inputText = text
             }
         }
+    }
+
+    private var supportedDocumentTypes: [UTType] {
+        [
+            .pdf,
+            .plainText,
+            .text,
+            .commaSeparatedText,
+            UTType(filenameExtension: "doc"),
+            UTType(filenameExtension: "docx"),
+            UTType(filenameExtension: "xls"),
+            UTType(filenameExtension: "xlsx"),
+            UTType(filenameExtension: "ppt"),
+            UTType(filenameExtension: "pptx"),
+            UTType(filenameExtension: "md"),
+            UTType(filenameExtension: "zip"),
+        ].compactMap { $0 }
+    }
+
+    private func handleImportedFiles(_ result: Result<[URL], Error>) async {
+        guard case .success(let urls) = result, !urls.isEmpty else { return }
+        shouldScrollToBottomAfterSend = true
+
+        for url in urls {
+            guard let pendingFile = readPendingFile(from: url) else { continue }
+            await sendPendingFile(pendingFile, categoryId: activeSendCategoryId)
+        }
+    }
+
+    private func readPendingFile(from url: URL) -> PendingFileUpload? {
+        let startedAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if startedAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
+        return PendingFileUpload(data: data, fileName: url.lastPathComponent, mimeType: mimeType)
+    }
+
+    private func sendPendingFile(_ pendingFile: PendingFileUpload, categoryId: String?) async {
+        await syncManager.sendFile(data: pendingFile.data, fileName: pendingFile.fileName, mimeType: pendingFile.mimeType, categoryId: categoryId)
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
@@ -627,25 +932,32 @@ struct MessageListView: View {
 
         if let rawPngData = pb.data(forType: .png) {
             shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawPngData) }
+            Task { await syncManager.sendImage(rawPngData, categoryId: activeSendCategoryId) }
             return
         }
         if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
             shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawJpegData) }
+            Task { await syncManager.sendImage(rawJpegData, categoryId: activeSendCategoryId) }
             return
         }
         if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
             shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(rawHeicData) }
+            Task { await syncManager.sendImage(rawHeicData, categoryId: activeSendCategoryId) }
             return
         }
         if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage,
            let tiffData = image.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
+            let pngData = bitmap.representation(using: .png, properties: [:]) {
             shouldScrollToBottomAfterSend = true
-            Task { await syncManager.sendImage(pngData) }
+            Task { await syncManager.sendImage(pngData, categoryId: activeSendCategoryId) }
+            return
+        }
+
+        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL,
+           let pendingFile = readPendingFile(from: fileURL) {
+            shouldScrollToBottomAfterSend = true
+            Task { await sendPendingFile(pendingFile, categoryId: activeSendCategoryId) }
             return
         }
 
@@ -663,11 +975,15 @@ struct MessageListView: View {
     private func messageView(for message: SyncaMessage) -> some View {
         MessageBubbleView(
             message: message,
+            categories: syncManager.categories,
             onClear: {
                 Task { await syncManager.clearMessage(message.id) }
             },
             onDelete: {
                 Task { await syncManager.deleteMessage(message.id) }
+            },
+            onCategoryChange: { categoryId in
+                Task { await syncManager.updateMessageCategory(message.id, categoryId: categoryId) }
             },
             onImageTap: {
                 selectedImageMessage = message
@@ -680,6 +996,342 @@ struct MessageListView: View {
             }
         )
         .id("\(message.id)-\(message.isCleared)")
+    }
+
+    @ViewBuilder
+    private var tiledBoardView: some View {
+        GeometryReader { proxy in
+            let spacing: CGFloat = 16
+            let horizontalPadding: CGFloat = 32
+            let columnCount = max(CGFloat(syncManager.categories.count), 1)
+            let availableWidth = max(proxy.size.width - horizontalPadding, TiledCategoryColumn.minWidth)
+            let sharedWidth = max(
+                TiledCategoryColumn.minWidth,
+                floor((availableWidth - spacing * max(columnCount - 1, 0)) / columnCount)
+            )
+
+            ScrollView(.horizontal, showsIndicators: true) {
+                HStack(alignment: .top, spacing: spacing) {
+                    ForEach(syncManager.categories) { category in
+                        TiledCategoryColumn(category: category)
+                            .environmentObject(syncManager)
+                            .frame(width: sharedWidth)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+        }
+    }
+
+    private func handleTopClearAction() async {
+        if isTiledLayout {
+            await syncManager.clearCompleted(categoryId: nil)
+        } else {
+            await syncManager.clearCompleted(categoryId: selectedFilterCategoryId)
+        }
+    }
+}
+
+private struct TiledCategoryColumn: View {
+    static let minWidth: CGFloat = 420
+
+    @EnvironmentObject var syncManager: SyncManager
+    let category: SyncaMessageCategory
+
+    @State private var inputText = ""
+
+    private var messages: [SyncaMessage] {
+        syncManager.messages(for: category.id)
+    }
+
+    private var completedMessages: [SyncaMessage] {
+        messages.filter(\.isCleared)
+    }
+
+    private var pendingMessages: [SyncaMessage] {
+        messages.filter { !$0.isCleared }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(category.name)
+                    .font(.headline)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(backgroundColor(for: category.color))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Button {
+                    Task { await syncManager.fullSync(manual: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task { await syncManager.clearCompleted(categoryId: category.id) }
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .disabled(completedMessages.isEmpty)
+            }
+            .padding(14)
+
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(completedMessages) { message in
+                        MessageBubbleView(
+                            message: message,
+                            categories: syncManager.categories,
+                            onClear: {},
+                            onDelete: {
+                                Task { await syncManager.deleteMessage(message.id) }
+                            },
+                            onCategoryChange: { categoryId in
+                                Task { await syncManager.updateMessageCategory(message.id, categoryId: categoryId) }
+                            },
+                            onImageTap: {},
+                            onImageLoaded: {}
+                        )
+                    }
+
+                    if !pendingMessages.isEmpty {
+                        HStack {
+                            Text("message_list.todo_section", bundle: .main)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(4)
+                            Spacer()
+                        }
+                    }
+
+                    ForEach(pendingMessages) { message in
+                        MessageBubbleView(
+                            message: message,
+                            categories: syncManager.categories,
+                            onClear: {
+                                Task { await syncManager.clearMessage(message.id) }
+                            },
+                            onDelete: {
+                                Task { await syncManager.deleteMessage(message.id) }
+                            },
+                            onCategoryChange: { categoryId in
+                                Task { await syncManager.updateMessageCategory(message.id, categoryId: categoryId) }
+                            },
+                            onImageTap: {},
+                            onImageLoaded: {}
+                        )
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+            }
+
+            Divider()
+
+            HStack(spacing: 10) {
+                TextField(String(localized: "message_list.input_placeholder", bundle: .main), text: $inputText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+
+                Button {
+                    let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { return }
+                    inputText = ""
+                    Task {
+                        let result = await syncManager.sendText(text, categoryId: category.id)
+                        if result != .sent {
+                            inputText = text
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                }
+                .buttonStyle(.plain)
+                .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || syncManager.isSending)
+            }
+            .padding(14)
+        }
+        .background(Color.syncaCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.syncaCardBorder, lineWidth: 1)
+        )
+    }
+
+    private func backgroundColor(for color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return Color.blue.opacity(0.16)
+        case .mint:
+            return Color.green.opacity(0.16)
+        case .amber:
+            return Color.orange.opacity(0.18)
+        case .coral:
+            return Color.red.opacity(0.16)
+        case .violet:
+            return Color.purple.opacity(0.18)
+        case .slate:
+            return Color.secondary.opacity(0.16)
+        case .rose:
+            return Color.pink.opacity(0.16)
+        case .ocean:
+            return Color.cyan.opacity(0.18)
+        }
+    }
+}
+
+private struct MessageCategoryManagerSheet: View {
+    @EnvironmentObject var syncManager: SyncManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var newCategoryName = ""
+    @State private var newCategoryColor: MessageCategoryColor = .sky
+    @State private var draftNames: [String: String] = [:]
+
+    private func colorName(for color: MessageCategoryColor) -> LocalizedStringKey {
+        switch color {
+        case .sky:
+            return "message_category.color.sky"
+        case .mint:
+            return "message_category.color.mint"
+        case .amber:
+            return "message_category.color.amber"
+        case .coral:
+            return "message_category.color.coral"
+        case .violet:
+            return "message_category.color.violet"
+        case .slate:
+            return "message_category.color.slate"
+        case .rose:
+            return "message_category.color.rose"
+        case .ocean:
+            return "message_category.color.ocean"
+        }
+    }
+
+    @ViewBuilder
+    private func colorOptionRow(_ color: MessageCategoryColor) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(colorAccent(color))
+                .frame(width: 10, height: 10)
+            Text(colorName(for: color))
+        }
+    }
+
+    private func colorAccent(_ color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return .blue
+        case .mint:
+            return .green
+        case .amber:
+            return .orange
+        case .coral:
+            return .red
+        case .violet:
+            return .purple
+        case .slate:
+            return .secondary
+        case .rose:
+            return .pink
+        case .ocean:
+            return .cyan
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("message_category.new_section") {
+                    TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $newCategoryName)
+                    Picker("message_category.color_label", selection: $newCategoryColor) {
+                        ForEach(MessageCategoryColor.allCases) { color in
+                            colorOptionRow(color).tag(color)
+                        }
+                    }
+
+                    Button("message_category.add_action") {
+                        let trimmed = newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        Task {
+                            await syncManager.createCategory(name: trimmed, color: newCategoryColor)
+                            newCategoryName = ""
+                            newCategoryColor = .sky
+                        }
+                    }
+                }
+
+                Section("message_category.section_title") {
+                    ForEach(syncManager.categories) { category in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(category.name)
+                                    .font(.headline)
+                                if category.isDefault {
+                                    Text("message_category.default_badge", bundle: .main)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.secondary.opacity(0.14))
+                                        .clipShape(Capsule())
+                                }
+                            }
+
+                            if !category.isDefault {
+                                TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: Binding(
+                                    get: { draftNames[category.id] ?? category.name },
+                                    set: { draftNames[category.id] = $0 }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+
+                                Button("message_category.save_name") {
+                                    let name = (draftNames[category.id] ?? category.name).trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !name.isEmpty, name != category.name else { return }
+                                    Task { await syncManager.updateCategory(id: category.id, name: name) }
+                                }
+
+                                Picker("message_category.color_label", selection: Binding(
+                                    get: { category.color },
+                                    set: { newValue in
+                                        Task { await syncManager.updateCategory(id: category.id, color: newValue) }
+                                    }
+                                )) {
+                                    ForEach(MessageCategoryColor.allCases) { color in
+                                        colorOptionRow(color).tag(color)
+                                    }
+                                }
+
+                                Button(role: .destructive) {
+                                    Task { await syncManager.deleteCategory(id: category.id) }
+                                } label: {
+                                    Text("message_category.delete_action")
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            .navigationTitle("message_category.section_title")
+            .frame(minWidth: 560, minHeight: 420)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.done") { dismiss() }
+                }
+            }
+        }
     }
 }
 

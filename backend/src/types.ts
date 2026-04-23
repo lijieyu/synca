@@ -38,13 +38,42 @@ export interface SyncaAccessStatus {
 export interface SyncaMessage {
     id: string;
     userId: string;
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'file';
     textContent?: string | null;
     imagePath?: string | null;
     imageUrl?: string | null; // computed: full URL for client
+    filePath?: string | null;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    fileSize?: number | null;
+    fileMimeType?: string | null;
+    categoryId?: string | null;
+    categoryName?: string | null;
+    categoryColor?: string | null;
+    categoryIsDefault?: boolean;
     isCleared: boolean;
     isDeleted: boolean;
     sourceDevice?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type SyncaMessageCategoryColor =
+    | 'sky'
+    | 'mint'
+    | 'amber'
+    | 'coral'
+    | 'violet'
+    | 'slate'
+    | 'rose'
+    | 'ocean';
+
+export interface SyncaMessageCategory {
+    id: string;
+    userId: string;
+    name: string;
+    color: SyncaMessageCategoryColor;
+    isDefault: boolean;
     createdAt: string;
     updatedAt: string;
 }

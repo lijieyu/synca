@@ -2,12 +2,14 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
 
 struct MacInputTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
     let isSending: Bool
     let onPasteImage: (Data) -> Void
+    let onPasteFile: (PendingFileUpload) -> Void
     var onSubmit: (() -> Void)? = nil
 
     private static var textFont: NSFont {
@@ -22,7 +24,7 @@ struct MacInputTextView: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, height: $height, onPasteImage: onPasteImage, onSubmit: onSubmit)
+        Coordinator(text: $text, height: $height, onPasteImage: onPasteImage, onPasteFile: onPasteFile, onSubmit: onSubmit)
     }
 
     func makeNSView(context: Context) -> ClickForwardingScrollView {
@@ -36,6 +38,7 @@ struct MacInputTextView: NSViewRepresentable {
         let textView = PasteAwareMacTextView()
         textView.delegate = context.coordinator
         textView.onPasteImage = onPasteImage
+        textView.onPasteFile = onPasteFile
         textView.onSubmit = onSubmit
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
@@ -76,6 +79,7 @@ struct MacInputTextView: NSViewRepresentable {
         context.coordinator.onSubmit = onSubmit
         textView.onSubmit = onSubmit
         textView.onPasteImage = onPasteImage
+        textView.onPasteFile = onPasteFile
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
         scrollView.syncTextViewWidthAndContainer()
@@ -106,12 +110,14 @@ struct MacInputTextView: NSViewRepresentable {
         @Binding var text: String
         @Binding var height: CGFloat
         let onPasteImage: (Data) -> Void
+        let onPasteFile: (PendingFileUpload) -> Void
         var onSubmit: (() -> Void)?
 
-        init(text: Binding<String>, height: Binding<CGFloat>, onPasteImage: @escaping (Data) -> Void, onSubmit: (() -> Void)?) {
+        init(text: Binding<String>, height: Binding<CGFloat>, onPasteImage: @escaping (Data) -> Void, onPasteFile: @escaping (PendingFileUpload) -> Void, onSubmit: (() -> Void)?) {
             _text = text
             _height = height
             self.onPasteImage = onPasteImage
+            self.onPasteFile = onPasteFile
             self.onSubmit = onSubmit
         }
 
@@ -228,6 +234,7 @@ final class ClickForwardingScrollView: NSScrollView {
 
 final class PasteAwareMacTextView: NSTextView {
     var onPasteImage: ((Data) -> Void)?
+    var onPasteFile: ((PendingFileUpload) -> Void)?
     var onSubmit: (() -> Void)?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -275,6 +282,14 @@ final class PasteAwareMacTextView: NSTextView {
            let bitmap = NSBitmapImageRep(data: tiffData),
            let pngData = bitmap.representation(using: .png, properties: [:]) {
             onPasteImage?(pngData)
+            return
+        }
+
+        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL,
+           ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "zip"].contains(fileURL.pathExtension.lowercased()),
+           let fileData = try? Data(contentsOf: fileURL) {
+            let mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType
+            onPasteFile?(PendingFileUpload(data: fileData, fileName: fileURL.lastPathComponent, mimeType: mimeType))
             return
         }
 

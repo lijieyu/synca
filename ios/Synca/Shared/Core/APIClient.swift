@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class APIClient: ObservableObject {
@@ -101,9 +102,38 @@ final class APIClient: ObservableObject {
         return response.messages
     }
 
-    func sendTextMessage(text: String, sourceDevice: String? = nil) async throws -> SyncaMessage {
+    func listMessageCategories() async throws -> [SyncaMessageCategory] {
+        let response: MessageCategoriesResponse = try await get("/message-categories")
+        return response.categories
+    }
+
+    func createMessageCategory(name: String, color: MessageCategoryColor) async throws -> SyncaMessageCategory {
+        try await post("/message-categories", body: [
+            "name": name,
+            "color": color.rawValue,
+        ])
+    }
+
+    func updateMessageCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async throws -> SyncaMessageCategory {
+        var body: [String: Any] = [:]
+        if let name { body["name"] = name }
+        if let color { body["color"] = color.rawValue }
+        return try await patch("/message-categories/\(id)", body: body)
+    }
+
+    func deleteMessageCategory(id: String) async throws {
+        var request = URLRequest(url: URL(string: "\(baseURL)/message-categories/\(id)")!)
+        request.httpMethod = "DELETE"
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let _: OkResponse = try await execute(request)
+    }
+
+    func sendTextMessage(text: String, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
         var body: [String: Any] = ["textContent": text]
         if let sourceDevice { body["sourceDevice"] = sourceDevice }
+        if let categoryId { body["categoryId"] = categoryId }
         return try await post("/messages", body: body)
     }
 
@@ -135,7 +165,7 @@ final class APIClient: ObservableObject {
         return ("image/jpeg", ".jpg") // Default to JPEG
     }
 
-    func sendImageMessage(imageData: Data, sourceDevice: String? = nil) async throws -> SyncaMessage {
+    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
         let url = URL(string: "\(baseURL)/messages/image")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -164,6 +194,68 @@ final class APIClient: ObservableObject {
             data.append("\r\n".data(using: .utf8)!)
         }
 
+        if let categoryId {
+            data.append("--\(boundary)\r\n".data(using: .utf8)!)
+            data.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
+            data.append(categoryId.data(using: .utf8)!)
+            data.append("\r\n".data(using: .utf8)!)
+        }
+
+        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = data
+
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard httpResponse.statusCode == 201 else {
+            throw decodeAPIError(statusCode: httpResponse.statusCode, data: responseData)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(SyncaMessage.self, from: responseData)
+    }
+
+    func sendFileMessage(fileData: Data, fileName: String, mimeType: String? = nil, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
+        let url = URL(string: "\(baseURL)/messages/file")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let resolvedMimeType = mimeType ?? mimeTypeForFileName(fileName) ?? "application/octet-stream"
+
+        var data = Data()
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Type: \(resolvedMimeType)\r\n\r\n".data(using: .utf8)!)
+        data.append(fileData)
+        data.append("\r\n".data(using: .utf8)!)
+
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"fileName\"\r\n\r\n".data(using: .utf8)!)
+        data.append(fileName.data(using: .utf8)!)
+        data.append("\r\n".data(using: .utf8)!)
+
+        if let sourceDevice {
+            data.append("--\(boundary)\r\n".data(using: .utf8)!)
+            data.append("Content-Disposition: form-data; name=\"sourceDevice\"\r\n\r\n".data(using: .utf8)!)
+            data.append(sourceDevice.data(using: .utf8)!)
+            data.append("\r\n".data(using: .utf8)!)
+        }
+
+        if let categoryId {
+            data.append("--\(boundary)\r\n".data(using: .utf8)!)
+            data.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
+            data.append(categoryId.data(using: .utf8)!)
+            data.append("\r\n".data(using: .utf8)!)
+        }
+
         data.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = data
 
@@ -184,6 +276,12 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await patch("/messages/\(id)/clear")
     }
 
+    func updateMessageCategoryAssignment(messageId: String, categoryId: String?) async throws -> SyncaMessage {
+        var body: [String: Any] = [:]
+        body["categoryId"] = categoryId ?? NSNull()
+        return try await patch("/messages/\(messageId)/category", body: body)
+    }
+
     func deleteMessage(id: String) async throws {
         var request = URLRequest(url: URL(string: "\(baseURL)/messages/\(id)")!)
         request.httpMethod = "DELETE"
@@ -193,13 +291,17 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await execute(request)
     }
 
-    func clearAllMessages() async throws -> Int {
-        let response: OkResponse = try await post("/messages/clear-all", body: [:])
+    func clearAllMessages(categoryId: String? = nil) async throws -> Int {
+        var body: [String: Any] = [:]
+        body["categoryId"] = categoryId ?? NSNull()
+        let response: OkResponse = try await post("/messages/clear-all", body: body)
         return response.clearedCount ?? 0
     }
 
-    func deleteCompletedMessages() async throws -> Int {
-        let response: OkResponse = try await post("/messages/delete-completed", body: [:])
+    func deleteCompletedMessages(categoryId: String? = nil) async throws -> Int {
+        var body: [String: Any] = [:]
+        body["categoryId"] = categoryId ?? NSNull()
+        let response: OkResponse = try await post("/messages/delete-completed", body: body)
         return response.deletedCount ?? 0
     }
 
@@ -373,6 +475,16 @@ final class APIClient: ObservableObject {
         }
 
         return .httpError(statusCode, String(data: data, encoding: .utf8))
+    }
+}
+
+private extension APIClient {
+    func mimeTypeForFileName(_ fileName: String) -> String? {
+        let ext = URL(fileURLWithPath: fileName).pathExtension
+        guard !ext.isEmpty, let type = UTType(filenameExtension: ext) else {
+            return nil
+        }
+        return type.preferredMIMEType
     }
 }
 

@@ -24,6 +24,7 @@ final class SyncManager: ObservableObject {
     }
 
     @Published var messages: [SyncaMessage] = []
+    @Published var categories: [SyncaMessageCategory] = []
     @Published var unclearedCount: Int = 0
     @Published var isLoading = false
     @Published var hasCompletedInitialLoad = false
@@ -34,6 +35,8 @@ final class SyncManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var sessionExpired = false
     @Published var remoteAppendEvent = UUID()
+    @Published var selectedCategoryId: String? = nil
+    @Published var selectedCategoryIDsForTiledLayout: [String] = []
 
     var imageMessages: [SyncaMessage] {
         messages.filter { $0.type == .image && !$0.isDeleted }
@@ -49,6 +52,12 @@ final class SyncManager: ObservableObject {
             }
             return m1.createdAt < m2.createdAt
         }
+    }
+
+    var allCategoryPseudoId: String { "__all__" }
+
+    var defaultCategory: SyncaMessageCategory? {
+        categories.first(where: \.isDefault)
     }
 
     private var pollTimer: Timer?
@@ -76,6 +85,7 @@ final class SyncManager: ObservableObject {
         unclearedCount = cachedMessages.filter { !$0.isCleared }.count
         lastSyncTimestamp = cachedMessages.compactMap(\.updatedAt).max()
         hasCompletedInitialLoad = true
+        restoreLocalCategorySelections()
     }
 
     // MARK: - Full Sync
@@ -100,11 +110,14 @@ final class SyncManager: ObservableObject {
         do {
             let existingIDs = Set(messages.map(\.id))
             let allMessages = try await api.listMessages()
+            let allCategories = try await api.listMessageCategories()
             messages = allMessages
+            categories = allCategories
             unclearedCount = allMessages.filter { !$0.isCleared }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
             persistMessages()
+            normalizeCategorySelections()
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
             await AccessManager.shared.refresh()
             if appendedRemotely {
@@ -135,6 +148,7 @@ final class SyncManager: ObservableObject {
         do {
             let since = lastSyncTimestamp
             let newMessages = try await api.listMessages(since: since)
+            let allCategories = try await api.listMessageCategories()
             var appendedRemotely = false
 
             if !newMessages.isEmpty {
@@ -156,6 +170,8 @@ final class SyncManager: ObservableObject {
                 lastRefreshDate = Date()
                 persistMessages()
             }
+            categories = allCategories
+            normalizeCategorySelections()
             unclearedCount = messages.filter { !$0.isCleared }.count
             await AccessManager.shared.refresh()
             if appendedRemotely && hasCompletedInitialLoad {
@@ -224,7 +240,7 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Send Messages
 
-    func sendText(_ text: String) async -> SendResult {
+    func sendText(_ text: String, categoryId: String? = nil) async -> SendResult {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return .failed }
         guard trimmedText.count <= 2000 else {
@@ -236,7 +252,8 @@ final class SyncManager: ObservableObject {
         do {
             let message = try await api.sendTextMessage(
                 text: trimmedText,
-                sourceDevice: currentDeviceName()
+                sourceDevice: currentDeviceName(),
+                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
             )
             messages.append(message)
             unclearedCount += 1
@@ -261,13 +278,14 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func sendImage(_ imageData: Data) async {
+    func sendImage(_ imageData: Data, categoryId: String? = nil) async {
         isSending = true
 
         do {
             let message = try await api.sendImageMessage(
                 imageData: imageData,
-                sourceDevice: currentDeviceName()
+                sourceDevice: currentDeviceName(),
+                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
             )
             messages.append(message)
             unclearedCount += 1
@@ -284,7 +302,33 @@ final class SyncManager: ObservableObject {
         isSending = false
     }
 
-    func sendImages(_ imageDatas: [Data]) async {
+    func sendFile(data: Data, fileName: String, mimeType: String? = nil, categoryId: String? = nil) async {
+        isSending = true
+
+        do {
+            let message = try await api.sendFileMessage(
+                fileData: data,
+                fileName: fileName,
+                mimeType: mimeType,
+                sourceDevice: currentDeviceName(),
+                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
+            )
+            messages.append(message)
+            unclearedCount += 1
+            lastSyncTimestamp = message.updatedAt
+            lastRefreshDate = Date()
+            persistMessages()
+            await AccessManager.shared.refresh()
+        } catch APIError.dailyLimitReached(let status) {
+            AccessManager.shared.presentUpgrade(using: status)
+        } catch {
+            handleError(error, contextKey: "sync.error_context.send_file")
+        }
+
+        isSending = false
+    }
+
+    func sendImages(_ imageDatas: [Data], categoryId: String? = nil) async {
         isSending = true
         var failureCount = 0
         var sentCount = 0
@@ -293,7 +337,8 @@ final class SyncManager: ObservableObject {
             do {
                 let message = try await api.sendImageMessage(
                     imageData: imageData,
-                    sourceDevice: currentDeviceName()
+                    sourceDevice: currentDeviceName(),
+                    categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
                 )
                 messages.append(message)
                 unclearedCount += 1
@@ -350,14 +395,92 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func clearAll() async {
+    func updateMessageCategory(_ messageId: String, categoryId: String?) async {
         do {
-            _ = try await api.deleteCompletedMessages()
-            messages.removeAll { $0.isCleared }
+            let updated = try await api.updateMessageCategoryAssignment(messageId: messageId, categoryId: categoryId)
+            if let index = messages.firstIndex(where: { $0.id == messageId }) {
+                messages[index] = updated
+                persistMessages()
+            }
+        } catch {
+            handleError(error, contextKey: "sync.error_context.send")
+        }
+    }
+
+    func createCategory(name: String, color: MessageCategoryColor) async {
+        do {
+            let category = try await api.createMessageCategory(name: name, color: color)
+            categories.append(category)
+            categories.sort { lhs, rhs in
+                if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+                return lhs.createdAt < rhs.createdAt
+            }
+            normalizeCategorySelections()
+        } catch {
+            handleError(error, contextKey: "sync.error_context.send")
+        }
+    }
+
+    func updateCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async {
+        do {
+            let updated = try await api.updateMessageCategory(id: id, name: name, color: color)
+            if let index = categories.firstIndex(where: { $0.id == id }) {
+                categories[index] = updated
+            }
+        } catch {
+            handleError(error, contextKey: "sync.error_context.send")
+        }
+    }
+
+    func deleteCategory(id: String) async {
+        do {
+            try await api.deleteMessageCategory(id: id)
+            categories.removeAll { $0.id == id }
+            if let defaultCategory {
+                for index in messages.indices where messages[index].categoryId == id {
+                    messages[index].categoryId = defaultCategory.id
+                    messages[index].categoryName = defaultCategory.name
+                    messages[index].categoryColor = defaultCategory.color
+                    messages[index].categoryIsDefault = true
+                }
+            }
+            normalizeCategorySelections()
+            persistMessages()
+        } catch {
+            handleError(error, contextKey: "sync.error_context.delete")
+        }
+    }
+
+    func clearCompleted(categoryId: String? = nil) async {
+        do {
+            _ = try await api.deleteCompletedMessages(categoryId: categoryId)
+            messages.removeAll { message in
+                guard message.isCleared else { return false }
+                guard let categoryId else { return true }
+                return message.categoryId == categoryId
+            }
             unclearedCount = messages.filter { !$0.isCleared }.count
             persistMessages()
         } catch {
             handleError(error, contextKey: "sync.error_context.delete")
+        }
+    }
+
+    func clearCurrentList(categoryId: String? = nil) async {
+        do {
+            _ = try await api.clearAllMessages(categoryId: categoryId)
+            for index in messages.indices {
+                guard !messages[index].isCleared else { continue }
+                if let categoryId, messages[index].categoryId != categoryId {
+                    continue
+                }
+                messages[index].isCleared = true
+                messages[index].updatedAt = Date().ISO8601Format()
+            }
+            unclearedCount = messages.filter { !$0.isCleared }.count
+            persistMessages()
+        } catch {
+            handleError(error, contextKey: "sync.error_context.clear")
         }
     }
 
@@ -368,6 +491,9 @@ final class SyncManager: ObservableObject {
         messages = []
         unclearedCount = 0
         hasCompletedInitialLoad = false
+        categories = []
+        selectedCategoryId = nil
+        selectedCategoryIDsForTiledLayout = []
         lastSyncTimestamp = nil
         sessionExpired = false
         syncStatus = .idle
@@ -451,6 +577,78 @@ final class SyncManager: ObservableObject {
 
     private func currentDeviceName() -> String {
         DeviceInfo.displayModelName
+    }
+
+    func messages(for categoryId: String?) -> [SyncaMessage] {
+        let base = orderedMessages
+        guard let categoryId, categoryId != allCategoryPseudoId else { return base }
+        return base.filter { $0.categoryId == categoryId }
+    }
+
+    func selectCategory(_ categoryId: String?) {
+        selectedCategoryId = categoryId ?? defaultCategory?.id ?? allCategoryPseudoId
+        SettingsManager.shared.setSelectedMessageCategoryId(selectedCategoryId, for: api.currentUserId)
+        normalizeCategorySelections()
+    }
+
+    func setDefaultSendCategoryId(_ categoryId: String?) {
+        SettingsManager.shared.setDefaultSendCategoryId(categoryId, for: api.currentUserId)
+    }
+
+    func defaultSendCategoryId() -> String? {
+        let stored = SettingsManager.shared.defaultSendCategoryId(for: api.currentUserId)
+        if let stored, categories.contains(where: { $0.id == stored }) {
+            return stored
+        }
+        return defaultCategory?.id
+    }
+
+    private func resolvedSendCategoryId(explicitCategoryId: String?) -> String? {
+        if let explicitCategoryId, explicitCategoryId != allCategoryPseudoId {
+            return explicitCategoryId
+        }
+
+        if selectedCategoryId == allCategoryPseudoId {
+            return defaultSendCategoryId()
+        }
+
+        return selectedCategoryId ?? defaultCategory?.id
+    }
+
+    private func restoreLocalCategorySelections() {
+        selectedCategoryId = SettingsManager.shared.selectedMessageCategoryId(for: api.currentUserId)
+            ?? defaultCategory?.id
+    }
+
+    private func normalizeCategorySelections() {
+        if categories.isEmpty {
+            selectedCategoryId = allCategoryPseudoId
+            selectedCategoryIDsForTiledLayout = []
+            return
+        }
+
+        let validIds = Set(categories.map(\.id))
+        if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, !validIds.contains(selectedCategoryId) {
+            self.selectedCategoryId = defaultCategory?.id ?? allCategoryPseudoId
+        } else if self.selectedCategoryId == nil {
+            restoreLocalCategorySelections()
+            if self.selectedCategoryId == nil {
+                self.selectedCategoryId = defaultCategory?.id ?? allCategoryPseudoId
+            }
+        }
+
+        if let storedDefault = SettingsManager.shared.defaultSendCategoryId(for: api.currentUserId), !validIds.contains(storedDefault) {
+            SettingsManager.shared.setDefaultSendCategoryId(defaultCategory?.id, for: api.currentUserId)
+        } else if SettingsManager.shared.defaultSendCategoryId(for: api.currentUserId) == nil {
+            SettingsManager.shared.setDefaultSendCategoryId(defaultCategory?.id, for: api.currentUserId)
+        }
+
+        let nonDefaultCategoryIds = categories.filter { !$0.isDefault }.map(\.id)
+        if selectedCategoryIDsForTiledLayout.isEmpty {
+            selectedCategoryIDsForTiledLayout = nonDefaultCategoryIds
+        } else {
+            selectedCategoryIDsForTiledLayout = selectedCategoryIDsForTiledLayout.filter { validIds.contains($0) }
+        }
     }
 
     private func persistMessages() {
