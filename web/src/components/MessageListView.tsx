@@ -34,7 +34,24 @@ const sortMessages = (items: SyncaMessage[]) =>
 
 const categoryScopeStorageKey = (email: string | null) => `synca.selectedCategory.${email ?? 'guest'}`;
 const defaultSendCategoryStorageKey = (email: string | null) => `synca.defaultSendCategory.${email ?? 'guest'}`;
+const layoutGlobalStorageKey = 'synca.messageLayout';
 const layoutStorageKey = (email: string | null) => `synca.messageLayout.${email ?? 'guest'}`;
+const readStoredLayoutMode = (email: string | null): 'single' | 'tiled' => {
+  const storedLayout = localStorage.getItem(layoutStorageKey(email)) ?? localStorage.getItem(layoutGlobalStorageKey);
+  return storedLayout === 'tiled' ? 'tiled' : 'single';
+};
+
+const EmptyMessageState: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="empty-state">
+      <Lightbulb className="empty-state-icon" size={60} />
+      <h2 className="empty-state-title">{t('app.name')}</h2>
+      <p className="empty-state-slogan">{t('app.slogan')}</p>
+    </div>
+  );
+};
 
 interface CategoryColumnProps {
   category: MessageCategory;
@@ -90,7 +107,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
 
       <div className="category-column-list" ref={listRef}>
         {isLoading && messages.length === 0 && <p className="category-column-empty-hint">{t('message_list.loading', 'Loading...')}</p>}
-        {!isLoading && messages.length === 0 && <p className="category-column-empty-hint">{t('message_list.input_placeholder', 'Capture your thoughts...')}</p>}
+        {!isLoading && messages.length === 0 && <EmptyMessageState />}
 
         {completed.map((message) => (
           <MessageBubble key={message.id} message={message} categories={categories} onUpdate={() => void onRefresh()} />
@@ -119,7 +136,7 @@ export const MessageListView: React.FC = () => {
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(ALL_CATEGORY_ID);
-  const [layoutMode, setLayoutMode] = useState<'single' | 'tiled'>('single');
+  const [layoutMode, setLayoutMode] = useState<'single' | 'tiled'>(() => readStoredLayoutMode(null));
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -130,6 +147,7 @@ export const MessageListView: React.FC = () => {
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
   const [draftCategoryNames, setDraftCategoryNames] = useState<Record<string, string>>({});
   const listRef = useRef<HTMLDivElement>(null);
+  const didRestorePreferencesRef = useRef(false);
 
   const { logout, isAdmin, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
@@ -149,19 +167,21 @@ export const MessageListView: React.FC = () => {
       const defaultCategory = categoriesRes.categories.find((category) => category.isDefault) ?? categoriesRes.categories[0];
       const storedSelected = localStorage.getItem(categoryScopeStorageKey(email)) ?? ALL_CATEGORY_ID;
       const storedDefaultSend = localStorage.getItem(defaultSendCategoryStorageKey(email));
-      const storedLayout = localStorage.getItem(layoutStorageKey(email));
 
-      setLayoutMode(storedLayout === 'tiled' ? 'tiled' : 'single');
-      setSelectedCategoryId(
-        storedSelected === ALL_CATEGORY_ID || categoriesRes.categories.some((category) => category.id === storedSelected)
-          ? storedSelected
-          : (defaultCategory?.id ?? ALL_CATEGORY_ID)
-      );
-      setDefaultSendCategoryId(
-        storedDefaultSend && categoriesRes.categories.some((category) => category.id === storedDefaultSend)
-          ? storedDefaultSend
-          : (defaultCategory?.id ?? null)
-      );
+      if (!didRestorePreferencesRef.current) {
+        setLayoutMode(readStoredLayoutMode(email));
+        setSelectedCategoryId(
+          storedSelected === ALL_CATEGORY_ID || categoriesRes.categories.some((category) => category.id === storedSelected)
+            ? storedSelected
+            : (defaultCategory?.id ?? ALL_CATEGORY_ID)
+        );
+        setDefaultSendCategoryId(
+          storedDefaultSend && categoriesRes.categories.some((category) => category.id === storedDefaultSend)
+            ? storedDefaultSend
+            : (defaultCategory?.id ?? null)
+        );
+        didRestorePreferencesRef.current = true;
+      }
 
       if (scrollToBottom) {
         requestAnimationFrame(() => {
@@ -178,6 +198,7 @@ export const MessageListView: React.FC = () => {
   };
 
   useEffect(() => {
+    didRestorePreferencesRef.current = false;
     void fetchData(true);
     const timer = setInterval(() => void fetchData(false), 10000);
     return () => clearInterval(timer);
@@ -189,6 +210,7 @@ export const MessageListView: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(layoutStorageKey(email), layoutMode);
+    localStorage.setItem(layoutGlobalStorageKey, layoutMode);
   }, [email, layoutMode]);
 
   useEffect(() => {
@@ -215,14 +237,13 @@ export const MessageListView: React.FC = () => {
   const effectiveDefaultSendCategoryId = defaultSendCategoryId ?? defaultCategory?.id ?? null;
   const selectedScopeIsAll = selectedCategoryId === ALL_CATEGORY_ID;
   const activeSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
-  const displayedSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : activeSendCategoryId;
-  const displayedSendCategory = categories.find((category) => category.id === displayedSendCategoryId) ?? defaultCategory;
 
   const filteredMessages = useMemo(() => {
     if (selectedCategoryId === ALL_CATEGORY_ID) return messages;
     return messages.filter((message) => message.categoryId === selectedCategoryId);
   }, [messages, selectedCategoryId]);
 
+  const visibleSingleModeCategories = useMemo(() => categories.filter((category) => !category.isDefault), [categories]);
   const tiledCategories = useMemo(() => categories, [categories]);
   const tiledColumnWidth = useMemo(() => {
     const count = Math.max(tiledCategories.length, 1);
@@ -351,39 +372,28 @@ export const MessageListView: React.FC = () => {
         </div>
       </div>
 
-      <div className="category-toolbar">
-        <div className="category-switcher">
-          <button className={`category-chip ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
-            {t('common.all', 'All')}
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              className={`category-chip color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
-              onClick={() => setSelectedCategoryId(category.id)}
-            >
-              {category.name}
+      {layoutMode === 'single' && (
+        <div className="category-toolbar">
+          <div className="category-switcher">
+            <button className={`category-chip ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
+              {t('common.all', 'All')}
             </button>
-          ))}
-          <button className="category-add-btn" onClick={() => setShowCategoryModal(true)} title={t('message_list.manage_categories', 'Manage Categories')}>
-            <Plus size={15} />
-          </button>
-        </div>
-
-        <div className="default-send-picker is-readonly">
-          <span className="default-send-picker-label">{t('message_list.default_send_category', 'Send from All to')}</span>
-          <div className="default-send-picker-field">
-            {displayedSendCategory ? (
-              <span className={`category-color-dot color-${displayedSendCategory.color}`} aria-hidden="true" />
-            ) : (
-              <span className="category-color-dot color-slate" aria-hidden="true" />
-            )}
-            <span className="default-send-picker-value">
-              {displayedSendCategory?.name ?? t('common.all', 'All')}
-            </span>
+            {visibleSingleModeCategories.map((category) => (
+              <button
+                key={category.id}
+                className={`category-chip color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
+                onClick={() => setSelectedCategoryId(category.id)}
+              >
+                {category.name}
+              </button>
+            ))}
+            <button className="category-add-btn" onClick={() => setShowCategoryModal(true)} title={t('message_list.manage_categories', 'Manage Categories')}>
+              <Plus size={15} />
+            </button>
           </div>
+
         </div>
-      </div>
+      )}
 
       {layoutMode === 'tiled' ? (
         <div className="category-board" style={{ ['--category-column-width' as string]: tiledColumnWidth }}>
@@ -406,11 +416,7 @@ export const MessageListView: React.FC = () => {
             {isLoading && messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}>{t('message_list.loading', 'Loading...')}</p>}
 
             {!isLoading && filteredMessages.length === 0 && (
-              <div className="empty-state">
-                <Lightbulb className="empty-state-icon" size={60} />
-                <h2 className="empty-state-title">{t('app.name')}</h2>
-                <p className="empty-state-slogan">{t('app.slogan')}</p>
-              </div>
+              <EmptyMessageState />
             )}
 
             {filteredMessages.length > 0 && (

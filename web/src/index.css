@@ -630,12 +630,21 @@ button.category-chip {
 .modal-content {
   background: var(--panel-bg-color);
   border-radius: 22px;
-  padding: 24px;
-  width: 90%;
-  max-width: 680px;
+  padding: 30px 28px 24px;
+  width: min(90vw, 380px);
+  min-height: 190px;
   text-align: center;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   animation: modalScale 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.modal-content-large {
+  width: min(92vw, 680px);
+  min-height: auto;
+  justify-content: flex-start;
 }
 
 .modal-title {
@@ -648,20 +657,21 @@ button.category-chip {
 .modal-message {
   font-size: 14px;
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  margin-bottom: 0;
   line-height: 1.5;
 }
 
 .modal-actions {
   display: flex;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .modal-btn {
   flex: 1;
-  padding: 10px 16px;
-  border-radius: 10px;
+  min-height: 44px;
+  padding: 11px 16px;
+  border-radius: 12px;
   border: none;
   font-size: 14px;
   font-weight: 600;

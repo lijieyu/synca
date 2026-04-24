@@ -17,8 +17,8 @@ export const Modal: React.FC<Props> = ({
 }) => {
   return (
     <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3 className="modal-title">{title}</h3>
+      <div className={`modal-content ${children ? 'modal-content-large' : ''}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h3 id="modal-title" className="modal-title">{title}</h3>
         {message ? <p className="modal-message">{message}</p> : null}
         {children}
         <div className="modal-actions">

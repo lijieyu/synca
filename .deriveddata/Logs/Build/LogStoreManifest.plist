@@ -5,6 +5,49 @@
 	<key>logFormatVersion</key>
 	<integer>12</integer>
 	<key>logs</key>
-	<dict/>
+	<dict>
+		<key>C5A4E7D0-F674-40A8-8C61-FF508B520312</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>C5A4E7D0-F674-40A8-8C61-FF508B520312.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>Synca project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>SyncaMac</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
+			<key>timeStartedRecording</key>
+			<real>798721476.73969102</real>
+			<key>timeStoppedRecording</key>
+			<real>798721490.54449797</real>
+			<key>title</key>
+			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
+			<key>uniqueIdentifier</key>
+			<string>C5A4E7D0-F674-40A8-8C61-FF508B520312</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

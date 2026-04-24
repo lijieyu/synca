@@ -47,9 +47,6 @@ final class SyncManager: ObservableObject {
             if m1.isCleared != m2.isCleared {
                 return m1.isCleared
             }
-            if m1.isCleared {
-                return m1.updatedAt < m2.updatedAt
-            }
             return m1.createdAt < m2.createdAt
         }
     }
