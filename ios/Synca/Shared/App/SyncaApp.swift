@@ -22,11 +22,11 @@ struct SyncaApp: App {
                 .environmentObject(purchaseManager)
             #if os(macOS)
                 .background(MacWindowAccessor(isAuthenticated: api.isAuthenticated))
-                .frame(minWidth: 400, idealWidth: 500, minHeight: 500, idealHeight: 700)
+                .frame(minWidth: 470, idealWidth: 600, minHeight: 500, idealHeight: 700)
             #endif
         }
         #if os(macOS)
-        .defaultSize(width: 500, height: 700)
+        .defaultSize(width: 600, height: 700)
         .commands {
             // Remove "New Window" / "New Tab" menu items
             CommandGroup(replacing: .newItem) {}
