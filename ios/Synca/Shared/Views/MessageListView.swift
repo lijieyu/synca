@@ -1019,8 +1019,7 @@ struct MessageListView: View {
                             .frame(width: sharedWidth)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(16)
             }
         }
     }
