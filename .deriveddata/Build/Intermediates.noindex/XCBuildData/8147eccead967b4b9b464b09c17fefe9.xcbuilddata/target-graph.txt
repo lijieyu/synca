@@ -1,2 +1,0 @@
-Target dependency graph (1 target)
-Target 'SyncaMac' in project 'Synca' (no dependencies)

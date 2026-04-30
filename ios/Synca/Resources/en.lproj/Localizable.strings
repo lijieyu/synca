@@ -45,7 +45,6 @@
 "message_list.input_placeholder" = "Capture your thoughts...";
 "message_list.sending_placeholder" = "Sending...";
 "message_list.manage_categories" = "Categories";
-"message_list.default_send_category" = "Send from All to";
 "account.section_title" = "Account";
 "account.provider.apple" = "Signed in with Apple";
 "account.email_unavailable" = "Apple account email unavailable";

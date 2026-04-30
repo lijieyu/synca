@@ -914,6 +914,7 @@ button.category-chip {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  text-align: left;
 }
 
 .category-name-input {
@@ -924,6 +925,10 @@ button.category-chip {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 10px;
+}
+
+.category-swatch-grid-compact {
+  grid-template-columns: repeat(8, 28px);
 }
 
 .category-swatch {
@@ -964,7 +969,7 @@ button.category-chip {
 .category-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .category-card-header {
@@ -982,6 +987,29 @@ button.category-chip {
   min-width: 0;
 }
 
+.category-system-badge {
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.category-readonly-row {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-bg-color) 80%, transparent);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .category-inline-input {
   flex: 1;
 }
@@ -991,14 +1019,6 @@ button.category-chip {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.category-default-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
 }
 
 .category-secondary-action,

@@ -33,6 +33,7 @@ struct MessageListView: View {
     @State private var shouldScrollToBottomAfterInitialLoad = false
     @State private var initialLoadScrollWindowID = UUID()
     @State private var showFeedbackSuccessToast = false
+    @State private var showCreateCategory = false
     @State private var showCategoryManager = false
 
     var body: some View {
@@ -108,6 +109,10 @@ struct MessageListView: View {
             }
             .sheet(isPresented: $showCategoryManager) {
                 MessageCategoryManagerSheet()
+                    .environmentObject(syncManager)
+            }
+            .sheet(isPresented: $showCreateCategory) {
+                NewMessageCategorySheet()
                     .environmentObject(syncManager)
             }
             .alert("message_list.session_expired_title", isPresented: $showSessionExpired) {
@@ -313,7 +318,7 @@ struct MessageListView: View {
                 }
 
                 Button {
-                    showCategoryManager = true
+                    showCreateCategory = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 13, weight: .semibold))
@@ -1359,12 +1364,136 @@ private struct TiledCategoryColumn: View {
     }
 }
 
+private struct NewMessageCategorySheet: View {
+    @EnvironmentObject var syncManager: SyncManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var color: MessageCategoryColor = .sky
+
+    private func colorName(for color: MessageCategoryColor) -> LocalizedStringKey {
+        switch color {
+        case .sky:
+            return "message_category.color.sky"
+        case .mint:
+            return "message_category.color.mint"
+        case .amber:
+            return "message_category.color.amber"
+        case .coral:
+            return "message_category.color.coral"
+        case .violet:
+            return "message_category.color.violet"
+        case .slate:
+            return "message_category.color.slate"
+        case .rose:
+            return "message_category.color.rose"
+        case .ocean:
+            return "message_category.color.ocean"
+        }
+    }
+
+    private func colorAccent(_ color: MessageCategoryColor) -> Color {
+        switch color {
+        case .sky:
+            return .blue
+        case .mint:
+            return .green
+        case .amber:
+            return .orange
+        case .coral:
+            return .red
+        case .violet:
+            return .purple
+        case .slate:
+            return .secondary
+        case .rose:
+            return .pink
+        case .ocean:
+            return .cyan
+        }
+    }
+
+    private var canCreate: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $name)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
+                    )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("message_category.color_label", bundle: .main)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+                        ForEach(MessageCategoryColor.allCases) { option in
+                            Button {
+                                color = option
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(colorAccent(option))
+                                        .frame(width: 12, height: 12)
+                                    Text(colorName(for: option))
+                                        .font(.caption.weight(.semibold))
+                                        .lineLimit(1)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(colorAccent(option).opacity(option == color ? 0.18 : 0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(option == color ? colorAccent(option).opacity(0.55) : Color.syncaCardBorder, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(22)
+            .navigationTitle("message_category.new_section")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("message_category.add_action") {
+                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        Task {
+                            await syncManager.createCategory(name: trimmed, color: color)
+                            dismiss()
+                        }
+                    }
+                    .disabled(!canCreate)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 420, idealWidth: 440, minHeight: 300, idealHeight: 330)
+        #endif
+    }
+}
+
 private struct MessageCategoryManagerSheet: View {
     @EnvironmentObject var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
 
-    @State private var newCategoryName = ""
-    @State private var newCategoryColor: MessageCategoryColor = .sky
     @State private var draftNames: [String: String] = [:]
     private let cardCornerRadius: CGFloat = 18
 
@@ -1423,105 +1552,9 @@ private struct MessageCategoryManagerSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("message_category.new_section", bundle: .main)
-                            .font(.headline)
-
-                        TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $newCategoryName)
-                            .textFieldStyle(.plain)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
-                            )
-
-                        colorPickerField(selection: $newCategoryColor)
-
-                        Button("message_category.add_action") {
-                            let trimmed = newCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !trimmed.isEmpty else { return }
-                            Task {
-                                await syncManager.createCategory(name: trimmed, color: newCategoryColor)
-                                newCategoryName = ""
-                                newCategoryColor = .sky
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(18)
-                    .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: cardCornerRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cardCornerRadius)
-                            .stroke(Color.syncaCardBorder, lineWidth: 1)
-                    )
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("message_category.section_title", bundle: .main)
-                            .font(.headline)
-
-                        ForEach(syncManager.categories) { category in
-                            VStack(alignment: .leading, spacing: 14) {
-                                HStack(alignment: .center, spacing: 10) {
-                                    categoryBadge(name: category.name, color: category.color)
-                                    Spacer()
-                                    defaultSendToggle(for: category)
-                                }
-
-                                if !category.isDefault {
-                                    TextField(
-                                        String(localized: "message_category.name_placeholder", bundle: .main),
-                                        text: Binding(
-                                            get: { draftNames[category.id] ?? category.name },
-                                            set: { draftNames[category.id] = $0 }
-                                        )
-                                    )
-                                    .textFieldStyle(.plain)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
-                                    )
-
-                                    colorPickerField(
-                                        selection: Binding(
-                                            get: { category.color },
-                                            set: { newValue in
-                                                Task { await syncManager.updateCategory(id: category.id, color: newValue) }
-                                            }
-                                        )
-                                    )
-
-                                    HStack {
-                                        Button("message_category.save_name") {
-                                            let name = (draftNames[category.id] ?? category.name).trimmingCharacters(in: .whitespacesAndNewlines)
-                                            guard !name.isEmpty, name != category.name else { return }
-                                            Task { await syncManager.updateCategory(id: category.id, name: name) }
-                                        }
-                                        .buttonStyle(.bordered)
-
-                                        Spacer()
-
-                                        Button(role: .destructive) {
-                                            Task { await syncManager.deleteCategory(id: category.id) }
-                                        } label: {
-                                            Text("message_category.delete_action", bundle: .main)
-                                        }
-                                        .buttonStyle(.bordered)
-                                    }
-                                }
-                            }
-                            .padding(18)
-                            .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: cardCornerRadius))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: cardCornerRadius)
-                                    .stroke(Color.syncaCardBorder, lineWidth: 1)
-                            )
-                        }
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(syncManager.categories) { category in
+                        categoryEditorCard(for: category)
                     }
                 }
                 .padding(20)
@@ -1539,22 +1572,94 @@ private struct MessageCategoryManagerSheet: View {
         .onAppear {
             draftNames = Dictionary(uniqueKeysWithValues: syncManager.categories.map { ($0.id, $0.name) })
         }
+        .onChange(of: syncManager.categories) { categories in
+            for category in categories where draftNames[category.id] == nil {
+                draftNames[category.id] = category.name
+            }
+        }
     }
 
     @ViewBuilder
-    private func defaultSendToggle(for category: SyncaMessageCategory) -> some View {
-        Button {
-            syncManager.setDefaultSendCategoryId(category.id)
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: syncManager.defaultSendCategoryId() == category.id ? "largecircle.fill.circle" : "circle")
-                Text("message_list.default_send_category", bundle: .main)
-                    .lineLimit(1)
+    private func categoryEditorCard(for category: SyncaMessageCategory) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 10) {
+                categoryBadge(name: category.name, color: category.color)
+
+                if category.isDefault {
+                    Text("message_category.default_badge", bundle: .main)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.10), in: Capsule())
+                }
+
+                Spacer()
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+
+            if category.isDefault {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(colorAccent(category.color))
+                        .frame(width: 10, height: 10)
+                    Text(category.name)
+                        .font(.body.weight(.semibold))
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
+            } else {
+                TextField(
+                    String(localized: "message_category.name_placeholder", bundle: .main),
+                    text: Binding(
+                        get: { draftNames[category.id] ?? category.name },
+                        set: { draftNames[category.id] = $0 }
+                    )
+                )
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
+                )
+
+                colorPickerField(
+                    selection: Binding(
+                        get: { category.color },
+                        set: { newValue in
+                            Task { await syncManager.updateCategory(id: category.id, color: newValue) }
+                        }
+                    )
+                )
+
+                HStack {
+                    Button("message_category.save_name") {
+                        let name = (draftNames[category.id] ?? category.name).trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !name.isEmpty, name != category.name else { return }
+                        Task { await syncManager.updateCategory(id: category.id, name: name) }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        Task { await syncManager.deleteCategory(id: category.id) }
+                    } label: {
+                        Text("message_category.delete_action", bundle: .main)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .padding(18)
+        .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: cardCornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardCornerRadius)
+                .stroke(Color.syncaCardBorder, lineWidth: 1)
+        )
     }
 
     @ViewBuilder

@@ -45,7 +45,6 @@
 "message_list.input_placeholder" = "记录此刻的想法...";
 "message_list.sending_placeholder" = "正在发送...";
 "message_list.manage_categories" = "分类管理";
-"message_list.default_send_category" = "在“全部”下默认发往";
 "account.section_title" = "账号";
 "account.provider.apple" = "通过 Apple 登录";
 "account.email_unavailable" = "当前 Apple 账号邮箱不可用";

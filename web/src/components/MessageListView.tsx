@@ -142,6 +142,7 @@ export const MessageListView: React.FC = () => {
   const [toastMsg, setToastMsg] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
@@ -268,6 +269,7 @@ export const MessageListView: React.FC = () => {
       await api.createMessageCategory(trimmedName, newCategoryColor);
       setNewCategoryName('');
       setNewCategoryColor('sky');
+      setShowCreateCategoryModal(false);
       await fetchData(false);
     } catch (error) {
       console.error(error);
@@ -387,7 +389,7 @@ export const MessageListView: React.FC = () => {
                 {category.name}
               </button>
             ))}
-            <button className="category-add-btn" onClick={() => setShowCategoryModal(true)} title={t('message_list.manage_categories', 'Manage Categories')}>
+            <button className="category-add-btn" onClick={() => setShowCreateCategoryModal(true)} title={t('message_category.new_section', 'New Category')}>
               <Plus size={15} />
             </button>
           </div>
@@ -475,6 +477,41 @@ export const MessageListView: React.FC = () => {
         />
       )}
 
+      {showCreateCategoryModal && (
+        <Modal
+          title={t('message_category.new_section', 'New Category')}
+          message=""
+          confirmText={t('message_category.add_action', 'Add Category')}
+          cancelText={t('common.cancel', 'Cancel')}
+          onConfirm={() => void handleCreateCategory()}
+          onCancel={() => setShowCreateCategoryModal(false)}
+          size="compact"
+        >
+          <div className="category-create-stack">
+            <input
+              className="category-name-input"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder={t('message_category.name_placeholder', 'Category name')}
+              autoFocus
+            />
+
+            <div className="category-swatch-grid" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
+              {CATEGORY_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`category-swatch color-${color} ${newCategoryColor === color ? 'active' : ''}`}
+                  onClick={() => setNewCategoryColor(color)}
+                  aria-checked={newCategoryColor === color}
+                  title={COLOR_LABELS[color]}
+                />
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {showCategoryModal && (
         <Modal
           title={t('message_list.manage_categories', 'Manage Categories')}
@@ -485,61 +522,22 @@ export const MessageListView: React.FC = () => {
           onCancel={() => setShowCategoryModal(false)}
         >
           <div className="category-manager">
-            <section className="category-panel">
-              <div className="category-panel-header">
-                <div>
-                  <h4>{t('message_category.new_section', 'New Category')}</h4>
-                  <p>{t('message_category.color_label', 'Color')}</p>
-                </div>
-              </div>
-
-              <div className="category-create-stack">
-                <input
-                  className="category-name-input"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder={t('message_category.name_placeholder', 'Category name')}
-                />
-
-                <div className="category-swatch-grid" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
-                  {CATEGORY_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`category-swatch color-${color} ${newCategoryColor === color ? 'active' : ''}`}
-                      onClick={() => setNewCategoryColor(color)}
-                      aria-checked={newCategoryColor === color}
-                      title={COLOR_LABELS[color]}
-                    />
-                  ))}
-                </div>
-
-                <button className="category-add-action" onClick={() => void handleCreateCategory()}>
-                  <Plus size={14} />
-                  <span>{t('message_category.add_action', 'Add Category')}</span>
-                </button>
-              </div>
-            </section>
-
             <div className="category-manager-list">
               {categories.map((category) => (
                 <section key={category.id} className="category-card">
                   <div className="category-card-header">
                     <div className="category-card-title">
                       <span className={`category-chip color-${category.color}`}>{category.name}</span>
+                      {category.isDefault && <span className="category-system-badge">{t('message_category.default_badge', 'Default')}</span>}
                     </div>
-
-                    <label className="category-default-radio">
-                      <input
-                        type="radio"
-                        checked={effectiveDefaultSendCategoryId === category.id}
-                        onChange={() => setDefaultSendCategoryId(category.id)}
-                      />
-                      <span>{t('message_list.default_send_target', 'Default send')}</span>
-                    </label>
                   </div>
 
-                  {!category.isDefault && (
+                  {category.isDefault ? (
+                    <div className="category-readonly-row">
+                      <span className={`category-color-dot color-${category.color}`} aria-hidden="true" />
+                      <span>{category.name}</span>
+                    </div>
+                  ) : (
                     <>
                       <input
                         className="category-inline-input"
@@ -553,7 +551,7 @@ export const MessageListView: React.FC = () => {
                         }}
                       />
 
-                      <div className="category-swatch-grid" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
+                      <div className="category-swatch-grid category-swatch-grid-compact" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
                         {CATEGORY_COLORS.map((color) => (
                           <button
                             key={color}

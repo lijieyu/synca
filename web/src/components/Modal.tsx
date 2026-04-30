@@ -9,15 +9,18 @@ interface Props {
   onCancel: () => void;
   destructive?: boolean;
   children?: React.ReactNode;
+  size?: 'compact' | 'large';
 }
 
 export const Modal: React.FC<Props> = ({ 
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, destructive = false, children
+  onConfirm, onCancel, destructive = false, children, size
 }) => {
+  const contentSizeClass = size === 'compact' ? '' : (children || size === 'large' ? 'modal-content-large' : '');
+
   return (
     <div className="modal-overlay" onClick={onCancel}>
-      <div className={`modal-content ${children ? 'modal-content-large' : ''}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className={`modal-content ${contentSizeClass}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h3 id="modal-title" className="modal-title">{title}</h3>
         {message ? <p className="modal-message">{message}</p> : null}
         {children}
