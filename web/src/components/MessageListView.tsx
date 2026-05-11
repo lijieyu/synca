@@ -41,6 +41,13 @@ const readStoredLayoutMode = (email: string | null): 'single' | 'tiled' => {
   return storedLayout === 'tiled' ? 'tiled' : 'single';
 };
 
+const formatTodoBadgeCount = (count: number) => (count > 99 ? '99+' : String(count));
+
+const CategoryTodoBadge: React.FC<{ count: number }> = ({ count }) => {
+  if (count <= 0) return null;
+  return <span className="category-todo-badge" aria-label={`${count} todos`}>{formatTodoBadgeCount(count)}</span>;
+};
+
 const EmptyMessageState: React.FC = () => {
   const { t } = useTranslation();
 
@@ -87,7 +94,10 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
     <section className="category-column">
       <div className="category-column-header">
         <div className="category-column-title-row">
-          <span className={`category-chip color-${category.color}`}>{category.name}</span>
+          <span className={`category-chip has-badge color-${category.color}`}>
+            {category.name}
+            <CategoryTodoBadge count={pending.length} />
+          </span>
           <div className="category-column-actions">
             <button className="header-btn" onClick={() => void onRefresh()} title={t('message_list.sync_success', 'Sync')}>
               <RefreshCcw size={16} />
@@ -244,6 +254,15 @@ export const MessageListView: React.FC = () => {
     return messages.filter((message) => message.categoryId === selectedCategoryId);
   }, [messages, selectedCategoryId]);
 
+  const todoCountByCategoryId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const message of messages) {
+      if (message.isCleared || !message.categoryId) continue;
+      counts[message.categoryId] = (counts[message.categoryId] ?? 0) + 1;
+    }
+    return counts;
+  }, [messages]);
+  const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
   const visibleSingleModeCategories = useMemo(() => categories.filter((category) => !category.isDefault), [categories]);
   const tiledCategories = useMemo(() => categories, [categories]);
   const tiledColumnWidth = useMemo(() => {
@@ -377,16 +396,18 @@ export const MessageListView: React.FC = () => {
       {layoutMode === 'single' && (
         <div className="category-toolbar">
           <div className="category-switcher">
-            <button className={`category-chip ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
+            <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
               {t('common.all', 'All')}
+              <CategoryTodoBadge count={allTodoCount} />
             </button>
             {visibleSingleModeCategories.map((category) => (
               <button
                 key={category.id}
-                className={`category-chip color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
+                className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
                 onClick={() => setSelectedCategoryId(category.id)}
               >
                 {category.name}
+                <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
               </button>
             ))}
             <button className="category-add-btn" onClick={() => setShowCreateCategoryModal(true)} title={t('message_category.new_section', 'New Category')}>

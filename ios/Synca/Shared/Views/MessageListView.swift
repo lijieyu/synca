@@ -290,6 +290,14 @@ struct MessageListView: View {
         syncManager.messages(for: selectedFilterCategoryId)
     }
 
+    private var allTodoCount: Int {
+        syncManager.messages.filter { !$0.isCleared }.count
+    }
+
+    private func todoCount(for categoryId: String?) -> Int {
+        syncManager.messages(for: categoryId).filter { !$0.isCleared }.count
+    }
+
     private var clearActionMessage: String {
         if isTiledLayout {
             return String(localized: "message_list.clear_completed_all_categories", bundle: .main)
@@ -307,12 +315,22 @@ struct MessageListView: View {
     private var categoryToolbar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                categoryChip(title: String(localized: "common.all", bundle: .main), color: .secondary.opacity(0.16), isSelected: syncManager.selectedCategoryId == syncManager.allCategoryPseudoId) {
+                categoryChip(
+                    title: String(localized: "common.all", bundle: .main),
+                    color: .secondary.opacity(0.16),
+                    isSelected: syncManager.selectedCategoryId == syncManager.allCategoryPseudoId,
+                    badgeCount: allTodoCount
+                ) {
                     syncManager.selectCategory(syncManager.allCategoryPseudoId)
                 }
 
                 ForEach(syncManager.categories) { category in
-                    categoryChip(title: category.name, color: backgroundColor(for: category.color), isSelected: syncManager.selectedCategoryId == category.id) {
+                    categoryChip(
+                        title: category.name,
+                        color: backgroundColor(for: category.color),
+                        isSelected: syncManager.selectedCategoryId == category.id,
+                        badgeCount: todoCount(for: category.id)
+                    ) {
                         syncManager.selectCategory(category.id)
                     }
                 }
@@ -333,21 +351,46 @@ struct MessageListView: View {
         .padding(.vertical, 10)
     }
 
-    private func categoryChip(title: String, color: Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func categoryChip(title: String, color: Color, isSelected: Bool, badgeCount: Int = 0, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(color)
-                .overlay(
-                    Capsule()
-                        .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
-                )
-                .clipShape(Capsule())
+            ZStack(alignment: .topTrailing) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(color)
+                    .overlay(
+                        Capsule()
+                            .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
+                    )
+                    .clipShape(Capsule())
+
+                if badgeCount > 0 {
+                    todoCountBadge(badgeCount)
+                        .offset(x: 8, y: -7)
+                }
+            }
+            .padding(.top, badgeCount > 0 ? 7 : 0)
+            .padding(.trailing, badgeCount > 0 ? 8 : 0)
         }
         .buttonStyle(.plain)
+    }
+
+    private func todoCountBadge(_ count: Int) -> some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, count > 9 ? 5 : 0)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Color.red, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.syncaPageBackground.opacity(0.9), lineWidth: 1)
+            )
+            .accessibilityLabel(Text("\(count) todos"))
     }
 
     private func categoryBadge(name: String, color: MessageCategoryColor) -> some View {
@@ -1061,6 +1104,22 @@ private struct TiledCategoryColumn: View {
         messages.filter { !$0.isCleared }
     }
 
+    private func todoCountBadge(_ count: Int) -> some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, count > 9 ? 5 : 0)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Color.red, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.syncaCardBackground.opacity(0.9), lineWidth: 1)
+            )
+            .accessibilityLabel(Text("\(count) todos"))
+    }
+
     private var emptyStateView: some View {
         VStack(spacing: 14) {
             Image(systemName: "lightbulb.fill")
@@ -1083,12 +1142,21 @@ private struct TiledCategoryColumn: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(category.name)
-                    .font(.headline)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(backgroundColor(for: category.color))
-                    .clipShape(Capsule())
+                ZStack(alignment: .topTrailing) {
+                    Text(category.name)
+                        .font(.headline)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(backgroundColor(for: category.color))
+                        .clipShape(Capsule())
+
+                    if pendingMessages.count > 0 {
+                        todoCountBadge(pendingMessages.count)
+                            .offset(x: 8, y: -7)
+                    }
+                }
+                .padding(.top, pendingMessages.count > 0 ? 7 : 0)
+                .padding(.trailing, pendingMessages.count > 0 ? 8 : 0)
 
                 Spacer()
 
