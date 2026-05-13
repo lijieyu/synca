@@ -21,6 +21,13 @@ const COLOR_LABELS: Record<MessageCategoryColor, string> = {
   ocean: 'Ocean',
 };
 
+interface CategoryManagerDraftRow {
+  clientId: string;
+  id?: string;
+  name: string;
+  color: MessageCategoryColor;
+}
+
 const sortMessages = (items: SyncaMessage[]) =>
   [...items].sort((m1, m2) => {
     if (m1.isCleared !== m2.isCleared) {
@@ -153,10 +160,13 @@ export const MessageListView: React.FC = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
+  const [showDuplicateCategoryModal, setShowDuplicateCategoryModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryManagerRows, setCategoryManagerRows] = useState<CategoryManagerDraftRow[]>([]);
+  const [categoryManagerDeleteTarget, setCategoryManagerDeleteTarget] = useState<CategoryManagerDraftRow | null>(null);
+  const [categoryManagerError, setCategoryManagerError] = useState<{ title: string; message: string } | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
-  const [draftCategoryNames, setDraftCategoryNames] = useState<Record<string, string>>({});
   const listRef = useRef<HTMLDivElement>(null);
   const didRestorePreferencesRef = useRef(false);
 
@@ -230,16 +240,6 @@ export const MessageListView: React.FC = () => {
     }
   }, [email, defaultSendCategoryId]);
 
-  useEffect(() => {
-    setDraftCategoryNames((current) => {
-      const next: Record<string, string> = {};
-      for (const category of categories) {
-        next[category.id] = current[category.id] ?? category.name;
-      }
-      return next;
-    });
-  }, [categories]);
-
   const defaultCategory = useMemo(
     () => categories.find((category) => category.isDefault) ?? categories[0] ?? null,
     [categories]
@@ -276,6 +276,38 @@ export const MessageListView: React.FC = () => {
     setShowToast(true);
   };
 
+  const buildCategoryManagerRows = () =>
+    categories
+      .filter((category) => !category.isDefault)
+      .map((category) => ({
+        clientId: category.id,
+        id: category.id,
+        name: category.name,
+        color: category.color,
+      }));
+
+  const openCategoryManager = () => {
+    setCategoryManagerRows(buildCategoryManagerRows());
+    setCategoryManagerDeleteTarget(null);
+    setCategoryManagerError(null);
+    setShowCategoryModal(true);
+  };
+
+  const updateCategoryManagerRow = (clientId: string, patch: Partial<Pick<CategoryManagerDraftRow, 'name' | 'color'>>) => {
+    setCategoryManagerRows((rows) => rows.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row)));
+  };
+
+  const addCategoryManagerRow = () => {
+    setCategoryManagerRows((rows) => [
+      ...rows,
+      {
+        clientId: `new-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: '',
+        color: 'sky',
+      },
+    ]);
+  };
+
   const handleScopedClear = async (categoryId?: string | null) => {
     await api.deleteCompletedMessages(categoryId ?? null);
     await fetchData(false);
@@ -284,6 +316,11 @@ export const MessageListView: React.FC = () => {
   const handleCreateCategory = async () => {
     const trimmedName = newCategoryName.trim();
     if (!trimmedName) return;
+    const duplicated = categories.some((category) => category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
+    if (duplicated) {
+      setShowDuplicateCategoryModal(true);
+      return;
+    }
     try {
       await api.createMessageCategory(trimmedName, newCategoryColor);
       setNewCategoryName('');
@@ -295,24 +332,58 @@ export const MessageListView: React.FC = () => {
     }
   };
 
-  const handleCategoryUpdate = async (category: MessageCategory, patch: Partial<Pick<MessageCategory, 'name' | 'color'>>) => {
-    try {
-      await api.updateMessageCategory(category.id, patch);
-      await fetchData(false);
-    } catch (error) {
-      console.error(error);
+  const handleCategoryManagerSave = async () => {
+    const normalizedNames = categoryManagerRows.map((row) => row.name.trim());
+    if (normalizedNames.some((name) => !name)) {
+      setCategoryManagerError({
+        title: t('message_category.invalid_title', 'Category Name Required'),
+        message: t('message_category.invalid_message', 'Each category needs a name before saving.'),
+      });
+      return;
     }
-  };
 
-  const handleCategoryDelete = async (categoryId: string) => {
+    const seenNames = new Set<string>();
+    for (const name of normalizedNames) {
+      const key = name.toLocaleLowerCase();
+      if (seenNames.has(key)) {
+        setCategoryManagerError({
+          title: t('message_category.duplicate_title', 'Category Already Exists'),
+          message: t('message_category.duplicate_message', 'Use a different category name.'),
+        });
+        return;
+      }
+      seenNames.add(key);
+    }
+
+    const originalCategories = categories.filter((category) => !category.isDefault);
+    const originalById = new Map(originalCategories.map((category) => [category.id, category]));
+    const keptIds = new Set(categoryManagerRows.flatMap((row) => (row.id ? [row.id] : [])));
+
     try {
-      await api.deleteMessageCategory(categoryId);
-      if (selectedCategoryId === categoryId) {
-        setSelectedCategoryId(defaultCategory?.id ?? ALL_CATEGORY_ID);
+      for (const category of originalCategories) {
+        if (!keptIds.has(category.id)) {
+          await api.deleteMessageCategory(category.id);
+        }
       }
-      if (effectiveDefaultSendCategoryId === categoryId) {
-        setDefaultSendCategoryId(defaultCategory?.id ?? null);
+
+      for (const row of categoryManagerRows) {
+        const name = row.name.trim();
+        if (!row.id) {
+          await api.createMessageCategory(name, row.color);
+          continue;
+        }
+
+        const original = originalById.get(row.id);
+        if (!original) continue;
+        const patch: Partial<Pick<MessageCategory, 'name' | 'color'>> = {};
+        if (name !== original.name) patch.name = name;
+        if (row.color !== original.color) patch.color = row.color;
+        if (Object.keys(patch).length > 0) {
+          await api.updateMessageCategory(row.id, patch);
+        }
       }
+
+      setShowCategoryModal(false);
       await fetchData(false);
     } catch (error) {
       console.error(error);
@@ -358,7 +429,7 @@ export const MessageListView: React.FC = () => {
               <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)', padding: '0 4px' }}>Manage</span>
             </button>
           )}
-          <button className="header-btn" onClick={() => setShowCategoryModal(true)} title="Manage categories">
+          <button className="header-btn" onClick={openCategoryManager} title="Manage categories">
             <Settings2 size={18} />
           </button>
           <button className="header-btn" onClick={() => setLayoutMode(layoutMode === 'single' ? 'tiled' : 'single')} title="Toggle layout">
@@ -506,6 +577,11 @@ export const MessageListView: React.FC = () => {
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCreateCategory()}
           onCancel={() => setShowCreateCategoryModal(false)}
+          leadingActionText={t('message_list.manage_categories', 'Categories')}
+          onLeadingAction={() => {
+            setShowCreateCategoryModal(false);
+            openCategoryManager();
+          }}
           size="compact"
         >
           <div className="category-create-stack">
@@ -533,82 +609,102 @@ export const MessageListView: React.FC = () => {
         </Modal>
       )}
 
+      {showDuplicateCategoryModal && (
+        <Modal
+          title={t('message_category.duplicate_title', 'Category Already Exists')}
+          message={t('message_category.duplicate_message', 'Use a different category name.')}
+          confirmText={t('common.ok', 'OK')}
+          onConfirm={() => setShowDuplicateCategoryModal(false)}
+          onCancel={() => setShowDuplicateCategoryModal(false)}
+          size="compact"
+        />
+      )}
+
       {showCategoryModal && (
         <Modal
           title={t('message_list.manage_categories', 'Manage Categories')}
           message=""
-          confirmText={t('common.done', 'Done')}
+          confirmText={t('common.save', 'Save')}
           cancelText={t('common.cancel', 'Cancel')}
-          onConfirm={() => setShowCategoryModal(false)}
+          onConfirm={() => void handleCategoryManagerSave()}
           onCancel={() => setShowCategoryModal(false)}
         >
           <div className="category-manager">
             <div className="category-manager-list">
-              {categories.map((category) => (
-                <section key={category.id} className="category-card">
-                  <div className="category-card-header">
-                    <div className="category-card-title">
-                      <span className={`category-chip color-${category.color}`}>{category.name}</span>
-                      {category.isDefault && <span className="category-system-badge">{t('message_category.default_badge', 'Default')}</span>}
-                    </div>
-                  </div>
+              <div className="category-manager-heading" role="row">
+                <span>{t('message_category.name_column', 'Name')}</span>
+                <span>{t('message_category.color_label', 'Color')}</span>
+                <span aria-hidden="true" />
+              </div>
 
-                  {category.isDefault ? (
-                    <div className="category-readonly-row">
-                      <span className={`category-color-dot color-${category.color}`} aria-hidden="true" />
-                      <span>{category.name}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        className="category-inline-input"
-                        value={draftCategoryNames[category.id] ?? category.name}
-                        onChange={(e) => setDraftCategoryNames((current) => ({ ...current, [category.id]: e.target.value }))}
-                        onBlur={() => {
-                          const value = (draftCategoryNames[category.id] ?? category.name).trim();
-                          if (value && value !== category.name) {
-                            void handleCategoryUpdate(category, { name: value });
-                          }
-                        }}
-                      />
+              {categoryManagerRows.map((row) => (
+                <section key={row.clientId} className="category-list-row">
+                  <span className={`category-row-accent color-${row.color}`} aria-hidden="true" />
+                  <input
+                    className="category-inline-input"
+                    value={row.name}
+                    onChange={(e) => updateCategoryManagerRow(row.clientId, { name: e.target.value })}
+                    placeholder={t('message_category.name_placeholder', 'Category name')}
+                  />
 
-                      <div className="category-swatch-grid category-swatch-grid-compact" role="radiogroup" aria-label={t('message_category.color_label', 'Color')}>
-                        {CATEGORY_COLORS.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            className={`category-swatch color-${color} ${category.color === color ? 'active' : ''}`}
-                            onClick={() => void handleCategoryUpdate(category, { color })}
-                            aria-checked={category.color === color}
-                            title={COLOR_LABELS[color]}
-                          />
-                        ))}
-                      </div>
+                  <label className="category-color-field">
+                    <span className={`category-color-dot color-${row.color}`} aria-hidden="true" />
+                    <select
+                      className="category-color-select"
+                      value={row.color}
+                      onChange={(e) => updateCategoryManagerRow(row.clientId, { color: e.target.value as MessageCategoryColor })}
+                      aria-label={t('message_category.color_label', 'Color')}
+                    >
+                      {CATEGORY_COLORS.map((color) => (
+                        <option key={color} value={color}>{COLOR_LABELS[color]}</option>
+                      ))}
+                    </select>
+                  </label>
 
-                      <div className="category-card-actions">
-                        <button
-                          className="category-secondary-action"
-                          onClick={() => {
-                            const value = (draftCategoryNames[category.id] ?? category.name).trim();
-                            if (value && value !== category.name) {
-                              void handleCategoryUpdate(category, { name: value });
-                            }
-                          }}
-                        >
-                          {t('message_category.save_name', 'Save Name')}
-                        </button>
-                        <button className="category-danger-action" onClick={() => void handleCategoryDelete(category.id)}>
-                          <Trash2 size={16} />
-                          <span>{t('message_category.delete_action', 'Delete Category')}</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <button
+                    className="category-row-delete"
+                    onClick={() => setCategoryManagerDeleteTarget(row)}
+                    title={t('message_category.delete_action', 'Delete Category')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </section>
               ))}
+
+              <button className="category-add-row-btn" onClick={addCategoryManagerRow}>
+                <Plus size={15} />
+                <span>{t('message_category.add_action', 'Add Category')}</span>
+              </button>
             </div>
           </div>
         </Modal>
+      )}
+
+      {categoryManagerDeleteTarget && (
+        <Modal
+          title={t('message_category.delete_confirm_title', 'Delete Category?')}
+          message={t('message_category.delete_confirm_message', 'This category will be removed after you save.')}
+          confirmText={t('common.delete', 'Delete')}
+          cancelText={t('common.cancel', 'Cancel')}
+          onConfirm={() => {
+            setCategoryManagerRows((rows) => rows.filter((row) => row.clientId !== categoryManagerDeleteTarget.clientId));
+            setCategoryManagerDeleteTarget(null);
+          }}
+          onCancel={() => setCategoryManagerDeleteTarget(null)}
+          destructive
+          size="compact"
+        />
+      )}
+
+      {categoryManagerError && (
+        <Modal
+          title={categoryManagerError.title}
+          message={categoryManagerError.message}
+          confirmText={t('common.ok', 'OK')}
+          onConfirm={() => setCategoryManagerError(null)}
+          onCancel={() => setCategoryManagerError(null)}
+          size="compact"
+        />
       )}
     </div>
   );

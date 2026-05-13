@@ -112,7 +112,12 @@ struct MessageListView: View {
                     .environmentObject(syncManager)
             }
             .sheet(isPresented: $showCreateCategory) {
-                NewMessageCategorySheet()
+                NewMessageCategorySheet {
+                    showCreateCategory = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        showCategoryManager = true
+                    }
+                }
                     .environmentObject(syncManager)
             }
             .alert("message_list.session_expired_title", isPresented: $showSessionExpired) {
@@ -347,32 +352,30 @@ struct MessageListView: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
+            .padding(.top, 7)
         }
         .padding(.vertical, 10)
     }
 
     private func categoryChip(title: String, color: Color, isSelected: Bool, badgeCount: Int = 0, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(color)
-                    .overlay(
-                        Capsule()
-                            .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
-                    )
-                    .clipShape(Capsule())
-
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(color)
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
+                )
+                .clipShape(Capsule())
+                .overlay(alignment: .topTrailing) {
                 if badgeCount > 0 {
                     todoCountBadge(badgeCount)
                         .offset(x: 8, y: -7)
                 }
             }
-            .padding(.top, badgeCount > 0 ? 7 : 0)
-            .padding(.trailing, badgeCount > 0 ? 8 : 0)
         }
         .buttonStyle(.plain)
     }
@@ -1142,21 +1145,18 @@ private struct TiledCategoryColumn: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                ZStack(alignment: .topTrailing) {
-                    Text(category.name)
-                        .font(.headline)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(backgroundColor(for: category.color))
-                        .clipShape(Capsule())
-
+                Text(category.name)
+                    .font(.headline)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(backgroundColor(for: category.color))
+                    .clipShape(Capsule())
+                    .overlay(alignment: .topTrailing) {
                     if pendingMessages.count > 0 {
                         todoCountBadge(pendingMessages.count)
                             .offset(x: 8, y: -7)
                     }
                 }
-                .padding(.top, pendingMessages.count > 0 ? 7 : 0)
-                .padding(.trailing, pendingMessages.count > 0 ? 8 : 0)
 
                 Spacer()
 
@@ -1175,7 +1175,9 @@ private struct TiledCategoryColumn: View {
                 .buttonStyle(.plain)
                 .disabled(completedMessages.isEmpty)
             }
-            .padding(14)
+            .padding(.horizontal, 14)
+            .padding(.top, 21)
+            .padding(.bottom, 14)
 
             if completedMessages.isEmpty && pendingMessages.isEmpty {
                 emptyStateView
@@ -1436,8 +1438,11 @@ private struct NewMessageCategorySheet: View {
     @EnvironmentObject var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
 
+    let onManageCategories: () -> Void
+
     @State private var name = ""
     @State private var color: MessageCategoryColor = .sky
+    @State private var showDuplicateNameAlert = false
 
     private func colorName(for color: MessageCategoryColor) -> LocalizedStringKey {
         switch color {
@@ -1485,8 +1490,42 @@ private struct NewMessageCategorySheet: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private func isDuplicateCategoryName(_ name: String) -> Bool {
+        syncManager.categories.contains { category in
+            category.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                .localizedCaseInsensitiveCompare(name) == .orderedSame
+        }
+    }
+
+    private func createCategory() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !isDuplicateCategoryName(trimmed) else {
+            showDuplicateNameAlert = true
+            return
+        }
+
+        Task {
+            await syncManager.createCategory(name: trimmed, color: color)
+            dismiss()
+        }
+    }
+
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            HStack {
+                Text("message_category.new_section", bundle: .main)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 20)
+            .padding(.bottom, 14)
+
+            Divider()
+
             VStack(alignment: .leading, spacing: 18) {
                 TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $name)
                     .textFieldStyle(.plain)
@@ -1531,26 +1570,35 @@ private struct NewMessageCategorySheet: View {
                 }
             }
             .padding(22)
-            .navigationTitle("message_category.new_section")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("common.cancel") { dismiss() }
+
+            Divider()
+
+            HStack(spacing: 12) {
+                Button {
+                    onManageCategories()
+                } label: {
+                    Text("message_list.manage_categories", bundle: .main)
+                        .font(.callout.weight(.semibold))
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("message_category.add_action") {
-                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        Task {
-                            await syncManager.createCategory(name: trimmed, color: color)
-                            dismiss()
-                        }
-                    }
-                    .disabled(!canCreate)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+
+                Spacer()
+
+                Button("common.cancel") { dismiss() }
+
+                Button("message_category.add_action") {
+                    createCategory()
                 }
+                .disabled(!canCreate)
             }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 16)
+        }
+        .alert("message_category.duplicate_title", isPresented: $showDuplicateNameAlert) {
+            Button("common.ok", role: .cancel) {}
+        } message: {
+            Text("message_category.duplicate_message")
         }
         #if os(macOS)
         .frame(minWidth: 420, idealWidth: 440, minHeight: 300, idealHeight: 330)
@@ -1558,12 +1606,203 @@ private struct NewMessageCategorySheet: View {
     }
 }
 
+private struct CategoryDraftRow: Identifiable, Equatable {
+    let localId: String
+    let categoryId: String?
+    var name: String
+    var color: MessageCategoryColor
+
+    var id: String { localId }
+}
+
+private struct CategoryValidationAlert: Identifiable {
+    let id = UUID()
+    let titleKey: String
+    let messageKey: String
+}
+
 private struct MessageCategoryManagerSheet: View {
     @EnvironmentObject var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draftNames: [String: String] = [:]
-    private let cardCornerRadius: CGFloat = 18
+    @State private var draftRows: [CategoryDraftRow] = []
+    @State private var pendingDeleteRow: CategoryDraftRow?
+    @State private var validationAlert: CategoryValidationAlert?
+
+    private var editableCategories: [SyncaMessageCategory] {
+        syncManager.categories.filter { !$0.isDefault }
+    }
+
+    private func reloadDraftRows() {
+        draftRows = editableCategories.map { category in
+            CategoryDraftRow(
+                localId: category.id,
+                categoryId: category.id,
+                name: category.name,
+                color: category.color
+            )
+        }
+    }
+
+    private func addDraftRow() {
+        draftRows.append(
+            CategoryDraftRow(
+                localId: "new-\(UUID().uuidString)",
+                categoryId: nil,
+                name: "",
+                color: .sky
+            )
+        )
+    }
+
+    private func deleteDraftRow(_ row: CategoryDraftRow) {
+        draftRows.removeAll { $0.localId == row.localId }
+    }
+
+    private func validateDraftRows() -> Bool {
+        let names = draftRows.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if names.contains(where: \.isEmpty) {
+            validationAlert = CategoryValidationAlert(
+                titleKey: "message_category.invalid_title",
+                messageKey: "message_category.invalid_message"
+            )
+            return false
+        }
+
+        var seenNames = Set<String>()
+        for name in names {
+            let key = name.localizedLowercase
+            if seenNames.contains(key) {
+                validationAlert = CategoryValidationAlert(
+                    titleKey: "message_category.duplicate_title",
+                    messageKey: "message_category.duplicate_message"
+                )
+                return false
+            }
+            seenNames.insert(key)
+        }
+
+        return true
+    }
+
+    private func saveDraftRows() {
+        guard validateDraftRows() else { return }
+
+        let rows = draftRows
+        let originalCategories = editableCategories
+        let originalById = Dictionary(uniqueKeysWithValues: originalCategories.map { ($0.id, $0) })
+        let keptIds = Set(rows.compactMap(\.categoryId))
+
+        Task {
+            for category in originalCategories where !keptIds.contains(category.id) {
+                await syncManager.deleteCategory(id: category.id)
+            }
+
+            for row in rows {
+                let name = row.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let categoryId = row.categoryId {
+                    guard let original = originalById[categoryId] else { continue }
+                    let updatedName = name == original.name ? nil : name
+                    let updatedColor = row.color == original.color ? nil : row.color
+                    if updatedName != nil || updatedColor != nil {
+                        await syncManager.updateCategory(id: categoryId, name: updatedName, color: updatedColor)
+                    }
+                } else {
+                    await syncManager.createCategory(name: name, color: row.color)
+                }
+            }
+
+            dismiss()
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach($draftRows) { $row in
+                            CategoryDraftListRow(
+                                row: $row,
+                                onDelete: { pendingDeleteRow = row }
+                            )
+                        }
+
+                        Button {
+                            addDraftRow()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus")
+                                Text("message_category.add_action", bundle: .main)
+                            }
+                            .font(.callout.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.syncaCardBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.syncaCardBorder, style: StrokeStyle(lineWidth: 1, dash: [6, 5]))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 12)
+                }
+                .background(Color.syncaPageBackground.opacity(0.55))
+
+                Divider()
+
+                HStack {
+                    Button("common.cancel") { dismiss() }
+                    Spacer()
+                    Button("common.save") { saveDraftRows() }
+                        .buttonStyle(.borderedProminent)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            }
+            .navigationTitle("message_category.section_title")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+        }
+        .onAppear {
+            reloadDraftRows()
+        }
+        .alert("message_category.delete_confirm_title", isPresented: Binding(
+            get: { pendingDeleteRow != nil },
+            set: { if !$0 { pendingDeleteRow = nil } }
+        )) {
+            Button("common.cancel", role: .cancel) {
+                pendingDeleteRow = nil
+            }
+            Button("common.delete", role: .destructive) {
+                if let pendingDeleteRow {
+                    deleteDraftRow(pendingDeleteRow)
+                }
+                pendingDeleteRow = nil
+            }
+        } message: {
+            Text("message_category.delete_confirm_message")
+        }
+        .alert(item: $validationAlert) { alert in
+            Alert(
+                title: Text(LocalizedStringKey(alert.titleKey)),
+                message: Text(LocalizedStringKey(alert.messageKey)),
+                dismissButton: .default(Text("common.ok"))
+            )
+        }
+        #if os(macOS)
+        .frame(minWidth: 560, idealWidth: 600, minHeight: 380, idealHeight: 460)
+        #endif
+    }
+}
+
+private struct CategoryDraftListRow: View {
+    @Binding var row: CategoryDraftRow
+    let onDelete: () -> Void
+    @State private var showColorPicker = false
 
     private func colorName(for color: MessageCategoryColor) -> LocalizedStringKey {
         switch color {
@@ -1583,16 +1822,6 @@ private struct MessageCategoryManagerSheet: View {
             return "message_category.color.rose"
         case .ocean:
             return "message_category.color.ocean"
-        }
-    }
-
-    @ViewBuilder
-    private func colorOptionRow(_ color: MessageCategoryColor) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(colorAccent(color))
-                .frame(width: 10, height: 10)
-            Text(colorName(for: color))
         }
     }
 
@@ -1617,150 +1846,102 @@ private struct MessageCategoryManagerSheet: View {
         }
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(syncManager.categories) { category in
-                        categoryEditorCard(for: category)
-                    }
-                }
-                .padding(20)
-            }
-            .navigationTitle("message_category.section_title")
-            #if os(macOS)
-            .frame(minWidth: 620, minHeight: 520)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("common.done") { dismiss() }
-                }
-            }
-        }
-        .onAppear {
-            draftNames = Dictionary(uniqueKeysWithValues: syncManager.categories.map { ($0.id, $0.name) })
-        }
-        .onChange(of: syncManager.categories) { categories in
-            for category in categories where draftNames[category.id] == nil {
-                draftNames[category.id] = category.name
-            }
-        }
-    }
-
     @ViewBuilder
-    private func categoryEditorCard(for category: SyncaMessageCategory) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 10) {
-                categoryBadge(name: category.name, color: category.color)
-
-                if category.isDefault {
-                    Text("message_category.default_badge", bundle: .main)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.secondary.opacity(0.10), in: Capsule())
-                }
-
-                Spacer()
-            }
-
-            if category.isDefault {
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(colorAccent(category.color))
-                        .frame(width: 10, height: 10)
-                    Text(category.name)
-                        .font(.body.weight(.semibold))
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
-            } else {
-                TextField(
-                    String(localized: "message_category.name_placeholder", bundle: .main),
-                    text: Binding(
-                        get: { draftNames[category.id] ?? category.name },
-                        set: { draftNames[category.id] = $0 }
-                    )
-                )
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
-                )
-
-                colorPickerField(
-                    selection: Binding(
-                        get: { category.color },
-                        set: { newValue in
-                            Task { await syncManager.updateCategory(id: category.id, color: newValue) }
-                        }
-                    )
-                )
-
-                HStack {
-                    Button("message_category.save_name") {
-                        let name = (draftNames[category.id] ?? category.name).trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !name.isEmpty, name != category.name else { return }
-                        Task { await syncManager.updateCategory(id: category.id, name: name) }
-                    }
-                    .buttonStyle(.bordered)
-
-                    Spacer()
-
-                    Button(role: .destructive) {
-                        Task { await syncManager.deleteCategory(id: category.id) }
-                    } label: {
-                        Text("message_category.delete_action", bundle: .main)
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-        }
-        .padding(18)
-        .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: cardCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: cardCornerRadius)
-                .stroke(Color.syncaCardBorder, lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private func colorPickerField(selection: Binding<MessageCategoryColor>) -> some View {
-        Picker("message_category.color_label", selection: selection) {
-            ForEach(MessageCategoryColor.allCases) { color in
-                colorOptionRow(color).tag(color)
-            }
-        }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
-        )
-    }
-
-    private func categoryBadge(name: String, color: MessageCategoryColor) -> some View {
-        HStack(spacing: 6) {
+    private func colorLabel(for color: MessageCategoryColor) -> some View {
+        HStack(spacing: 8) {
             Circle()
                 .fill(colorAccent(color))
-                .frame(width: 8, height: 8)
-            Text(name)
-                .font(.caption.weight(.semibold))
+                .frame(width: 10, height: 10)
+            Text(colorName(for: color))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(colorAccent(color).opacity(0.16))
-        .clipShape(Capsule())
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 999)
+                .fill(colorAccent(row.color))
+                .frame(width: 5)
+                .padding(.vertical, 3)
+
+            TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
+                .textFieldStyle(.plain)
+
+            Spacer(minLength: 8)
+
+            Button {
+                showColorPicker.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(colorAccent(row.color))
+                        .frame(width: 11, height: 11)
+                    Text(colorName(for: row.color))
+                        .font(.callout.weight(.semibold))
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(minWidth: 120, alignment: .leading)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 8)
+                .background(colorAccent(row.color).opacity(0.14), in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(colorAccent(row.color).opacity(0.34), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(MessageCategoryColor.allCases) { color in
+                        Button {
+                            row.color = color
+                            showColorPicker = false
+                        } label: {
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(colorAccent(color))
+                                    .frame(width: 11, height: 11)
+
+                                Text(colorName(for: color))
+                                    .font(.callout.weight(.semibold))
+
+                                Spacer(minLength: 16)
+
+                                if color == row.color {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(colorAccent(color))
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(8)
+                .frame(width: 180)
+            }
+
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 30, height: 30)
+                    .background(Color.red.opacity(0.10), in: Circle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("message_category.delete_action", bundle: .main))
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.syncaCardBorder, lineWidth: 1)
+        )
     }
 }
 
