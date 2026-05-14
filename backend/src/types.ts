@@ -74,6 +74,7 @@ export interface SyncaMessageCategory {
     name: string;
     color: SyncaMessageCategoryColor;
     isDefault: boolean;
+    sortOrder: number;
     createdAt: string;
     updatedAt: string;
 }

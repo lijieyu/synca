@@ -1028,13 +1028,13 @@ button.category-chip {
 .category-manager-heading,
 .category-list-row {
   display: grid;
-  grid-template-columns: 5px minmax(180px, 1fr) minmax(150px, 190px) 38px;
+  grid-template-columns: 5px minmax(180px, 1fr) minmax(150px, 190px) 38px 34px;
   align-items: center;
   gap: 12px;
 }
 
 .category-manager-heading {
-  grid-template-columns: minmax(180px, 1fr) minmax(150px, 190px) 38px;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 190px) 38px 34px;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 800;
@@ -1090,6 +1090,35 @@ button.category-chip {
   color: var(--text-main);
   font: inherit;
   outline: none;
+}
+
+.category-row-move {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.category-row-move button {
+  width: 30px;
+  height: 17px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.category-row-move button:hover:not(:disabled) {
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--text-main);
+}
+
+.category-row-move button:disabled {
+  cursor: default;
+  opacity: 0.28;
 }
 
 .category-row-delete {
@@ -1224,7 +1253,7 @@ button.category-chip {
     display: none;
   }
   .category-list-row {
-    grid-template-columns: 5px 1fr 38px;
+    grid-template-columns: 5px 1fr 38px 34px;
   }
   .category-color-field {
     grid-column: 2 / -1;

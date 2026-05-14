@@ -13,7 +13,7 @@ import {
     listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
     canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
-    updateMessageCategoryAssignment, deleteAccount,
+    updateMessageCategoryAssignment, reorderMessageCategories, deleteAccount,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -370,6 +370,29 @@ app.patch('/message-categories/:id', auth, async (req, res) => {
         console.error('[message-categories/update] error:', error);
         res.status(409).json({ error: 'category_name_conflict' });
     }
+});
+
+app.put('/message-categories/order', auth, async (req, res) => {
+    const parsed = z.object({
+        categoryIds: z.array(z.string().trim().min(1)).max(100),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const reordered = await reorderMessageCategories({
+        userId: getUserId(req),
+        categoryIds: parsed.data.categoryIds,
+        now: new Date().toISOString(),
+    });
+
+    if (!reordered) {
+        return res.status(400).json({ error: 'invalid_category_order' });
+    }
+
+    notifyOtherDevices(getUserId(req), req.header('Authorization')).catch(() => {});
+    res.json({ ok: true });
 });
 
 app.delete('/message-categories/:id', auth, async (req, res) => {

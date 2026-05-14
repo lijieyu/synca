@@ -3,7 +3,7 @@ import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage
 import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { Grid2x2, Lightbulb, LogOut, Plus, RefreshCcw, Rows3, Settings2, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Grid2x2, Lightbulb, LogOut, Plus, RefreshCcw, Rows3, Settings2, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -297,6 +297,17 @@ export const MessageListView: React.FC = () => {
     setCategoryManagerRows((rows) => rows.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row)));
   };
 
+  const moveCategoryManagerRow = (index: number, direction: -1 | 1) => {
+    setCategoryManagerRows((rows) => {
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || index >= rows.length || targetIndex >= rows.length) return rows;
+      const next = [...rows];
+      const [row] = next.splice(index, 1);
+      next.splice(targetIndex, 0, row);
+      return next;
+    });
+  };
+
   const addCategoryManagerRow = () => {
     setCategoryManagerRows((rows) => [
       ...rows,
@@ -366,10 +377,13 @@ export const MessageListView: React.FC = () => {
         }
       }
 
+      const orderedCategoryIds: string[] = [];
+
       for (const row of categoryManagerRows) {
         const name = row.name.trim();
         if (!row.id) {
-          await api.createMessageCategory(name, row.color);
+          const created = await api.createMessageCategory(name, row.color);
+          orderedCategoryIds.push(created.id);
           continue;
         }
 
@@ -381,8 +395,10 @@ export const MessageListView: React.FC = () => {
         if (Object.keys(patch).length > 0) {
           await api.updateMessageCategory(row.id, patch);
         }
+        orderedCategoryIds.push(row.id);
       }
 
+      await api.reorderMessageCategories(orderedCategoryIds);
       setShowCategoryModal(false);
       await fetchData(false);
     } catch (error) {
@@ -635,9 +651,10 @@ export const MessageListView: React.FC = () => {
                 <span>{t('message_category.name_column', 'Name')}</span>
                 <span>{t('message_category.color_label', 'Color')}</span>
                 <span aria-hidden="true" />
+                <span aria-hidden="true" />
               </div>
 
-              {categoryManagerRows.map((row) => (
+              {categoryManagerRows.map((row, index) => (
                 <section key={row.clientId} className="category-list-row">
                   <span className={`category-row-accent color-${row.color}`} aria-hidden="true" />
                   <input
@@ -668,6 +685,23 @@ export const MessageListView: React.FC = () => {
                   >
                     <Trash2 size={16} />
                   </button>
+
+                  <div className="category-row-move" aria-label={t('message_category.reorder_label', 'Reorder category')}>
+                    <button
+                      onClick={() => moveCategoryManagerRow(index, -1)}
+                      disabled={index === 0}
+                      title={t('message_category.move_up', 'Move Up')}
+                    >
+                      <ChevronUp size={15} />
+                    </button>
+                    <button
+                      onClick={() => moveCategoryManagerRow(index, 1)}
+                      disabled={index === categoryManagerRows.length - 1}
+                      title={t('message_category.move_down', 'Move Down')}
+                    >
+                      <ChevronDown size={15} />
+                    </button>
+                  </div>
                 </section>
               ))}
 

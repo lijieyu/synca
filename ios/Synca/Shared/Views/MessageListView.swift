@@ -1506,7 +1506,7 @@ private struct NewMessageCategorySheet: View {
         }
 
         Task {
-            await syncManager.createCategory(name: trimmed, color: color)
+            let _ = await syncManager.createCategory(name: trimmed, color: color)
             dismiss()
         }
     }
@@ -1659,6 +1659,14 @@ private struct MessageCategoryManagerSheet: View {
         draftRows.removeAll { $0.localId == row.localId }
     }
 
+    private func moveDraftRow(from sourceIndex: Int, to destinationIndex: Int) {
+        guard draftRows.indices.contains(sourceIndex),
+              draftRows.indices.contains(destinationIndex),
+              sourceIndex != destinationIndex else { return }
+        let row = draftRows.remove(at: sourceIndex)
+        draftRows.insert(row, at: destinationIndex)
+    }
+
     private func validateDraftRows() -> Bool {
         let names = draftRows.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         if names.contains(where: \.isEmpty) {
@@ -1698,6 +1706,7 @@ private struct MessageCategoryManagerSheet: View {
                 await syncManager.deleteCategory(id: category.id)
             }
 
+            var orderedCategoryIds: [String] = []
             for row in rows {
                 let name = row.name.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let categoryId = row.categoryId {
@@ -1707,11 +1716,15 @@ private struct MessageCategoryManagerSheet: View {
                     if updatedName != nil || updatedColor != nil {
                         await syncManager.updateCategory(id: categoryId, name: updatedName, color: updatedColor)
                     }
+                    orderedCategoryIds.append(categoryId)
                 } else {
-                    await syncManager.createCategory(name: name, color: row.color)
+                    if let category = await syncManager.createCategory(name: name, color: row.color) {
+                        orderedCategoryIds.append(category.id)
+                    }
                 }
             }
 
+            await syncManager.reorderCategories(ids: orderedCategoryIds)
             dismiss()
         }
     }
@@ -1721,10 +1734,14 @@ private struct MessageCategoryManagerSheet: View {
             VStack(spacing: 0) {
                 ScrollView {
                     LazyVStack(spacing: 10) {
-                        ForEach($draftRows) { $row in
+                        ForEach(draftRows.indices, id: \.self) { index in
                             CategoryDraftListRow(
-                                row: $row,
-                                onDelete: { pendingDeleteRow = row }
+                                row: $draftRows[index],
+                                canMoveUp: index > 0,
+                                canMoveDown: index < draftRows.count - 1,
+                                onMoveUp: { moveDraftRow(from: index, to: index - 1) },
+                                onMoveDown: { moveDraftRow(from: index, to: index + 1) },
+                                onDelete: { pendingDeleteRow = draftRows[index] }
                             )
                         }
 
@@ -1801,6 +1818,10 @@ private struct MessageCategoryManagerSheet: View {
 
 private struct CategoryDraftListRow: View {
     @Binding var row: CategoryDraftRow
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
     let onDelete: () -> Void
     @State private var showColorPicker = false
 
@@ -1856,6 +1877,100 @@ private struct CategoryDraftListRow: View {
         }
     }
 
+    private var colorPickerButton: some View {
+        Button {
+            showColorPicker.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(colorAccent(row.color))
+                    .frame(width: 11, height: 11)
+                Text(colorName(for: row.color))
+                    .font(.callout.weight(.semibold))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minWidth: 120, alignment: .leading)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(colorAccent(row.color).opacity(0.14), in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(colorAccent(row.color).opacity(0.34), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(MessageCategoryColor.allCases) { color in
+                    Button {
+                        row.color = color
+                        showColorPicker = false
+                    } label: {
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(colorAccent(color))
+                                .frame(width: 11, height: 11)
+
+                            Text(colorName(for: color))
+                                .font(.callout.weight(.semibold))
+
+                            Spacer(minLength: 16)
+
+                            if color == row.color {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(colorAccent(color))
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(8)
+            .frame(width: 180)
+        }
+    }
+
+    private var moveControls: some View {
+        VStack(spacing: 2) {
+            Button(action: onMoveUp) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 24, height: 18)
+            }
+            .disabled(!canMoveUp)
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("message_category.move_up", bundle: .main))
+
+            Button(action: onMoveDown) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 24, height: 18)
+            }
+            .disabled(!canMoveDown)
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("message_category.move_down", bundle: .main))
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    private var deleteButton: some View {
+        Button(role: .destructive, action: onDelete) {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 30, height: 30)
+                .background(Color.red.opacity(0.10), in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("message_category.delete_action", bundle: .main))
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 999)
@@ -1863,77 +1978,30 @@ private struct CategoryDraftListRow: View {
                 .frame(width: 5)
                 .padding(.vertical, 3)
 
+            #if os(iOS)
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
+                        .textFieldStyle(.plain)
+                    deleteButton
+                    moveControls
+                }
+
+                HStack(spacing: 10) {
+                    colorPickerButton
+                    Spacer(minLength: 8)
+                }
+            }
+            #else
             TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
                 .textFieldStyle(.plain)
 
             Spacer(minLength: 8)
 
-            Button {
-                showColorPicker.toggle()
-            } label: {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(colorAccent(row.color))
-                        .frame(width: 11, height: 11)
-                    Text(colorName(for: row.color))
-                        .font(.callout.weight(.semibold))
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(minWidth: 120, alignment: .leading)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 8)
-                .background(colorAccent(row.color).opacity(0.14), in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(colorAccent(row.color).opacity(0.34), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(MessageCategoryColor.allCases) { color in
-                        Button {
-                            row.color = color
-                            showColorPicker = false
-                        } label: {
-                            HStack(spacing: 10) {
-                                Circle()
-                                    .fill(colorAccent(color))
-                                    .frame(width: 11, height: 11)
-
-                                Text(colorName(for: color))
-                                    .font(.callout.weight(.semibold))
-
-                                Spacer(minLength: 16)
-
-                                if color == row.color {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(colorAccent(color))
-                                }
-                            }
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(8)
-                .frame(width: 180)
-            }
-
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 30, height: 30)
-                    .background(Color.red.opacity(0.10), in: Circle())
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(Text("message_category.delete_action", bundle: .main))
+            colorPickerButton
+            deleteButton
+            moveControls
+            #endif
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 11)

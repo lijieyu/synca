@@ -58,21 +58,44 @@ export async function runMigrations() {
             name TEXT NOT NULL,
             color TEXT NOT NULL DEFAULT 'slate',
             is_default INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
     `.execute(db);
+    try {
+        await sql`ALTER TABLE message_categories ADD COLUMN sort_order INTEGER DEFAULT 0`.execute(db);
+    } catch (_e) {}
+    await sql`
+        UPDATE message_categories
+        SET sort_order = CASE
+            WHEN is_default = 1 THEN 0
+            ELSE (
+                SELECT COUNT(*) * 1000
+                FROM message_categories AS earlier
+                WHERE earlier.user_id = message_categories.user_id
+                  AND earlier.is_default = 0
+                  AND (
+                      earlier.created_at < message_categories.created_at OR
+                      (earlier.created_at = message_categories.created_at AND earlier.id <= message_categories.id)
+                  )
+            )
+        END
+        WHERE sort_order IS NULL OR sort_order = 0
+    `.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_message_categories_user_id ON message_categories(user_id)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_message_categories_user_order ON message_categories(user_id, is_default, sort_order)`.execute(db);
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_message_categories_user_name ON message_categories(user_id, name)`.execute(db);
 
     await sql`
-        INSERT INTO message_categories (id, user_id, name, color, is_default, created_at, updated_at)
+        INSERT INTO message_categories (id, user_id, name, color, is_default, sort_order, created_at, updated_at)
         SELECT lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-' ||
                substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
                users.id,
                'Default',
                'slate',
                1,
+               0,
                users.created_at,
                users.updated_at
         FROM users

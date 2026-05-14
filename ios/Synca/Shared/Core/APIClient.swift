@@ -139,6 +139,12 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await execute(request)
     }
 
+    func reorderMessageCategories(categoryIds: [String]) async throws {
+        let _: OkResponse = try await put("/message-categories/order", body: [
+            "categoryIds": categoryIds,
+        ])
+    }
+
     func sendTextMessage(text: String, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
         var body: [String: Any] = ["textContent": text]
         if let sourceDevice { body["sourceDevice"] = sourceDevice }
@@ -393,6 +399,18 @@ final class APIClient: ObservableObject {
                                      authenticated: Bool = true) async throws -> T {
         var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
         request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if authenticated, let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return try await execute(request)
+    }
+
+    private func put<T: Decodable>(_ path: String, body: [String: Any],
+                                    authenticated: Bool = true) async throws -> T {
+        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if authenticated, let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

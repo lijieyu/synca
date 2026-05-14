@@ -40,6 +40,7 @@ export interface MessageCategoriesTable {
     name: string;
     color: string;
     is_default: number; // 0 | 1
+    sort_order: number;
     created_at: string;
     updated_at: string;
 }

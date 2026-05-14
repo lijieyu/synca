@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>0E3F3F6C-E4D1-400D-ADD7-D35CACF2B40A</key>
+		<key>6FEEF335-361A-44EC-930D-10B5A351A9A4</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>0E3F3F6C-E4D1-400D-ADD7-D35CACF2B40A.xcactivitylog</string>
+			<string>6FEEF335-361A-44EC-930D-10B5A351A9A4.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -40,15 +40,15 @@
 			<key>signature</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>timeStartedRecording</key>
-			<real>800369319.00516701</real>
+			<real>800377328.22134197</real>
 			<key>timeStoppedRecording</key>
-			<real>800369335.02676404</real>
+			<real>800377342.98499799</real>
 			<key>title</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>uniqueIdentifier</key>
-			<string>0E3F3F6C-E4D1-400D-ADD7-D35CACF2B40A</string>
+			<string>6FEEF335-361A-44EC-930D-10B5A351A9A4</string>
 		</dict>
-		<key>400A7660-8C7B-4EC4-8985-40F6DF497B6D</key>
+		<key>BF27B493-66FD-416E-B252-98B6E4B89BC7</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,7 +57,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>400A7660-8C7B-4EC4-8985-40F6DF497B6D.xcactivitylog</string>
+			<string>BF27B493-66FD-416E-B252-98B6E4B89BC7.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -82,13 +82,13 @@
 			<key>signature</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>timeStartedRecording</key>
-			<real>800367732.04923296</real>
+			<real>800427518.57850301</real>
 			<key>timeStoppedRecording</key>
-			<real>800367748.99090195</real>
+			<real>800427535.31289303</real>
 			<key>title</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>uniqueIdentifier</key>
-			<string>400A7660-8C7B-4EC4-8985-40F6DF497B6D</string>
+			<string>BF27B493-66FD-416E-B252-98B6E4B89BC7</string>
 		</dict>
 	</dict>
 </dict>

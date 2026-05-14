@@ -49,6 +49,7 @@ function toCategory(row: MessageCategoriesTable): SyncaMessageCategory {
         name: row.name,
         color: row.color as SyncaMessageCategoryColor,
         isDefault: row.is_default === 1,
+        sortOrder: row.sort_order ?? 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -465,6 +466,7 @@ async function ensureDefaultCategory(userId: string, now = new Date().toISOStrin
         name: 'Default',
         color: 'slate',
         is_default: 1,
+        sort_order: 0,
         created_at: now,
         updated_at: now,
     }).execute();
@@ -482,6 +484,7 @@ export async function listMessageCategories(userId: string): Promise<SyncaMessag
         .selectAll()
         .where('user_id', '=', userId)
         .orderBy('is_default', 'desc')
+        .orderBy('sort_order', 'asc')
         .orderBy('created_at', 'asc')
         .execute();
 
@@ -495,12 +498,20 @@ export async function createMessageCategory(input: {
     now: string;
 }): Promise<SyncaMessageCategory> {
     const id = uuidv4();
+    const maxSortRow = await db.selectFrom('message_categories')
+        .select(({ fn }) => fn.max<number>('sort_order').as('max_sort_order'))
+        .where('user_id', '=', input.userId)
+        .where('is_default', '=', 0)
+        .executeTakeFirst();
+    const sortOrder = Number(maxSortRow?.max_sort_order ?? 0) + 1000;
+
     await db.insertInto('message_categories').values({
         id,
         user_id: input.userId,
         name: input.name,
         color: input.color,
         is_default: 0,
+        sort_order: sortOrder,
         created_at: input.now,
         updated_at: input.now,
     }).execute();
@@ -546,6 +557,47 @@ export async function updateMessageCategory(input: {
         .executeTakeFirst();
 
     return row ? toCategory(row) : undefined;
+}
+
+export async function reorderMessageCategories(input: {
+    userId: string;
+    categoryIds: string[];
+    now: string;
+}): Promise<boolean> {
+    const uniqueIds = Array.from(new Set(input.categoryIds));
+    if (uniqueIds.length !== input.categoryIds.length) {
+        return false;
+    }
+    if (uniqueIds.length === 0) {
+        return true;
+    }
+
+    const editableRows = await db.selectFrom('message_categories')
+        .select(['id'])
+        .where('user_id', '=', input.userId)
+        .where('is_default', '=', 0)
+        .where('id', 'in', uniqueIds)
+        .execute();
+
+    if (editableRows.length !== uniqueIds.length) {
+        return false;
+    }
+
+    await db.transaction().execute(async (trx) => {
+        for (const [index, id] of uniqueIds.entries()) {
+            await trx.updateTable('message_categories')
+                .set({
+                    sort_order: (index + 1) * 1000,
+                    updated_at: input.now,
+                })
+                .where('id', '=', id)
+                .where('user_id', '=', input.userId)
+                .where('is_default', '=', 0)
+                .execute();
+        }
+    });
+
+    return true;
 }
 
 export async function deleteMessageCategory(input: {

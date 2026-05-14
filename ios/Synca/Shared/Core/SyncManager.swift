@@ -404,17 +404,20 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func createCategory(name: String, color: MessageCategoryColor) async {
+    func createCategory(name: String, color: MessageCategoryColor) async -> SyncaMessageCategory? {
         do {
             let category = try await api.createMessageCategory(name: name, color: color)
             categories.append(category)
             categories.sort { lhs, rhs in
                 if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+                if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
                 return lhs.createdAt < rhs.createdAt
             }
             normalizeCategorySelections()
+            return category
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
+            return nil
         }
     }
 
@@ -424,6 +427,26 @@ final class SyncManager: ObservableObject {
             if let index = categories.firstIndex(where: { $0.id == id }) {
                 categories[index] = updated
             }
+        } catch {
+            handleError(error, contextKey: "sync.error_context.send")
+        }
+    }
+
+    func reorderCategories(ids: [String]) async {
+        do {
+            try await api.reorderMessageCategories(categoryIds: ids)
+            let orderById = Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($0.element, ($0.offset + 1) * 1000) })
+            for index in categories.indices {
+                if let sortOrder = orderById[categories[index].id] {
+                    categories[index].sortOrder = sortOrder
+                }
+            }
+            categories.sort { lhs, rhs in
+                if lhs.isDefault != rhs.isDefault { return lhs.isDefault }
+                if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+                return lhs.createdAt < rhs.createdAt
+            }
+            normalizeCategorySelections()
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
         }

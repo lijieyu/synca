@@ -99,8 +99,52 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable {
     var name: String
     var color: MessageCategoryColor
     var isDefault: Bool
+    var sortOrder: Int
     let createdAt: String
     var updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId
+        case name
+        case color
+        case isDefault
+        case sortOrder
+        case createdAt
+        case updatedAt
+    }
+
+    init(
+        id: String,
+        userId: String,
+        name: String,
+        color: MessageCategoryColor,
+        isDefault: Bool,
+        sortOrder: Int = 0,
+        createdAt: String,
+        updatedAt: String
+    ) {
+        self.id = id
+        self.userId = userId
+        self.name = name
+        self.color = color
+        self.isDefault = isDefault
+        self.sortOrder = sortOrder
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        userId = try container.decode(String.self, forKey: .userId)
+        name = try container.decode(String.self, forKey: .name)
+        color = try container.decode(MessageCategoryColor.self, forKey: .color)
+        isDefault = try container.decode(Bool.self, forKey: .isDefault)
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+    }
 }
 
 struct SyncaUser: Codable {

@@ -30,6 +30,7 @@ export interface MessageCategory {
   name: string;
   color: MessageCategoryColor;
   isDefault: boolean;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -145,6 +146,13 @@ class APIClient {
 
   async deleteMessageCategory(id: string): Promise<void> {
     await this.fetch(`/message-categories/${id}`, { method: 'DELETE' });
+  }
+
+  async reorderMessageCategories(categoryIds: string[]): Promise<void> {
+    await this.fetch('/message-categories/order', {
+      method: 'PUT',
+      body: JSON.stringify({ categoryIds }),
+    });
   }
 
   async sendTextMessage(text: string, categoryId?: string | null): Promise<SyncaMessage> {
