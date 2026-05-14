@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>6FEEF335-361A-44EC-930D-10B5A351A9A4</key>
+		<key>662F6CB8-F5F1-45F3-BC61-169BE0B8F300</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>6FEEF335-361A-44EC-930D-10B5A351A9A4.xcactivitylog</string>
+			<string>662F6CB8-F5F1-45F3-BC61-169BE0B8F300.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -40,13 +40,13 @@
 			<key>signature</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>timeStartedRecording</key>
-			<real>800377328.22134197</real>
+			<real>800434621.19788396</real>
 			<key>timeStoppedRecording</key>
-			<real>800377342.98499799</real>
+			<real>800434638.35307205</real>
 			<key>title</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>uniqueIdentifier</key>
-			<string>6FEEF335-361A-44EC-930D-10B5A351A9A4</string>
+			<string>662F6CB8-F5F1-45F3-BC61-169BE0B8F300</string>
 		</dict>
 		<key>BF27B493-66FD-416E-B252-98B6E4B89BC7</key>
 		<dict>

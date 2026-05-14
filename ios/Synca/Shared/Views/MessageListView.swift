@@ -1786,6 +1786,11 @@ private struct MessageCategoryManagerSheet: View {
         }
         .onAppear {
             reloadDraftRows()
+            #if os(macOS)
+            DispatchQueue.main.async {
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
+            #endif
         }
         .alert("message_category.delete_confirm_title", isPresented: Binding(
             get: { pendingDeleteRow != nil },
