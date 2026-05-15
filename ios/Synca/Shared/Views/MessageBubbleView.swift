@@ -313,6 +313,12 @@ struct MessageBubbleView: View {
 
             #if os(macOS)
             Button {
+                self.showInFinder(url: url, suggestedFileName: fileName)
+            } label: {
+                Label("message_bubble.show_in_finder", systemImage: "folder")
+            }
+
+            Button {
                 Task { await self.saveFileAs(from: url, suggestedFileName: fileName) }
             } label: {
                 Label("message_bubble.save_as", systemImage: "folder.badge.plus")
@@ -621,7 +627,10 @@ struct MessageBubbleView: View {
     }
 
     private func openFile(from url: URL, suggestedFileName: String) async {
-        saveStatus = .saving
+        let needsDownload = !AttachmentCache.isCached(url, suggestedFileName: suggestedFileName)
+        if needsDownload {
+            saveStatus = .saving
+        }
         do {
             let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
             #if os(iOS)
@@ -629,14 +638,18 @@ struct MessageBubbleView: View {
             #elseif os(macOS)
             NSWorkspace.shared.open(localURL)
             #endif
-            withAnimation { saveStatus = .success }
+            if needsDownload {
+                withAnimation { saveStatus = .success }
+            }
         } catch {
             print("Open file failed: \(error)")
             saveStatus = .error
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            saveStatus = .none
+        if needsDownload || saveStatus == .error {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                saveStatus = .none
+            }
         }
     }
 
@@ -645,6 +658,31 @@ struct MessageBubbleView: View {
         Task {
             if let localURL = try? await downloadToTemp(url: url) {
                 NSWorkspace.shared.activateFileViewerSelecting([localURL])
+            }
+        }
+    }
+
+    private func showInFinder(url: URL, suggestedFileName: String) {
+        Task {
+            let needsDownload = !AttachmentCache.isCached(url, suggestedFileName: suggestedFileName)
+            if needsDownload {
+                saveStatus = .saving
+            }
+            do {
+                let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
+                NSWorkspace.shared.activateFileViewerSelecting([localURL])
+                if needsDownload {
+                    withAnimation { saveStatus = .success }
+                }
+            } catch {
+                print("Show in Finder failed: \(error)")
+                saveStatus = .error
+            }
+
+            if needsDownload || saveStatus == .error {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    saveStatus = .none
+                }
             }
         }
     }
@@ -662,14 +700,20 @@ struct MessageBubbleView: View {
     }
 
     private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
+        if let cachedURL = AttachmentCache.cachedFileURL(for: url, suggestedFileName: suggestedFileName) {
+            return cachedURL
+        }
+
         var request = URLRequest(url: url)
         if let token = APIClient.shared.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFileName)
-        try data.write(to: tempURL)
-        return tempURL
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try AttachmentCache.save(data, for: url, suggestedFileName: suggestedFileName)
     }
 
     private func saveImageAs(from url: URL) async {
@@ -738,15 +782,20 @@ struct MessageBubbleView: View {
 
     #if os(iOS)
     private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
+        if let cachedURL = AttachmentCache.cachedFileURL(for: url, suggestedFileName: suggestedFileName) {
+            return cachedURL
+        }
+
         var request = URLRequest(url: url)
         if let token = APIClient.shared.token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFileName)
-        try? FileManager.default.removeItem(at: tempURL)
-        try data.write(to: tempURL)
-        return tempURL
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try AttachmentCache.save(data, for: url, suggestedFileName: suggestedFileName)
     }
 
     private func presentShareSheet(for url: URL) {

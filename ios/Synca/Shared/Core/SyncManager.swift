@@ -300,6 +300,16 @@ final class SyncManager: ObservableObject {
     }
 
     func sendFile(data: Data, fileName: String, mimeType: String? = nil, categoryId: String? = nil) async {
+        guard data.count <= PendingFileUpload.maxFileSize else {
+            errorMessage = String(localized: "message_file.error_too_large", bundle: .main)
+            return
+        }
+
+        guard PendingFileUpload.supportedExtensions.contains(URL(fileURLWithPath: fileName).pathExtension.lowercased()) else {
+            errorMessage = String(localized: "message_file.error_unsupported", bundle: .main)
+            return
+        }
+
         isSending = true
 
         do {

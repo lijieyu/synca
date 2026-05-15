@@ -244,17 +244,18 @@ final class APIClient: ObservableObject {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         let resolvedMimeType = mimeType ?? mimeTypeForFileName(fileName) ?? "application/octet-stream"
+        let uploadFileName = multipartUploadFileName(for: fileName)
 
         var data = Data()
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(uploadFileName)\"\r\n".data(using: .utf8)!)
         data.append("Content-Type: \(resolvedMimeType)\r\n\r\n".data(using: .utf8)!)
         data.append(fileData)
         data.append("\r\n".data(using: .utf8)!)
 
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
         data.append("Content-Disposition: form-data; name=\"fileName\"\r\n\r\n".data(using: .utf8)!)
-        data.append(fileName.data(using: .utf8)!)
+        data.append(multipartFieldValue(fileName).data(using: .utf8)!)
         data.append("\r\n".data(using: .utf8)!)
 
         if let sourceDevice {
@@ -473,6 +474,10 @@ final class APIClient: ObservableObject {
             return .unauthorized
         }
 
+        if statusCode == 413 {
+            return .fileTooLarge
+        }
+
         if statusCode == 400,
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
             switch serverError.error {
@@ -480,6 +485,10 @@ final class APIClient: ObservableObject {
                 return .messageTooLong(2000)
             case "feedback_too_long":
                 return .feedbackTooLong(2000)
+            case "file_too_large":
+                return .fileTooLarge
+            case "unsupported_file_type", "invalid_upload", "no_file_provided":
+                return .unsupportedFileType
             default:
                 break
             }
@@ -506,6 +515,18 @@ final class APIClient: ObservableObject {
 }
 
 private extension APIClient {
+    func multipartFieldValue(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    func multipartUploadFileName(for fileName: String) -> String {
+        let ext = URL(fileURLWithPath: fileName).pathExtension.lowercased()
+        let safeExt = PendingFileUpload.supportedExtensions.contains(ext) ? ext : "bin"
+        return "attachment.\(safeExt)"
+    }
+
     func mimeTypeForFileName(_ fileName: String) -> String? {
         let ext = URL(fileURLWithPath: fileName).pathExtension
         guard !ext.isEmpty, let type = UTType(filenameExtension: ext) else {
@@ -521,6 +542,8 @@ enum APIError: LocalizedError {
     case dailyLimitReached(AccessStatus?)
     case messageTooLong(Int)
     case feedbackTooLong(Int)
+    case fileTooLarge
+    case unsupportedFileType
     case offerUnavailable
     case httpError(Int, String?)
 
@@ -533,6 +556,10 @@ enum APIError: LocalizedError {
             return String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)
         case .feedbackTooLong(let limit):
             return String(format: String(localized: "feedback.error_content_too_long", bundle: .main), limit)
+        case .fileTooLarge:
+            return String(localized: "message_file.error_too_large", bundle: .main)
+        case .unsupportedFileType:
+            return String(localized: "message_file.error_unsupported", bundle: .main)
         case .offerUnavailable:
             return String(localized: "access.offer_unavailable", bundle: .main)
         case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")

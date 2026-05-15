@@ -182,6 +182,9 @@
 "message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
 "message_bubble.choose_save_directory" = "选择保存目录";
 "message_bubble.save_to_directory" = "保存到此目录";
+"message_file.error_too_large" = "文件不能超过 25 MB。";
+"message_file.error_image_too_large" = "图片不能超过 20 MB。";
+"message_file.error_unsupported" = "暂不支持这种文件类型。";
 
 /* Message Categories */
 "message_category.section_title" = "分类";

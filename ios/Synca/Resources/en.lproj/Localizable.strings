@@ -182,6 +182,9 @@
 "message_bubble.save_failed_message" = "Unable to save image to the specified directory: %@\n\nThis is most likely due to insufficient permissions. You can try \"Save As\" to re-authorize.";
 "message_bubble.choose_save_directory" = "Choose Save Directory";
 "message_bubble.save_to_directory" = "Save to This Directory";
+"message_file.error_too_large" = "Files must be 25 MB or smaller.";
+"message_file.error_image_too_large" = "Images must be 20 MB or smaller.";
+"message_file.error_unsupported" = "This file type is not supported.";
 
 /* Message Categories */
 "message_category.section_title" = "Categories";

@@ -27,13 +27,8 @@ struct MacInputTextView: NSViewRepresentable {
         Coordinator(text: $text, height: $height, onPasteImage: onPasteImage, onPasteFile: onPasteFile, onSubmit: onSubmit)
     }
 
-    func makeNSView(context: Context) -> ClickForwardingScrollView {
-        let scrollView = ClickForwardingScrollView()
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
+    func makeNSView(context: Context) -> MacInputContainerView {
+        let container = MacInputContainerView()
 
         let textView = PasteAwareMacTextView()
         textView.delegate = context.coordinator
@@ -67,22 +62,23 @@ struct MacInputTextView: NSViewRepresentable {
         textView.string = text
         Self.applyPlainTextStyle(to: textView)
 
-        scrollView.documentView = textView
+        container.textView = textView
+        container.addSubview(textView)
         DispatchQueue.main.async {
             context.coordinator.recalculateHeight(for: textView)
         }
-        return scrollView
+        return container
     }
 
-    func updateNSView(_ scrollView: ClickForwardingScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? PasteAwareMacTextView else { return }
+    func updateNSView(_ container: MacInputContainerView, context: Context) {
+        guard let textView = container.textView else { return }
         context.coordinator.onSubmit = onSubmit
         textView.onSubmit = onSubmit
         textView.onPasteImage = onPasteImage
         textView.onPasteFile = onPasteFile
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
-        scrollView.syncTextViewWidthAndContainer()
+        container.layoutTextView()
         // Do not overwrite the text view while IME composition is active (e.g. Chinese input).
         if !textView.hasMarkedText(), textView.string != text {
             // Use replaceCharacters instead of string= to preserve typingAttributes
@@ -179,50 +175,45 @@ struct MacInputTextView: NSViewRepresentable {
     }
 }
 
-/// Forwards mouse clicks to the inner NSTextView so SwiftUI doesn't swallow them.
-final class ClickForwardingScrollView: NSScrollView {
-    override var acceptsFirstResponder: Bool { false }
+/// A tight AppKit host for NSTextView. Avoid nesting NSScrollView inside SwiftUI's
+/// horizontal ScrollView; that combination can produce stale hit regions in tiled mode.
+final class MacInputContainerView: NSView {
+    weak var textView: PasteAwareMacTextView?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.masksToBounds = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        layer?.masksToBounds = true
+    }
+
+    override var acceptsFirstResponder: Bool { true }
 
     override func layout() {
         super.layout()
-        syncTextViewWidthAndContainer()
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if let textView = documentView as? PasteAwareMacTextView {
-            window?.makeFirstResponder(textView)
-            textView.keyDown(with: event)
-            return
-        }
-        super.keyDown(with: event)
-    }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags == .command,
-           event.charactersIgnoringModifiers?.lowercased() == "v",
-           let textView = documentView as? PasteAwareMacTextView {
-            window?.makeFirstResponder(textView)
-            textView.paste(nil)
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
+        layoutTextView()
     }
 
     override func mouseDown(with event: NSEvent) {
-        if let textView = documentView as? NSTextView {
-            window?.makeFirstResponder(textView)
-        }
-        super.mouseDown(with: event)
+        guard let textView else { return }
+        window?.makeFirstResponder(textView)
+        textView.mouseDown(with: event)
     }
 
-    /// SwiftUI often gives the scroll view a width before AppKit propagates it to the text container; width 0 breaks drawing and typing.
-    func syncTextViewWidthAndContainer() {
-        guard let textView = documentView as? NSTextView else { return }
-        let w = contentView.bounds.width
+    /// SwiftUI often gives the host a width before AppKit propagates it to the text container; width 0 breaks drawing and typing.
+    func layoutTextView() {
+        guard let textView else { return }
+        let w = bounds.width
         guard w > 0 else { return }
         var f = textView.frame
         f.size.width = w
+        f.size.height = max(bounds.height, f.size.height)
+        f.origin = .zero
         textView.frame = f
         let inset = textView.textContainerInset.width * 2
         let containerW = max(1, w - inset)
@@ -265,6 +256,17 @@ final class PasteAwareMacTextView: NSTextView {
     override func paste(_ sender: Any?) {
         let pb = NSPasteboard.general
 
+        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL {
+            if let imageData = PendingFileUpload.imageData(from: fileURL) {
+                onPasteImage?(imageData)
+            } else if let pendingFile = PendingFileUpload.read(from: fileURL) {
+                onPasteFile?(pendingFile)
+            } else {
+                NSSound.beep()
+            }
+            return
+        }
+
         if let rawPngData = pb.data(forType: .png) {
             onPasteImage?(rawPngData)
             return
@@ -282,14 +284,6 @@ final class PasteAwareMacTextView: NSTextView {
            let bitmap = NSBitmapImageRep(data: tiffData),
            let pngData = bitmap.representation(using: .png, properties: [:]) {
             onPasteImage?(pngData)
-            return
-        }
-
-        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL,
-           ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "zip"].contains(fileURL.pathExtension.lowercased()),
-           let fileData = try? Data(contentsOf: fileURL) {
-            let mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType
-            onPasteFile?(PendingFileUpload(data: fileData, fileName: fileURL.lastPathComponent, mimeType: mimeType))
             return
         }
 

@@ -29,7 +29,9 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
 
-  const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip';
+  const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,image/*';
+  const supportedDocumentExtensionSet = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
+  const maxDocumentSize = 25 * 1024 * 1024;
   useEffect(() => {
     // Focus when not sending (initial mount and after message sent)
     if (!isSending) {
@@ -92,6 +94,18 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
 
   const sendFile = async (file: File) => {
     if (isSending) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!supportedDocumentExtensionSet.has(extension)) {
+      setToastMsg(t('message_file.error_unsupported', 'This file type is not supported.'));
+      setShowToast(true);
+      return;
+    }
+    if (file.size > maxDocumentSize) {
+      setToastMsg(t('message_file.error_too_large', 'Files must be 25 MB or smaller.'));
+      setShowToast(true);
+      return;
+    }
+
     setIsSending(true);
     try {
       await api.sendFileMessage(file, categoryId);
@@ -121,7 +135,11 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   const handleDocumentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await sendFile(file);
+      if (file.type.startsWith('image/')) {
+        await sendImage(file);
+      } else {
+        await sendFile(file);
+      }
     }
   };
 

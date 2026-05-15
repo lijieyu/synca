@@ -114,7 +114,9 @@ const fileUpload = multer({
     storage: fileStorage,
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-        cb(null, isSupportedDocument(file));
+        // Accept first, then validate in the route so clients receive a precise
+        // unsupported_file_type error instead of a misleading no_file_provided.
+        cb(null, true);
     },
 });
 

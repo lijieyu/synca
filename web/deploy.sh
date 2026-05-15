@@ -35,7 +35,7 @@ deploy_web() {
 server {
     server_name synca.haerth.cn;
 
-    client_max_body_size 20m;
+    client_max_body_size 30m;
 
     root /opt/synca/web;
     index index.html;

@@ -142,7 +142,7 @@ struct MessageListView: View {
         }
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: supportedDocumentTypes,
+            allowedContentTypes: supportedAttachmentTypes,
             allowsMultipleSelection: true
         ) { result in
             Task { await handleImportedFiles(result) }
@@ -167,6 +167,12 @@ struct MessageListView: View {
         .onChange(of: syncManager.sessionExpired) { expired in
             if expired {
                 showSessionExpired = true
+            }
+        }
+        .onChange(of: syncManager.errorMessage) { message in
+            guard message != nil else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                syncManager.errorMessage = nil
             }
         }
         #if os(iOS)
@@ -610,7 +616,24 @@ struct MessageListView: View {
         let topInset: CGFloat = 16
         #endif
 
-        if showFeedbackSuccessToast {
+        if let errorMessage = syncManager.errorMessage {
+            Label {
+                Text(errorMessage)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            } icon: {
+                Image(systemName: "xmark.circle.fill")
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.red)
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+            .padding(.top, topInset)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        } else if showFeedbackSuccessToast {
             Label("feedback.submit_success", systemImage: "checkmark.circle.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
@@ -879,8 +902,9 @@ struct MessageListView: View {
         }
     }
 
-    private var supportedDocumentTypes: [UTType] {
+    private var supportedAttachmentTypes: [UTType] {
         [
+            .image,
             .pdf,
             .plainText,
             .text,
@@ -901,22 +925,21 @@ struct MessageListView: View {
         shouldScrollToBottomAfterSend = true
 
         for url in urls {
-            guard let pendingFile = readPendingFile(from: url) else { continue }
+            if let imageData = PendingFileUpload.imageData(from: url) {
+                await syncManager.sendImage(imageData, categoryId: activeSendCategoryId)
+                continue
+            }
+
+            guard let pendingFile = readPendingFile(from: url) else {
+                syncManager.errorMessage = unsupportedAttachmentMessage(for: url)
+                continue
+            }
             await sendPendingFile(pendingFile, categoryId: activeSendCategoryId)
         }
     }
 
     private func readPendingFile(from url: URL) -> PendingFileUpload? {
-        let startedAccessing = url.startAccessingSecurityScopedResource()
-        defer {
-            if startedAccessing {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
-        return PendingFileUpload(data: data, fileName: url.lastPathComponent, mimeType: mimeType)
+        PendingFileUpload.read(from: url)
     }
 
     private func sendPendingFile(_ pendingFile: PendingFileUpload, categoryId: String?) async {
@@ -982,6 +1005,18 @@ struct MessageListView: View {
     private func handlePasteShortcut() {
         let pb = NSPasteboard.general
 
+        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL {
+            shouldScrollToBottomAfterSend = true
+            if let imageData = PendingFileUpload.imageData(from: fileURL) {
+                Task { await syncManager.sendImage(imageData, categoryId: activeSendCategoryId) }
+            } else if let pendingFile = readPendingFile(from: fileURL) {
+                Task { await sendPendingFile(pendingFile, categoryId: activeSendCategoryId) }
+            } else {
+                syncManager.errorMessage = unsupportedAttachmentMessage(for: fileURL)
+            }
+            return
+        }
+
         if let rawPngData = pb.data(forType: .png) {
             shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(rawPngData, categoryId: activeSendCategoryId) }
@@ -1003,13 +1038,6 @@ struct MessageListView: View {
             let pngData = bitmap.representation(using: .png, properties: [:]) {
             shouldScrollToBottomAfterSend = true
             Task { await syncManager.sendImage(pngData, categoryId: activeSendCategoryId) }
-            return
-        }
-
-        if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL,
-           let pendingFile = readPendingFile(from: fileURL) {
-            shouldScrollToBottomAfterSend = true
-            Task { await sendPendingFile(pendingFile, categoryId: activeSendCategoryId) }
             return
         }
 
@@ -1067,6 +1095,7 @@ struct MessageListView: View {
                     ForEach(syncManager.categories) { category in
                         TiledCategoryColumn(category: category)
                             .environmentObject(syncManager)
+                            .id(category.id)
                             .frame(width: sharedWidth)
                     }
                 }
@@ -1082,6 +1111,17 @@ struct MessageListView: View {
             await syncManager.clearCompleted(categoryId: selectedFilterCategoryId)
         }
     }
+}
+
+private func unsupportedAttachmentMessage(for url: URL) -> String {
+    let ext = url.pathExtension.lowercased()
+    if PendingFileUpload.supportedImageExtensions.contains(ext) {
+        return String(localized: "message_file.error_image_too_large", bundle: .main)
+    }
+    if PendingFileUpload.supportedExtensions.contains(ext) {
+        return String(localized: "message_file.error_too_large", bundle: .main)
+    }
+    return String(localized: "message_file.error_unsupported", bundle: .main)
 }
 
 private struct TiledCategoryColumn: View {
@@ -1238,14 +1278,44 @@ private struct TiledCategoryColumn: View {
 
             Divider()
 
+#if os(macOS)
+            MacTiledComposerBar(
+                text: $inputText,
+                height: $inputHeight,
+                isSending: syncManager.isSending,
+                onImageData: { imageData in
+                    Task { await syncManager.sendImage(imageData, categoryId: category.id) }
+                },
+                onFile: { pendingFile in
+                    Task {
+                        await syncManager.sendFile(
+                            data: pendingFile.data,
+                            fileName: pendingFile.fileName,
+                            mimeType: pendingFile.mimeType,
+                            categoryId: category.id
+                        )
+                    }
+                },
+                onUnsupportedFile: { url in
+                    syncManager.errorMessage = unsupportedAttachmentMessage(for: url)
+                },
+                onSubmit: submitText
+            )
+            .frame(height: max(52, min(inputHeight + 18, 122)))
+            .padding(14)
+            .background(Color.syncaPageBackground)
+#else
             HStack(spacing: 10) {
                 PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                     Image(systemName: "photo.badge.plus")
                         .font(.system(size: 18))
+                        .frame(width: 24, height: 34)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(syncManager.isSending)
                 .opacity(syncManager.isSending ? 0.5 : 1.0)
+                .zIndex(2)
                 .onChange(of: selectedPhotoItems) { items in
                     guard !items.isEmpty else { return }
                     Task {
@@ -1268,54 +1338,14 @@ private struct TiledCategoryColumn: View {
                 } label: {
                     Image(systemName: "paperclip")
                         .font(.system(size: 17, weight: .medium))
+                        .frame(width: 22, height: 34)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(syncManager.isSending)
                 .opacity(syncManager.isSending ? 0.5 : 1.0)
+                .zIndex(2)
 
-#if os(macOS)
-                ZStack(alignment: .leading) {
-                    MacInputTextView(
-                        text: $inputText,
-                        height: $inputHeight,
-                        isSending: syncManager.isSending,
-                        onPasteImage: { imageData in
-                            Task { await syncManager.sendImage(imageData, categoryId: category.id) }
-                        },
-                        onPasteFile: { pendingFile in
-                            Task {
-                                await syncManager.sendFile(
-                                    data: pendingFile.data,
-                                    fileName: pendingFile.fileName,
-                                    mimeType: pendingFile.mimeType,
-                                    categoryId: category.id
-                                )
-                            }
-                        },
-                        onSubmit: submitText
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(height: max(34, min(inputHeight, 104)))
-                    .opacity(syncManager.isSending ? 0.5 : 1.0)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-
-                    if inputText.isEmpty {
-                        Text("message_list.input_placeholder", bundle: .main)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 12)
-                            .padding(.top, 1)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .background(Color.syncaInputFieldBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.syncaInputFieldBorder, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-#else
                 TextField(String(localized: "message_list.input_placeholder", bundle: .main), text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
@@ -1327,23 +1357,26 @@ private struct TiledCategoryColumn: View {
                         RoundedRectangle(cornerRadius: 14)
                             .stroke(Color.syncaInputFieldBorder, lineWidth: 1)
                     )
-#endif
 
                 Button {
                     submitText()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 28))
+                        .frame(width: 30, height: 34)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || syncManager.isSending)
+                .zIndex(2)
             }
             .padding(14)
             .background(Color.syncaPageBackground)
+#endif
         }
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: supportedDocumentTypes,
+            allowedContentTypes: supportedAttachmentTypes,
             allowsMultipleSelection: true
         ) { result in
             Task { await handleImportedFiles(result) }
@@ -1377,8 +1410,9 @@ private struct TiledCategoryColumn: View {
         }
     }
 
-    private var supportedDocumentTypes: [UTType] {
+    private var supportedAttachmentTypes: [UTType] {
         [
+            .image,
             .pdf,
             .plainText,
             .text,
@@ -1397,7 +1431,15 @@ private struct TiledCategoryColumn: View {
     private func handleImportedFiles(_ result: Result<[URL], Error>) async {
         guard case .success(let urls) = result else { return }
         for url in urls {
-            guard let pendingFile = readPendingFile(from: url) else { continue }
+            if let imageData = PendingFileUpload.imageData(from: url) {
+                await syncManager.sendImage(imageData, categoryId: category.id)
+                continue
+            }
+
+            guard let pendingFile = readPendingFile(from: url) else {
+                syncManager.errorMessage = unsupportedAttachmentMessage(for: url)
+                continue
+            }
             await syncManager.sendFile(
                 data: pendingFile.data,
                 fileName: pendingFile.fileName,
@@ -1408,16 +1450,7 @@ private struct TiledCategoryColumn: View {
     }
 
     private func readPendingFile(from url: URL) -> PendingFileUpload? {
-        let needsSecurityScope = url.startAccessingSecurityScopedResource()
-        defer {
-            if needsSecurityScope {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let mimeType = UTType(filenameExtension: url.pathExtension.lowercased())?.preferredMIMEType
-        return PendingFileUpload(data: data, fileName: url.lastPathComponent, mimeType: mimeType)
+        PendingFileUpload.read(from: url)
     }
 
     private func submitText() {
@@ -1433,6 +1466,393 @@ private struct TiledCategoryColumn: View {
         }
     }
 }
+
+#if os(macOS)
+private struct MacTiledComposerBar: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var height: CGFloat
+
+    let isSending: Bool
+    let onImageData: (Data) -> Void
+    let onFile: (PendingFileUpload) -> Void
+    let onUnsupportedFile: (URL) -> Void
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            text: $text,
+            height: $height,
+            onImageData: onImageData,
+            onFile: onFile,
+            onUnsupportedFile: onUnsupportedFile,
+            onSubmit: onSubmit
+        )
+    }
+
+    func makeNSView(context: Context) -> MacTiledComposerHostView {
+        let host = MacTiledComposerHostView()
+        context.coordinator.host = host
+        host.textView.delegate = context.coordinator
+        host.textView.onPasteImage = onImageData
+        host.textView.onPasteFile = onFile
+        host.textView.onSubmit = onSubmit
+        host.imageButton.target = context.coordinator
+        host.imageButton.action = #selector(Coordinator.pickImages)
+        host.fileButton.target = context.coordinator
+        host.fileButton.action = #selector(Coordinator.pickAttachments)
+        host.sendButton.target = context.coordinator
+        host.sendButton.action = #selector(Coordinator.submit)
+        host.update(text: text, isSending: isSending)
+        DispatchQueue.main.async {
+            context.coordinator.recalculateHeight()
+        }
+        return host
+    }
+
+    func updateNSView(_ host: MacTiledComposerHostView, context: Context) {
+        context.coordinator.onImageData = onImageData
+        context.coordinator.onFile = onFile
+        context.coordinator.onUnsupportedFile = onUnsupportedFile
+        context.coordinator.onSubmit = onSubmit
+        host.textView.onPasteImage = onImageData
+        host.textView.onPasteFile = onFile
+        host.textView.onSubmit = onSubmit
+        host.update(text: text, isSending: isSending)
+        DispatchQueue.main.async {
+            context.coordinator.recalculateHeight()
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding var text: String
+        @Binding var height: CGFloat
+
+        weak var host: MacTiledComposerHostView?
+        var onImageData: (Data) -> Void
+        var onFile: (PendingFileUpload) -> Void
+        var onUnsupportedFile: (URL) -> Void
+        var onSubmit: () -> Void
+
+        init(
+            text: Binding<String>,
+            height: Binding<CGFloat>,
+            onImageData: @escaping (Data) -> Void,
+            onFile: @escaping (PendingFileUpload) -> Void,
+            onUnsupportedFile: @escaping (URL) -> Void,
+            onSubmit: @escaping () -> Void
+        ) {
+            _text = text
+            _height = height
+            self.onImageData = onImageData
+            self.onFile = onFile
+            self.onUnsupportedFile = onUnsupportedFile
+            self.onSubmit = onSubmit
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text = textView.string
+            host?.setSendEnabled(!textView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            recalculateHeight()
+        }
+
+        @objc func pickImages() {
+            openPanel(contentTypes: [.image]) { [weak self] urls in
+                guard let self else { return }
+                for url in urls {
+                    if let imageData = PendingFileUpload.imageData(from: url) {
+                        onImageData(imageData)
+                    } else {
+                        onUnsupportedFile(url)
+                    }
+                }
+            }
+        }
+
+        @objc func pickAttachments() {
+            openPanel(contentTypes: Self.supportedAttachmentTypes) { [weak self] urls in
+                guard let self else { return }
+                for url in urls {
+                    if let imageData = PendingFileUpload.imageData(from: url) {
+                        onImageData(imageData)
+                    } else if let file = PendingFileUpload.read(from: url) {
+                        onFile(file)
+                    } else {
+                        onUnsupportedFile(url)
+                    }
+                }
+            }
+        }
+
+        @objc func submit() {
+            guard let host else { return }
+            let nextText = host.textView.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !nextText.isEmpty else { return }
+            text = nextText
+            onSubmit()
+            host.textView.string = ""
+            text = ""
+            recalculateHeight()
+        }
+
+        func recalculateHeight() {
+            guard let host,
+                  let layoutManager = host.textView.layoutManager,
+                  let textContainer = host.textView.textContainer else { return }
+
+            layoutManager.ensureLayout(for: textContainer)
+            let font = host.textView.font ?? NSFont.preferredFont(forTextStyle: .body)
+            let lineHeight = layoutManager.defaultLineHeight(for: font)
+            var usedHeight = layoutManager.usedRect(for: textContainer).height
+            if host.textView.string.isEmpty {
+                usedHeight = lineHeight
+            }
+
+            let fieldHeight = max(34, min(104, ceil(usedHeight + 12)))
+            if abs(height - fieldHeight) > 0.5 {
+                height = fieldHeight
+            }
+            host.setInputHeight(fieldHeight)
+        }
+
+        private func openPanel(contentTypes: [UTType], completion: @escaping ([URL]) -> Void) {
+            guard host?.isSending == false else { return }
+            let panel = NSOpenPanel()
+            panel.allowsMultipleSelection = true
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.resolvesAliases = true
+            panel.allowedContentTypes = contentTypes
+            guard panel.runModal() == .OK else { return }
+            completion(panel.urls)
+        }
+
+        private static var supportedAttachmentTypes: [UTType] {
+            [
+                .image,
+                .pdf,
+                .plainText,
+                .text,
+                .commaSeparatedText,
+                UTType(filenameExtension: "doc"),
+                UTType(filenameExtension: "docx"),
+                UTType(filenameExtension: "xls"),
+                UTType(filenameExtension: "xlsx"),
+                UTType(filenameExtension: "ppt"),
+                UTType(filenameExtension: "pptx"),
+                UTType(filenameExtension: "md"),
+                .zip
+            ].compactMap { $0 }
+        }
+    }
+}
+
+private final class MacTiledComposerHostView: NSView {
+    let imageButton = NSButton()
+    let fileButton = NSButton()
+    let sendButton = NSButton()
+    let textFieldContainer = MacTiledComposerTextFieldView()
+    let textView = PasteAwareMacTextView()
+
+    private let stackView = NSStackView()
+    private var inputHeightConstraint: NSLayoutConstraint?
+    private(set) var isSending = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateColors()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateColors()
+    }
+
+    func update(text: String, isSending: Bool) {
+        self.isSending = isSending
+        textView.isEditable = !isSending
+        textView.isSelectable = !isSending
+        imageButton.isEnabled = !isSending
+        fileButton.isEnabled = !isSending
+        setSendEnabled(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        if !textView.hasMarkedText(), textView.string != text {
+            textView.string = text
+        }
+        textFieldContainer.placeholder.isHidden = !textView.string.isEmpty
+        textFieldContainer.needsLayout = true
+    }
+
+    func setSendEnabled(_ enabled: Bool) {
+        sendButton.isEnabled = enabled && !isSending
+        sendButton.contentTintColor = sendButton.isEnabled ? NSColor.controlAccentColor : NSColor.disabledControlTextColor
+    }
+
+    func setInputHeight(_ height: CGFloat) {
+        inputHeightConstraint?.constant = height
+        textFieldContainer.needsLayout = true
+        textView.needsLayout = true
+    }
+
+    private func setup() {
+        translatesAutoresizingMaskIntoConstraints = false
+
+        configureIconButton(imageButton, symbolName: "photo.badge.plus")
+        configureIconButton(fileButton, symbolName: "paperclip")
+        configureIconButton(sendButton, symbolName: "arrow.up.circle.fill", pointSize: 28)
+
+        textView.isRichText = false
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
+        textView.font = NSFont.preferredFont(forTextStyle: .body)
+        textView.textColor = .textColor
+        textView.insertionPointColor = .textColor
+        textView.textContainerInset = NSSize(width: 0, height: 6)
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.widthTracksTextView = true
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticDataDetectionEnabled = false
+        textView.isAutomaticLinkDetectionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.allowsUndo = true
+
+        textFieldContainer.textView = textView
+        textFieldContainer.addSubview(textView)
+
+        stackView.orientation = .horizontal
+        stackView.alignment = .centerY
+        stackView.spacing = 10
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(imageButton)
+        stackView.addArrangedSubview(fileButton)
+        stackView.addArrangedSubview(textFieldContainer)
+        stackView.addArrangedSubview(sendButton)
+        addSubview(stackView)
+
+        inputHeightConstraint = textFieldContainer.heightAnchor.constraint(equalToConstant: 34)
+        inputHeightConstraint?.priority = .required
+
+        NSLayoutConstraint.activate([
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            imageButton.widthAnchor.constraint(equalToConstant: 24),
+            imageButton.heightAnchor.constraint(equalToConstant: 34),
+            fileButton.widthAnchor.constraint(equalToConstant: 22),
+            fileButton.heightAnchor.constraint(equalToConstant: 34),
+            sendButton.widthAnchor.constraint(equalToConstant: 30),
+            sendButton.heightAnchor.constraint(equalToConstant: 34),
+            textFieldContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            inputHeightConstraint
+        ].compactMap { $0 })
+
+        textFieldContainer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textFieldContainer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        imageButton.setContentHuggingPriority(.required, for: .horizontal)
+        fileButton.setContentHuggingPriority(.required, for: .horizontal)
+        sendButton.setContentHuggingPriority(.required, for: .horizontal)
+        updateColors()
+    }
+
+    private func configureIconButton(_ button: NSButton, symbolName: String, pointSize: CGFloat = 18) {
+        button.bezelStyle = .regularSquare
+        button.isBordered = false
+        button.image = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: nil
+        )
+        button.imagePosition = .imageOnly
+        button.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+        button.contentTintColor = .labelColor
+        button.translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    private func updateColors() {
+        textFieldContainer.updateColors()
+    }
+}
+
+private final class MacTiledComposerTextFieldView: NSView {
+    weak var textView: PasteAwareMacTextView?
+    let placeholder = NSTextField(labelWithString: NSLocalizedString("message_list.input_placeholder", bundle: .main, comment: ""))
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func layout() {
+        super.layout()
+        let insetBounds = bounds.insetBy(dx: 12, dy: 0)
+        textView?.frame = insetBounds
+        textView?.textContainer?.containerSize = NSSize(
+            width: max(1, insetBounds.width),
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        placeholder.frame = CGRect(
+            x: 12,
+            y: max(0, (bounds.height - placeholder.intrinsicContentSize.height) / 2),
+            width: max(0, bounds.width - 24),
+            height: placeholder.intrinsicContentSize.height
+        )
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let textView else { return }
+        window?.makeFirstResponder(textView)
+        textView.mouseDown(with: event)
+    }
+
+    func updateColors() {
+        wantsLayer = true
+        layer?.cornerRadius = 16
+        layer?.masksToBounds = true
+        layer?.backgroundColor = NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 0.096, alpha: 1)
+            }
+            return NSColor(calibratedWhite: 0.992, alpha: 1)
+        }.cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor(name: nil) { appearance in
+            if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                return NSColor(calibratedWhite: 1.0, alpha: 0.13)
+            }
+            return NSColor(calibratedWhite: 0.0, alpha: 0.08)
+        }.cgColor
+    }
+
+    private func setup() {
+        translatesAutoresizingMaskIntoConstraints = false
+        placeholder.textColor = .secondaryLabelColor
+        placeholder.font = NSFont.preferredFont(forTextStyle: .body)
+        placeholder.lineBreakMode = .byTruncatingTail
+        addSubview(placeholder)
+        updateColors()
+    }
+}
+#endif
 
 private struct NewMessageCategorySheet: View {
     @EnvironmentObject var syncManager: SyncManager

@@ -1,9 +1,69 @@
 import Foundation
+import UniformTypeIdentifiers
 
 struct PendingFileUpload: Equatable {
+    static let maxImageSize = 20 * 1024 * 1024
+    static let maxFileSize = 25 * 1024 * 1024
+    static let supportedImageExtensions = Set(["jpg", "jpeg", "png", "webp", "heic", "heif", "gif"])
+    static let supportedExtensions = Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "zip"])
+
     let data: Data
     let fileName: String
     let mimeType: String?
+
+    static func isSupportedFileURL(_ url: URL) -> Bool {
+        supportedExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    static func isSupportedImageURL(_ url: URL) -> Bool {
+        supportedImageExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    static func imageData(from url: URL) -> Data? {
+        guard isSupportedImageURL(url) else { return nil }
+
+        let startedAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if startedAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        if let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+           values.isRegularFile == false {
+            return nil
+        }
+
+        guard let data = try? Data(contentsOf: url), data.count <= maxImageSize else {
+            return nil
+        }
+
+        return data
+    }
+
+    static func read(from url: URL) -> PendingFileUpload? {
+        guard isSupportedFileURL(url) else { return nil }
+
+        let startedAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if startedAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        if let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+           values.isRegularFile == false {
+            return nil
+        }
+
+        guard let data = try? Data(contentsOf: url), data.count <= maxFileSize else {
+            return nil
+        }
+
+        let ext = url.pathExtension.lowercased()
+        let mimeType = UTType(filenameExtension: ext)?.preferredMIMEType
+        return PendingFileUpload(data: data, fileName: url.lastPathComponent, mimeType: mimeType)
+    }
 }
 
 struct SyncaMessage: Codable, Identifiable, Equatable {

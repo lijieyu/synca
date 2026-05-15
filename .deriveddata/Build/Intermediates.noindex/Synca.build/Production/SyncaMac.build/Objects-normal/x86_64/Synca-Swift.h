@@ -322,20 +322,6 @@ SWIFT_CLASS("_TtC5Synca11AuthService")
 - (void)authorizationController:(ASAuthorizationController * _Nonnull)controller didCompleteWithError:(NSError * _Nonnull)error;
 @end
 
-@class NSEvent;
-@class NSCoder;
-/// Forwards mouse clicks to the inner NSTextView so SwiftUI doesn’t swallow them.
-SWIFT_CLASS("_TtC5Synca25ClickForwardingScrollView")
-@interface ClickForwardingScrollView : NSScrollView
-@property (nonatomic, readonly) BOOL acceptsFirstResponder;
-- (void)layout;
-- (void)keyDown:(NSEvent * _Nonnull)event;
-- (BOOL)performKeyEquivalent:(NSEvent * _Nonnull)event SWIFT_WARN_UNUSED_RESULT;
-- (void)mouseDown:(NSEvent * _Nonnull)event;
-- (nonnull instancetype)initWithFrame:(NSRect)frameRect OBJC_DESIGNATED_INITIALIZER;
-- (nullable instancetype)initWithCoder:(NSCoder * _Nonnull)coder OBJC_DESIGNATED_INITIALIZER;
-@end
-
 SWIFT_CLASS("_TtCV5Synca17AppleSignInButton11Coordinator")
 @interface Coordinator : NSObject
 - (void)tapped;
@@ -352,8 +338,10 @@ SWIFT_CLASS("_TtCV5Synca17AppleSignInButton11Coordinator")
 - (void)authorizationController:(ASAuthorizationController * _Nonnull)controller didCompleteWithError:(NSError * _Nonnull)error;
 @end
 
+@class NSEvent;
 @class NSMenu;
 @class NSTextContainer;
+@class NSCoder;
 SWIFT_CLASS("_TtC5Synca25CustomContextMenuTextView")
 @interface CustomContextMenuTextView : NSTextView
 - (void)updateTrackingAreas;
@@ -379,6 +367,17 @@ SWIFT_CLASS("_TtC5Synca14MacAppDelegate")
 - (void)application:(NSApplication * _Nonnull)application didFailToRegisterForRemoteNotificationsWithError:(NSError * _Nonnull)error;
 - (void)application:(NSApplication * _Nonnull)application didReceiveRemoteNotification:(NSDictionary<NSString *, id> * _Nonnull)userInfo;
 - (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
+/// A tight AppKit host for NSTextView. Avoid nesting NSScrollView inside SwiftUI’s
+/// horizontal ScrollView; that combination can produce stale hit regions in tiled mode.
+SWIFT_CLASS("_TtC5Synca21MacInputContainerView")
+@interface MacInputContainerView : NSView
+- (nonnull instancetype)initWithFrame:(NSRect)frameRect OBJC_DESIGNATED_INITIALIZER;
+- (nullable instancetype)initWithCoder:(NSCoder * _Nonnull)coder OBJC_DESIGNATED_INITIALIZER;
+@property (nonatomic, readonly) BOOL acceptsFirstResponder;
+- (void)layout;
+- (void)mouseDown:(NSEvent * _Nonnull)event;
 @end
 
 @class UNUserNotificationCenter;

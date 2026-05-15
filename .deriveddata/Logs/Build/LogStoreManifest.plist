@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>662F6CB8-F5F1-45F3-BC61-169BE0B8F300</key>
+		<key>8C790B9F-D6B7-43EA-B7A6-25C5A829903F</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,13 +15,13 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>662F6CB8-F5F1-45F3-BC61-169BE0B8F300.xcactivitylog</string>
+			<string>8C790B9F-D6B7-43EA-B7A6-25C5A829903F.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>S</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
@@ -29,7 +29,7 @@
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
+				<integer>32</integer>
 			</dict>
 			<key>schemeIdentifier-containerName</key>
 			<string>Synca project</string>
@@ -40,15 +40,15 @@
 			<key>signature</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>timeStartedRecording</key>
-			<real>800434621.19788396</real>
+			<real>800502370.36483097</real>
 			<key>timeStoppedRecording</key>
-			<real>800434638.35307205</real>
+			<real>800502385.05377698</real>
 			<key>title</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>uniqueIdentifier</key>
-			<string>662F6CB8-F5F1-45F3-BC61-169BE0B8F300</string>
+			<string>8C790B9F-D6B7-43EA-B7A6-25C5A829903F</string>
 		</dict>
-		<key>BF27B493-66FD-416E-B252-98B6E4B89BC7</key>
+		<key>D0C6E0C4-2B76-4F1C-A8D1-511EB1F14AC2</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,13 +57,13 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>BF27B493-66FD-416E-B252-98B6E4B89BC7.xcactivitylog</string>
+			<string>D0C6E0C4-2B76-4F1C-A8D1-511EB1F14AC2.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>S</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
@@ -71,7 +71,7 @@
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
+				<integer>32</integer>
 			</dict>
 			<key>schemeIdentifier-containerName</key>
 			<string>Synca project</string>
@@ -82,13 +82,13 @@
 			<key>signature</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>timeStartedRecording</key>
-			<real>800427518.57850301</real>
+			<real>800501912.71407104</real>
 			<key>timeStoppedRecording</key>
-			<real>800427535.31289303</real>
+			<real>800501927.15552497</real>
 			<key>title</key>
 			<string>Building project Synca with scheme SyncaMac and configuration Production</string>
 			<key>uniqueIdentifier</key>
-			<string>BF27B493-66FD-416E-B252-98B6E4B89BC7</string>
+			<string>D0C6E0C4-2B76-4F1C-A8D1-511EB1F14AC2</string>
 		</dict>
 	</dict>
 </dict>

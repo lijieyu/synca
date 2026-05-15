@@ -108,17 +108,30 @@ final class PasteAwareUITextView: UITextView {
     }
 
     override func paste(_ sender: Any?) {
+        if UIPasteboard.general.hasStrings {
+            super.paste(sender)
+            return
+        }
+
         if let imageData = pastedImageData() {
             onImagePaste?(imageData)
             return
         }
-        if let (provider, typeIdentifier) = pastedFileProvider() {
-            let fileName = provider.suggestedName ?? "Attachment"
-            provider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { [weak self] data, _ in
-                guard let data else { return }
-                let mimeType = UTType(typeIdentifier)?.preferredMIMEType
+
+        if let provider = pastedFileProvider() {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] item, _ in
+                let url: URL?
+                if let fileURL = item as? URL {
+                    url = fileURL
+                } else if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else {
+                    url = nil
+                }
+
+                guard let url, let pendingFile = PendingFileUpload.read(from: url) else { return }
                 DispatchQueue.main.async {
-                    self?.onFilePaste?(PendingFileUpload(data: data, fileName: fileName, mimeType: mimeType))
+                    self?.onFilePaste?(pendingFile)
                 }
             }
             return
@@ -142,16 +155,14 @@ final class PasteAwareUITextView: UITextView {
         return nil
     }
 
-    private func pastedFileProvider() -> (NSItemProvider, String)? {
+    private func pastedFileProvider() -> NSItemProvider? {
         let providers = UIPasteboard.general.itemProviders
-        let supportedTypes = [
-            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "zip",
-        ].compactMap { UTType(filenameExtension: $0) }
 
         for provider in providers {
-            for type in supportedTypes where provider.hasItemConformingToTypeIdentifier(type.identifier) {
-                return (provider, type.identifier)
+            guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else {
+                continue
             }
+            return provider
         }
         return nil
     }
