@@ -1,6 +1,8 @@
 import Foundation
 
 extension Notification.Name {
+    static let syncaRequestAccount = Notification.Name("syncaRequestAccount")
+    static let syncaRequestCategoryManager = Notification.Name("syncaRequestCategoryManager")
     static let syncaFeedbackSubmitted = Notification.Name("syncaFeedbackSubmitted")
     static let syncaRequestClearAll = Notification.Name("syncaRequestClearAll")
     static let syncaRequestFeedbackComposer = Notification.Name("syncaRequestFeedbackComposer")

@@ -1,8 +1,10 @@
 import { db } from './db.js';
 import { sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
-import { SyncaUser, SyncaMessage, SyncaLifetimeUpgradeOfferKind } from './types.js';
-import { UsersTable, MessagesTable, IapTransactionsTable, LifetimeUpgradeOfferCodesTable } from './db_types.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { SyncaUser, SyncaMessage, SyncaLifetimeUpgradeOfferKind, SyncaMessageCategory, SyncaMessageCategoryColor } from './types.js';
+import { UsersTable, MessagesTable, IapTransactionsTable, LifetimeUpgradeOfferCodesTable, MessageCategoriesTable } from './db_types.js';
 
 // ── Mappers ──
 
@@ -22,13 +24,32 @@ function toMessage(row: MessagesTable, baseUrl?: string): SyncaMessage {
     return {
         id: row.id,
         userId: row.user_id,
-        type: row.type as 'text' | 'image',
+        type: row.type as 'text' | 'image' | 'file',
         textContent: row.text_content ?? undefined,
         imagePath: row.image_path ?? undefined,
         imageUrl: row.image_path && baseUrl ? `${baseUrl}/api/media/${row.image_path}` : undefined,
+        filePath: row.file_path ?? undefined,
+        fileUrl: row.file_path && baseUrl ? `${baseUrl}/api/media/${row.file_path}` : undefined,
+        fileName: row.file_name ?? undefined,
+        fileSize: row.file_size ?? undefined,
+        fileMimeType: row.file_mime_type ?? undefined,
+        categoryId: row.category_id ?? undefined,
         isCleared: row.is_cleared === 1,
         isDeleted: row.is_deleted === 1,
         sourceDevice: row.source_device ?? undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
+}
+
+function toCategory(row: MessageCategoriesTable): SyncaMessageCategory {
+    return {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        color: row.color as SyncaMessageCategoryColor,
+        isDefault: row.is_default === 1,
+        sortOrder: row.sort_order ?? 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -331,6 +352,332 @@ export async function createFeedback(input: {
     }).execute();
 }
 
+export async function deleteAccount(input: {
+    userId: string;
+    uploadsDir: string;
+    filesDir: string;
+    feedbackUploadsDir: string;
+}): Promise<boolean> {
+    const messageRows = await db.selectFrom('messages')
+        .select(['image_path', 'file_path'])
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    const feedbackRows = await db.selectFrom('feedbacks')
+        .select(['image_paths'])
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    const storedImagePaths = messageRows
+        .map((row) => row.image_path)
+        .filter((value): value is string => Boolean(value));
+    const storedFilePaths = messageRows
+        .map((row) => row.file_path)
+        .filter((value): value is string => Boolean(value));
+    const feedbackImagePaths = feedbackRows.flatMap((row) => {
+        if (!row.image_paths) return [];
+        try {
+            const parsed = JSON.parse(row.image_paths);
+            return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string' && value.length > 0) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const user = await getUser(input.userId);
+    if (!user) {
+        return false;
+    }
+
+    await db.transaction().execute(async (trx) => {
+        await trx.deleteFrom('feedbacks')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('iap_transactions')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('device_push_tokens')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('lifetime_upgrade_offer_codes')
+            .where('assigned_user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('message_usage_events')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('messages')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('message_categories')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('sessions')
+            .where('user_id', '=', input.userId)
+            .execute();
+
+        await trx.deleteFrom('users')
+            .where('id', '=', input.userId)
+            .execute();
+    });
+
+    const fileTargets = [
+        ...storedImagePaths.map((value) => path.resolve(input.uploadsDir, value)),
+        ...storedFilePaths.map((value) => path.resolve(input.filesDir, value)),
+        ...feedbackImagePaths.map((value) => path.resolve(input.feedbackUploadsDir, value)),
+    ];
+
+    await Promise.all(fileTargets.map(async (target) => {
+        try {
+            await fs.unlink(target);
+        } catch (error: any) {
+            if (error?.code !== 'ENOENT') {
+                console.error(`[account/delete] Failed to remove file ${target}:`, error);
+            }
+        }
+    }));
+
+    return true;
+}
+
+// ── Message Category DAO ──
+
+async function ensureDefaultCategory(userId: string, now = new Date().toISOString()): Promise<MessageCategoriesTable> {
+    const existing = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('user_id', '=', userId)
+        .where('is_default', '=', 1)
+        .executeTakeFirst();
+
+    if (existing) {
+        return existing;
+    }
+
+    const id = uuidv4();
+    await db.insertInto('message_categories').values({
+        id,
+        user_id: userId,
+        name: 'Default',
+        color: 'slate',
+        is_default: 1,
+        sort_order: 0,
+        created_at: now,
+        updated_at: now,
+    }).execute();
+
+    return (await db.selectFrom('message_categories')
+        .selectAll()
+        .where('id', '=', id)
+        .executeTakeFirst())!;
+}
+
+export async function listMessageCategories(userId: string): Promise<SyncaMessageCategory[]> {
+    await ensureDefaultCategory(userId);
+
+    const rows = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('user_id', '=', userId)
+        .orderBy('is_default', 'desc')
+        .orderBy('sort_order', 'asc')
+        .orderBy('created_at', 'asc')
+        .execute();
+
+    return rows.map(toCategory);
+}
+
+export async function createMessageCategory(input: {
+    userId: string;
+    name: string;
+    color: SyncaMessageCategoryColor;
+    now: string;
+}): Promise<SyncaMessageCategory> {
+    const id = uuidv4();
+    const maxSortRow = await db.selectFrom('message_categories')
+        .select(({ fn }) => fn.max<number>('sort_order').as('max_sort_order'))
+        .where('user_id', '=', input.userId)
+        .where('is_default', '=', 0)
+        .executeTakeFirst();
+    const sortOrder = Number(maxSortRow?.max_sort_order ?? 0) + 1000;
+
+    await db.insertInto('message_categories').values({
+        id,
+        user_id: input.userId,
+        name: input.name,
+        color: input.color,
+        is_default: 0,
+        sort_order: sortOrder,
+        created_at: input.now,
+        updated_at: input.now,
+    }).execute();
+
+    const row = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+    return toCategory(row);
+}
+
+export async function updateMessageCategory(input: {
+    id: string;
+    userId: string;
+    name?: string;
+    color?: SyncaMessageCategoryColor;
+    now: string;
+}): Promise<SyncaMessageCategory | undefined> {
+    const existing = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('id', '=', input.id)
+        .where('user_id', '=', input.userId)
+        .executeTakeFirst();
+
+    if (!existing || existing.is_default === 1) {
+        return undefined;
+    }
+
+    await db.updateTable('message_categories')
+        .set({
+            name: input.name ?? existing.name,
+            color: input.color ?? existing.color,
+            updated_at: input.now,
+        })
+        .where('id', '=', input.id)
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    const row = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('id', '=', input.id)
+        .executeTakeFirst();
+
+    return row ? toCategory(row) : undefined;
+}
+
+export async function reorderMessageCategories(input: {
+    userId: string;
+    categoryIds: string[];
+    now: string;
+}): Promise<boolean> {
+    const uniqueIds = Array.from(new Set(input.categoryIds));
+    if (uniqueIds.length !== input.categoryIds.length) {
+        return false;
+    }
+    if (uniqueIds.length === 0) {
+        return true;
+    }
+
+    const editableRows = await db.selectFrom('message_categories')
+        .select(['id'])
+        .where('user_id', '=', input.userId)
+        .where('is_default', '=', 0)
+        .where('id', 'in', uniqueIds)
+        .execute();
+
+    if (editableRows.length !== uniqueIds.length) {
+        return false;
+    }
+
+    await db.transaction().execute(async (trx) => {
+        for (const [index, id] of uniqueIds.entries()) {
+            await trx.updateTable('message_categories')
+                .set({
+                    sort_order: (index + 1) * 1000,
+                    updated_at: input.now,
+                })
+                .where('id', '=', id)
+                .where('user_id', '=', input.userId)
+                .where('is_default', '=', 0)
+                .execute();
+        }
+    });
+
+    return true;
+}
+
+export async function deleteMessageCategory(input: {
+    id: string;
+    userId: string;
+    now: string;
+}): Promise<boolean> {
+    const existing = await db.selectFrom('message_categories')
+        .selectAll()
+        .where('id', '=', input.id)
+        .where('user_id', '=', input.userId)
+        .executeTakeFirst();
+
+    if (!existing || existing.is_default === 1) {
+        return false;
+    }
+
+    const defaultCategory = await ensureDefaultCategory(input.userId, input.now);
+
+    await db.transaction().execute(async (trx) => {
+        await trx.updateTable('messages')
+            .set({
+                category_id: defaultCategory.id,
+                updated_at: input.now,
+            })
+            .where('user_id', '=', input.userId)
+            .where('category_id', '=', input.id)
+            .execute();
+
+        await trx.deleteFrom('message_categories')
+            .where('id', '=', input.id)
+            .where('user_id', '=', input.userId)
+            .execute();
+    });
+
+    return true;
+}
+
+async function resolveCategoryId(userId: string, categoryId: string | null | undefined, now: string): Promise<string> {
+    if (!categoryId) {
+        return (await ensureDefaultCategory(userId, now)).id;
+    }
+
+    const category = await db.selectFrom('message_categories')
+        .select(['id'])
+        .where('id', '=', categoryId)
+        .where('user_id', '=', userId)
+        .executeTakeFirst();
+
+    if (category) {
+        return category.id;
+    }
+
+    return (await ensureDefaultCategory(userId, now)).id;
+}
+
+export async function updateMessageCategoryAssignment(input: {
+    id: string;
+    userId: string;
+    categoryId?: string | null;
+    now: string;
+    baseUrl?: string;
+}): Promise<SyncaMessage | undefined> {
+    const resolvedCategoryId = await resolveCategoryId(input.userId, input.categoryId, input.now);
+    const result = await db.updateTable('messages')
+        .set({
+            category_id: resolvedCategoryId,
+            updated_at: input.now,
+        })
+        .where('id', '=', input.id)
+        .where('user_id', '=', input.userId)
+        .execute();
+
+    if (result[0].numUpdatedRows === 0n) {
+        return undefined;
+    }
+
+    return getMessage(input.id, input.baseUrl);
+}
+
 // ── Message DAO ──
 
 export async function listMessages(params: {
@@ -339,44 +686,74 @@ export async function listMessages(params: {
     limit?: number;
     baseUrl?: string;
 }): Promise<SyncaMessage[]> {
+    await ensureDefaultCategory(params.userId);
+
     let query = db.selectFrom('messages')
-        .selectAll()
-        .where('user_id', '=', params.userId);
+        .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
+        .selectAll('messages')
+        .select([
+            'message_categories.name as category_name',
+            'message_categories.color as category_color',
+            'message_categories.is_default as category_is_default',
+        ])
+        .where('messages.user_id', '=', params.userId);
 
     if (params.since) {
-        query = query.where('updated_at', '>', params.since);
+        query = query.where('messages.updated_at', '>', params.since);
     } else {
         // Initial load: skip deleted records
-        query = query.where('is_deleted', '=', 0);
+        query = query.where('messages.is_deleted', '=', 0);
     }
 
-    query = query.orderBy('created_at', 'asc');
+    query = query.orderBy('messages.created_at', 'asc');
 
     if (params.limit) {
         query = query.limit(params.limit);
     }
 
     const rows = await query.execute();
-    return rows.map((row) => toMessage(row, params.baseUrl));
+    return rows.map((row: any) => ({
+        ...toMessage(row, params.baseUrl),
+        categoryName: row.category_name ?? undefined,
+        categoryColor: row.category_color ?? undefined,
+        categoryIsDefault: row.category_is_default === 1,
+    }));
 }
 
 export async function getMessage(id: string, baseUrl?: string): Promise<SyncaMessage | undefined> {
     const row = await db.selectFrom('messages')
-        .selectAll()
-        .where('id', '=', id)
+        .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
+        .selectAll('messages')
+        .select([
+            'message_categories.name as category_name',
+            'message_categories.color as category_color',
+            'message_categories.is_default as category_is_default',
+        ])
+        .where('messages.id', '=', id)
         .executeTakeFirst();
-    return row ? toMessage(row, baseUrl) : undefined;
+    return row ? {
+        ...toMessage(row as any, baseUrl),
+        categoryName: (row as any).category_name ?? undefined,
+        categoryColor: (row as any).category_color ?? undefined,
+        categoryIsDefault: (row as any).category_is_default === 1,
+    } : undefined;
 }
 
 export async function createMessage(message: {
     id: string;
     userId: string;
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'file';
     textContent?: string | null;
     imagePath?: string | null;
+    filePath?: string | null;
+    fileName?: string | null;
+    fileSize?: number | null;
+    fileMimeType?: string | null;
+    categoryId?: string | null;
     sourceDevice?: string | null;
     now: string;
 }): Promise<void> {
+    const resolvedCategoryId = await resolveCategoryId(message.userId, message.categoryId, message.now);
     await db.transaction().execute(async (trx) => {
         await trx.insertInto('messages').values({
             id: message.id,
@@ -384,6 +761,11 @@ export async function createMessage(message: {
             type: message.type,
             text_content: message.textContent ?? null,
             image_path: message.imagePath ?? null,
+            file_path: message.filePath ?? null,
+            file_name: message.fileName ?? null,
+            file_size: message.fileSize ?? null,
+            file_mime_type: message.fileMimeType ?? null,
+            category_id: resolvedCategoryId,
             is_cleared: 0,
             is_deleted: 0,
             source_device: message.sourceDevice ?? null,
@@ -411,12 +793,12 @@ export async function clearMessage(id: string, userId: string): Promise<boolean>
     return result[0].numUpdatedRows > 0n;
 }
 
-export async function deleteMessage(id: string, userId: string, uploadsDir: string): Promise<boolean> {
+export async function deleteMessage(id: string, userId: string, uploadsDir: string, filesDir: string): Promise<boolean> {
     const now = new Date().toISOString();
     
-    // 1. Get message info to check for image file
+    // 1. Get message info to check for stored media
     const msg = await db.selectFrom('messages')
-        .select(['id', 'image_path'])
+        .select(['id', 'image_path', 'file_path'])
         .where('id', '=', id)
         .where('user_id', '=', userId)
         .executeTakeFirst();
@@ -429,7 +811,11 @@ export async function deleteMessage(id: string, userId: string, uploadsDir: stri
             is_deleted: 1, 
             updated_at: now,
             text_content: null, // Clear content for privacy
-            image_path: null 
+            image_path: null,
+            file_path: null,
+            file_name: null,
+            file_size: null,
+            file_mime_type: null,
         })
         .where('id', '=', id)
         .where('user_id', '=', userId)
@@ -437,14 +823,20 @@ export async function deleteMessage(id: string, userId: string, uploadsDir: stri
     
     const success = result[0].numUpdatedRows > 0n;
 
-    // 3. Physically delete image file from disk if it exists
-    if (success && msg.image_path) {
+    // 3. Physically delete stored media from disk if it exists
+    if (success) {
         import('fs').then((fs) => {
-            const filePath = import('path').then((path) => {
-                const fullPath = path.resolve(uploadsDir, msg.image_path!);
-                fs.unlink(fullPath, (err) => {
-                    if (err) console.error(`[delete] Failed to remove file ${fullPath}:`, err);
-                    else console.log(`[delete] Physically removed file ${fullPath}`);
+            import('path').then((path) => {
+                const mediaTargets = [
+                    msg.image_path ? path.resolve(uploadsDir, msg.image_path) : null,
+                    msg.file_path ? path.resolve(filesDir, msg.file_path) : null,
+                ].filter((target): target is string => Boolean(target));
+
+                mediaTargets.forEach((target) => {
+                    fs.unlink(target, (err) => {
+                        if (err) console.error(`[delete] Failed to remove file ${target}:`, err);
+                        else console.log(`[delete] Physically removed file ${target}`);
+                    });
                 });
             });
         });
@@ -453,25 +845,35 @@ export async function deleteMessage(id: string, userId: string, uploadsDir: stri
     return success;
 }
 
-export async function clearAllMessages(userId: string): Promise<number> {
+export async function clearAllMessages(userId: string, categoryId?: string | null): Promise<number> {
     const now = new Date().toISOString();
-    const result = await db.updateTable('messages')
+    let query = db.updateTable('messages')
         .set({ is_cleared: 1, updated_at: now })
         .where('user_id', '=', userId)
-        .where('is_cleared', '=', 0)
-        .execute();
+        .where('is_cleared', '=', 0);
+
+    if (categoryId) {
+        query = query.where('category_id', '=', categoryId);
+    }
+
+    const result = await query.execute();
     return Number(result[0].numUpdatedRows);
 }
 
-export async function deleteCompletedMessages(userId: string, uploadsDir: string): Promise<number> {
+export async function deleteCompletedMessages(userId: string, uploadsDir: string, filesDir: string, categoryId?: string | null): Promise<number> {
     const now = new Date().toISOString();
 
-    const completedMessages = await db.selectFrom('messages')
-        .select(['id', 'image_path'])
+    let completedQuery = db.selectFrom('messages')
+        .select(['id', 'image_path', 'file_path'])
         .where('user_id', '=', userId)
         .where('is_cleared', '=', 1)
-        .where('is_deleted', '=', 0)
-        .execute();
+        .where('is_deleted', '=', 0);
+
+    if (categoryId) {
+        completedQuery = completedQuery.where('category_id', '=', categoryId);
+    }
+
+    const completedMessages = await completedQuery.execute();
 
     if (completedMessages.length === 0) {
         return 0;
@@ -481,6 +883,9 @@ export async function deleteCompletedMessages(userId: string, uploadsDir: string
     const imagePaths = completedMessages
         .map((message) => message.image_path)
         .filter((path): path is string => Boolean(path));
+    const filePaths = completedMessages
+        .map((message) => message.file_path)
+        .filter((path): path is string => Boolean(path));
 
     const result = await db.updateTable('messages')
         .set({
@@ -488,15 +893,22 @@ export async function deleteCompletedMessages(userId: string, uploadsDir: string
             updated_at: now,
             text_content: null,
             image_path: null,
+            file_path: null,
+            file_name: null,
+            file_size: null,
+            file_mime_type: null,
         })
         .where('user_id', '=', userId)
         .where('id', 'in', ids)
         .execute();
 
-    if (imagePaths.length > 0) {
+    if (imagePaths.length > 0 || filePaths.length > 0) {
         import('fs').then((fs) => {
-            imagePaths.forEach((imagePath) => {
-                const fullPath = uploadsDir + '/' + imagePath;
+            const targets = [
+                ...imagePaths.map((imagePath) => uploadsDir + '/' + imagePath),
+                ...filePaths.map((filePath) => filesDir + '/' + filePath),
+            ];
+            targets.forEach((fullPath) => {
                 fs.unlink(fullPath, (err) => {
                     if (err) console.error(`[delete] Failed to remove file ${fullPath}:`, err);
                     else console.log(`[delete] Physically removed file ${fullPath}`);
@@ -654,14 +1066,19 @@ export async function updateDevicePushTokenEnvironment(input: {
 
 // ── Reset (test only) ──
 
-export async function canUserAccessImage(userId: string, filename: string, isAdmin: boolean): Promise<boolean> {
+export async function canUserAccessMedia(userId: string, filename: string, isAdmin: boolean): Promise<boolean> {
     if (isAdmin) return true;
 
     // Check messages
     const messageHit = await db.selectFrom('messages')
         .select('id')
         .where('user_id', '=', userId)
-        .where('image_path', '=', filename)
+        .where((eb) =>
+            eb.or([
+                eb('image_path', '=', filename),
+                eb('file_path', '=', filename),
+            ])
+        )
         .where('is_deleted', '=', 0) // Deleted messages might not have image access
         .executeTakeFirst();
         
@@ -684,6 +1101,7 @@ export async function resetDb() {
     await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
     await db.deleteFrom('message_usage_events').execute();
     await db.deleteFrom('messages').execute();
+    await db.deleteFrom('message_categories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
 }

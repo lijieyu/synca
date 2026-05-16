@@ -120,7 +120,7 @@ private struct MacTitlebarMetrics {
             return MacTitlebarMetrics(
                 height: 42,
                 identityWidth: 224,
-                controlsWidth: 188,
+                controlsWidth: 212,
                 titleFontSize: 17,
                 leadingPadding: 18,
                 verticalPadding: 6,
@@ -134,7 +134,7 @@ private struct MacTitlebarMetrics {
             return MacTitlebarMetrics(
                 height: 40,
                 identityWidth: 212,
-                controlsWidth: 176,
+                controlsWidth: 204,
                 titleFontSize: 16,
                 leadingPadding: 18,
                 verticalPadding: 5,
@@ -176,11 +176,19 @@ private struct MacTitlebarIdentityView: View {
 
 private struct MacTitlebarControlsView: View {
     @ObservedObject private var syncManager = SyncManager.shared
+    @ObservedObject private var settings = SettingsManager.shared
     let metrics: MacTitlebarMetrics
 
     var body: some View {
         ZStack(alignment: .trailing) {
             HStack(spacing: metrics.controlsSpacing) {
+                Button {
+                    settings.setMessageListLayoutMode(settings.messageListLayoutMode == .single ? .tiled : .single)
+                } label: {
+                    titlebarIcon(settings.messageListLayoutMode == .single ? "square.grid.2x2" : "rectangle.split.3x1")
+                }
+                .buttonStyle(.plain)
+
                 Button {
                     Task { await syncManager.refresh() }
                 } label: {
@@ -199,6 +207,18 @@ private struct MacTitlebarControlsView: View {
 
                 Menu {
                     Button {
+                        NotificationCenter.default.post(name: .syncaRequestAccount, object: nil)
+                    } label: {
+                        Label("account.section_title", systemImage: "person.crop.circle")
+                    }
+
+                    Button {
+                        NotificationCenter.default.post(name: .syncaRequestCategoryManager, object: nil)
+                    } label: {
+                        Label("message_list.manage_categories", systemImage: "tag")
+                    }
+
+                    Button {
                         NotificationCenter.default.post(name: .syncaRequestFeedbackComposer, object: nil)
                     } label: {
                         Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
@@ -210,11 +230,6 @@ private struct MacTitlebarControlsView: View {
                         Label("message_list.about", systemImage: "info.circle")
                     }
 
-                    Button(role: .destructive) {
-                        NotificationCenter.default.post(name: .syncaRequestSignOut, object: nil)
-                    } label: {
-                        Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
                 } label: {
                     Color.clear
                         .frame(width: metrics.iconFrame, height: metrics.iconFrame)

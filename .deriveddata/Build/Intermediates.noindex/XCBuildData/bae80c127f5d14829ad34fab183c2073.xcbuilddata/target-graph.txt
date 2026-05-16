@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Synca' in project 'Synca' (no dependencies)

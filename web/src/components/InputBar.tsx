@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api, DailyLimitError } from '../api/client';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
 
 interface Props {
   onSent: () => void;
+  categoryId?: string | null;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -17,15 +18,20 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
+
+  const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,image/*';
+  const supportedDocumentExtensionSet = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
+  const maxDocumentSize = 25 * 1024 * 1024;
   useEffect(() => {
     // Focus when not sending (initial mount and after message sent)
     if (!isSending) {
@@ -46,7 +52,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     
     setIsSending(true);
     try {
-      await api.sendTextMessage(trimmed);
+      await api.sendTextMessage(trimmed, categoryId);
       setText('');
       // Reset textarea height
       if (textareaRef.current) {
@@ -69,7 +75,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     if (isSending) return;
     setIsSending(true);
     try {
-      await api.sendImageMessage(file);
+      await api.sendImageMessage(file, categoryId);
       onSent();
     } catch (err) {
       console.error(err);
@@ -81,8 +87,41 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
       }
     }
     setIsSending(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const sendFile = async (file: File) => {
+    if (isSending) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!supportedDocumentExtensionSet.has(extension)) {
+      setToastMsg(t('message_file.error_unsupported', 'This file type is not supported.'));
+      setShowToast(true);
+      return;
+    }
+    if (file.size > maxDocumentSize) {
+      setToastMsg(t('message_file.error_too_large', 'Files must be 25 MB or smaller.'));
+      setShowToast(true);
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      await api.sendFileMessage(file, categoryId);
+      onSent();
+    } catch (err) {
+      console.error(err);
+      if (err instanceof DailyLimitError) {
+        setShowLimitModal(true);
+      } else {
+        setToastMsg(t('sync.error_context.send_file', 'File send failed'));
+        setShowToast(true);
+      }
+    }
+    setIsSending(false);
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
     }
   };
 
@@ -90,6 +129,17 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
     const file = e.target.files?.[0];
     if (file) {
       await sendImage(file);
+    }
+  };
+
+  const handleDocumentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        await sendImage(file);
+      } else {
+        await sendFile(file);
+      }
     }
   };
 
@@ -101,9 +151,16 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
         if (file) {
           e.preventDefault();
           await sendImage(file);
-          break; // Send first image found
+          return;
         }
       }
+    }
+
+    const files = Array.from(e.clipboardData.files);
+    const supportedFile = files.find((file) => !file.type.startsWith('image/'));
+    if (supportedFile) {
+      e.preventDefault();
+      await sendFile(supportedFile);
     }
   };
 
@@ -144,36 +201,49 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
   return (
     <>
       <div className="input-bar">
-        <div className="photo-upload">
-          <ImagePlus size={24} />
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-            ref={fileInputRef} 
+        <div className="input-shell">
+          <div className="photo-upload">
+            <ImagePlus size={24} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              ref={imageInputRef}
+              disabled={isSending}
+            />
+          </div>
+
+          <div className="photo-upload file-upload">
+            <Paperclip size={22} />
+            <input
+              type="file"
+              accept={supportedDocumentExtensions}
+              onChange={handleDocumentChange}
+              ref={documentInputRef}
+              disabled={isSending}
+            />
+          </div>
+
+          <textarea
+            ref={textareaRef}
+            className={isSending ? 'sending' : ''}
+            placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
+            value={text}
+            onChange={(e) => { setText(e.target.value); autoGrow(); }}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={isSending}
+            rows={1}
           />
+
+          <button
+            className="send-btn"
+            onClick={handleSendText}
+            disabled={!text.trim() || isSending}
+          >
+            <SendIcon size={30} color={text.trim() && !isSending ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
+          </button>
         </div>
-        
-        <textarea
-          ref={textareaRef}
-          className={isSending ? 'sending' : ''}
-          placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
-          value={text}
-          onChange={(e) => { setText(e.target.value); autoGrow(); }}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          disabled={isSending}
-          rows={1}
-        />
-        
-        <button 
-          className="send-btn"
-          onClick={handleSendText} 
-          disabled={!text.trim() || isSending}
-        >
-          <SendIcon size={30} color={text.trim() && !isSending ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
-        </button>
       </div>
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
@@ -184,7 +254,7 @@ export const InputBar: React.FC<Props> = ({ onSent }) => {
           message={t('access.limit_reached_message', "Today's quota has been used up. Please download Synca from the App Store to complete the purchase and upgrade in-app.")}
           confirmText={t('access.go_to_appstore', 'View on App Store')}
           cancelText={t('common.ok', 'OK')}
-          onConfirm={() => window.open('https://apps.apple.com/app/id6478204620', '_blank')}
+          onConfirm={() => window.open('https://apps.apple.com/app/synca-sync-your-aha-moment/id6761647007', '_blank')}
           onCancel={() => setShowLimitModal(false)}
         />
       )}

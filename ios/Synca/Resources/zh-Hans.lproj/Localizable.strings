@@ -14,6 +14,8 @@
 "common.delete" = "删除";
 "common.copy" = "拷贝";
 "common.save" = "保存";
+"common.done" = "完成";
+"common.all" = "全部";
 "message.date.yesterday" = "昨天 %@";
 
 /* Message List */
@@ -24,6 +26,9 @@
 "message_list.loading" = "加载中...";
 "message_list.clear_all_confirm_title" = "确认删除";
 "message_list.clear_all_confirm_message" = "将删除所有已完成的待办";
+"message_list.clear_completed_all_categories" = "将删除所有分类中的已完成事项。";
+"message_list.clear_completed_category_format" = "将删除“%@”中的已完成事项。";
+"message_list.clear_completed_all_messages" = "将删除全部消息中的已完成事项。";
 "message_list.logout_confirm_title" = "确认退出";
 "message_list.logout_confirm_message" = "退出后需要重新登录";
 "message_list.logout" = "退出";
@@ -39,9 +44,23 @@
 "message_list.about_message" = "\nSynca · 灵感记录，即刻同步\n\n版本 %@ (%@)\n\nhttps://synca.haerth.cn/";
 "message_list.input_placeholder" = "记录此刻的想法...";
 "message_list.sending_placeholder" = "正在发送...";
+"message_list.manage_categories" = "分类管理";
+"account.section_title" = "账号";
+"account.provider.apple" = "通过 Apple 登录";
+"account.email_unavailable" = "当前 Apple 账号邮箱不可用";
+"account.email_hidden_title" = "邮箱已由 Apple 隐藏";
+"account.email_hidden_message" = "这个账号正在使用“隐藏邮箱地址”，Synca 不会看到你的真实邮箱。";
+"account.delete_action" = "删除账号";
+"account.delete_confirm_title" = "删除账号";
+"account.delete_confirm_message" = "这将永久删除你的 Synca 账号，并从 Synca 服务器移除已同步的消息、文件、分类、反馈和登录会话数据。此操作不可撤销。";
+"account.delete_success_title" = "账号已删除";
+"account.delete_success_message" = "你的 Synca 账号及相关数据已被删除。";
+"account.delete_failed_title" = "无法删除账号";
+"account.delete_failed_message" = "请稍后再试。";
 "sync.error_context.sync" = "同步";
 "sync.error_context.send" = "发送";
 "sync.error_context.send_image" = "图片发送";
+"sync.error_context.send_file" = "文件发送";
 "sync.error_context.clear" = "清理";
 "sync.error_context.delete" = "删除";
 "sync.error_format" = "%@失败: %@ (Code: %d, Domain: %@)";
@@ -163,27 +182,37 @@
 "message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
 "message_bubble.choose_save_directory" = "选择保存目录";
 "message_bubble.save_to_directory" = "保存到此目录";
+"message_file.error_too_large" = "文件不能超过 25 MB。";
+"message_file.error_image_too_large" = "图片不能超过 20 MB。";
+"message_file.error_unsupported" = "暂不支持这种文件类型。";
 
-/* Image Preview */
-"image_preview.download_to_local" = "下载到本地";
-"image_preview.saving" = "正在保存...";
-"image_preview.save_success" = "保存成功";
-"image_preview.save_failed" = "保存失败";
-"image_preview.load_failed" = "图片加载失败";
-"image_preview.tap_to_retry" = "点击重试";
-
-/* Message Bubble */
-"message_bubble.delete_confirm_title" = "确认删除";
-"message_bubble.delete_confirm_message" = "此操作将从云端永久抹除此记录%@，且不可撤销。";
-"message_bubble.delete_image_suffix" = "和图片文件";
-"message_bubble.load_failed_retry" = "加载失败，点击重试";
-"message_bubble.open_with_preview" = "用预览打开";
-"message_bubble.show_in_finder" = "在访达中显示";
-"message_bubble.save_as" = "另存为...";
-"message_bubble.save_failed_title" = "保存失败";
-"message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
-"message_bubble.choose_save_directory" = "选择保存目录";
-"message_bubble.save_to_directory" = "保存到此目录";
+/* Message Categories */
+"message_category.section_title" = "分类";
+"message_category.manage_description" = "编辑分类名称和颜色，点击保存后统一生效。";
+"message_category.new_section" = "新建分类";
+"message_category.name_placeholder" = "分类名称";
+"message_category.color_label" = "颜色";
+"message_category.name_column" = "名称";
+"message_category.add_action" = "添加分类";
+"message_category.save_name" = "保存名称";
+"message_category.delete_action" = "删除分类";
+"message_category.move_up" = "上移";
+"message_category.move_down" = "下移";
+"message_category.default_badge" = "默认";
+"message_category.duplicate_title" = "分类已存在";
+"message_category.duplicate_message" = "请换一个分类名称。";
+"message_category.invalid_title" = "分类名称不能为空";
+"message_category.invalid_message" = "保存前请为每个分类填写名称。";
+"message_category.delete_confirm_title" = "删除分类？";
+"message_category.delete_confirm_message" = "保存后这个分类会被删除。";
+"message_category.color.sky" = "天蓝";
+"message_category.color.mint" = "薄荷";
+"message_category.color.amber" = "琥珀";
+"message_category.color.coral" = "珊瑚";
+"message_category.color.violet" = "紫罗兰";
+"message_category.color.slate" = "岩灰";
+"message_category.color.rose" = "玫瑰";
+"message_category.color.ocean" = "海蓝";
 
 /* Image Preview */
 "image_preview.download_to_local" = "下载到本地";

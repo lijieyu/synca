@@ -304,6 +304,7 @@
 				};
 			};
 			buildConfigurationList = 4C5599F5C91277FF882DFE61 /* Build configuration list for PBXProject "Synca" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -314,7 +315,6 @@
 			mainGroup = 24D345F120CF879A2AF4A0E6;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 7E48A3B0CC66F350B5DD8C2F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (

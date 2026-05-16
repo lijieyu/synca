@@ -9,16 +9,18 @@ struct PasteAwareTextView: UIViewRepresentable {
     @Binding var height: CGFloat
     let isSending: Bool
     let onImagePaste: (Data) -> Void
+    let onFilePaste: (PendingFileUpload) -> Void
     let onSubmit: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, height: $height, onImagePaste: onImagePaste, onSubmit: onSubmit)
+        Coordinator(text: $text, height: $height, onImagePaste: onImagePaste, onFilePaste: onFilePaste, onSubmit: onSubmit)
     }
 
     func makeUIView(context: Context) -> UITextView {
         let textView = PasteAwareUITextView()
         textView.delegate = context.coordinator
         textView.onImagePaste = onImagePaste
+        textView.onFilePaste = onFilePaste
         textView.backgroundColor = .clear
         textView.font = .preferredFont(forTextStyle: .body)
         textView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
@@ -42,6 +44,10 @@ struct PasteAwareTextView: UIViewRepresentable {
         }
         uiView.isEditable = !isSending
         uiView.isSelectable = !isSending
+        if let textView = uiView as? PasteAwareUITextView {
+            textView.onImagePaste = onImagePaste
+            textView.onFilePaste = onFilePaste
+        }
         
         // Force height update
         DispatchQueue.main.async {
@@ -60,12 +66,14 @@ struct PasteAwareTextView: UIViewRepresentable {
         @Binding var text: String
         @Binding var height: CGFloat
         let onImagePaste: (Data) -> Void
+        let onFilePaste: (PendingFileUpload) -> Void
         let onSubmit: () -> Void
 
-        init(text: Binding<String>, height: Binding<CGFloat>, onImagePaste: @escaping (Data) -> Void, onSubmit: @escaping () -> Void) {
+        init(text: Binding<String>, height: Binding<CGFloat>, onImagePaste: @escaping (Data) -> Void, onFilePaste: @escaping (PendingFileUpload) -> Void, onSubmit: @escaping () -> Void) {
             _text = text
             _height = height
             self.onImagePaste = onImagePaste
+            self.onFilePaste = onFilePaste
             self.onSubmit = onSubmit
         }
 
@@ -89,6 +97,7 @@ struct PasteAwareTextView: UIViewRepresentable {
 
 final class PasteAwareUITextView: UITextView {
     var onImagePaste: ((Data) -> Void)?
+    var onFilePaste: ((PendingFileUpload) -> Void)?
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(paste(_:)) {
@@ -99,8 +108,32 @@ final class PasteAwareUITextView: UITextView {
     }
 
     override func paste(_ sender: Any?) {
+        if UIPasteboard.general.hasStrings {
+            super.paste(sender)
+            return
+        }
+
         if let imageData = pastedImageData() {
             onImagePaste?(imageData)
+            return
+        }
+
+        if let provider = pastedFileProvider() {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] item, _ in
+                let url: URL?
+                if let fileURL = item as? URL {
+                    url = fileURL
+                } else if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else {
+                    url = nil
+                }
+
+                guard let url, let pendingFile = PendingFileUpload.read(from: url) else { return }
+                DispatchQueue.main.async {
+                    self?.onFilePaste?(pendingFile)
+                }
+            }
             return
         }
         super.paste(sender)
@@ -118,6 +151,18 @@ final class PasteAwareUITextView: UITextView {
         
         if let image = pasteboard.image {
             return image.pngData()
+        }
+        return nil
+    }
+
+    private func pastedFileProvider() -> NSItemProvider? {
+        let providers = UIPasteboard.general.itemProviders
+
+        for provider in providers {
+            guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else {
+                continue
+            }
+            return provider
         }
         return nil
     }

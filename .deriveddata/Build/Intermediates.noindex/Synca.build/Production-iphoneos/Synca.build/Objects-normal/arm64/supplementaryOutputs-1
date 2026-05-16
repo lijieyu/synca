@@ -1,0 +1,12 @@
+{
+  "/Users/lijieyu.haer/Projects/synca/ios/Synca/Shared/Core/APIClient.swift" : {
+    "abi-baseline-json" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.abi.json",
+    "const-values" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-primary.swiftconstvalues",
+    "dependencies" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-primary.d",
+    "diagnostics" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-primary.dia",
+    "objc-header" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca-Swift.h",
+    "swiftdoc" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.swiftdoc",
+    "swiftmodule" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.swiftmodule",
+    "swiftsourceinfo" : "/Users/lijieyu.haer/Projects/synca/.deriveddata/Build/Intermediates.noindex/Synca.build/Production-iphoneos/Synca.build/Objects-normal/arm64/Synca.swiftsourceinfo"
+  }
+}
