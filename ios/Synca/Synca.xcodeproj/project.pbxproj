@@ -100,7 +100,7 @@
 		7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7CA8F92004259A6E22176A45 /* SyncDebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDebugLogger.swift; sourceTree = "<group>"; };
 		7E303199D1B3CC0E8B523373 /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
-		89039A9E9399426CB387B3BD /* SyncaMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = SyncaMac.app; path = Synca.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		89039A9E9399426CB387B3BD /* Synca.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synca.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		891CF9713534ED8E2977AA0E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		AD1E757E6D45FD90B41342C3 /* MessageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageListView.swift; sourceTree = "<group>"; };
 		B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackComposerView.swift; sourceTree = "<group>"; };
@@ -155,7 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				526A3C038EFA531DBE744086 /* Synca.app */,
-				89039A9E9399426CB387B3BD /* SyncaMac.app */,
+				89039A9E9399426CB387B3BD /* Synca.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -263,7 +263,7 @@
 			packageProductDependencies = (
 			);
 			productName = SyncaMac;
-			productReference = 89039A9E9399426CB387B3BD /* SyncaMac.app */;
+			productReference = 89039A9E9399426CB387B3BD /* Synca.app */;
 			productType = "com.apple.product-type.application";
 		};
 		367994283DCCC1E465ECF327 /* Synca */ = {
@@ -499,6 +499,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -652,6 +653,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -699,6 +701,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
