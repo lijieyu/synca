@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { api } from '../api/client';
 
 interface AuthImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   url: string;
@@ -14,18 +15,7 @@ export const AuthImage: React.FC<AuthImageProps> = ({ url, ...props }) => {
 
     const fetchImage = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
+        const blob = await api.getProtectedFileBlob(url);
         if (!active) return;
         
         currentObjectUrl = URL.createObjectURL(blob);

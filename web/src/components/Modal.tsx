@@ -20,6 +20,18 @@ export const Modal: React.FC<Props> = ({
 }) => {
   const contentSizeClass = size === 'compact' ? '' : (children || size === 'large' ? 'modal-content-large' : '');
 
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className={`modal-content ${contentSizeClass}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">

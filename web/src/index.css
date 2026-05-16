@@ -116,7 +116,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-color);
   min-height: 64px;
 }
@@ -126,7 +126,7 @@ body {
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: 8px 0 4px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -394,6 +394,17 @@ button.category-chip {
   max-height: 450px;
   border-radius: 8px;
   object-fit: cover;
+  cursor: zoom-in;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.message-image:hover {
+  transform: translateY(-1px);
+}
+
+.message-image.opening {
+  opacity: 0.62;
+  cursor: progress;
 }
 
 .file-card {
@@ -469,6 +480,15 @@ button.category-chip {
   color: var(--text-main);
 }
 
+.action-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--text-secondary) 35%, transparent);
+  border-top-color: var(--text-secondary);
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
 .action-btn.cleared-icon {
   color: var(--cleared-icon-color);
 }
@@ -485,7 +505,7 @@ button.category-chip {
 .input-shell {
   width: 100%;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid var(--border-color);
@@ -526,7 +546,6 @@ button.category-chip {
   align-items: center;
   justify-content: center;
   padding: 0;
-  margin-bottom: 6px;
   flex-shrink: 0;
 }
 
@@ -542,7 +561,9 @@ button.category-chip {
   color: var(--text-main);
   display: flex;
   align-items: center;
-  margin-bottom: 4px;
+  justify-content: center;
+  width: 28px;
+  height: 40px;
   flex-shrink: 0;
 }
 
@@ -1283,6 +1304,10 @@ button.category-chip {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes modalScale {

@@ -1,4 +1,5 @@
 const BASE_URL = '';
+const ATTACHMENT_CACHE_NAME = 'synca-attachment-cache-v1';
 
 export interface SyncaMessage {
   id: string;
@@ -233,7 +234,13 @@ class APIClient {
     return response.json();
   }
 
-  async downloadProtectedFile(url: string, fileName?: string | null): Promise<void> {
+  async getProtectedFileBlob(url: string): Promise<Blob> {
+    const cache = 'caches' in window ? await caches.open(ATTACHMENT_CACHE_NAME) : null;
+    const cachedResponse = cache ? await cache.match(url) : undefined;
+    if (cachedResponse) {
+      return cachedResponse.blob();
+    }
+
     const headers: Record<string, string> = {};
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
@@ -245,6 +252,24 @@ class APIClient {
     }
 
     const blob = await response.blob();
+    if (cache) {
+      await cache.put(url, new Response(blob, {
+        headers: {
+          'Content-Type': blob.type || response.headers.get('Content-Type') || 'application/octet-stream',
+        },
+      }));
+    }
+
+    return blob;
+  }
+
+  async openProtectedFile(url: string): Promise<string> {
+    const blob = await this.getProtectedFileBlob(url);
+    return window.URL.createObjectURL(blob);
+  }
+
+  async downloadProtectedFile(url: string, fileName?: string | null): Promise<void> {
+    const blob = await this.getProtectedFileBlob(url);
     const objectUrl = window.URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = objectUrl;

@@ -27,6 +27,8 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
 
 export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fileAction, setFileAction] = useState<'open' | 'download' | null>(null);
+  const [isImageOpening, setIsImageOpening] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { t } = useTranslation();
   const fileExtension = useMemo(() => {
@@ -94,15 +96,71 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
     }
   };
 
-  const handleFileDownload = async () => {
+  const handleFileOpen = async () => {
+    if (!message.fileUrl || isProcessing) return;
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+      previewWindow.opener = null;
+    }
+    setIsProcessing(true);
+    setFileAction('open');
+    try {
+      const objectUrl = await api.openProtectedFile(message.fileUrl);
+      if (previewWindow) {
+        previewWindow.location.href = objectUrl;
+      } else {
+        window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (e) {
+      previewWindow?.close();
+      console.error(e);
+    } finally {
+      setFileAction(null);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileDownload = async (event?: React.MouseEvent) => {
+    event?.stopPropagation();
     if (!message.fileUrl || isProcessing) return;
     setIsProcessing(true);
+    setFileAction('download');
     try {
       await api.downloadProtectedFile(message.fileUrl, message.fileName);
     } catch (e) {
       console.error(e);
     } finally {
+      setFileAction(null);
       setIsProcessing(false);
+    }
+  };
+
+  const handleImageOpen = async () => {
+    if (!message.imageUrl || isProcessing || isImageOpening) return;
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) {
+      previewWindow.opener = null;
+    }
+    setIsImageOpening(true);
+    try {
+      const objectUrl = await api.openProtectedFile(message.imageUrl);
+      if (previewWindow) {
+        previewWindow.location.href = objectUrl;
+      } else {
+        window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (e) {
+      previewWindow?.close();
+      console.error(e);
+    } finally {
+      setIsImageOpening(false);
+    }
+  };
+
+  const handleImageKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      void handleImageOpen();
     }
   };
 
@@ -133,21 +191,27 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
         )}
         
         {message.type === 'image' && message.imageUrl && (
-          <AuthImage 
-            url={message.imageUrl} 
-            alt="Shared content" 
-            className="message-image" 
+          <AuthImage
+            url={message.imageUrl}
+            alt="Shared content"
+            className={`message-image ${isImageOpening ? 'opening' : ''}`}
+            onClick={() => void handleImageOpen()}
+            onKeyDown={handleImageKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label={t('image_preview.open', 'Open image')}
           />
         )}
 
         {message.type === 'file' && (
-          <button className="file-card" onClick={handleFileDownload} disabled={isProcessing}>
+          <button className="file-card" onClick={handleFileOpen} disabled={isProcessing}>
             <div className="file-card-icon">{fileIcon}</div>
             <div className="file-card-meta">
               <div className="file-card-name">{message.fileName ?? 'Attachment'}</div>
               <div className="file-card-detail">
                 {fileExtension && <span>{fileExtension}</span>}
                 {message.fileSize != null && <span>{formatFileSize(message.fileSize)}</span>}
+                {fileAction === 'open' && <span>{t('common.opening', 'Opening...')}</span>}
               </div>
             </div>
           </button>
@@ -181,7 +245,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
           <div className="actions">
             {message.type === 'file' && (
               <button className="action-btn" onClick={handleFileDownload} disabled={isProcessing} title={t('common.save', 'Save')}>
-                <Download size={16} />
+                {fileAction === 'download' ? <span className="action-spinner" aria-hidden="true" /> : <Download size={16} />}
               </button>
             )}
             <button className="action-btn" onClick={() => setShowDeleteModal(true)} disabled={isProcessing} title={t('common.delete', 'Delete')}>
