@@ -263,7 +263,7 @@ export const MessageListView: React.FC = () => {
     return counts;
   }, [messages]);
   const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
-  const visibleSingleModeCategories = useMemo(() => categories.filter((category) => !category.isDefault), [categories]);
+  const visibleSingleModeCategories = useMemo(() => categories, [categories]);
   const tiledCategories = useMemo(() => categories, [categories]);
   const tiledColumnWidth = useMemo(() => {
     const count = Math.max(tiledCategories.length, 1);
