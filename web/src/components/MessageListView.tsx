@@ -102,7 +102,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
       <div className="category-column-header">
         <div className="category-column-title-row">
           <span className={`category-chip has-badge color-${category.color}`}>
-            {category.name}
+            {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
             <CategoryTodoBadge count={pending.length} />
           </span>
           <div className="category-column-actions">
@@ -493,7 +493,7 @@ export const MessageListView: React.FC = () => {
                 className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
                 onClick={() => setSelectedCategoryId(category.id)}
               >
-                {category.name}
+                {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
               </button>
             ))}

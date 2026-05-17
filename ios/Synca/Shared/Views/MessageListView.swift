@@ -341,7 +341,7 @@ struct MessageListView: View {
 
                 ForEach(syncManager.categories) { category in
                     categoryChip(
-                        title: category.name,
+                        title: category.isDefault ? String(localized: "message_category.default_badge", bundle: .main) : category.name,
                         color: backgroundColor(for: category.color),
                         isSelected: syncManager.selectedCategoryId == category.id,
                         badgeCount: todoCount(for: category.id)
@@ -1189,7 +1189,7 @@ private struct TiledCategoryColumn: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(category.name)
+                Text(category.isDefault ? String(localized: "message_category.default_badge", bundle: .main) : category.name)
                     .font(.headline)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -2542,9 +2542,10 @@ private struct CategoryDraftListRow: View {
     }
 
     private var deleteButton: some View {
-        Button(role: .destructive, action: onDelete) {
+        Button(action: onDelete) {
             Image(systemName: "trash")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.red.opacity(0.6))
                 .frame(width: 30, height: 30)
                 .background(Color.red.opacity(0.10), in: Circle())
         }
@@ -2576,12 +2577,12 @@ private struct CategoryDraftListRow: View {
                 Text(colorName(for: row.color))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .foregroundStyle(.primary)
 
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
-            .foregroundStyle(.primary)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(colorAccent(row.color).opacity(0.14), in: Capsule())
@@ -2595,23 +2596,20 @@ private struct CategoryDraftListRow: View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 999)
                 .fill(colorAccent(row.color))
-                .frame(width: 4, height: 52)
+                .frame(width: 4, height: 32)
 
-            VStack(alignment: .leading, spacing: 8) {
-                TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
-                    .textFieldStyle(.plain)
-                    .font(.body)
-                    .textInputAutocapitalization(.words)
-
-                iosColorMenu
-            }
+            TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .textInputAutocapitalization(.words)
 
             Spacer(minLength: 8)
 
+            iosColorMenu
             deleteButton
             moveControls
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 8)
         #else
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 999)
