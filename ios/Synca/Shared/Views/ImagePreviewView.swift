@@ -401,7 +401,34 @@ struct ImagePreviewView: View {
             }
             saveStatus = .success
             #endif
-        } catch { saveStatus = .error }
+        } catch {
+            saveStatus = .error
+            #if os(macOS)
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = String(localized: "image_preview.save_failed", bundle: .main)
+                let defaultFolder = SettingsManager.shared.macOSDefaultSavePath?.lastPathComponent ?? "folder"
+                alert.informativeText = "(macOS Sandbox requires folder authorization. Click 'Authorize' to grant access to '\(defaultFolder)'.)\n\n\(error.localizedDescription)"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Authorize")
+                alert.addButton(withTitle: String(localized: "common.cancel", bundle: .main))
+                let response = alert.runModal()
+                if response == .alertFirstButtonReturn {
+                    let openPanel = NSOpenPanel()
+                    openPanel.message = "Please select the folder to grant access."
+                    openPanel.prompt = "Grant Access"
+                    openPanel.canChooseFiles = false
+                    openPanel.canChooseDirectories = true
+                    openPanel.canCreateDirectories = true
+                    openPanel.directoryURL = SettingsManager.shared.macOSDefaultSavePath
+                    if openPanel.runModal() == .OK, let folderURL = openPanel.url {
+                        SettingsManager.shared.setMacOSDefaultSavePath(folderURL)
+                        Task { await self.saveImage(from: url) }
+                    }
+                }
+            }
+            #endif
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saveStatus = .none }
     }
 
@@ -440,23 +467,34 @@ struct ImagePreviewView: View {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
             let (data, _) = try await URLSession.shared.data(for: request)
-            let panel = NSSavePanel()
-            panel.nameFieldStringValue = url.lastPathComponent
-            panel.title = String(localized: "message_bubble.save_as", bundle: .main)
-            panel.prompt = String(localized: "common.save", bundle: .main)
-            panel.canCreateDirectories = true
-            if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
-                panel.directoryURL = defaultDirectory
-            }
-            if panel.runModal() == .OK, let saveURL = panel.url {
-                let parentURL = saveURL.deletingLastPathComponent()
-                SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
-                try SettingsManager.shared.withSecurityScopedAccess(to: parentURL) {
-                    try data.write(to: saveURL, options: .atomic)
+            
+            await MainActor.run {
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = url.lastPathComponent
+                panel.title = String(localized: "message_bubble.save_as", bundle: .main)
+                panel.prompt = String(localized: "common.save", bundle: .main)
+                panel.canCreateDirectories = true
+                if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
+                    panel.directoryURL = defaultDirectory
                 }
-                saveStatus = .success
+                
+                if panel.runModal() == .OK, let saveURL = panel.url {
+                    let parentURL = saveURL.deletingLastPathComponent()
+                    SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
+                    do {
+                        try? FileManager.default.removeItem(at: saveURL)
+                        try data.write(to: saveURL, options: .atomic)
+                        self.saveStatus = .success
+                    } catch {
+                        print("Save Image As copy failed: \(error)")
+                        self.saveStatus = .error
+                    }
+                }
             }
-        } catch { saveStatus = .error }
+        } catch { 
+            print("Save Image As failed: \(error)")
+            await MainActor.run { saveStatus = .error }
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saveStatus = .none }
     }
     #endif
