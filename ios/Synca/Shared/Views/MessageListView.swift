@@ -155,9 +155,13 @@ struct MessageListView: View {
         .task {
             shouldScrollToBottomAfterInitialLoad = true
             syncManager.restoreCachedDataIfAvailable()
-            await PushTokenManager.shared.uploadCachedTokenIfPossible()
-            await purchaseManager.loadProducts()
-            _ = try? await purchaseManager.syncLatestTransactions()
+            
+            Task {
+                await PushTokenManager.shared.uploadCachedTokenIfPossible()
+                await purchaseManager.loadProducts()
+                _ = try? await purchaseManager.syncLatestTransactions()
+            }
+            
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
             if !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
@@ -2521,9 +2525,9 @@ private struct CategoryDraftListRow: View {
 
     private var colorPickerContent: some View {
         #if os(iOS)
-        let verticalPadding: CGFloat = 12
+        let verticalPadding: CGFloat = 10
         let fontSize: Font = .body.weight(.medium)
-        let spacing: CGFloat = 8
+        let spacing: CGFloat = 4
         let circleSize: CGFloat = 16
         #else
         let verticalPadding: CGFloat = 8
