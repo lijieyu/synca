@@ -225,19 +225,33 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
             {message.categoryName && (
               <>
                 <span>·</span>
-                <select
-                  className={`message-category-pill color-${message.categoryColor ?? 'slate'}`}
-                  value={message.categoryId ?? ''}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  disabled={isProcessing}
-                  aria-label="Message category"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', position: 'relative' }}>
+                  <select
+                    style={{
+                      appearance: 'none',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'inherit',
+                      fontSize: 'inherit',
+                      fontFamily: 'inherit',
+                      padding: 0,
+                      margin: 0,
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                    value={message.categoryId ?? ''}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    disabled={isProcessing}
+                    aria-label="Message category"
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.isDefault ? t('message_category.default', '默认') : category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: 'none' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
               </>
             )}
           </div>
