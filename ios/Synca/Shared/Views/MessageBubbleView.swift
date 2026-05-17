@@ -157,29 +157,50 @@ struct MessageBubbleView: View {
     @ViewBuilder
     private func categoryMenu(name: String, categoryId: String) -> some View {
         if let onCategoryChange, !categories.isEmpty {
-            Menu {
-                ForEach(categories) { category in
-                    Button {
-                        onCategoryChange(category.id)
-                    } label: {
-                        Label {
-                            if category.isDefault {
-                                Text("message_category.default_badge", bundle: .main)
-                            } else {
-                                Text(category.name)
-                            }
-                        } icon: {
-                            Image(systemName: category.id == categoryId ? "checkmark" : "circle.fill")
-                        }
-                    }
+            #if os(macOS)
+            ZStack {
+                categoryBadge(name: name, hasMenu: true)
+                    .allowsHitTesting(false)
+                
+                Menu {
+                    categoryMenuOptions(categoryId: categoryId, onCategoryChange: onCategoryChange)
+                } label: {
+                    categoryBadge(name: name, hasMenu: true)
+                        .opacity(0.001)
                 }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+            }
+            .fixedSize()
+            #else
+            Menu {
+                categoryMenuOptions(categoryId: categoryId, onCategoryChange: onCategoryChange)
             } label: {
                 categoryBadge(name: name, hasMenu: true)
             }
-            .menuStyle(.borderlessButton)
             .fixedSize()
+            #endif
         } else {
             categoryBadge(name: name, hasMenu: false)
+        }
+    }
+
+    @ViewBuilder
+    private func categoryMenuOptions(categoryId: String, onCategoryChange: @escaping (String) -> Void) -> some View {
+        ForEach(categories) { category in
+            Button {
+                onCategoryChange(category.id)
+            } label: {
+                Label {
+                    if category.isDefault {
+                        Text("message_category.default_badge", bundle: .main)
+                    } else {
+                        Text(category.name)
+                    }
+                } icon: {
+                    Image(systemName: category.id == categoryId ? "checkmark" : "circle.fill")
+                }
+            }
         }
     }
 
@@ -187,13 +208,11 @@ struct MessageBubbleView: View {
         HStack(spacing: 2) {
             Text(name)
                 .font(.caption2)
-            #if os(iOS)
             if hasMenu {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .padding(.top, 1)
             }
-            #endif
         }
         .foregroundStyle(message.isCleared ? .tertiary : .secondary)
     }
