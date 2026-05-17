@@ -162,74 +162,40 @@ struct MessageBubbleView: View {
                     Button {
                         onCategoryChange(category.id)
                     } label: {
-                        Label(category.name, systemImage: category.id == categoryId ? "checkmark" : "circle.fill")
+                        Label {
+                            if category.isDefault {
+                                Text("message_category.default_badge", bundle: .main)
+                            } else {
+                                Text(category.name)
+                            }
+                        } icon: {
+                            Image(systemName: category.id == categoryId ? "checkmark" : "circle.fill")
+                        }
                     }
                 }
             } label: {
-                categoryBadge(name: name, color: message.categoryColor ?? .slate)
+                categoryBadge(name: name, hasMenu: true)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
         } else {
-            categoryBadge(name: name, color: message.categoryColor ?? .slate)
+            categoryBadge(name: name, hasMenu: false)
         }
     }
 
-    private func categoryBadge(name: String, color: MessageCategoryColor) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(categoryAccentColor(for: color))
-                .frame(width: 6, height: 6)
-
+    private func categoryBadge(name: String, hasMenu: Bool) -> some View {
+        HStack(spacing: 2) {
             Text(name)
-                .font(.caption2.weight(.semibold))
+                .font(.caption2)
+            #if os(iOS)
+            if hasMenu {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .padding(.top, 1)
+            }
+            #endif
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(categoryBackgroundColor(for: color))
-        .clipShape(Capsule())
-    }
-
-    private func categoryBackgroundColor(for color: MessageCategoryColor) -> Color {
-        switch color {
-        case .sky:
-            return Color.blue.opacity(0.16)
-        case .mint:
-            return Color.green.opacity(0.16)
-        case .amber:
-            return Color.orange.opacity(0.18)
-        case .coral:
-            return Color.red.opacity(0.16)
-        case .violet:
-            return Color.purple.opacity(0.18)
-        case .slate:
-            return Color.secondary.opacity(0.14)
-        case .rose:
-            return Color.pink.opacity(0.16)
-        case .ocean:
-            return Color.cyan.opacity(0.18)
-        }
-    }
-
-    private func categoryAccentColor(for color: MessageCategoryColor) -> Color {
-        switch color {
-        case .sky:
-            return .blue
-        case .mint:
-            return .green
-        case .amber:
-            return .orange
-        case .coral:
-            return .red
-        case .violet:
-            return .purple
-        case .slate:
-            return .secondary
-        case .rose:
-            return .pink
-        case .ocean:
-            return .cyan
-        }
+        .foregroundStyle(message.isCleared ? .tertiary : .secondary)
     }
 
     // MARK: - Subviews

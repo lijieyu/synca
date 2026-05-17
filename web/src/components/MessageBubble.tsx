@@ -225,19 +225,36 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
             {message.categoryName && (
               <>
                 <span>·</span>
-                <select
-                  className={`message-category-pill color-${message.categoryColor ?? 'slate'}`}
-                  value={message.categoryId ?? ''}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  disabled={isProcessing}
-                  aria-label="Message category"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', position: 'relative' }}>
+                  <span>{
+                    (() => {
+                      const cat = categories.find(c => c.id === message.categoryId);
+                      if (cat?.isDefault) return t('message_category.default_badge', '默认');
+                      return message.categoryName;
+                    })()
+                  }</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  <select
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      opacity: 0,
+                      cursor: 'pointer',
+                      width: '100%',
+                      height: '100%'
+                    }}
+                    value={message.categoryId ?? ''}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    disabled={isProcessing}
+                    aria-label="Message category"
+                  >
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.isDefault ? t('message_category.default_badge', '默认') : category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </>
             )}
           </div>

@@ -156,10 +156,11 @@ struct MessageListView: View {
             shouldScrollToBottomAfterInitialLoad = true
             syncManager.restoreCachedDataIfAvailable()
             
-            Task {
+            let pm = purchaseManager
+            Task.detached(priority: .background) {
                 await PushTokenManager.shared.uploadCachedTokenIfPossible()
-                await purchaseManager.loadProducts()
-                _ = try? await purchaseManager.syncLatestTransactions()
+                await pm.loadProducts()
+                _ = try? await pm.syncLatestTransactions()
             }
             
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
