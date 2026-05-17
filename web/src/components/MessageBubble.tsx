@@ -229,7 +229,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
                   <span>{
                     (() => {
                       const cat = categories.find(c => c.id === message.categoryId);
-                      if (cat?.isDefault) return t('message_category.default', '默认');
+                      if (cat?.isDefault) return t('message_category.default_badge', '默认');
                       return message.categoryName;
                     })()
                   }</span>
@@ -250,7 +250,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
                   >
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
-                        {category.isDefault ? t('message_category.default', '默认') : category.name}
+                        {category.isDefault ? t('message_category.default_badge', '默认') : category.name}
                       </option>
                     ))}
                   </select>

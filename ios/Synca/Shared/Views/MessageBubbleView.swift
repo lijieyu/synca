@@ -164,7 +164,7 @@ struct MessageBubbleView: View {
                     } label: {
                         Label {
                             if category.isDefault {
-                                Text("message_category.default", bundle: .main)
+                                Text("message_category.default_badge", bundle: .main)
                             } else {
                                 Text(category.name)
                             }
@@ -178,6 +178,7 @@ struct MessageBubbleView: View {
                     .foregroundStyle(message.isCleared ? .tertiary : .secondary)
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .fixedSize()
             .buttonStyle(.plain)
         } else {
