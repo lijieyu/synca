@@ -2151,6 +2151,7 @@ private struct MessageCategoryManagerSheet: View {
     @State private var draftRows: [CategoryDraftRow] = []
     @State private var pendingDeleteRow: CategoryDraftRow?
     @State private var validationAlert: CategoryValidationAlert?
+    @State private var focusedRowId: String?
 
     private var editableCategories: [SyncaMessageCategory] {
         syncManager.categories.filter { !$0.isDefault }
@@ -2168,14 +2169,18 @@ private struct MessageCategoryManagerSheet: View {
     }
 
     private func addDraftRow() {
+        let newId = "new-\(UUID().uuidString)"
         draftRows.append(
             CategoryDraftRow(
-                localId: "new-\(UUID().uuidString)",
+                localId: newId,
                 categoryId: nil,
                 name: "",
                 color: .sky
             )
         )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusedRowId = newId
+        }
     }
 
     private func deleteDraftRow(_ row: CategoryDraftRow) {
@@ -2308,7 +2313,8 @@ private struct MessageCategoryManagerSheet: View {
                             canMoveDown: index < draftRows.count - 1,
                             onMoveUp: { moveDraftRow(from: index, to: index - 1) },
                             onMoveDown: { moveDraftRow(from: index, to: index + 1) },
-                            onDelete: { pendingDeleteRow = draftRows[index] }
+                            onDelete: { pendingDeleteRow = draftRows[index] },
+                            focusedRowId: $focusedRowId
                         )
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12))
                     }
@@ -2352,7 +2358,8 @@ private struct MessageCategoryManagerSheet: View {
                                 canMoveDown: index < draftRows.count - 1,
                                 onMoveUp: { moveDraftRow(from: index, to: index - 1) },
                                 onMoveDown: { moveDraftRow(from: index, to: index + 1) },
-                                onDelete: { pendingDeleteRow = draftRows[index] }
+                                onDelete: { pendingDeleteRow = draftRows[index] },
+                                focusedRowId: $focusedRowId
                             )
                         }
 
@@ -2404,7 +2411,10 @@ private struct CategoryDraftListRow: View {
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
     let onDelete: () -> Void
+    @Binding var focusedRowId: String?
+
     @State private var showColorPicker = false
+    @FocusState private var isFocused: Bool
 
     private func colorName(for color: MessageCategoryColor) -> LocalizedStringKey {
         switch color {
@@ -2510,31 +2520,44 @@ private struct CategoryDraftListRow: View {
     }
 
     private var colorPickerContent: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        #if os(iOS)
+        let verticalPadding: CGFloat = 12
+        let fontSize: Font = .body.weight(.medium)
+        let spacing: CGFloat = 8
+        let circleSize: CGFloat = 16
+        #else
+        let verticalPadding: CGFloat = 8
+        let fontSize: Font = .callout.weight(.semibold)
+        let spacing: CGFloat = 6
+        let circleSize: CGFloat = 11
+        #endif
+
+        return VStack(alignment: .leading, spacing: spacing) {
             ForEach(MessageCategoryColor.allCases) { color in
                 Button {
                     row.color = color
                     showColorPicker = false
                 } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         Circle()
                             .fill(colorAccent(color))
-                            .frame(width: 11, height: 11)
+                            .frame(width: circleSize, height: circleSize)
 
                         Text(colorName(for: color))
-                            .font(.callout.weight(.semibold))
+                            .font(fontSize)
 
                         Spacer(minLength: 16)
 
                         if color == row.color {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(colorAccent(color))
                         }
                     }
+                    .contentShape(Rectangle())
                     .foregroundStyle(.primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, verticalPadding)
                     .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -2588,6 +2611,13 @@ private struct CategoryDraftListRow: View {
                 .textFieldStyle(.plain)
                 .font(.body)
                 .textInputAutocapitalization(.words)
+                .focused($isFocused)
+                .onChange(of: focusedRowId) { newId in
+                    if newId == row.localId {
+                        isFocused = true
+                        focusedRowId = nil
+                    }
+                }
 
             Spacer(minLength: 8)
 
@@ -2605,6 +2635,13 @@ private struct CategoryDraftListRow: View {
 
             TextField(String(localized: "message_category.name_placeholder", bundle: .main), text: $row.name)
                 .textFieldStyle(.plain)
+                .focused($isFocused)
+                .onChange(of: focusedRowId) { newId in
+                    if newId == row.localId {
+                        isFocused = true
+                        focusedRowId = nil
+                    }
+                }
 
             Spacer(minLength: 8)
 
