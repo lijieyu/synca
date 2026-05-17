@@ -4,6 +4,8 @@ import UserNotifications
 class MacAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.applicationIconImage = NSImage(named: "AppIcon")
+
         let notifDelegate = MacNotificationDelegate.shared
         UNUserNotificationCenter.current().delegate = notifDelegate
 
