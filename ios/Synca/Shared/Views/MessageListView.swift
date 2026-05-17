@@ -2006,7 +2006,7 @@ private struct NewMessageCategorySheet: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.primary)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -2106,7 +2106,7 @@ private struct NewMessageCategorySheet: View {
                         .font(.callout.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -2321,6 +2321,7 @@ private struct MessageCategoryManagerSheet: View {
                     } label: {
                         Label("message_category.add_action", systemImage: "plus")
                             .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -2367,6 +2368,7 @@ private struct MessageCategoryManagerSheet: View {
                             .font(.callout.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
+                            .foregroundStyle(.primary)
                             .background(Color.syncaCardBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -2395,6 +2397,16 @@ private struct MessageCategoryManagerSheet: View {
         }
     }
     #endif
+}
+
+private struct PopoverAdaptationModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, macOS 13.3, *) {
+            content.presentationCompactAdaptation(.popover)
+        } else {
+            content
+        }
+    }
 }
 
 private struct CategoryDraftListRow: View {
@@ -2515,6 +2527,7 @@ private struct CategoryDraftListRow: View {
             }
             .padding(8)
             .frame(width: 180)
+            .modifier(PopoverAdaptationModifier())
         }
     }
 
@@ -2553,44 +2566,6 @@ private struct CategoryDraftListRow: View {
         .accessibilityLabel(Text("message_category.delete_action", bundle: .main))
     }
 
-    #if os(iOS)
-    private var iosColorMenu: some View {
-        Menu {
-            ForEach(MessageCategoryColor.allCases) { color in
-                Button {
-                    row.color = color
-                } label: {
-                    Label {
-                        Text(colorName(for: color))
-                    } icon: {
-                        Image(systemName: color == row.color ? "checkmark.circle.fill" : "circle.fill")
-                            .foregroundStyle(colorAccent(color))
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(colorAccent(row.color))
-                    .frame(width: 10, height: 10)
-
-                Text(colorName(for: row.color))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundStyle(.primary)
-
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(colorAccent(row.color).opacity(0.14), in: Capsule())
-        }
-        .accessibilityLabel(Text("message_category.color_label", bundle: .main))
-    }
-    #endif
-
     var body: some View {
         #if os(iOS)
         HStack(spacing: 12) {
@@ -2605,7 +2580,7 @@ private struct CategoryDraftListRow: View {
 
             Spacer(minLength: 8)
 
-            iosColorMenu
+            colorPickerButton
             deleteButton
             moveControls
         }
