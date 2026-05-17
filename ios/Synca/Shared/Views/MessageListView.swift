@@ -2525,9 +2525,9 @@ private struct CategoryDraftListRow: View {
 
     private var colorPickerContent: some View {
         #if os(iOS)
-        let verticalPadding: CGFloat = 12
+        let verticalPadding: CGFloat = 10
         let fontSize: Font = .body.weight(.medium)
-        let spacing: CGFloat = 8
+        let spacing: CGFloat = 6
         let circleSize: CGFloat = 16
         #else
         let verticalPadding: CGFloat = 8
