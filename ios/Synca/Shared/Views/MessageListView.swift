@@ -2493,7 +2493,7 @@ private struct CategoryDraftListRow: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("common.cancel", bundle: .main) { showColorPicker = false }
+                        Button("common.cancel") { showColorPicker = false }
                     }
                 }
             }
