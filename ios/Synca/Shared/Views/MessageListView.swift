@@ -2527,7 +2527,7 @@ private struct CategoryDraftListRow: View {
         #if os(iOS)
         let verticalPadding: CGFloat = 10
         let fontSize: Font = .body.weight(.medium)
-        let spacing: CGFloat = 6
+        let spacing: CGFloat = 4
         let circleSize: CGFloat = 16
         #else
         let verticalPadding: CGFloat = 8
