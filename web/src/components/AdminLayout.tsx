@@ -132,6 +132,7 @@ export const AdminLayout: React.FC = () => {
                       <th>User</th>
                       <th>Plan</th>
                       <th>Todos</th>
+                      <th>Registered</th>
                       <th>Last Active</th>
                     </tr>
                   </thead>
@@ -146,6 +147,7 @@ export const AdminLayout: React.FC = () => {
                           <span className={`admin-tag ${u.plan !== 'Free' ? 'unlimited' : ''}`}>{u.plan}</span>
                         </td>
                         <td>{u.todoCount}</td>
+                        <td>{new Date(u.registeredAt).toLocaleDateString()}</td>
                         <td>{new Date(u.lastActive).toLocaleDateString()}</td>
                       </tr>
                     ))}
