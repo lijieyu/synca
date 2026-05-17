@@ -155,9 +155,13 @@ struct MessageListView: View {
         .task {
             shouldScrollToBottomAfterInitialLoad = true
             syncManager.restoreCachedDataIfAvailable()
-            await PushTokenManager.shared.uploadCachedTokenIfPossible()
-            await purchaseManager.loadProducts()
-            _ = try? await purchaseManager.syncLatestTransactions()
+            
+            Task {
+                await PushTokenManager.shared.uploadCachedTokenIfPossible()
+                await purchaseManager.loadProducts()
+                _ = try? await purchaseManager.syncLatestTransactions()
+            }
+            
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
             if !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
