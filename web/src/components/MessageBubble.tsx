@@ -225,19 +225,23 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
             {message.categoryName && (
               <>
                 <span>·</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', position: 'relative' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', position: 'relative' }}>
+                  <span>{
+                    (() => {
+                      const cat = categories.find(c => c.id === message.categoryId);
+                      if (cat?.isDefault) return t('message_category.default', '默认');
+                      return message.categoryName;
+                    })()
+                  }</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
                   <select
                     style={{
-                      appearance: 'none',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'inherit',
-                      fontSize: 'inherit',
-                      fontFamily: 'inherit',
-                      padding: 0,
-                      margin: 0,
+                      position: 'absolute',
+                      inset: 0,
+                      opacity: 0,
                       cursor: 'pointer',
-                      outline: 'none',
+                      width: '100%',
+                      height: '100%'
                     }}
                     value={message.categoryId ?? ''}
                     onChange={(e) => handleCategoryChange(e.target.value)}
@@ -250,7 +254,6 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
                       </option>
                     ))}
                   </select>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: 'none' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
               </>
             )}

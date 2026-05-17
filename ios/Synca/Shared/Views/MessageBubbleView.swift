@@ -162,19 +162,27 @@ struct MessageBubbleView: View {
                     Button {
                         onCategoryChange(category.id)
                     } label: {
-                        let displayName = category.isDefault ? String(localized: "message_category.default", bundle: .main) : category.name
-                        Label(displayName, systemImage: category.id == categoryId ? "checkmark" : "circle.fill")
+                        Label {
+                            if category.isDefault {
+                                Text("message_category.default", bundle: .main)
+                            } else {
+                                Text(category.name)
+                            }
+                        } icon: {
+                            Image(systemName: category.id == categoryId ? "checkmark" : "circle.fill")
+                        }
                     }
                 }
             } label: {
                 categoryBadge(name: name, hasMenu: true)
+                    .foregroundStyle(message.isCleared ? .tertiary : .secondary)
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
             .buttonStyle(.plain)
-            .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         } else {
             categoryBadge(name: name, hasMenu: false)
+                .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         }
     }
 
