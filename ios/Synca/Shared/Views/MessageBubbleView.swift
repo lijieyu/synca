@@ -175,15 +175,11 @@ struct MessageBubbleView: View {
                 }
             } label: {
                 categoryBadge(name: name, hasMenu: true)
-                    .foregroundStyle(message.isCleared ? .tertiary : .secondary)
             }
             .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
             .fixedSize()
-            .buttonStyle(.plain)
         } else {
             categoryBadge(name: name, hasMenu: false)
-                .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         }
     }
 
@@ -191,12 +187,15 @@ struct MessageBubbleView: View {
         HStack(spacing: 2) {
             Text(name)
                 .font(.caption2)
+            #if os(iOS)
             if hasMenu {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .padding(.top, 1)
             }
+            #endif
         }
+        .foregroundStyle(message.isCleared ? .tertiary : .secondary)
     }
 
     // MARK: - Subviews
