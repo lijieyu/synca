@@ -73,8 +73,13 @@ final class SyncManager: ObservableObject {
 
     private init() {}
 
-    func restoreCachedMessagesIfAvailable() {
+    func restoreCachedDataIfAvailable() {
         guard api.isAuthenticated else { return }
+        
+        if let cachedCategories = loadCachedCategories(), !cachedCategories.isEmpty {
+            categories = cachedCategories
+        }
+        
         guard messages.isEmpty else { return }
         guard let cachedMessages = loadCachedMessages(), !cachedMessages.isEmpty else { return }
 
@@ -114,6 +119,7 @@ final class SyncManager: ObservableObject {
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
             lastRefreshDate = Date()
             persistMessages()
+            persistCategories()
             normalizeCategorySelections()
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
             await AccessManager.shared.refresh()
@@ -168,6 +174,7 @@ final class SyncManager: ObservableObject {
                 persistMessages()
             }
             categories = allCategories
+            persistCategories()
             normalizeCategorySelections()
             unclearedCount = messages.filter { !$0.isCleared }.count
             await AccessManager.shared.refresh()
@@ -423,6 +430,7 @@ final class SyncManager: ObservableObject {
                 if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
                 return lhs.createdAt < rhs.createdAt
             }
+            persistCategories()
             normalizeCategorySelections()
             return category
         } catch {
@@ -436,6 +444,7 @@ final class SyncManager: ObservableObject {
             let updated = try await api.updateMessageCategory(id: id, name: name, color: color)
             if let index = categories.firstIndex(where: { $0.id == id }) {
                 categories[index] = updated
+                persistCategories()
             }
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
@@ -456,6 +465,7 @@ final class SyncManager: ObservableObject {
                 if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
                 return lhs.createdAt < rhs.createdAt
             }
+            persistCategories()
             normalizeCategorySelections()
         } catch {
             handleError(error, contextKey: "sync.error_context.send")
@@ -474,6 +484,7 @@ final class SyncManager: ObservableObject {
                     messages[index].categoryIsDefault = true
                 }
             }
+            persistCategories()
             normalizeCategorySelections()
             persistMessages()
         } catch {
@@ -529,6 +540,7 @@ final class SyncManager: ObservableObject {
         syncStatus = .idle
         lastRefreshDate = nil
         removeCachedMessages()
+        removeCachedCategories()
         resumeRefreshWaiters()
     }
 
@@ -723,5 +735,47 @@ final class SyncManager: ObservableObject {
     private func messagesCacheURL() -> URL? {
         guard let userID = api.currentUserId, !userID.isEmpty else { return nil }
         return cacheDirectoryURL.appendingPathComponent("messages-\(userID).json")
+    }
+
+    private func persistCategories() {
+        guard api.isAuthenticated else { return }
+        guard let cacheURL = categoriesCacheURL() else { return }
+
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(categories)
+            try data.write(to: cacheURL, options: .atomic)
+        } catch {
+            print("[SyncManager] Failed to persist categories cache: \(error)")
+        }
+    }
+
+    private func loadCachedCategories() -> [SyncaMessageCategory]? {
+        guard let cacheURL = categoriesCacheURL(),
+              FileManager.default.fileExists(atPath: cacheURL.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: cacheURL)
+            let decoder = JSONDecoder()
+            return try decoder.decode([SyncaMessageCategory].self, from: data)
+        } catch {
+            print("[SyncManager] Failed to load categories cache: \(error)")
+            return nil
+        }
+    }
+
+    private func removeCachedCategories() {
+        guard let cacheURL = categoriesCacheURL(),
+              FileManager.default.fileExists(atPath: cacheURL.path) else {
+            return
+        }
+        try? FileManager.default.removeItem(at: cacheURL)
+    }
+
+    private func categoriesCacheURL() -> URL? {
+        guard let userID = api.currentUserId, !userID.isEmpty else { return nil }
+        return cacheDirectoryURL.appendingPathComponent("categories-\(userID).json")
     }
 }

@@ -154,7 +154,7 @@ struct MessageListView: View {
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
             shouldScrollToBottomAfterInitialLoad = true
-            syncManager.restoreCachedMessagesIfAvailable()
+            syncManager.restoreCachedDataIfAvailable()
             await PushTokenManager.shared.uploadCachedTokenIfPossible()
             await purchaseManager.loadProducts()
             _ = try? await purchaseManager.syncLatestTransactions()
@@ -2006,7 +2006,6 @@ private struct NewMessageCategorySheet: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    .foregroundStyle(.primary)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -2321,7 +2320,6 @@ private struct MessageCategoryManagerSheet: View {
                     } label: {
                         Label("message_category.add_action", systemImage: "plus")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -2397,16 +2395,6 @@ private struct MessageCategoryManagerSheet: View {
         }
     }
     #endif
-}
-
-private struct PopoverAdaptationModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 16.4, macOS 13.3, *) {
-            content.presentationCompactAdaptation(.popover)
-        } else {
-            content
-        }
-    }
 }
 
 private struct CategoryDraftListRow: View {
@@ -2494,40 +2482,63 @@ private struct CategoryDraftListRow: View {
             )
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(MessageCategoryColor.allCases) { color in
-                    Button {
-                        row.color = color
-                        showColorPicker = false
-                    } label: {
-                        HStack(spacing: 10) {
-                            Circle()
-                                .fill(colorAccent(color))
-                                .frame(width: 11, height: 11)
-
-                            Text(colorName(for: color))
-                                .font(.callout.weight(.semibold))
-
-                            Spacer(minLength: 16)
-
-                            if color == row.color {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(colorAccent(color))
-                            }
-                        }
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        #if os(iOS)
+        .sheet(isPresented: $showColorPicker) {
+            NavigationStack {
+                ScrollView {
+                    colorPickerContent
+                        .padding(16)
+                }
+                .navigationTitle(Text("message_category.color_label", bundle: .main))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("common.cancel", bundle: .main) { showColorPicker = false }
                     }
-                    .buttonStyle(.plain)
                 }
             }
-            .padding(8)
-            .frame(width: 180)
-            .modifier(PopoverAdaptationModifier())
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        #else
+        .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+            colorPickerContent
+                .padding(8)
+                .frame(width: 180)
+        }
+        #endif
+    }
+
+    private var colorPickerContent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(MessageCategoryColor.allCases) { color in
+                Button {
+                    row.color = color
+                    showColorPicker = false
+                } label: {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(colorAccent(color))
+                            .frame(width: 11, height: 11)
+
+                        Text(colorName(for: color))
+                            .font(.callout.weight(.semibold))
+
+                        Spacer(minLength: 16)
+
+                        if color == row.color {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(colorAccent(color))
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(color == row.color ? colorAccent(color).opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
