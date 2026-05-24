@@ -385,13 +385,13 @@ struct MessageListView: View {
                         .stroke(isSelected ? Color.primary.opacity(0.4) : Color.clear, lineWidth: 1.5)
                 )
                 .clipShape(Capsule())
-                .opacity(isSelected ? 1.0 : 0.45)
                 .overlay(alignment: .topTrailing) {
-                if badgeCount > 0 {
-                    todoCountBadge(badgeCount)
-                        .offset(x: 8, y: -7)
+                    if badgeCount > 0 {
+                        todoCountBadge(badgeCount)
+                            .offset(x: 8, y: -7)
+                    }
                 }
-            }
+                .opacity(isSelected ? 1.0 : 0.45)
         }
         .buttonStyle(.plain)
     }
