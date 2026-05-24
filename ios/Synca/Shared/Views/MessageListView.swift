@@ -382,9 +382,10 @@ struct MessageListView: View {
                 .background(color)
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.primary.opacity(0.18) : Color.clear, lineWidth: 1)
+                        .stroke(isSelected ? Color.primary.opacity(0.4) : Color.clear, lineWidth: 1.5)
                 )
                 .clipShape(Capsule())
+                .opacity(isSelected ? 1.0 : 0.45)
                 .overlay(alignment: .topTrailing) {
                 if badgeCount > 0 {
                     todoCountBadge(badgeCount)
