@@ -1528,11 +1528,8 @@ private struct MacTiledComposerBar: NSViewRepresentable {
         host.textView.onPasteFile = onFile
         host.textView.onSubmit = onSubmit
         host.update(text: text, isSending: isSending)
-        // Don't recalculate during IME composition — it causes jitter.
-        if !host.textView.hasMarkedText() {
-            DispatchQueue.main.async {
-                context.coordinator.recalculateHeight()
-            }
+        DispatchQueue.main.async {
+            context.coordinator.recalculateHeight()
         }
     }
 
@@ -1565,14 +1562,8 @@ private struct MacTiledComposerBar: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            host?.setSendEnabled(!textView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            // During IME composition, skip ALL updates (binding + height recalc).
-            // Updating the binding triggers SwiftUI → updateNSView → potential layout cascade.
-            // The binding will be synced when composition ends (marked text committed).
-            if textView.hasMarkedText() {
-                return
-            }
             text = textView.string
+            host?.setSendEnabled(!textView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             recalculateHeight()
         }
 
@@ -1628,16 +1619,11 @@ private struct MacTiledComposerBar: NSViewRepresentable {
                 usedHeight = lineHeight
             }
 
-            // Snap to whole multiples of lineHeight so mixed Chinese/Latin
-            // text that differs by a fraction of a point won't cause jitter.
-            let lines = max(1, round(usedHeight / lineHeight))
-            let stableUsedHeight = lines * lineHeight
-
-            let fieldHeight = max(34, min(104, ceil(stableUsedHeight + 16)))
-            if abs(height - fieldHeight) > 1.0 {
+            let fieldHeight = max(34, min(104, ceil(usedHeight + 12)))
+            if abs(height - fieldHeight) > 0.5 {
                 height = fieldHeight
-                host.setInputHeight(fieldHeight)
             }
+            host.setInputHeight(fieldHeight)
         }
 
         private func openPanel(contentTypes: [UTType], completion: @escaping ([URL]) -> Void) {
@@ -1713,9 +1699,8 @@ private final class MacTiledComposerHostView: NSView {
         if !textView.hasMarkedText(), textView.string != text {
             textView.string = text
         }
-        if textFieldContainer.placeholder.isHidden == textView.string.isEmpty {
-            textFieldContainer.placeholder.isHidden = !textView.string.isEmpty
-        }
+        textFieldContainer.placeholder.isHidden = !textView.string.isEmpty
+        textFieldContainer.needsLayout = true
     }
 
     func setSendEnabled(_ enabled: Bool) {
@@ -1742,29 +1727,11 @@ private final class MacTiledComposerHostView: NSView {
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.textColor = .textColor
         textView.insertionPointColor = .textColor
-        
-        // Lock the line height to prevent baseline jumps during IME composition
-        let font = textView.font ?? NSFont.systemFont(ofSize: 13)
-        let paragraphStyle = NSMutableParagraphStyle()
-        let lineHeight = textView.layoutManager?.defaultLineHeight(for: font) ?? 16
-        paragraphStyle.minimumLineHeight = lineHeight
-        paragraphStyle.maximumLineHeight = lineHeight
-        textView.defaultParagraphStyle = paragraphStyle
-        
-        textView.typingAttributes = [
-            .font: font,
-            .foregroundColor: NSColor.textColor,
-            .paragraphStyle: paragraphStyle
-        ]
-        
-        
-        textView.textContainerInset = NSSize(width: 0, height: 8)
+        textView.textContainerInset = NSSize(width: 0, height: 6)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
-        // Disable vertical auto-resize to prevent frame jitter during IME composition.
-        // Height is managed externally by inputHeightConstraint via recalculateHeight().
-        textView.isVerticallyResizable = false
+        textView.isVerticallyResizable = true
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -1844,28 +1811,16 @@ private final class MacTiledComposerTextFieldView: NSView {
         setup()
     }
 
-    // Flipped so that the textView (which is flipped internally) grows downward.
-    // Without this, auto-resize extends upward in a non-flipped parent, and
-    // masksToBounds clips the top, making text shift down during IME input.
-    override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
     override func layout() {
         super.layout()
         let insetBounds = bounds.insetBy(dx: 12, dy: 0)
-        
-        if textView?.frame != insetBounds {
-            textView?.frame = insetBounds
-        }
-        
-        let targetSize = NSSize(
+        textView?.frame = insetBounds
+        textView?.textContainer?.containerSize = NSSize(
             width: max(1, insetBounds.width),
             height: CGFloat.greatestFiniteMagnitude
         )
-        if textView?.textContainer?.containerSize != targetSize {
-            textView?.textContainer?.containerSize = targetSize
-        }
-        
         placeholder.frame = CGRect(
             x: 12,
             y: max(0, (bounds.height - placeholder.intrinsicContentSize.height) / 2),
