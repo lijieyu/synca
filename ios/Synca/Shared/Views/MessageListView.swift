@@ -1728,6 +1728,29 @@ private final class MacTiledComposerHostView: NSView {
         textView.font = NSFont.preferredFont(forTextStyle: .body)
         textView.textColor = .textColor
         textView.insertionPointColor = .textColor
+        
+        // Lock the line height to prevent baseline jumps during IME composition
+        let font = textView.font ?? NSFont.systemFont(ofSize: 13)
+        let paragraphStyle = NSMutableParagraphStyle()
+        let lineHeight = textView.layoutManager?.defaultLineHeight(for: font) ?? 16
+        paragraphStyle.minimumLineHeight = lineHeight
+        paragraphStyle.maximumLineHeight = lineHeight
+        textView.defaultParagraphStyle = paragraphStyle
+        
+        textView.typingAttributes = [
+            .font: font,
+            .foregroundColor: NSColor.textColor,
+            .paragraphStyle: paragraphStyle
+        ]
+        
+        textView.markedTextAttributes = [
+            .font: font,
+            .foregroundColor: NSColor.textColor,
+            .backgroundColor: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.3),
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .paragraphStyle: paragraphStyle
+        ]
+        
         textView.textContainerInset = NSSize(width: 0, height: 6)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
