@@ -1528,8 +1528,11 @@ private struct MacTiledComposerBar: NSViewRepresentable {
         host.textView.onPasteFile = onFile
         host.textView.onSubmit = onSubmit
         host.update(text: text, isSending: isSending)
-        DispatchQueue.main.async {
-            context.coordinator.recalculateHeight()
+        // Don't recalculate during IME composition — it causes jitter.
+        if !host.textView.hasMarkedText() {
+            DispatchQueue.main.async {
+                context.coordinator.recalculateHeight()
+            }
         }
     }
 
@@ -1564,7 +1567,13 @@ private struct MacTiledComposerBar: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
             host?.setSendEnabled(!textView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            recalculateHeight()
+            // Skip height recalculation while IME is composing (marked text present).
+            // During Chinese input, each keystroke produces marked text with slightly
+            // different font metrics, causing usedRect to fluctuate by ~1px and the
+            // input field to visually "jitter". We defer until composition ends.
+            if !textView.hasMarkedText() {
+                recalculateHeight()
+            }
         }
 
         @objc func pickImages() {
@@ -1619,8 +1628,13 @@ private struct MacTiledComposerBar: NSViewRepresentable {
                 usedHeight = lineHeight
             }
 
-            let fieldHeight = max(34, min(104, ceil(usedHeight + 12)))
-            if abs(height - fieldHeight) > 0.5 {
+            // Snap to whole multiples of lineHeight so mixed Chinese/Latin
+            // text that differs by a fraction of a point won't cause jitter.
+            let lines = max(1, round(usedHeight / lineHeight))
+            let stableUsedHeight = lines * lineHeight
+
+            let fieldHeight = max(34, min(104, ceil(stableUsedHeight + 16)))
+            if abs(height - fieldHeight) > 1.0 {
                 height = fieldHeight
                 host.setInputHeight(fieldHeight)
             }
@@ -1751,7 +1765,7 @@ private final class MacTiledComposerHostView: NSView {
             .paragraphStyle: paragraphStyle
         ]
         
-        textView.textContainerInset = NSSize(width: 0, height: 6)
+        textView.textContainerInset = NSSize(width: 0, height: 8)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
