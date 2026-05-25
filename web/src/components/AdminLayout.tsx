@@ -140,7 +140,12 @@ export const AdminLayout: React.FC = () => {
                     {stats?.users?.slice().sort((a: any, b: any) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()).map((u: any) => (
                       <tr key={u.id}>
                         <td>
-                          <div style={{ fontWeight: 500 }}>{u.email || 'Anonymous'}</div>
+                          <div style={{ fontWeight: 500 }}>
+                            {u.nickname !== 'Synca 用户' ? u.nickname : (u.email || 'Anonymous')}
+                          </div>
+                          {u.nickname !== 'Synca 用户' && u.email && (
+                            <div style={{ fontSize: '12px', opacity: 0.7 }}>{u.email}</div>
+                          )}
                           <div style={{ fontSize: '11px', opacity: 0.5 }}>{u.id}</div>
                         </td>
                         <td>

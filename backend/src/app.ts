@@ -268,6 +268,7 @@ app.post('/auth/apple', async (req, res) => {
     const parsed = z.object({
         idToken: z.string().min(1),
         deviceId: z.string().max(200).optional(),
+        name: z.string().max(200).optional(),
     }).safeParse(req.body);
 
     if (!parsed.success) {
@@ -278,6 +279,7 @@ app.post('/auth/apple', async (req, res) => {
         const result = await loginWithApple({
             idToken: parsed.data.idToken,
             deviceId: parsed.data.deviceId,
+            name: parsed.data.name,
         });
         res.json(result);
     } catch (err) {

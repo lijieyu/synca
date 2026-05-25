@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, updateUserEmail } from './store.js';
+import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, updateUserEmail, updateUserNickname } from './store.js';
 import { buildAccessStatus } from './access.js';
 
 /**
@@ -32,6 +32,7 @@ export async function verifyAppleToken(idToken: string): Promise<{
 export async function loginWithApple(params: {
     idToken: string;
     deviceId?: string;
+    name?: string;
 }): Promise<{ token: string; user: any; accessStatus: any }> {
     const { appleUserId, email } = await verifyAppleToken(params.idToken);
 
@@ -44,13 +45,18 @@ export async function loginWithApple(params: {
             id: uuidv4(),
             appleUserId,
             email,
-            nickname: 'Synca 用户',
+            nickname: params.name?.trim() || 'Synca 用户',
             now: nowIso,
             trialStartedAt: null,
             trialEndsAt: null,
         });
-    } else if (email && user.email !== email) {
-        user = (await updateUserEmail(user.id, email, nowIso)) ?? user;
+    } else {
+        if (email && user.email !== email) {
+            user = (await updateUserEmail(user.id, email, nowIso)) ?? user;
+        }
+        if (params.name && params.name.trim().length > 0 && user.nickname === 'Synca 用户') {
+            user = (await updateUserNickname(user.id, params.name.trim(), nowIso)) ?? user;
+        }
     }
 
     const token = uuidv4();

@@ -116,10 +116,10 @@ class APIClient {
     return response.json();
   }
 
-  async loginWithApple(idToken: string): Promise<AuthResponse> {
-    return this.fetch<AuthResponse>('/auth/apple', {
+  async loginWithApple(idToken: string, name?: string): Promise<{ token: string; user: any; accessStatus: any }> {
+    return this.fetch('/auth/apple', {
       method: 'POST',
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ idToken, name }),
     });
   }
 

@@ -56,9 +56,11 @@ final class APIClient: ObservableObject {
 
     // MARK: - Auth
 
-    func loginWithApple(idToken: String, deviceId: String? = nil) async throws -> AuthResponse {
+    func loginWithApple(idToken: String, deviceId: String?, name: String? = nil) async throws -> AuthResponse {
         var body: [String: Any] = ["idToken": idToken]
         if let deviceId { body["deviceId"] = deviceId }
+        if let name { body["name"] = name }
+
         return try await post("/auth/apple", body: body, authenticated: false)
     }
 
