@@ -137,7 +137,7 @@ export const AdminLayout: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats?.users?.map((u: any) => (
+                    {stats?.users?.slice().sort((a: any, b: any) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()).map((u: any) => (
                       <tr key={u.id}>
                         <td>
                           <div style={{ fontWeight: 500 }}>{u.email || 'Anonymous'}</div>
