@@ -33,9 +33,17 @@ final class AuthService: NSObject, ObservableObject {
         deviceId = nil
         #endif
 
+        var name: String? = nil
+        if let fullName = credential.fullName {
+            let formatter = PersonNameComponentsFormatter()
+            name = formatter.string(from: fullName).trimmingCharacters(in: .whitespacesAndNewlines)
+            if name?.isEmpty == true { name = nil }
+        }
+
         let response = try await APIClient.shared.loginWithApple(
             idToken: idToken,
-            deviceId: deviceId
+            deviceId: deviceId,
+            name: name
         )
 
         APIClient.shared.setToken(response.token, userId: response.user.id)
@@ -53,7 +61,7 @@ final class AuthService: NSObject, ObservableObject {
 
             let provider = ASAuthorizationAppleIDProvider()
             let request = provider.createRequest()
-            request.requestedScopes = [.email]
+            request.requestedScopes = [.email, .fullName]
 
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self

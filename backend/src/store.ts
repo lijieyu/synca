@@ -85,6 +85,18 @@ export async function updateUserEmail(userId: string, email: string, now: string
     return getUser(userId);
 }
 
+export async function updateUserNickname(userId: string, nickname: string, now: string): Promise<SyncaUser | undefined> {
+    await db.updateTable('users')
+        .set({
+            nickname,
+            updated_at: now,
+        })
+        .where('id', '=', userId)
+        .execute();
+
+    return getUser(userId);
+}
+
 export async function createUser(user: {
     id: string;
     appleUserId: string;

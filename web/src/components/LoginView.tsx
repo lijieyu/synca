@@ -22,7 +22,7 @@ export const LoginView: React.FC = () => {
         // @ts-ignore
         window.AppleID.auth.init({
           clientId: 'cn.haerth.synca.web',
-          scope: 'email',
+          scope: 'name email',
           redirectURI: 'https://synca.haerth.cn/api/auth/apple/callback',
           usePopup: true
         });
@@ -33,8 +33,22 @@ export const LoginView: React.FC = () => {
 
     const handleSuccess = async (event: any) => {
       const idToken = event.detail.authorization.id_token;
+      let fullName: string | undefined;
+      if (event.detail.user?.name) {
+        const { firstName, lastName } = event.detail.user.name;
+        if (firstName || lastName) {
+          const joined = [firstName, lastName].filter(Boolean).join(' ');
+          // Basic heuristic: if it contains Chinese characters, remove the space between them
+          if (/[\u4e00-\u9fa5]/.test(joined)) {
+            fullName = [lastName, firstName].filter(Boolean).join('');
+          } else {
+            fullName = joined;
+          }
+        }
+      }
+
       try {
-        const res = await api.loginWithApple(idToken);
+        const res = await api.loginWithApple(idToken, fullName);
         login(res.token, res.user.isAdmin, res.user.email);
       } catch (err) {
         console.error('Login failed to exchange token', err);

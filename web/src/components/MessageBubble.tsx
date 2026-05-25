@@ -47,7 +47,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
   }, [fileExtension]);
 
   const linkify = (text: string): React.ReactNode[] => {
-    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：])/g;
+    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]，。！？；：、]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：、])/g;
     const parts = text.split(urlPattern);
     const isUrl = /^https?:\/\//;
     return parts.map((part, i) =>
