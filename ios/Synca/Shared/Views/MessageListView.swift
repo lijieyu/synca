@@ -1622,8 +1622,8 @@ private struct MacTiledComposerBar: NSViewRepresentable {
             let fieldHeight = max(34, min(104, ceil(usedHeight + 12)))
             if abs(height - fieldHeight) > 0.5 {
                 height = fieldHeight
+                host.setInputHeight(fieldHeight)
             }
-            host.setInputHeight(fieldHeight)
         }
 
         private func openPanel(contentTypes: [UTType], completion: @escaping ([URL]) -> Void) {
@@ -1699,8 +1699,9 @@ private final class MacTiledComposerHostView: NSView {
         if !textView.hasMarkedText(), textView.string != text {
             textView.string = text
         }
-        textFieldContainer.placeholder.isHidden = !textView.string.isEmpty
-        textFieldContainer.needsLayout = true
+        if textFieldContainer.placeholder.isHidden == textView.string.isEmpty {
+            textFieldContainer.placeholder.isHidden = !textView.string.isEmpty
+        }
     }
 
     func setSendEnabled(_ enabled: Bool) {
@@ -1816,11 +1817,19 @@ private final class MacTiledComposerTextFieldView: NSView {
     override func layout() {
         super.layout()
         let insetBounds = bounds.insetBy(dx: 12, dy: 0)
-        textView?.frame = insetBounds
-        textView?.textContainer?.containerSize = NSSize(
+        
+        if textView?.frame != insetBounds {
+            textView?.frame = insetBounds
+        }
+        
+        let targetSize = NSSize(
             width: max(1, insetBounds.width),
             height: CGFloat.greatestFiniteMagnitude
         )
+        if textView?.textContainer?.containerSize != targetSize {
+            textView?.textContainer?.containerSize = targetSize
+        }
+        
         placeholder.frame = CGRect(
             x: 12,
             y: max(0, (bounds.height - placeholder.intrinsicContentSize.height) / 2),
