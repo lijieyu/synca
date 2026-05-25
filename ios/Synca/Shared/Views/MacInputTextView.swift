@@ -56,8 +56,9 @@ struct MacInputTextView: NSViewRepresentable {
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
-        // Allow the document view to grow beyond the visible field height so NSScrollView can scroll once capped.
-        textView.isVerticallyResizable = true
+        // Disable vertical auto-resize to prevent frame jitter during IME composition.
+        // Height is managed externally via recalculateHeight().
+        textView.isVerticallyResizable = false
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.string = text
         Self.applyPlainTextStyle(to: textView)
@@ -85,10 +86,12 @@ struct MacInputTextView: NSViewRepresentable {
             let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
             textView.textStorage?.replaceCharacters(in: fullRange, with: text)
         }
-        Self.applyPlainTextStyle(to: textView)
-        // Defer binding updates to the next run loop so AppKit sizing doesn't mutate SwiftUI state during view updates.
-        DispatchQueue.main.async {
-            context.coordinator.recalculateHeight(for: textView)
+        // Skip style resets and height recalculation during IME to prevent text jitter.
+        if !textView.hasMarkedText() {
+            Self.applyPlainTextStyle(to: textView)
+            DispatchQueue.main.async {
+                context.coordinator.recalculateHeight(for: textView)
+            }
         }
     }
 
@@ -119,6 +122,11 @@ struct MacInputTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
+            // During IME composition, skip binding updates and height recalculation
+            // to prevent text position jitter from fluctuating font metrics.
+            if textView.hasMarkedText() {
+                return
+            }
             text = textView.string
             recalculateHeight(for: textView)
         }
@@ -135,11 +143,16 @@ struct MacInputTextView: NSViewRepresentable {
                 usedHeight = lineH
             }
 
+            // Snap to whole multiples of lineHeight so mixed Chinese/Latin
+            // text that differs by a fraction of a point won't cause jitter.
+            let lines = max(1, round(usedHeight / lineH))
+            let stableUsedHeight = lines * lineH
+
             let minFieldH: CGFloat = 34
             let maxFieldH: CGFloat = 104
             let minSidePad: CGFloat = 4
 
-            let naturalH = usedHeight + 2 * minSidePad
+            let naturalH = stableUsedHeight + 2 * minSidePad
             let fieldH: CGFloat
             if naturalH <= maxFieldH {
                 fieldH = max(minFieldH, ceil(naturalH))
@@ -147,10 +160,10 @@ struct MacInputTextView: NSViewRepresentable {
                 fieldH = maxFieldH
             }
 
-            // Split extra height equally above/below the laid-out text so single-line fields don’t look top-heavy.
+            // Split extra height equally above/below the laid-out text so single-line fields don't look top-heavy.
             let verticalPad: CGFloat
-            if fieldH >= usedHeight {
-                verticalPad = max(minSidePad, (fieldH - usedHeight) / 2)
+            if fieldH >= stableUsedHeight {
+                verticalPad = max(minSidePad, (fieldH - stableUsedHeight) / 2)
             } else {
                 verticalPad = minSidePad
             }
@@ -158,10 +171,7 @@ struct MacInputTextView: NSViewRepresentable {
             textView.textContainerInset = NSSize(width: 0, height: verticalPad)
             lm.ensureLayout(for: tc)
 
-            var f = textView.frame
-            f.size.height = ceil(max(fieldH, usedHeight + 2 * verticalPad))
-            textView.frame = f
-            if abs(height - fieldH) > 0.5 {
+            if abs(height - fieldH) > 1.0 {
                 height = fieldH
             }
 
@@ -192,6 +202,7 @@ final class MacInputContainerView: NSView {
         layer?.masksToBounds = true
     }
 
+    override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
     override func layout() {

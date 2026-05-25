@@ -1565,15 +1565,15 @@ private struct MacTiledComposerBar: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            text = textView.string
             host?.setSendEnabled(!textView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            // Skip height recalculation while IME is composing (marked text present).
-            // During Chinese input, each keystroke produces marked text with slightly
-            // different font metrics, causing usedRect to fluctuate by ~1px and the
-            // input field to visually "jitter". We defer until composition ends.
-            if !textView.hasMarkedText() {
-                recalculateHeight()
+            // During IME composition, skip ALL updates (binding + height recalc).
+            // Updating the binding triggers SwiftUI → updateNSView → potential layout cascade.
+            // The binding will be synced when composition ends (marked text committed).
+            if textView.hasMarkedText() {
+                return
             }
+            text = textView.string
+            recalculateHeight()
         }
 
         @objc func pickImages() {
