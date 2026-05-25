@@ -1841,11 +1841,8 @@ private final class MacTiledComposerTextFieldView: NSView {
         super.layout()
         let insetBounds = bounds.insetBy(dx: 12, dy: 0)
         
-        // Shift text view UP by 2 points to visually center text (adjusting for font ascender)
-        let adjustedFrame = insetBounds.offsetBy(dx: 0, dy: 2)
-        
-        if textView?.frame != adjustedFrame {
-            textView?.frame = adjustedFrame
+        if textView?.frame != insetBounds {
+            textView?.frame = insetBounds
         }
         
         let targetSize = NSSize(
@@ -1858,7 +1855,7 @@ private final class MacTiledComposerTextFieldView: NSView {
         
         placeholder.frame = CGRect(
             x: 12,
-            y: max(0, (bounds.height - placeholder.intrinsicContentSize.height) / 2) + 2,
+            y: max(0, (bounds.height - placeholder.intrinsicContentSize.height) / 2),
             width: max(0, bounds.width - 24),
             height: placeholder.intrinsicContentSize.height
         )
