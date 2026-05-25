@@ -1757,19 +1757,14 @@ private final class MacTiledComposerHostView: NSView {
             .paragraphStyle: paragraphStyle
         ]
         
-        textView.markedTextAttributes = [
-            .font: font,
-            .foregroundColor: NSColor.textColor,
-            .backgroundColor: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.3),
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .paragraphStyle: paragraphStyle
-        ]
         
         textView.textContainerInset = NSSize(width: 0, height: 8)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
+        // Disable vertical auto-resize to prevent frame jitter during IME composition.
+        // Height is managed externally by inputHeightConstraint via recalculateHeight().
+        textView.isVerticallyResizable = false
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -1849,6 +1844,10 @@ private final class MacTiledComposerTextFieldView: NSView {
         setup()
     }
 
+    // Flipped so that the textView (which is flipped internally) grows downward.
+    // Without this, auto-resize extends upward in a non-flipped parent, and
+    // masksToBounds clips the top, making text shift down during IME input.
+    override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
     override func layout() {
