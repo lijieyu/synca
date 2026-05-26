@@ -1125,23 +1125,60 @@ export async function getAdminOverviewStats() {
     const todoCount = await db.selectFrom('messages').select((eb) => eb.fn.countAll().as('count')).where('is_deleted', '=', 0).executeTakeFirst();
     const feedbackCount = await db.selectFrom('feedbacks').select((eb) => eb.fn.countAll().as('count')).executeTakeFirst();
     
-    // Revenue calculation (¥6, ¥30, ¥98)
+    // Revenue calculation
     const transactions = await db.selectFrom('iap_transactions')
-        .select(['product_id'])
+        .select(['product_id', 'signed_transaction_info'])
         .where('environment', '=', 'Production')
         .execute();
+        
     let totalRevenue = 0;
     for (const tx of transactions) {
-        if (tx.product_id.includes('monthly')) totalRevenue += 6;
-        else if (tx.product_id.includes('yearly')) totalRevenue += 30;
-        else if (tx.product_id.includes('lifetime')) totalRevenue += 98;
+        let price = 0;
+        let foundRealPrice = false;
+
+        if (tx.signed_transaction_info) {
+            try {
+                const parts = tx.signed_transaction_info.split('.');
+                if (parts.length === 3) {
+                    const payloadRaw = Buffer.from(parts[1], 'base64').toString('utf8');
+                    const payload = JSON.parse(payloadRaw);
+                    
+                    if (typeof payload.price === 'number' && payload.currency) {
+                        const amount = payload.price / 1000;
+                        const EXCHANGE_RATES: Record<string, number> = {
+                            'CNY': 1,
+                            'USD': 7.25,
+                            'JPY': 0.046,
+                            'EUR': 7.8,
+                            'HKD': 0.92,
+                            'TWD': 0.22,
+                            'GBP': 9.2,
+                            'KRW': 0.0053
+                        };
+                        const rate = EXCHANGE_RATES[payload.currency] || 1;
+                        price = amount * rate;
+                        foundRealPrice = true;
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
+
+        if (!foundRealPrice) {
+            if (tx.product_id.includes('monthly')) price = 6;
+            else if (tx.product_id.includes('yearly')) price = 30;
+            else if (tx.product_id.includes('lifetime')) price = 98;
+        }
+        
+        totalRevenue += price;
     }
 
     return {
         totalUsers: Number(userCount?.count ?? 0),
         totalTodos: Number(todoCount?.count ?? 0),
         totalFeedback: Number(feedbackCount?.count ?? 0),
-        totalRevenue,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
     };
 }
 
