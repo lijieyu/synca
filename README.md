@@ -175,6 +175,7 @@ synca/
 ```env
 PORT=3002
 APPLE_CLIENT_ID=org.haerth.synca
+APP_STORE_APPLE_ID=6761647007    # 必须配置，否则线上内购收据验证会报错 invalid_purchase_transaction
 APNS_ENABLED=true
 APNS_KEY_ID=HCP7BQP4K5
 APNS_TEAM_ID=7Y33M5HLSC

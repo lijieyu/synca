@@ -202,9 +202,19 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Polling
 
+    private var hasSyncedTimezone = false
+
     func startPolling() {
         stopPolling()
         pollCycleCount = 0
+        
+        if !hasSyncedTimezone {
+            hasSyncedTimezone = true
+            Task {
+                try? await api.updateTimezone(offsetSeconds: TimeZone.current.secondsFromGMT())
+            }
+        }
+        
         pollTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }

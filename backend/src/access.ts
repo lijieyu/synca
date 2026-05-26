@@ -40,7 +40,8 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
     }
 
     const nowIso = now.toISOString();
-    const usageWindow = getUsageWindow(now);
+    const offsetSeconds = user.timezone_offset_seconds ?? (DAILY_RESET_OFFSET_HOURS * 60 * 60);
+    const usageWindow = getUsageWindow(now, offsetSeconds);
     const todayUsed = await countMessagesCreatedBetween(userId, usageWindow.start, usageWindow.end);
     const hasLifetime = Boolean(user.lifetime_purchased_at);
     const hasSubscription = Boolean(user.subscription_expires_at && user.subscription_expires_at > nowIso);
@@ -166,8 +167,8 @@ export async function buildLifetimeUpgradeOffer(userId: string, status: SyncaAcc
     };
 }
 
-function getUsageWindow(now: Date): UsageWindow {
-    const offsetMs = DAILY_RESET_OFFSET_HOURS * 60 * 60 * 1000;
+function getUsageWindow(now: Date, offsetSeconds: number): UsageWindow {
+    const offsetMs = offsetSeconds * 1000;
     const local = new Date(now.getTime() + offsetMs);
     const startUtcMs = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
     const endUtcMs = startUtcMs + 24 * 60 * 60 * 1000;

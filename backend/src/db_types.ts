@@ -12,6 +12,7 @@ export interface UsersTable {
     lifetime_purchased_at: string | null;
     store_product_id: string | null;
     is_admin: number; // 0 | 1
+    timezone_offset_seconds: number | null;
     created_at: string;
     updated_at: string;
 }

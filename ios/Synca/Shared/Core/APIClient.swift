@@ -64,6 +64,12 @@ final class APIClient: ObservableObject {
         return try await post("/auth/apple", body: body, authenticated: false)
     }
 
+    func updateTimezone(offsetSeconds: Int) async throws {
+        let _: OkResponse = try await post("/me/timezone", body: [
+            "offsetSeconds": offsetSeconds,
+        ])
+    }
+
     func getAccessStatus() async throws -> AccessStatus {
         let response: AccessStatusResponse = try await get("/me/access-status")
         if let userId = response.userId {

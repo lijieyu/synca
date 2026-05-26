@@ -45,6 +45,11 @@ export async function runMigrations() {
         await sql`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`.execute(db);
     } catch (_e) {}
 
+    try {
+        await sql`ALTER TABLE users ADD COLUMN timezone_offset_seconds INTEGER DEFAULT 28800`.execute(db);
+        console.log('[migrate] Added timezone_offset_seconds column to users table.');
+    } catch (_e) {}
+
     // Set initial admin
     try {
         await sql`UPDATE users SET is_admin = 1 WHERE email = 'jieyu.li@icloud.com'`.execute(db);
