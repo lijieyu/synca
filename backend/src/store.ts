@@ -1210,7 +1210,7 @@ export async function getAdminMessageStats() {
 
 export async function getAdminRevenueStats() {
     const transactions = await db.selectFrom('iap_transactions')
-        .select(['product_id', 'purchase_date'])
+        .select(['product_id', 'purchase_date', 'signed_transaction_info'])
         .where('environment', '=', 'Production')
         .execute();
 
@@ -1218,16 +1218,51 @@ export async function getAdminRevenueStats() {
     for (const tx of transactions) {
         if (!tx.purchase_date) continue;
         const date = tx.purchase_date.split('T')[0];
+        
         let price = 0;
-        if (tx.product_id.includes('monthly')) price = 6;
-        else if (tx.product_id.includes('yearly')) price = 30;
-        else if (tx.product_id.includes('lifetime')) price = 98;
+        let foundRealPrice = false;
+
+        if (tx.signed_transaction_info) {
+            try {
+                const parts = tx.signed_transaction_info.split('.');
+                if (parts.length === 3) {
+                    const payloadRaw = Buffer.from(parts[1], 'base64').toString('utf8');
+                    const payload = JSON.parse(payloadRaw);
+                    
+                    if (typeof payload.price === 'number' && payload.currency) {
+                        const amount = payload.price / 1000;
+                        // Approximate exchange rates to CNY
+                        const EXCHANGE_RATES: Record<string, number> = {
+                            'CNY': 1,
+                            'USD': 7.25,
+                            'JPY': 0.046,
+                            'EUR': 7.8,
+                            'HKD': 0.92,
+                            'TWD': 0.22,
+                            'GBP': 9.2,
+                            'KRW': 0.0053
+                        };
+                        const rate = EXCHANGE_RATES[payload.currency] || 1;
+                        price = amount * rate;
+                        foundRealPrice = true;
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors, fallback below
+            }
+        }
+
+        if (!foundRealPrice) {
+            if (tx.product_id.includes('monthly')) price = 6;
+            else if (tx.product_id.includes('yearly')) price = 30;
+            else if (tx.product_id.includes('lifetime')) price = 98;
+        }
         
         dailyMap[date] = (dailyMap[date] || 0) + price;
     }
 
     const dailyRevenue = Object.entries(dailyMap)
-        .map(([date, amount]) => ({ date, amount }))
+        .map(([date, amount]) => ({ date, amount: Math.round(amount * 100) / 100 }))
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, 30);
 
