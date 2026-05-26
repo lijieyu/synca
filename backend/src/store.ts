@@ -124,7 +124,7 @@ export async function createUser(user: {
     return (await getUser(user.id))!;
 }
 
-export async function getUserAccessFields(userId: string): Promise<Pick<UsersTable, 'id' | 'trial_started_at' | 'trial_ends_at' | 'purchase_date' | 'subscription_expires_at' | 'lifetime_purchased_at' | 'store_product_id'> | undefined> {
+export async function getUserAccessFields(userId: string): Promise<Pick<UsersTable, 'id' | 'trial_started_at' | 'trial_ends_at' | 'purchase_date' | 'subscription_expires_at' | 'lifetime_purchased_at' | 'store_product_id' | 'timezone_offset_seconds'> | undefined> {
     return db.selectFrom('users')
         .select([
             'id',
@@ -134,6 +134,7 @@ export async function getUserAccessFields(userId: string): Promise<Pick<UsersTab
             'subscription_expires_at',
             'lifetime_purchased_at',
             'store_product_id',
+            'timezone_offset_seconds'
         ])
         .where('id', '=', userId)
         .executeTakeFirst();

@@ -89,7 +89,7 @@
 "access.free_rule" = "Add up to %d new messages per day";
 "access.free_usage" = "Today's usage: %d/%d";
 "access.free_keep_access" = "Viewing, syncing, clearing, and deleting existing messages always remain available";
-"access.free_reset_hint" = "Your free allowance resets automatically every day";
+"access.free_reset_hint" = "Your free allowance resets automatically every day at midnight";
 "access.unlock_title" = "Unlock Unlimited";
 "access.unlock_benefit_unlimited" = "Unlimited new messages";
 "access.unlock_benefit_cross_device" = "Keep using the same access across iPhone and Mac";

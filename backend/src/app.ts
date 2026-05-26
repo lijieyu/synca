@@ -805,6 +805,27 @@ app.post('/me/lifetime-upgrade-offer-code', auth, async (req, res) => {
     });
 });
 
+// Update user timezone
+app.post('/me/timezone', auth, async (req, res) => {
+    const parsed = z.object({
+        offsetSeconds: z.number().int().min(-43200).max(50400),
+    }).safeParse(req.body);
+
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'invalid_payload' });
+    }
+
+    const userId = getUserId(req);
+    await import('./db.js').then(({ db }) =>
+        db.updateTable('users')
+            .set({ timezone_offset_seconds: parsed.data.offsetSeconds, updated_at: new Date().toISOString() })
+            .where('id', '=', userId)
+            .execute()
+    );
+
+    res.json({ ok: true });
+});
+
 // Register/update push token
 app.post('/me/push-token', auth, async (req, res) => {
     const parsed = z.object({
