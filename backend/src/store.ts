@@ -1128,12 +1128,14 @@ export async function getAdminOverviewStats() {
     
     // Revenue calculation
     const transactions = await db.selectFrom('iap_transactions')
-        .select(['product_id', 'signed_transaction_info'])
+        .select(['product_id', 'signed_transaction_info', 'revocation_date'])
         .where('environment', '=', 'Production')
         .execute();
         
     let totalRevenue = 0;
     for (const tx of transactions) {
+        if (tx.revocation_date) continue; // Ignore refunded transactions for total revenue
+
         let price = 0;
         let foundRealPrice = false;
 
@@ -1248,7 +1250,7 @@ export async function getAdminMessageStats() {
 
 export async function getAdminRevenueStats() {
     const transactions = await db.selectFrom('iap_transactions')
-        .select(['product_id', 'purchase_date', 'signed_transaction_info'])
+        .select(['product_id', 'purchase_date', 'signed_transaction_info', 'revocation_date'])
         .where('environment', '=', 'Production')
         .execute();
 
@@ -1297,6 +1299,11 @@ export async function getAdminRevenueStats() {
         }
         
         dailyMap[date] = (dailyMap[date] || 0) + price;
+
+        if (tx.revocation_date) {
+            const revocationDate = tx.revocation_date.split('T')[0];
+            dailyMap[revocationDate] = (dailyMap[revocationDate] || 0) - price;
+        }
     }
 
     const dailyRevenue = Object.entries(dailyMap)
