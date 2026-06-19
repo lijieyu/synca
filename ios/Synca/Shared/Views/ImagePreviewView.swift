@@ -7,6 +7,7 @@ import AppKit
 
 struct ImagePreviewView: View {
     let messages: [SyncaMessage]
+    @ObservedObject private var syncManager = SyncManager.shared
     @State private var currentIndex: Int
     var onDelete: ((String) -> Void)? = nil
 
@@ -66,6 +67,9 @@ struct ImagePreviewView: View {
 
             // UI Controls
             controlsOverlay
+        }
+        .overlay(alignment: .top) {
+            SyncStatusToastView(status: syncManager.syncStatus, topInset: 20)
         }
         .onAppear {
             #if os(macOS)
@@ -359,23 +363,48 @@ struct ImagePreviewView: View {
     // MARK: - Actions (Modified for paging)
     
     private func copyImage(from url: URL) {
+        if let cachedData = ImageCache.getCachedData(for: url) {
+            if ImageClipboard.write(cachedData) {
+                syncManager.showSuccessFeedback(
+                    String(localized: "message_bubble.image_copied", bundle: .main)
+                )
+            } else {
+                syncManager.showErrorFeedback(
+                    String(localized: "message_bubble.copy_image_failed", bundle: .main)
+                )
+                print("Copy failed: unsupported image data")
+            }
+            return
+        }
+
+        let operationID = syncManager.beginProgressFeedback(
+            String(localized: "message_bubble.copying_image", bundle: .main)
+        )
         Task {
             do {
-                var request = URLRequest(url: url)
-                if let token = APIClient.shared.token {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let data = try await ImageCache.loadData(
+                    for: url,
+                    authorizationToken: APIClient.shared.token
+                )
+                if ImageClipboard.write(data) {
+                    syncManager.showSuccessFeedback(
+                        String(localized: "message_bubble.image_copied", bundle: .main),
+                        for: operationID
+                    )
+                } else {
+                    syncManager.showErrorFeedback(
+                        String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                        for: operationID
+                    )
+                    print("Copy failed: unsupported image data")
                 }
-                let (data, _) = try await URLSession.shared.data(for: request)
-                #if os(iOS)
-                if let image = UIImage(data: data) { UIPasteboard.general.image = image }
-                #elseif os(macOS)
-                if let image = NSImage(data: data) {
-                    let pb = NSPasteboard.general
-                    pb.clearContents()
-                    pb.writeObjects([image])
-                }
-                #endif
-            } catch { print("Copy failed: \(error)") }
+            } catch {
+                syncManager.showErrorFeedback(
+                    String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                    for: operationID
+                )
+                print("Copy failed: \(error)")
+            }
         }
     }
 

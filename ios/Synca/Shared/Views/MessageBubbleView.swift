@@ -490,32 +490,47 @@ struct MessageBubbleView: View {
     }
 
     private func copyImage(from url: URL) {
+        if let cachedData = ImageCache.getCachedData(for: url) {
+            finishCopyingImage(cachedData, operationID: nil)
+            return
+        }
+
+        let operationID = SyncManager.shared.beginProgressFeedback(
+            String(localized: "message_bubble.copying_image", bundle: .main)
+        )
         Task {
             do {
-                var request = URLRequest(url: url)
-                if let token = APIClient.shared.token {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                }
-                let (data, _) = try await URLSession.shared.data(for: request)
-                #if os(iOS)
-                if let image = UIImage(data: data) {
-                    UIPasteboard.general.image = image
-                    withAnimation { copied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-                }
-                #elseif os(macOS)
-                if let image = NSImage(data: data) {
-                    let pb = NSPasteboard.general
-                    pb.clearContents()
-                    pb.writeObjects([image])
-                    withAnimation { copied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-                }
-                #endif
+                let data = try await ImageCache.loadData(
+                    for: url,
+                    authorizationToken: APIClient.shared.token
+                )
+                finishCopyingImage(data, operationID: operationID)
             } catch {
+                SyncManager.shared.showErrorFeedback(
+                    String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                    for: operationID
+                )
                 print("Copy image failed: \(error)")
             }
         }
+    }
+
+    private func finishCopyingImage(_ data: Data, operationID: UUID?) {
+        guard ImageClipboard.write(data) else {
+            SyncManager.shared.showErrorFeedback(
+                String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                for: operationID
+            )
+            print("Copy image failed: unsupported image data")
+            return
+        }
+
+        SyncManager.shared.showSuccessFeedback(
+            String(localized: "message_bubble.image_copied", bundle: .main),
+            for: operationID
+        )
+        withAnimation { copied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
     }
 
     private func saveImage(from url: URL) async {

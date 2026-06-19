@@ -1,5 +1,11 @@
 import Foundation
 import CryptoKit
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+import ImageIO
+#endif
 
 enum ImageCache {
     private static let cacheDirectory: URL = {
@@ -19,6 +25,26 @@ enum ImageCache {
         try? data.write(to: fileURL)
     }
 
+    static func loadData(for url: URL, authorizationToken: String?) async throws -> Data {
+        if let cachedData = getCachedData(for: url) {
+            return cachedData
+        }
+
+        var request = URLRequest(url: url)
+        if let authorizationToken {
+            request.setValue("Bearer \(authorizationToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+
+        saveCachedData(data, for: url)
+        return data
+    }
+
     static func cachePath(for url: URL) -> URL {
         let hash = SHA256.hash(data: Data(url.absoluteString.utf8))
         let filename = hash.compactMap { String(format: "%02x", $0) }.joined()
@@ -28,6 +54,33 @@ enum ImageCache {
     static func clearCache() {
         try? FileManager.default.removeItem(at: cacheDirectory)
         try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    }
+}
+
+enum ImageClipboard {
+    @MainActor
+    static func write(_ data: Data) -> Bool {
+        #if os(iOS)
+        guard let image = UIImage(data: data) else { return false }
+        UIPasteboard.general.image = image
+        return true
+        #elseif os(macOS)
+        guard let image = NSImage(data: data) else { return false }
+
+        let item = NSPasteboardItem()
+        if let source = CGImageSourceCreateWithData(data as CFData, nil),
+           let typeIdentifier = CGImageSourceGetType(source) {
+            item.setData(data, forType: NSPasteboard.PasteboardType(typeIdentifier as String))
+        } else if let tiffData = image.tiffRepresentation {
+            item.setData(tiffData, forType: .tiff)
+        } else {
+            return false
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([item])
+        #endif
     }
 }
 
