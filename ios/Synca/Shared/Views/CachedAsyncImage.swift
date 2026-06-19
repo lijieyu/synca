@@ -60,21 +60,10 @@ struct CachedAsyncImage<Content: View>: View {
         
         loadTask = Task {
             do {
-                var request = URLRequest(url: url)
-                if let token = APIClient.shared.token {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                }
-                
-                let (data, response) = try await URLSession.shared.data(for: request)
-                
-                guard let httpResponse = response as? HTTPURLResponse,
-                      (200...299).contains(httpResponse.statusCode) else {
-                    phase = .failure(URLError(.badServerResponse))
-                    return
-                }
-                
-                // Save to disk cache
-                ImageCache.saveCachedData(data, for: url)
+                let data = try await ImageCache.loadData(
+                    for: url,
+                    authorizationToken: APIClient.shared.token
+                )
                 
                 #if os(iOS)
                 if let uiImage = UIImage(data: data) {

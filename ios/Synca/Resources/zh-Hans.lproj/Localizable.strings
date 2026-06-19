@@ -175,6 +175,9 @@
 "message_bubble.delete_confirm_message" = "此操作将从云端永久抹除此记录%@，且不可撤销。";
 "message_bubble.delete_image_suffix" = "和图片文件";
 "message_bubble.load_failed_retry" = "加载失败，点击重试";
+"message_bubble.copying_image" = "正在拷贝图片…";
+"message_bubble.image_copied" = "图片已拷贝";
+"message_bubble.copy_image_failed" = "图片拷贝失败";
 "message_bubble.open_with_preview" = "用预览打开";
 "message_bubble.show_in_finder" = "在访达中显示";
 "message_bubble.save_as" = "另存为...";

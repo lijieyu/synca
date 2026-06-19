@@ -18,6 +18,8 @@ final class SyncManager: ObservableObject {
         case idle
         case syncing
         case success
+        case progress(String)
+        case successMessage(String)
         case error(String)
         
         var isSyncing: Bool { self == .syncing }
@@ -61,6 +63,7 @@ final class SyncManager: ObservableObject {
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
     private var statusResetTask: Task<Void, Never>?
+    private var feedbackOperationID = UUID()
     private var isSyncingInternal = false // Concurrency lock
     private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
     private var pollCycleCount = 0
@@ -237,12 +240,38 @@ final class SyncManager: ObservableObject {
     }
 
     // MARK: - Status Helper
+
+    @discardableResult
+    func beginProgressFeedback(_ message: String) -> UUID {
+        feedbackOperationID = UUID()
+        updateStatus(.progress(message))
+        return feedbackOperationID
+    }
+
+    func showSuccessFeedback(_ message: String, for operationID: UUID? = nil) {
+        guard operationID == nil || operationID == feedbackOperationID else { return }
+        if operationID == nil { feedbackOperationID = UUID() }
+        updateStatus(.successMessage(message))
+    }
+
+    func showErrorFeedback(_ message: String, for operationID: UUID? = nil) {
+        guard operationID == nil || operationID == feedbackOperationID else { return }
+        if operationID == nil { feedbackOperationID = UUID() }
+        updateStatus(.error(message))
+    }
     
     private func updateStatus(_ status: SyncStatus) {
+        switch status {
+        case .progress, .successMessage:
+            break
+        default:
+            feedbackOperationID = UUID()
+        }
         syncStatus = status
         statusResetTask?.cancel()
         
-        if status != .syncing && status != .idle {
+        if status != .syncing && status != .idle,
+           !isProgressStatus(status) {
             statusResetTask = Task {
                 try? await Task.sleep(nanoseconds: 1_600_000_000)
                 if !Task.isCancelled {
@@ -250,6 +279,11 @@ final class SyncManager: ObservableObject {
                 }
             }
         }
+    }
+
+    private func isProgressStatus(_ status: SyncStatus) -> Bool {
+        if case .progress = status { return true }
+        return false
     }
 
     // MARK: - Send Messages

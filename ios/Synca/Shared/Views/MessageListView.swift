@@ -8,6 +8,80 @@ import AppKit
 #endif
 import UniformTypeIdentifiers
 
+struct SyncStatusToastView: View {
+    let status: SyncManager.SyncStatus
+    var topInset: CGFloat? = nil
+
+    var body: some View {
+        Group {
+            switch status {
+            case .success:
+                successLabel(Text("message_list.sync_success", bundle: .main))
+            case .successMessage(let message):
+                successLabel(Text(message))
+            case .progress(let message):
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                    Text(message)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+                .modifier(StatusToastStyle(backgroundColor: Color.accentColor, topInset: resolvedTopInset))
+            case .error(let message):
+                Label {
+                    Text(message)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                } icon: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .modifier(StatusToastStyle(backgroundColor: .red, topInset: resolvedTopInset))
+            case .idle, .syncing:
+                EmptyView()
+            }
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: status)
+    }
+
+    private var resolvedTopInset: CGFloat {
+        if let topInset { return topInset }
+        #if os(iOS)
+        return 58
+        #else
+        return 16
+        #endif
+    }
+
+    private func successLabel(_ text: Text) -> some View {
+        Label {
+            text
+        } icon: {
+            Image(systemName: "checkmark.circle.fill")
+        }
+        .modifier(StatusToastStyle(backgroundColor: .green, topInset: resolvedTopInset))
+    }
+}
+
+private struct StatusToastStyle: ViewModifier {
+    let backgroundColor: Color
+    let topInset: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(backgroundColor)
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+            .padding(.top, topInset)
+    }
+}
+
 struct MessageListView: View {
     @EnvironmentObject var syncManager: SyncManager
     @EnvironmentObject var api: APIClient
@@ -570,43 +644,7 @@ struct MessageListView: View {
 
     @ViewBuilder
     private var syncStatusOverlay: some View {
-        #if os(iOS)
-        let topInset: CGFloat = 58
-        #else
-        let topInset: CGFloat = 16
-        #endif
-
-        Group {
-            if case .success = self.syncManager.syncStatus {
-                Label("message_list.sync_success", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.green)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                    .padding(.top, topInset)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            } else if case .error(let message) = self.syncManager.syncStatus {
-                HStack(spacing: 8) {
-                    Image(systemName: "xmark.circle.fill")
-                    Text(message)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                }
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.red)
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-                .padding(.top, topInset)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: self.syncManager.syncStatus)
+        SyncStatusToastView(status: syncManager.syncStatus)
     }
 
     @ViewBuilder
