@@ -560,32 +560,19 @@ struct MessageBubbleView: View {
             #endif
         } catch {
             print("Save image failed: \(error)")
-            saveStatus = .error
             
             #if os(macOS)
-            await MainActor.run {
-                let alert = NSAlert()
-                alert.messageText = String(localized: "message_bubble.save_failed_title", bundle: .main)
-                let defaultFolder = SettingsManager.shared.macOSDefaultSavePath?.lastPathComponent ?? "folder"
-                alert.informativeText = String(localized: "message_bubble.save_failed_message", bundle: .main).replacingOccurrences(of: "%@", with: error.localizedDescription) + "\n\n(macOS Sandbox requires folder authorization. Click 'Authorize' to grant access to '\(defaultFolder)'.)"
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Authorize")
-                alert.addButton(withTitle: String(localized: "common.cancel", bundle: .main))
-                let response = alert.runModal()
-                if response == .alertFirstButtonReturn {
-                    let openPanel = NSOpenPanel()
-                    openPanel.message = "Please select the folder to grant access."
-                    openPanel.prompt = "Grant Access"
-                    openPanel.canChooseFiles = false
-                    openPanel.canChooseDirectories = true
-                    openPanel.canCreateDirectories = true
-                    openPanel.directoryURL = SettingsManager.shared.macOSDefaultSavePath
-                    if openPanel.runModal() == .OK, let folderURL = openPanel.url {
-                        SettingsManager.shared.setMacOSDefaultSavePath(folderURL)
-                        Task { await self.saveImage(from: url) }
-                    }
+            if SaveFailurePresentation.requiresFolderAuthorization(error) {
+                saveStatus = .none
+                requestMacSaveFolderAuthorization {
+                    Task { await self.saveImage(from: url) }
                 }
+            } else {
+                saveStatus = .error
+                showMacSaveFailedAlert(error: error, messageKey: "message_bubble.save_image_failed_message")
             }
+            #else
+            saveStatus = .error
             #endif
         }
         
@@ -614,32 +601,19 @@ struct MessageBubbleView: View {
             #endif
         } catch {
             print("Save file failed: \(error)")
-            saveStatus = .error
             
             #if os(macOS)
-            await MainActor.run {
-                let alert = NSAlert()
-                alert.messageText = String(localized: "message_bubble.save_failed_title", bundle: .main)
-                let defaultFolder = SettingsManager.shared.macOSDefaultSavePath?.lastPathComponent ?? "folder"
-                alert.informativeText = String(localized: "message_bubble.save_failed_message", bundle: .main).replacingOccurrences(of: "%@", with: error.localizedDescription) + "\n\n(macOS Sandbox requires folder authorization. Click 'Authorize' to grant access to '\(defaultFolder)'.)"
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Authorize")
-                alert.addButton(withTitle: String(localized: "common.cancel", bundle: .main))
-                let response = alert.runModal()
-                if response == .alertFirstButtonReturn {
-                    let openPanel = NSOpenPanel()
-                    openPanel.message = "Please select the folder to grant access."
-                    openPanel.prompt = "Grant Access"
-                    openPanel.canChooseFiles = false
-                    openPanel.canChooseDirectories = true
-                    openPanel.canCreateDirectories = true
-                    openPanel.directoryURL = SettingsManager.shared.macOSDefaultSavePath
-                    if openPanel.runModal() == .OK, let folderURL = openPanel.url {
-                        SettingsManager.shared.setMacOSDefaultSavePath(folderURL)
-                        Task { await self.saveFile(from: url, suggestedFileName: suggestedFileName) }
-                    }
+            if SaveFailurePresentation.requiresFolderAuthorization(error) {
+                saveStatus = .none
+                requestMacSaveFolderAuthorization {
+                    Task { await self.saveFile(from: url, suggestedFileName: suggestedFileName) }
                 }
+            } else {
+                saveStatus = .error
+                showMacSaveFailedAlert(error: error, messageKey: "message_bubble.save_file_failed_message")
             }
+            #else
+            saveStatus = .error
             #endif
         }
         
@@ -676,6 +650,46 @@ struct MessageBubbleView: View {
     }
 
     #if os(macOS)
+    @MainActor
+    private func showMacSaveFailedAlert(error: Error, messageKey: String) {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "message_bubble.save_failed_title", bundle: .main)
+        alert.informativeText = NSLocalizedString(messageKey, bundle: .main, comment: "")
+            .replacingOccurrences(of: "%@", with: error.localizedDescription)
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "common.ok", bundle: .main))
+        alert.runModal()
+    }
+
+    @MainActor
+    private func requestMacSaveFolderAuthorization(retry: @escaping () -> Void) {
+        let defaultFolder = SettingsManager.shared.macOSDefaultSavePath?.lastPathComponent
+            ?? String(localized: "message_bubble.save_default_folder", bundle: .main)
+        let alert = NSAlert()
+        alert.messageText = String(localized: "message_bubble.save_authorization_title", bundle: .main)
+        alert.informativeText = String(localized: "message_bubble.save_authorization_message", bundle: .main)
+            .replacingOccurrences(of: "%@", with: defaultFolder)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: String(localized: "message_bubble.save_authorize_button", bundle: .main))
+        alert.addButton(withTitle: String(localized: "common.cancel", bundle: .main))
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return
+        }
+
+        let openPanel = NSOpenPanel()
+        openPanel.message = String(localized: "message_bubble.save_authorization_panel_message", bundle: .main)
+        openPanel.prompt = String(localized: "message_bubble.save_authorization_panel_prompt", bundle: .main)
+        openPanel.canChooseFiles = false
+        openPanel.canChooseDirectories = true
+        openPanel.canCreateDirectories = true
+        openPanel.directoryURL = SettingsManager.shared.macOSDefaultSavePath
+        if openPanel.runModal() == .OK, let folderURL = openPanel.url {
+            SettingsManager.shared.setMacOSDefaultSavePath(folderURL)
+            retry()
+        }
+    }
+
     private func showInFinder(url: URL) {
         Task {
             if let localURL = try? await downloadToTemp(url: url) {

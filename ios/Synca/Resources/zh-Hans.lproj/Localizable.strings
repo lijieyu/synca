@@ -182,7 +182,14 @@
 "message_bubble.show_in_finder" = "在访达中显示";
 "message_bubble.save_as" = "另存为...";
 "message_bubble.save_failed_title" = "保存失败";
-"message_bubble.save_failed_message" = "无法将图片保存到指定目录: %@\n\n极大可能是由于权限不足，您可以尝试\"另存为\"以重新授权。";
+"message_bubble.save_image_failed_message" = "无法将图片保存到指定目录: %@";
+"message_bubble.save_file_failed_message" = "无法将文件保存到指定目录: %@";
+"message_bubble.save_authorization_title" = "允许访问文件夹";
+"message_bubble.save_authorization_message" = "Synca 需要访问“%@”才能保存这个附件。选择一次文件夹后，将继续保存。";
+"message_bubble.save_authorize_button" = "选择文件夹";
+"message_bubble.save_authorization_panel_message" = "请选择 Synca 用来保存附件的文件夹。";
+"message_bubble.save_authorization_panel_prompt" = "授权访问";
+"message_bubble.save_default_folder" = "所选文件夹";
 "message_bubble.choose_save_directory" = "选择保存目录";
 "message_bubble.save_to_directory" = "保存到此目录";
 "message_file.error_too_large" = "文件不能超过 25 MB。";
