@@ -70,8 +70,8 @@
 		D66EF16019B62463726A3438 /* SyncaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0C31D4323A66C9C6E9B8EC /* SyncaApp.swift */; };
 		D9186F950CFBB29218E7F333 /* AccessStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FF1234287F38B3116511492 /* AccessStatus.swift */; };
 		DE6343EE825B832C1DFD5848 /* AccessCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2726295D2A4F43DCB7E7E5 /* AccessCenterView.swift */; };
-		EEAC4334DBE983A5898B4C12 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 70DE0078AC87764CD2422D4D /* Localizable.strings */; };
 		E89B61340C40415EB5D673BA /* SaveFailurePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */; };
+		EEAC4334DBE983A5898B4C12 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 70DE0078AC87764CD2422D4D /* Localizable.strings */; };
 		F6186FF5CBB3460BE1C2460D /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4DC5D5E94792579FCAC8891 /* LoginView.swift */; };
 		FA4BD0B10B94F90D70F4F844 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56C5DCEF981E4EB4CB624A02 /* APIClient.swift */; };
 /* End PBXBuildFile section */
@@ -102,9 +102,9 @@
 		7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7CA8F92004259A6E22176A45 /* SyncDebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDebugLogger.swift; sourceTree = "<group>"; };
 		7E303199D1B3CC0E8B523373 /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
-		8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveFailurePresentation.swift; sourceTree = "<group>"; };
 		89039A9E9399426CB387B3BD /* Synca.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synca.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		891CF9713534ED8E2977AA0E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveFailurePresentation.swift; sourceTree = "<group>"; };
 		AD1E757E6D45FD90B41342C3 /* MessageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageListView.swift; sourceTree = "<group>"; };
 		B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackComposerView.swift; sourceTree = "<group>"; };
 		B69CDF4F4158B8DC08EEB02F /* MacAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAppDelegate.swift; sourceTree = "<group>"; };
@@ -457,7 +457,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -481,7 +481,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -510,7 +510,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -677,7 +677,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -701,7 +701,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -730,7 +730,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
