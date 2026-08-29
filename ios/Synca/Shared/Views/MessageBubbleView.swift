@@ -845,17 +845,46 @@ struct MessageBubbleView: View {
         return try AttachmentCache.save(data, for: url, suggestedFileName: suggestedFileName)
     }
 
+    @MainActor
     private func presentShareSheet(for url: URL) {
         guard
             let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-            let root = scene.windows.first(where: \.isKeyWindow)?.rootViewController
+            let root = scene.windows.first(where: \.isKeyWindow)?.rootViewController,
+            let presenter = root.topMostPresentedViewController()
         else { return }
 
         let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        root.present(activity, animated: true)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = presenter.view
+            popover.sourceRect = CGRect(
+                x: presenter.view.bounds.midX,
+                y: presenter.view.bounds.maxY - 44,
+                width: 1,
+                height: 1
+            )
+            popover.permittedArrowDirections = []
+        }
+        presenter.present(activity, animated: true)
     }
     #endif
 }
+
+#if os(iOS)
+private extension UIViewController {
+    func topMostPresentedViewController() -> UIViewController? {
+        if let presentedViewController {
+            return presentedViewController.topMostPresentedViewController()
+        }
+        if let navigationController = self as? UINavigationController {
+            return navigationController.visibleViewController?.topMostPresentedViewController()
+        }
+        if let tabBarController = self as? UITabBarController {
+            return tabBarController.selectedViewController?.topMostPresentedViewController()
+        }
+        return self
+    }
+}
+#endif
 
 private extension MessageBubbleView {
     #if os(iOS)

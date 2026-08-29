@@ -672,7 +672,7 @@ final class SyncManager: ObservableObject {
     }
 
     func selectCategory(_ categoryId: String?) {
-        selectedCategoryId = categoryId ?? defaultCategory?.id ?? allCategoryPseudoId
+        selectedCategoryId = categoryId ?? allCategoryPseudoId
         SettingsManager.shared.setSelectedMessageCategoryId(selectedCategoryId, for: api.currentUserId)
         normalizeCategorySelections()
     }
@@ -703,7 +703,7 @@ final class SyncManager: ObservableObject {
 
     private func restoreLocalCategorySelections() {
         selectedCategoryId = SettingsManager.shared.selectedMessageCategoryId(for: api.currentUserId)
-            ?? defaultCategory?.id
+            ?? allCategoryPseudoId
     }
 
     private func normalizeCategorySelections() {
@@ -715,11 +715,11 @@ final class SyncManager: ObservableObject {
 
         let validIds = Set(categories.map(\.id))
         if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, !validIds.contains(selectedCategoryId) {
-            self.selectedCategoryId = defaultCategory?.id ?? allCategoryPseudoId
+            self.selectedCategoryId = allCategoryPseudoId
         } else if self.selectedCategoryId == nil {
             restoreLocalCategorySelections()
             if self.selectedCategoryId == nil {
-                self.selectedCategoryId = defaultCategory?.id ?? allCategoryPseudoId
+                self.selectedCategoryId = allCategoryPseudoId
             }
         }
 
