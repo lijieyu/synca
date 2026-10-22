@@ -64,7 +64,9 @@
 "sync.error_context.clear" = "清理";
 "sync.error_context.delete" = "删除";
 "sync.error_format" = "%@失败: %@ (Code: %d, Domain: %@)";
-"sync.batch_send_partial_failure" = "批量发送完成，但有 %d 张图片发送失败";
+"sync.batch_send_partial_failure" = "已发送 %d 张，%d 张未发送。%@";
+"sync.images_send_failed" = "图片发送失败：%@";
+"sync.images_send_limit" = "已发送 %d 张，%d 张因达到今日额度未发送。";
 "api.invalid_response" = "服务器响应异常";
 "api.unauthorized" = "登录已过期，请重新登录";
 "api.http_error" = "请求失败 (%d): %@";
@@ -90,7 +92,7 @@
 "access.free_usage" = "今日使用：%d/%d";
 "access.free_keep_access" = "查看、同步、清理和删除已有内容始终可用";
 "access.free_reset_hint" = "免费额度会在每天 0 点自动重置";
-"access.unlock_title" = "升级无限版";
+"access.unlock_title" = "解锁文件传输";
 "access.unlock_benefit_unlimited" = "不限新增消息数量";
 "access.unlock_benefit_cross_device" = "iPhone 和 Mac 跨设备持续可用";
 "access.unlock_benefit_capture_anytime" = "灵感来了随时记录，不再受限";
@@ -192,8 +194,8 @@
 "message_bubble.save_default_folder" = "所选文件夹";
 "message_bubble.choose_save_directory" = "选择保存目录";
 "message_bubble.save_to_directory" = "保存到此目录";
-"message_file.error_too_large" = "文件不能超过 25 MB。";
-"message_file.error_image_too_large" = "图片不能超过 20 MB。";
+"message_file.error_too_large" = "文件不能超过 200 MB。";
+"message_file.error_image_too_large" = "图片不能超过 50 MB。";
 "message_file.error_unsupported" = "暂不支持这种文件类型。";
 
 /* Message Categories */
@@ -233,3 +235,21 @@
 "image_preview.tap_to_retry" = "点击重试";
 
 "common.send" = "发送";
+
+"storage.free_benefits" = "免费：图片 ≤50 MB · 200 MB 空间 · 保存 3 天";
+"storage.paid_files" = "图片最大 50 MB，文件最大 200 MB";
+"storage.paid_capacity" = "2 GB 中转空间，附件保存 7 天";
+"storage.retention_notice" = "附件到期自动删除，请及时另存。永久购买解锁功能，不代表永久保存附件。";
+"storage.paid_required" = "文件传输为付费功能";
+"storage.full" = "中转空间已满，请删除不需要的附件后重试。";
+"storage.expired" = "附件已过期";
+"storage.image_too_large" = "图片不能超过 50 MB。";
+"storage.uploading" = "正在上传";
+"storage.retry_hint" = "文件尚未发送，可重试或取消。";
+"storage.retry" = "重试上传";
+"storage.free_hint" = "图片保存 3 天，请及时另存";
+"storage.paid_hint" = "图片与文件保存 7 天，请及时另存";
+"storage.expires" = "到期时间";
+"storage.title" = "方案与中转空间";
+"storage.paid_title" = "解锁文件传输";
+"storage.used" = "已使用";

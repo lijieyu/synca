@@ -41,16 +41,18 @@ struct MacSelectableText: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: CustomContextMenuTextView, context: Context) {
-        if nsView.textStorage?.string != attributedText.string {
-            nsView.textStorage?.setAttributedString(attributedText)
-        } else {
-            nsView.textStorage?.setAttributedString(attributedText)
-        }
-        nsView.textColor = NSColor(color)
+        let textColor = NSColor(color)
+        guard context.coordinator.attributedText?.isEqual(to: attributedText) != true
+            || nsView.textColor != textColor else { return }
+        context.coordinator.attributedText = attributedText.copy() as? NSAttributedString
+        nsView.textStorage?.setAttributedString(attributedText)
+        nsView.textColor = textColor
         nsView.font = NSFont.systemFont(ofSize: 13) // SwiftUI .body roughly maps to 13pt
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
+        var attributedText: NSAttributedString?
+
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
             if let url = link as? URL {
                 NSWorkspace.shared.open(url)

@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
+import Photos
 #elseif os(macOS)
 import AppKit
 #endif
@@ -72,6 +73,9 @@ struct MessageBubbleView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Content
             Group {
+                if message.type != .text && message.isAttachmentExpired {
+                    Label("storage.expired", systemImage: "clock.badge.xmark").foregroundStyle(.secondary)
+                } else {
                 switch message.type {
                 case .text:
                     textContent
@@ -80,8 +84,13 @@ struct MessageBubbleView: View {
                 case .file:
                     fileContent
                 }
+                }
             }
 
+            if message.type != .text, !message.isAttachmentExpired, let expiry = message.attachmentExpiryDate {
+                Text("\(String(localized: "storage.expires")): \(expiry.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             // Metadata row
             HStack {
                 Text(message.displayDate)
@@ -104,10 +113,10 @@ struct MessageBubbleView: View {
 
                 // #6: Actions row (Always visible)
                 HStack(spacing: 22) {
-                    if message.type == .image {
+                    if message.type == .image && !message.isAttachmentExpired {
                         downloadImageButton
                         copyImageButton
-                    } else if message.type == .file {
+                    } else if message.type == .file && !message.isAttachmentExpired {
                         downloadFileButton
                     }
                     if message.type == .text {
@@ -240,7 +249,7 @@ struct MessageBubbleView: View {
             } label: {
                 Label("common.delete", systemImage: "trash")
             }
-        } else if message.type == .image, let urlString = message.imageUrl, let url = URL(string: urlString) {
+        } else if !message.isAttachmentExpired, message.type == .image, let urlString = message.imageUrl, let url = URL(string: urlString) {
             Button {
                 self.copyImage(from: url)
             } label: {
@@ -270,7 +279,7 @@ struct MessageBubbleView: View {
             } label: {
                 Label("common.delete", systemImage: "trash")
             }
-        } else if message.type == .file, let urlString = message.fileUrl, let url = URL(string: urlString) {
+        } else if !message.isAttachmentExpired, message.type == .file, let urlString = message.fileUrl, let url = URL(string: urlString) {
             Button {
                 Task { await self.saveFile(from: url, suggestedFileName: fileName) }
             } label: {
@@ -296,6 +305,10 @@ struct MessageBubbleView: View {
             Button(role: .destructive) {
                 showDeleteConfirm = true
             } label: {
+                Label("common.delete", systemImage: "trash")
+            }
+        } else if message.isAttachmentExpired {
+            Button(role: .destructive) { showDeleteConfirm = true } label: {
                 Label("common.delete", systemImage: "trash")
             }
         }
@@ -490,7 +503,8 @@ struct MessageBubbleView: View {
     }
 
     private func copyImage(from url: URL) {
-        if let cachedData = ImageCache.getCachedData(for: url) {
+        guard !message.isAttachmentExpired, (try? APIClient.shared.attachmentSession(for: url)) != nil else { return }
+        if let cachedData = ImageCache.getCachedData(for: url, authorizationToken: APIClient.shared.token) {
             finishCopyingImage(cachedData, operationID: nil)
             return
         }
@@ -536,24 +550,19 @@ struct MessageBubbleView: View {
     private func saveImage(from url: URL) async {
         saveStatus = .saving
         do {
-            var request = URLRequest(url: url)
-            if let token = APIClient.shared.token {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let localURL = try await downloadToLocalFile(url: url, suggestedFileName: url.lastPathComponent)
             #if os(iOS)
-            if let image = UIImage(data: data) {
-                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                withAnimation { saveStatus = .success }
-            } else {
-                saveStatus = .error
+            try await PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: localURL)
             }
+            withAnimation { saveStatus = .success }
             #elseif os(macOS)
-            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
+            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ??
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-            let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
-            try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
-                try data.write(to: fileURL, options: .atomic)
+            let fileURL = try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
+                let destination = AttachmentFileName.availableURL(in: defaultURL, suggestedName: url.lastPathComponent)
+                try FileManager.default.copyItem(at: localURL, to: destination)
+                return destination
             }
             NSWorkspace.shared.activateFileViewerSelecting([fileURL])
             withAnimation { saveStatus = .success }
@@ -591,10 +600,10 @@ struct MessageBubbleView: View {
             #elseif os(macOS)
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-            let saveURL = defaultURL.appendingPathComponent(suggestedFileName)
-            try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
-                try? FileManager.default.removeItem(at: saveURL)
-                try FileManager.default.copyItem(at: localURL, to: saveURL)
+            let saveURL = try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
+                let destination = AttachmentFileName.availableURL(in: defaultURL, suggestedName: suggestedFileName)
+                try FileManager.default.copyItem(at: localURL, to: destination)
+                return destination
             }
             NSWorkspace.shared.activateFileViewerSelecting([saveURL])
             withAnimation { saveStatus = .success }
@@ -736,20 +745,16 @@ struct MessageBubbleView: View {
     }
 
     private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
+        guard !message.isAttachmentExpired else { throw APIError.attachmentExpired }
+        _ = try APIClient.shared.attachmentSession(for: url)
         if let cachedURL = AttachmentCache.cachedFileURL(for: url, suggestedFileName: suggestedFileName) {
             return cachedURL
         }
 
-        var request = URLRequest(url: url)
-        if let token = APIClient.shared.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-        return try AttachmentCache.save(data, for: url, suggestedFileName: suggestedFileName)
+        let downloadURL = try await APIClient.shared.downloadAttachment(from: url)
+        defer { try? FileManager.default.removeItem(at: downloadURL) }
+        guard !message.isAttachmentExpired else { throw APIError.attachmentExpired }
+        return try AttachmentCache.saveDownloadedFile(downloadURL, for: url, suggestedFileName: suggestedFileName)
     }
 
     private func saveImageAs(from url: URL) async {
@@ -829,20 +834,16 @@ struct MessageBubbleView: View {
 
     #if os(iOS)
     private func downloadToLocalFile(url: URL, suggestedFileName: String) async throws -> URL {
+        guard !message.isAttachmentExpired else { throw APIError.attachmentExpired }
+        _ = try APIClient.shared.attachmentSession(for: url)
         if let cachedURL = AttachmentCache.cachedFileURL(for: url, suggestedFileName: suggestedFileName) {
             return cachedURL
         }
 
-        var request = URLRequest(url: url)
-        if let token = APIClient.shared.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-        return try AttachmentCache.save(data, for: url, suggestedFileName: suggestedFileName)
+        let downloadURL = try await APIClient.shared.downloadAttachment(from: url)
+        defer { try? FileManager.default.removeItem(at: downloadURL) }
+        guard !message.isAttachmentExpired else { throw APIError.attachmentExpired }
+        return try AttachmentCache.saveDownloadedFile(downloadURL, for: url, suggestedFileName: suggestedFileName)
     }
 
     @MainActor
