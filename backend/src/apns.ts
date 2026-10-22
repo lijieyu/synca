@@ -83,7 +83,7 @@ class ApnsProvider {
         const signer = crypto.createSign('sha256');
         signer.update(unsigned);
         signer.end();
-        const signature = signer.sign(this.config.privateKey);
+        const signature = signer.sign({ key: this.config.privateKey, dsaEncoding: 'ieee-p1363' });
         const jwt = `${unsigned}.${base64Url(signature)}`;
         this.jwtCache = { token: jwt, expiresAtMs: (nowSec + 50 * 60) * 1000 };
         return jwt;
