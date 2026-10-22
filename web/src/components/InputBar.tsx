@@ -243,8 +243,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
         </div>
       </div>
 
-      <div className="transfer-status" aria-live="polite">
-        <span>{t(accessStatus?.isUnlimited ? 'storage.paid_hint' : 'storage.free_hint')}</span>
+      {(progress !== null || (retryAttachment && !isSending)) && <div className="transfer-status" aria-live="polite">
         {progress !== null && <div className="transfer-progress">
           <progress value={progress} max={1} aria-label={t('storage.uploading')} />
           <span>{Math.round(progress * 100)}%</span>
@@ -255,7 +254,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
           <button onClick={() => void sendAttachment(retryAttachment.file, retryAttachment.image, retryAttachment.categoryId)}>{t('storage.retry')}</button>
           <button onClick={() => setRetryAttachment(null)}>{t('common.cancel')}</button>
         </div>}
-      </div>
+      </div>}
       <Toast variant="error" duration={6000} message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 
       {showLimitModal && <PlanDialog onClose={() => setShowLimitModal(false)} />}
