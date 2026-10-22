@@ -5,6 +5,39 @@ import UniformTypeIdentifiers
 final class APIClient: ObservableObject {
     static let shared = APIClient()
 
+    private var sessionGeneration = UUID()
+    private var downloads: [UUID: Task<(URL, URLResponse), Error>] = [:]
+    private var requests: [UUID: Task<(Data, URLResponse), Error>] = [:]
+
+    func cancelPendingRequests() {
+        sessionGeneration = UUID()
+        requests.values.forEach { $0.cancel() }
+        requests.removeAll()
+        downloads.values.forEach { $0.cancel() }
+        downloads.removeAll()
+    }
+
+    private func performRequest(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        let generation = sessionGeneration
+        let id = UUID()
+        let task = Task { try await URLSession.shared.data(for: request) }
+        requests[id] = task
+        defer { requests.removeValue(forKey: id) }
+        do {
+            let result = try await withTaskCancellationHandler {
+                try await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            guard generation == sessionGeneration else { throw CancellationError() }
+            try Task.checkCancellation()
+            return result
+        } catch {
+            guard generation == sessionGeneration else { throw CancellationError() }
+            throw error
+        }
+    }
+
     private let baseURL: String
     private let currentUserIdKey = "currentUserId"
     private let currentUserEmailKey = "currentUserEmail"
@@ -22,6 +55,7 @@ final class APIClient: ObservableObject {
     var isAuthenticated: Bool { token != nil }
 
     func setToken(_ newToken: String, userId: String? = nil) {
+        cancelPendingRequests()
         token = newToken
         KeychainHelper.save(key: "authToken", value: newToken)
         if let userId {
@@ -30,6 +64,9 @@ final class APIClient: ObservableObject {
     }
 
     func clearToken() {
+        cancelPendingRequests()
+        ImageCache.clearCache()
+        AttachmentCache.clearCache()
         token = nil
         KeychainHelper.delete(key: "authToken")
         setCurrentUserId(nil)
@@ -51,6 +88,52 @@ final class APIClient: ObservableObject {
             UserDefaults.standard.set(newEmail, forKey: currentUserEmailKey)
         } else {
             UserDefaults.standard.removeObject(forKey: currentUserEmailKey)
+        }
+    }
+
+    func attachmentSession(for url: URL) throws -> UUID {
+        _ = try attachmentRequest(for: url)
+        return sessionGeneration
+    }
+
+    func isCurrentSession(_ identifier: UUID) -> Bool { identifier == sessionGeneration }
+
+    private func attachmentRequest(for url: URL) throws -> URLRequest {
+        guard let base = URL(string: baseURL), AttachmentOrigin.matches(url, baseURL: base) else {
+            throw APIError.invalidResponse
+        }
+        guard let token else { throw APIError.unauthorized }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15 * 60
+        return request
+    }
+
+    /// Disk-backed downloads are session-fenced, including images saved from a row action.
+    func downloadAttachment(from url: URL) async throws -> URL {
+        let generation = sessionGeneration
+        let request = try attachmentRequest(for: url)
+        let id = UUID()
+        let delegate = AttachmentRedirectDelegate(origin: url)
+        let task = Task { try await URLSession.shared.download(for: request, delegate: delegate) }
+        downloads[id] = task
+        defer { downloads.removeValue(forKey: id) }
+        let (temporaryURL, response) = try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: { task.cancel() }
+        do {
+            guard generation == sessionGeneration else { throw CancellationError() }
+            try Task.checkCancellation()
+            guard let response = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            guard (200...299).contains(response.statusCode) else {
+                let handle = try FileHandle(forReadingFrom: temporaryURL)
+                defer { try? handle.close() }
+                throw decodeAPIError(statusCode: response.statusCode, data: try handle.read(upToCount: 64 * 1024) ?? Data())
+            }
+            return temporaryURL
+        } catch {
+            try? FileManager.default.removeItem(at: temporaryURL)
+            throw error
         }
     }
 
@@ -113,7 +196,7 @@ final class APIClient: ObservableObject {
 
     func listMessages(since: String? = nil, limit: Int? = nil) async throws -> [SyncaMessage] {
         var params: [String: String] = [:]
-        if let since { params["since"] = since }
+        if let since { params["since"] = MessageSyncState.overlappingCursor(since) }
         if let limit { params["limit"] = String(limit) }
         let response: MessagesResponse = try await get("/messages", params: params)
         return response.messages
@@ -189,6 +272,7 @@ final class APIClient: ObservableObject {
     }
 
     func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
+        guard imageData.count <= PendingFileUpload.maxImageSize else { throw APIError.imageTooLarge }
         let url = URL(string: "\(baseURL)/messages/image")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -199,6 +283,7 @@ final class APIClient: ObservableObject {
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
+        request.setValue(String(imageData.count), forHTTPHeaderField: "X-Upload-Size")
         let format = detectMimeType(for: imageData)
 
         var data = Data()
@@ -227,7 +312,7 @@ final class APIClient: ObservableObject {
         data.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = data
 
-        let (responseData, response) = try await URLSession.shared.data(for: request)
+        let (responseData, response) = try await performRequest(request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -240,61 +325,70 @@ final class APIClient: ObservableObject {
         return try decoder.decode(SyncaMessage.self, from: responseData)
     }
 
-    func sendFileMessage(fileData: Data, fileName: String, mimeType: String? = nil, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
-        let url = URL(string: "\(baseURL)/messages/file")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        if let token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
+    func sendFileMessage(file: PendingFileUpload, sourceDevice: String? = nil, categoryId: String? = nil,
+                         progress: @escaping @Sendable (Double) -> Void) async throws -> SyncaMessage {
+        let generation = sessionGeneration
+        let fileURL = file.fileURL
+        let size = file.fileSize
         let boundary = UUID().uuidString
+        let name = multipartUploadFileName(for: file.fileName)
+        let mime = file.mimeType ?? "application/octet-stream"
+        var fields = ["fileName": multipartFieldValue(file.fileName)]
+        if let sourceDevice { fields["sourceDevice"] = multipartFieldValue(sourceDevice) }
+        if let categoryId { fields["categoryId"] = multipartFieldValue(categoryId) }
+        let uploadFields = fields
+        let preparation = Task.detached(priority: .userInitiated) {
+            let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            FileManager.default.createFile(atPath: destination.path, contents: nil)
+            do {
+                let output = try FileHandle(forWritingTo: destination)
+                defer { try? output.close() }
+                func write(_ value: String) throws { try output.write(contentsOf: Data(value.utf8)) }
+                try write("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(name)\"\r\nContent-Type: \(mime)\r\n\r\n")
+                let input = try FileHandle(forReadingFrom: fileURL)
+                defer { try? input.close() }
+                var copied = 0
+                while let chunk = try input.read(upToCount: 64 * 1024), !chunk.isEmpty {
+                    try Task.checkCancellation()
+                    copied += chunk.count
+                    guard copied <= size else { throw APIError.fileTooLarge }
+                    try output.write(contentsOf: chunk)
+                }
+                guard copied == size else { throw APIError.invalidResponse }
+                try write("\r\n")
+                for (key, value) in uploadFields {
+                    try write("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n\r\n\(value)\r\n")
+                }
+                try write("--\(boundary)--\r\n")
+                return destination
+            } catch { try? FileManager.default.removeItem(at: destination); throw error }
+        }
+        let bodyURL = try await withTaskCancellationHandler { try await preparation.value } onCancel: { preparation.cancel() }
+        defer { try? FileManager.default.removeItem(at: bodyURL) }
+        guard generation == sessionGeneration else { throw CancellationError() }
+        try Task.checkCancellation()
+        var request = URLRequest(url: URL(string: "\(baseURL)/messages/file")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15 * 60
+        request.setValue("Bearer \(token ?? "")", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        let resolvedMimeType = mimeType ?? mimeTypeForFileName(fileName) ?? "application/octet-stream"
-        let uploadFileName = multipartUploadFileName(for: fileName)
-
-        var data = Data()
-        data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(uploadFileName)\"\r\n".data(using: .utf8)!)
-        data.append("Content-Type: \(resolvedMimeType)\r\n\r\n".data(using: .utf8)!)
-        data.append(fileData)
-        data.append("\r\n".data(using: .utf8)!)
-
-        data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"fileName\"\r\n\r\n".data(using: .utf8)!)
-        data.append(multipartFieldValue(fileName).data(using: .utf8)!)
-        data.append("\r\n".data(using: .utf8)!)
-
-        if let sourceDevice {
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"sourceDevice\"\r\n\r\n".data(using: .utf8)!)
-            data.append(sourceDevice.data(using: .utf8)!)
-            data.append("\r\n".data(using: .utf8)!)
-        }
-
-        if let categoryId {
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"categoryId\"\r\n\r\n".data(using: .utf8)!)
-            data.append(categoryId.data(using: .utf8)!)
-            data.append("\r\n".data(using: .utf8)!)
-        }
-
-        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = data
-
-        let (responseData, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-        guard httpResponse.statusCode == 201 else {
-            throw decodeAPIError(statusCode: httpResponse.statusCode, data: responseData)
-        }
-
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(SyncaMessage.self, from: responseData)
+        request.setValue(String(size), forHTTPHeaderField: "X-Upload-Size")
+        request.setValue(file.uploadID, forHTTPHeaderField: "X-Upload-ID")
+        let delegate = UploadProgressDelegate(progress)
+        let task = Task { try await URLSession.shared.upload(for: request, fromFile: bodyURL, delegate: delegate) }
+        let id = UUID()
+        requests[id] = task
+        uploadRequests[id] = task
+        defer { requests.removeValue(forKey: id); uploadRequests.removeValue(forKey: id) }
+        let (data, response) = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+        guard generation == sessionGeneration else { throw CancellationError() }
+        guard let response = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        guard response.statusCode == 201 else { throw decodeAPIError(statusCode: response.statusCode, data: data) }
+        return try JSONDecoder().decode(SyncaMessage.self, from: data)
     }
+
+    private var uploadRequests: [UUID: Task<(Data, URLResponse), Error>] = [:]
+    func cancelUploads() { uploadRequests.values.forEach { $0.cancel() } }
 
     func clearMessage(id: String) async throws {
         let _: OkResponse = try await patch("/messages/\(id)/clear")
@@ -443,12 +537,9 @@ final class APIClient: ObservableObject {
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         #if DEBUG
         print("[APIClient] >>> \(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "")")
-        if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
-            print("[APIClient] Body: \(bodyString)")
-        }
         #endif
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await performRequest(request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             print("[APIClient] ❌ Invalid response type")
@@ -457,9 +548,6 @@ final class APIClient: ObservableObject {
         
         #if DEBUG
         print("[APIClient] <<< Status: \(httpResponse.statusCode)")
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("[APIClient] Response: \(responseString)")
-        }
         #endif
 
         if httpResponse.statusCode == 401 {
@@ -480,6 +568,12 @@ final class APIClient: ObservableObject {
 
         if statusCode == 401 {
             return .unauthorized
+        }
+
+        if let error = try? decoder.decode(ServerErrorResponse.self, from: data) {
+            if error.error == "storage_limit_reached" { return .storageFull }
+            if error.error == "file_upload_requires_paid" { return .fileRequiresPaid }
+            if error.error == "attachment_expired" { return .attachmentExpired }
         }
 
         if statusCode == 413 {
@@ -550,6 +644,7 @@ enum APIError: LocalizedError {
     case dailyLimitReached(AccessStatus?)
     case messageTooLong(Int)
     case feedbackTooLong(Int)
+    case storageFull, fileRequiresPaid, attachmentExpired, imageTooLarge
     case fileTooLarge
     case unsupportedFileType
     case offerUnavailable
@@ -557,6 +652,10 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .storageFull: return String(localized: "storage.full", bundle: .main)
+        case .fileRequiresPaid: return String(localized: "storage.paid_required", bundle: .main)
+        case .attachmentExpired: return String(localized: "storage.expired", bundle: .main)
+        case .imageTooLarge: return String(localized: "storage.image_too_large", bundle: .main)
         case .invalidResponse: return String(localized: "api.invalid_response", bundle: .main)
         case .unauthorized: return String(localized: "api.unauthorized", bundle: .main)
         case .dailyLimitReached: return String(localized: "access.limit_reached_title", bundle: .main)
@@ -585,4 +684,22 @@ struct LifetimeUpgradeOfferCodeResponse: Codable {
     let kind: LifetimeUpgradeOfferKind
     let code: String
     let discountedPriceLabel: String
+}
+
+private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let progress: @Sendable (Double) -> Void
+    init(_ progress: @escaping @Sendable (Double) -> Void) { self.progress = progress }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
+                    totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        if totalBytesExpectedToSend > 0 { progress(Double(totalBytesSent) / Double(totalBytesExpectedToSend)) }
+    }
+}
+
+private final class AttachmentRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let origin: URL
+    init(origin: URL) { self.origin = origin }
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(request.url.map { AttachmentOrigin.matches($0, baseURL: origin) } == true ? request : nil)
+    }
 }

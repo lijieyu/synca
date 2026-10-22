@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   title: string;
@@ -18,24 +19,37 @@ export const Modal: React.FC<Props> = ({
   title, message, confirmText = 'OK', cancelText = 'Cancel',
   onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size
 }) => {
+  const titleID = React.useId();
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const cancelRef = React.useRef(onCancel);
+  cancelRef.current = onCancel;
   const contentSizeClass = size === 'compact' ? '' : (children || size === 'large' ? 'modal-content-large' : '');
 
   React.useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ([...document.querySelectorAll('[role=dialog]')].at(-1) !== dialogRef.current) return;
+      if (event.key === 'Tab') {
+        const items = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]') ?? [])].filter(item => item.getClientRects().length > 0);
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCancel();
+        cancelRef.current();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
+    return () => { window.removeEventListener('keydown', handleKeyDown); previous?.focus(); };
+  }, []);
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
-      <div className={`modal-content ${contentSizeClass}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <h3 id="modal-title" className="modal-title">{title}</h3>
+      <div ref={dialogRef} tabIndex={-1} className={`modal-content ${contentSizeClass}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleID}>
+        <h3 id={titleID} className="modal-title">{title}</h3>
         {message ? <p className="modal-message">{message}</p> : null}
         {children}
         <div className={`modal-actions ${leadingActionText && onLeadingAction ? 'modal-actions-with-leading' : ''}`}>
@@ -53,6 +67,6 @@ export const Modal: React.FC<Props> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 };

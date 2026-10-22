@@ -1,3 +1,4 @@
+import { cleanupExpiredAttachments } from './storage.js';
 import 'dotenv/config';
 import app from './app.js';
 import { runMigrations } from './migrate.js';
@@ -6,6 +7,10 @@ const port = Number(process.env.PORT ?? 3000);
 
 // Run migrations on startup
 await runMigrations();
+
+await cleanupExpiredAttachments();
+const storageTimer = setInterval(() => void cleanupExpiredAttachments().catch(console.error), 60_000);
+storageTimer.unref();
 
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`synca-backend listening on 0.0.0.0:${port}`);

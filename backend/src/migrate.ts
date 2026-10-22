@@ -315,6 +315,21 @@ export async function runMigrations() {
     await sql`CREATE INDEX IF NOT EXISTS idx_lifetime_offer_codes_kind ON lifetime_upgrade_offer_codes(offer_kind)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_lifetime_offer_codes_assigned_user ON lifetime_upgrade_offer_codes(assigned_user_id)`.execute(db);
 
+    const messageColumns = await sql<{ name: string }>`PRAGMA table_info(messages)`.execute(db);
+    for (const [name, definition] of [
+        ['attachment_expires_at', 'TEXT'], ['attachment_purged', 'INTEGER NOT NULL DEFAULT 0'],
+    ]) {
+        if (!messageColumns.rows.some(column => column.name === name)) {
+            await sql.raw(`ALTER TABLE messages ADD COLUMN ${name} ${definition}`).execute(db);
+        }
+    }
+    await sql`CREATE INDEX IF NOT EXISTS idx_attachment_expiry ON messages(attachment_purged, attachment_expires_at)`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS upload_reservations (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, bytes INTEGER NOT NULL,
+        expires_at TEXT NOT NULL, filename TEXT, kind TEXT NOT NULL
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_upload_user ON upload_reservations(user_id)`.execute(db);
+
     console.log('[migrate] Migrations complete.');
 }
 

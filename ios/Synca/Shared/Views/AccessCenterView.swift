@@ -23,8 +23,9 @@ struct AccessCenterView: View {
                 }
             }
             .task {
-                await purchaseManager.loadProducts()
                 await accessManager.refresh()
+                guard !Task.isCancelled else { return }
+                await purchaseManager.loadProducts()
             }
             .onDisappear {
                 toastDismissTask?.cancel()
@@ -32,7 +33,7 @@ struct AccessCenterView: View {
                 accessManager.clearUpgradeHighlight()
             }
         }
-        .frame(minWidth: 360, idealWidth: 430)
+        .frame(idealWidth: 430)
         #if os(macOS)
         .frame(idealHeight: preferredMacHeight)
         #else
@@ -44,6 +45,7 @@ struct AccessCenterView: View {
             guard toast != nil else { return }
             toastDismissTask = Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
                     purchaseManager.clearToast()
                 }
@@ -66,27 +68,45 @@ struct AccessCenterView: View {
     @ViewBuilder
     private var contentContainer: some View {
         if let status = accessManager.status {
-            #if os(macOS)
-            VStack(alignment: .leading, spacing: 16) {
-                Text("access.center_title", bundle: .main)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                content(for: status)
-            }
-            .padding(20)
-            #else
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    #if os(macOS)
+                    Text("access.center_title").font(.title3.weight(.semibold))
+                    #endif
                     content(for: status)
-                }
-                .padding(20)
+                    if let storage = status.storage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("storage.used").font(.subheadline)
+                            Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+                                .font(.caption).foregroundStyle(.secondary)
+                            ProgressView(value: Double(min(storage.usedBytes, storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                        }.accessibilityElement(children: .combine)
+                    }
+                }.padding(20)
             }
-            #endif
-        } else {
+
+        } else if accessManager.isLoading {
             ProgressView("message_list.loading")
                 .frame(maxWidth: .infinity, minHeight: 260)
                 .padding(20)
+        } else {
+            VStack(spacing: 12) {
+                Label("access.status_load_failed", systemImage: "exclamationmark.icloud")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("access.status_load_failed_detail")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button("common.retry") {
+                    Task { await accessManager.refresh() }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 260)
+            .padding(20)
         }
     }
 
@@ -103,7 +123,7 @@ struct AccessCenterView: View {
                     .foregroundStyle(.primary)
 
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
-                benefitRow(systemImage: "arrow.clockwise.circle", text: "access.free_reset_hint")
+                benefitRow(systemImage: "photo", text: "storage.free_benefits")
             }
         }
     }
@@ -121,7 +141,9 @@ struct AccessCenterView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
                     benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
-                    benefitRow(systemImage: "sparkles.rectangle.stack", text: "access.shared_future_feature")
+                    benefitRow(systemImage: "doc", text: "storage.paid_files")
+                    benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+                    Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
 
                 VStack(spacing: 10) {
@@ -230,7 +252,7 @@ struct AccessCenterView: View {
                 HStack(alignment: .top, spacing: 12) {
                     Text(product?.displayName ?? fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
                         .allowsTightening(true)
                         .layoutPriority(1)
@@ -278,7 +300,7 @@ struct AccessCenterView: View {
                 HStack(alignment: .top, spacing: 12) {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
                         .allowsTightening(true)
                         .layoutPriority(1)
@@ -317,7 +339,7 @@ struct AccessCenterView: View {
                 HStack(alignment: .top, spacing: 12) {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
                         .allowsTightening(true)
                         .layoutPriority(1)
@@ -741,12 +763,12 @@ struct AccessCenterView: View {
     private var preferredMacHeight: CGFloat {
         guard let status = accessManager.status else { return 420 }
         if status.unlimitedSource == "lifetime" {
-            return 320
+            return 480
         }
         if status.unlimitedSource == "subscription" {
-            return 430
+            return 580
         }
-        return 560
+        return 680
     }
     #endif
 
@@ -797,7 +819,9 @@ struct AccessCenterView: View {
         VStack(alignment: .leading, spacing: 10) {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
             benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
-            benefitRow(systemImage: "sparkles.rectangle.stack", text: "access.shared_future_feature")
+            benefitRow(systemImage: "doc", text: "storage.paid_files")
+                    benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+                    Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 

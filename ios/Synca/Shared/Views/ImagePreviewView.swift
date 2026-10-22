@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
+import Photos
 #elseif os(macOS)
 import AppKit
 #endif
@@ -52,10 +53,14 @@ struct ImagePreviewView: View {
                 
                 HStack(spacing: 0) {
                     ForEach(0..<messages.count, id: \.self) { index in
-                        if let urlString = messages[index].imageUrl, let url = URL(string: urlString) {
-                            imagePage(url: url, size: size)
-                                .frame(width: size.width, height: size.height)
-                        }
+                        Group {
+                            if abs(index - currentIndex) <= 1, !messages[index].isAttachmentExpired,
+                               let urlString = messages[index].imageUrl, let url = URL(string: urlString) {
+                                imagePage(url: url, size: size)
+                            } else {
+                                Color.clear
+                            }
+                        }.frame(width: size.width, height: size.height)
                     }
                 }
                 .offset(x: -CGFloat(currentIndex) * size.width)
@@ -97,7 +102,7 @@ struct ImagePreviewView: View {
 
     @ViewBuilder
     private func imagePage(url: URL, size: CGSize) -> some View {
-        CachedAsyncImage(url: url, onSuccess: nil) { phase in
+        CachedAsyncImage(url: url, maximumPixelSize: 4096, onSuccess: nil) { phase in
             switch phase {
             case .success(let image):
                 image
@@ -363,7 +368,8 @@ struct ImagePreviewView: View {
     // MARK: - Actions (Modified for paging)
     
     private func copyImage(from url: URL) {
-        if let cachedData = ImageCache.getCachedData(for: url) {
+        guard attachmentIsAvailable(url), (try? APIClient.shared.attachmentSession(for: url)) != nil else { return }
+        if let cachedData = ImageCache.getCachedData(for: url, authorizationToken: APIClient.shared.token) {
             if ImageClipboard.write(cachedData) {
                 syncManager.showSuccessFeedback(
                     String(localized: "message_bubble.image_copied", bundle: .main)
@@ -408,25 +414,35 @@ struct ImagePreviewView: View {
         }
     }
 
+    private func attachmentIsAvailable(_ url: URL) -> Bool {
+        messages.contains { $0.imageUrl == url.absoluteString && !$0.isAttachmentExpired }
+    }
+
+    private func downloadImageFile(from url: URL) async throws -> URL {
+        guard attachmentIsAvailable(url) else { throw APIError.attachmentExpired }
+        _ = try APIClient.shared.attachmentSession(for: url)
+        if let cached = AttachmentCache.cachedFileURL(for: url, suggestedFileName: url.lastPathComponent) { return cached }
+        let temporaryURL = try await APIClient.shared.downloadAttachment(from: url)
+        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+        guard attachmentIsAvailable(url) else { throw APIError.attachmentExpired }
+        return try AttachmentCache.saveDownloadedFile(temporaryURL, for: url, suggestedFileName: url.lastPathComponent)
+    }
+
     private func saveImage(from url: URL) async {
         saveStatus = .saving
         do {
-            var request = URLRequest(url: url)
-            if let token = APIClient.shared.token {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let localURL = try await downloadImageFile(from: url)
             #if os(iOS)
-            if let image = UIImage(data: data) {
-                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                saveStatus = .success
+            try await PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: localURL)
             }
+            saveStatus = .success
             #elseif os(macOS)
-            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ?? 
+            let defaultURL = SettingsManager.shared.macOSDefaultSavePath ??
                 FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-            let fileURL = defaultURL.appendingPathComponent(url.lastPathComponent)
             try SettingsManager.shared.withSecurityScopedAccess(to: defaultURL) {
-                try data.write(to: fileURL, options: .atomic)
+                let destination = AttachmentFileName.availableURL(in: defaultURL, suggestedName: url.lastPathComponent)
+                try FileManager.default.copyItem(at: localURL, to: destination)
             }
             saveStatus = .success
             #endif
@@ -506,24 +522,13 @@ struct ImagePreviewView: View {
     }
 
     private func downloadToTemp(url: URL) async throws -> URL {
-        var request = URLRequest(url: url)
-        if let token = APIClient.shared.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
-        try data.write(to: tempURL)
-        return tempURL
+        try await downloadImageFile(from: url)
     }
 
     private func saveImageAs(from url: URL) async {
         do {
-            var request = URLRequest(url: url)
-            if let token = APIClient.shared.token {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            let (data, _) = try await URLSession.shared.data(for: request)
-            
+            let localURL = try await downloadImageFile(from: url)
+
             await MainActor.run {
                 let panel = NSSavePanel()
                 panel.nameFieldStringValue = url.lastPathComponent
@@ -539,7 +544,7 @@ struct ImagePreviewView: View {
                     SettingsManager.shared.setMacOSDefaultSavePath(parentURL)
                     do {
                         try? FileManager.default.removeItem(at: saveURL)
-                        try data.write(to: saveURL, options: .atomic)
+                        try FileManager.default.copyItem(at: localURL, to: saveURL)
                         self.saveStatus = .success
                     } catch {
                         print("Save Image As copy failed: \(error)")

@@ -212,7 +212,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: 'Product Scope',
                     paragraphs: [
                         'Synca is designed for personal capture and cross-device sync of text and image entries using Sign in with Apple.',
-                        'Synca offers a free plan that allows up to 20 new entries per day. Users may also choose a monthly subscription, an annual subscription, or a lifetime purchase for unlimited access.',
+                        'Synca offers a free plan that allows up to 20 new entries per day. Paid plans unlock files up to 200 MB, 2 GB of transfer storage and 7-day attachment retention. Free accounts have 200 MB of image storage with 3-day retention. Images are limited to 50 MB. Save attachments elsewhere before they expire; lifetime purchase does not mean permanent storage.',
                     ],
                 },
                 {
@@ -416,7 +416,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: '产品范围',
                     paragraphs: [
                         'Synca 主要用于通过 Sign in with Apple 登录后，在个人设备之间同步文字和图片记录。',
-                        'Synca 免费版用户每日最多可新增 20 条内容；用户也可选择购买月付订阅、年付订阅或买断版本，以获得不限量使用权益。',
+                        'Synca 免费版用户每日最多可新增 20 条内容；免费版提供 200 MB 图片空间，保存 3 天；付费版解锁最大 200 MB 文件传输、2 GB 中转空间及 7 天附件保存。图片最大 50 MB。请在到期前另存，永久购买不代表永久保存附件。',
                     ],
                 },
                 {

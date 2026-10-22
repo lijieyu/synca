@@ -64,7 +64,9 @@
 "sync.error_context.clear" = "Clear";
 "sync.error_context.delete" = "Delete";
 "sync.error_format" = "%@ failed: %@ (Code: %d, Domain: %@)";
-"sync.batch_send_partial_failure" = "Batch send finished, but %d images failed to send";
+"sync.batch_send_partial_failure" = "Sent %d images; %d not sent. %@";
+"sync.images_send_failed" = "Images could not be sent: %@";
+"sync.images_send_limit" = "Sent %d images; %d not sent because the daily limit was reached.";
 "api.invalid_response" = "Invalid server response";
 "api.unauthorized" = "Session expired. Please sign in again";
 "api.http_error" = "Request failed (%d): %@";
@@ -90,7 +92,7 @@
 "access.free_usage" = "Today's usage: %d/%d";
 "access.free_keep_access" = "Viewing, syncing, clearing, and deleting existing messages always remain available";
 "access.free_reset_hint" = "Your free allowance resets automatically every day at midnight";
-"access.unlock_title" = "Unlock Unlimited";
+"access.unlock_title" = "Unlock file transfers";
 "access.unlock_benefit_unlimited" = "Unlimited new messages";
 "access.unlock_benefit_cross_device" = "Keep using the same access across iPhone and Mac";
 "access.unlock_benefit_capture_anytime" = "Capture whenever inspiration hits";
@@ -192,8 +194,8 @@
 "message_bubble.save_default_folder" = "the selected folder";
 "message_bubble.choose_save_directory" = "Choose Save Directory";
 "message_bubble.save_to_directory" = "Save to This Directory";
-"message_file.error_too_large" = "Files must be 25 MB or smaller.";
-"message_file.error_image_too_large" = "Images must be 20 MB or smaller.";
+"message_file.error_too_large" = "Files must be 200 MB or smaller.";
+"message_file.error_image_too_large" = "Images must be 50 MB or smaller.";
 "message_file.error_unsupported" = "This file type is not supported.";
 
 /* Message Categories */
@@ -233,3 +235,25 @@
 "image_preview.tap_to_retry" = "Tap to Retry";
 
 "common.send" = "Send";
+
+"storage.free_benefits" = "Free: images up to 50 MB · 200 MB storage · kept for 3 days";
+"storage.paid_files" = "Images up to 50 MB; files up to 200 MB";
+"storage.paid_capacity" = "2 GB transfer storage; attachments kept for 7 days";
+"storage.retention_notice" = "Attachments expire automatically. Save a copy elsewhere. Lifetime purchase unlocks features, not permanent attachment storage.";
+"storage.paid_required" = "File transfers require a paid plan";
+"storage.full" = "Transfer storage is full. Delete attachments you no longer need, then try again.";
+"storage.expired" = "Attachment expired";
+"storage.image_too_large" = "Images must be 50 MB or smaller.";
+"storage.uploading" = "Uploading";
+"storage.retry_hint" = "File not sent. Retry or cancel.";
+"storage.retry" = "Retry upload";
+"storage.free_hint" = "Images are kept for 3 days. Save a copy elsewhere.";
+"storage.paid_hint" = "Images and files are kept for 7 days. Save a copy elsewhere.";
+"storage.expires" = "Expires";
+"storage.title" = "Plans & transfer storage";
+"storage.paid_title" = "Unlock file transfers";
+"storage.used" = "Used";
+
+"access.status_load_failed" = "Unable to load your plan";
+"access.status_load_failed_detail" = "Check your connection and try again.";
+"common.retry" = "Retry";

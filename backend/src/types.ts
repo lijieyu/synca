@@ -20,6 +20,7 @@ export interface SyncaLifetimeUpgradeOffer {
 }
 
 export interface SyncaAccessStatus {
+    storage?: { usedBytes: number; limitBytes: number; imageLimitBytes: number; fileLimitBytes: number; retentionDays: number; canUploadFiles: boolean };
     plan: SyncaAccessPlan;
     isUnlimited: boolean;
     isTrial: boolean;
@@ -36,6 +37,8 @@ export interface SyncaAccessStatus {
 }
 
 export interface SyncaMessage {
+    attachmentExpiresAt?: string | null;
+    attachmentExpired?: boolean;
     id: string;
     userId: string;
     type: 'text' | 'image' | 'file';

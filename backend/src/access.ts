@@ -1,3 +1,6 @@
+import { storagePolicy, storageUsage } from './storagePolicy.js';
+import { FREE_DAILY_MESSAGE_LIMIT, DEFAULT_TIMEZONE_OFFSET_SECONDS, getUsageWindow } from './usagePolicy.js';
+export { FREE_DAILY_MESSAGE_LIMIT } from './usagePolicy.js';
 import {
     assignLifetimeUpgradeCode,
     countAvailableLifetimeUpgradeCodes,
@@ -19,19 +22,11 @@ import {
     YEARLY_TO_LIFETIME_DISCOUNT_LABEL,
 } from './iap.js';
 
-export const FREE_DAILY_MESSAGE_LIMIT = 20;
-const DAILY_RESET_OFFSET_HOURS = 8;
-
 export class DailyLimitError extends Error {
     constructor(public readonly accessStatus: SyncaAccessStatus) {
         super('daily_limit_reached');
     }
 }
-
-type UsageWindow = {
-    start: string;
-    end: string;
-};
 
 export async function buildAccessStatus(userId: string, now = new Date()): Promise<SyncaAccessStatus> {
     const user = await getUserAccessFields(userId);
@@ -40,14 +35,17 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
     }
 
     const nowIso = now.toISOString();
-    const offsetSeconds = user.timezone_offset_seconds ?? (DAILY_RESET_OFFSET_HOURS * 60 * 60);
+    const offsetSeconds = user.timezone_offset_seconds ?? DEFAULT_TIMEZONE_OFFSET_SECONDS;
     const usageWindow = getUsageWindow(now, offsetSeconds);
     const todayUsed = await countMessagesCreatedBetween(userId, usageWindow.start, usageWindow.end);
     const hasLifetime = Boolean(user.lifetime_purchased_at);
     const hasSubscription = Boolean(user.subscription_expires_at && user.subscription_expires_at > nowIso);
 
+    const storage = { ...storagePolicy(hasLifetime || hasSubscription), usedBytes: await storageUsage(userId) };
+
     if (hasLifetime) {
         return {
+            storage,
             plan: 'unlimited',
             isUnlimited: true,
             isTrial: false,
@@ -65,6 +63,7 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
 
     if (hasSubscription) {
         return {
+            storage,
             plan: 'unlimited',
             isUnlimited: true,
             isTrial: false,
@@ -81,6 +80,7 @@ export async function buildAccessStatus(userId: string, now = new Date()): Promi
     }
 
     return {
+        storage,
         plan: 'free',
         isUnlimited: false,
         isTrial: false,
@@ -164,17 +164,6 @@ export async function buildLifetimeUpgradeOffer(userId: string, status: SyncaAcc
         discountedPriceLabel: discountedPriceLabelForKind(kind),
         isCodeAvailable: Boolean(assignedCode || availableCount > 0),
         code: assignedCode?.code ?? null,
-    };
-}
-
-function getUsageWindow(now: Date, offsetSeconds: number): UsageWindow {
-    const offsetMs = offsetSeconds * 1000;
-    const local = new Date(now.getTime() + offsetMs);
-    const startUtcMs = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
-    const endUtcMs = startUtcMs + 24 * 60 * 60 * 1000;
-    return {
-        start: new Date(startUtcMs).toISOString(),
-        end: new Date(endUtcMs).toISOString(),
     };
 }
 

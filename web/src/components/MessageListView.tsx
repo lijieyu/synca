@@ -1,3 +1,4 @@
+import { PlanDialog } from './PlanDialog';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
@@ -149,6 +150,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
 };
 
 export const MessageListView: React.FC = () => {
+  const [showPlan, setShowPlan] = useState(false);
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,17 +171,23 @@ export const MessageListView: React.FC = () => {
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
   const listRef = useRef<HTMLDivElement>(null);
   const didRestorePreferencesRef = useRef(false);
+  const fetchRevision = useRef(0);
+  const pendingFetches = useRef(0);
 
   const { logout, isAdmin, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
 
   const fetchData = async (scrollToBottom = false) => {
+    const revision = ++fetchRevision.current;
+    const token = localStorage.getItem('authToken');
+    pendingFetches.current += 1;
     try {
       const [messagesRes, categoriesRes] = await Promise.all([
         api.listMessages(),
         api.listMessageCategories(),
       ]);
 
+      if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken')) return false;
       const sortedMessages = sortMessages(messagesRes.messages);
       setMessages(sortedMessages);
       setCategories(categoriesRes.categories);
@@ -211,18 +219,29 @@ export const MessageListView: React.FC = () => {
           }
         });
       }
+      return true;
     } catch (error) {
       console.error(error);
+      return false;
     } finally {
-      setIsLoading(false);
+      pendingFetches.current -= 1;
+      if (revision === fetchRevision.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     didRestorePreferencesRef.current = false;
     void fetchData(true);
-    const timer = setInterval(() => void fetchData(false), 10000);
-    return () => clearInterval(timer);
+    const poll = () => {
+      if (!document.hidden && pendingFetches.current === 0) void fetchData(false);
+    };
+    const timer = setInterval(poll, 10000);
+    document.addEventListener('visibilitychange', poll);
+    return () => {
+      ++fetchRevision.current;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', poll);
+    };
   }, [email]);
 
   useEffect(() => {
@@ -271,7 +290,7 @@ export const MessageListView: React.FC = () => {
   }, [tiledCategories.length]);
 
   const handleRefresh = async () => {
-    await fetchData(false);
+    if (!await fetchData(false)) return;
     setToastMsg(t('message_list.sync_success', 'Synced'));
     setShowToast(true);
   };
@@ -425,15 +444,16 @@ export const MessageListView: React.FC = () => {
     }
 
     return (
-      <span className="admin-tag" style={{ background: color, marginLeft: '6px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <button type="button" onClick={() => setShowPlan(true)} aria-label={t('storage.title')} className="admin-tag" style={{ background: color, marginLeft: '6px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
         {label}
-        {isUnlimited && <span style={{ fontSize: '12px', lineHeight: 1 }}>∞</span>}
-      </span>
+        {isUnlimited && <span aria-hidden="true">✦</span>}
+      </button>
     );
   };
 
   return (
     <div className={`app-container ${layoutMode === 'tiled' ? 'tiled-layout' : ''}`}>
+      {showPlan && <PlanDialog onClose={() => setShowPlan(false)} />}
       <div className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
@@ -466,17 +486,15 @@ export const MessageListView: React.FC = () => {
 
           <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 8px', opacity: 0.8 }} />
 
-          {email && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 8px 4px 14px', borderRadius: '20px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
+          <div className="header-account" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 8px 4px 14px', borderRadius: '20px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>
+                {email && <span className="header-email" style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>}
                 {getPlanInfo()}
               </div>
               <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')} style={{ width: '28px', height: '28px', minWidth: '28px', background: 'transparent', margin: 0 }}>
                 <LogOut size={14} />
               </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -516,7 +534,7 @@ export const MessageListView: React.FC = () => {
               isLoading={isLoading}
               onRefresh={handleRefresh}
               onClearCompleted={() => handleScopedClear(category.id)}
-              onSent={() => fetchData(false)}
+              onSent={async () => { await fetchData(false); }}
             />
           ))}
         </div>

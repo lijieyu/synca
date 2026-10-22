@@ -10,6 +10,23 @@
 - **角标提示**：iOS 角标 + macOS Dock 角标显示未清理数量
 - **Sign in with Apple**：唯一登录方式，零配置
 
+## 附件中转策略
+
+| 权益 | 免费 | 付费（订阅或永久购买） |
+| --- | --- | --- |
+| 图片上限 | 50 MB | 50 MB |
+| 普通文件上限 | 不开放 | 200 MB |
+| 图片和文件合计空间 | 200 MB | 2 GB |
+| 附件保留 | 3 天 | 7 天 |
+
+文字不随附件到期删除；免费账号沿用每日 20 条新增内容限制。附件从上传完成计时，下载不续期，升级或降级不修改已上传附件的到期时间。永久购买解锁功能，不提供永久附件存储。容量满时停止新上传；未到期附件不会被自动挤出。
+
+服务端通过 `/me/access-status` 的 `storage` 返回额度与使用量。上传使用 `X-Upload-Size` 预占空间，并以该大小限制接收流；缺省时按单文件上限预占。`X-Upload-ID` 为一次逻辑上传的 UUID，重试必须复用，以免网络响应丢失后重复创建消息。相同账号最多 4 个上传预占，上传最长 15 分钟。所有媒体仅通过鉴权后的 `/api/media/:filename` 访问，到期返回 410；旧 `/uploads` 公共入口已关闭。
+
+服务启动后每分钟清理一批最多 200 个到期附件，失败保留记录以便重试；消息及文件名保留。磁盘清理成功后释放过期附件空间。崩溃遗留的上传预占在 1 小时后清理。正常请求失败或取消会释放预占。
+
+发布时需同时部署后端、客户端和代理配置：`scripts/deploy-release.sh all` 包含 210 MB 请求体上限、15 分钟超时及上传请求关闭代理缓冲的配置。不能只修改客户端限额。存储策略测试使用隔离数据库运行 `backend/tests/storage.test.ts`，覆盖真实 50 MB 图片、200 MB 文件、容量并发、到期和幂等重试。
+
 ## 技术架构
 
 ```
@@ -183,11 +200,16 @@ APNS_TOPIC=org.haerth.synca
 APNS_AUTH_KEY_PATH=/opt/synca/backend/certs/AuthKey_HCP7BQP4K5.p8
 ```
 
+APNs 是原有的后台同步功能。上面的 `.p8` 私钥需要单独安全配置到服务器，权限设为 `600`，不放入 Git 或发布包。后端部署会在切换服务前检查已启用推送的配置和私钥格式；更换密钥后需重启 `synca-api` 才会生效。
+
+后台同步使用 `content-available` 和优先级 `5`，不携带通知声音、弹窗或角标；App 完成同步后自行更新角标。验证时应分别确认服务端配置、Apple 接口响应和真实设备同步，接口返回成功不代表设备已完成同步。
+
 ### 常用运维命令
 
 ```bash
-# 部署 (本地执行)
-cd backend && bash deploy.sh
+# 同时部署 Web、后端和代理配置 (项目根目录执行)
+bash scripts/deploy-release.sh all
+# 单独部署仍可使用 backend/deploy.sh 或 web/deploy.sh
 
 # 查看日志 (服务器)
 pm2 logs synca-api --lines 50
@@ -202,11 +224,18 @@ pm2 list
 cd /opt/synca/backend && node dist/src/migrate.js
 ```
 
+发布脚本先构建并上传到 `/opt/synca/releases/<时间>-<提交>/`，一致性备份 SQLite 和当前代码/代理配置，再执行增量迁移并切换版本。启动或代理检查失败会恢复旧代码和配置；不会用备份数据库覆盖上线期间的新数据。当前版本记录在 `/opt/synca/current-release`。发布后还需验证鉴权、真实上传、到期清理和多端同步，不能仅以健康检查作为验收依据。
+
 ### 运行测试
 
 ```bash
-cd backend && npm test     # 14 个 API 测试
+cd backend && npm test
+cd ../web && ../backend/node_modules/.bin/vitest run --config vitest.config.ts
+cd .. && bash ios/Tests/run.sh
+bash ios/Tests/run-transfers.sh
 ```
+
+后端覆盖存储边界、并发额度、清理重试、账号隔离、购买与 API 契约；Web 覆盖附件缓存/会话生命周期；原生覆盖列表索引、增量合并以及真实 200 MB 流式传输。原生传输脚本启动隔离本地测试服务，不使用线上账号。
 
 ## Apple 开发者配置
 

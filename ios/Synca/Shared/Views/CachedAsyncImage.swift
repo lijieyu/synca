@@ -9,81 +9,43 @@ import AppKit
 /// Images are downloaded once and subsequent loads are instant from disk.
 struct CachedAsyncImage<Content: View>: View {
     let url: URL
+    let maximumPixelSize: Int
     let onSuccess: (() -> Void)?
     @ViewBuilder let content: (AsyncImagePhase) -> Content
     
     @State private var phase: AsyncImagePhase = .empty
-    @State private var loadTask: Task<Void, Never>?
     @State private var reloadID = UUID()
 
-    init(url: URL, onSuccess: (() -> Void)? = nil, @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
+    init(url: URL, maximumPixelSize: Int = 1024, onSuccess: (() -> Void)? = nil, @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
         self.url = url
+        self.maximumPixelSize = maximumPixelSize
         self.onSuccess = onSuccess
         self.content = content
     }
 
     var body: some View {
         content(phase)
-            .id(reloadID)
-            .onAppear {
-                loadImage()
-            }
-            .onChange(of: url) { _ in
-                loadImage()
-            }
-            .onDisappear {
-                loadTask?.cancel()
+            .task(id: "\(url.absoluteString)-\(reloadID)") {
+                await loadImage()
             }
     }
 
-    private func loadImage() {
-        loadTask?.cancel()
-        
-        // Initial state
-        if let data = ImageCache.getCachedData(for: url) {
-            #if os(iOS)
-            if let uiImage = UIImage(data: data) {
-                phase = .success(Image(uiImage: uiImage))
-                onSuccess?()
-                return
-            }
-            #elseif os(macOS)
-            if let nsImage = NSImage(data: data) {
-                phase = .success(Image(nsImage: nsImage))
-                onSuccess?()
-                return
-            }
-            #endif
-        }
-        
+    @MainActor
+    private func loadImage() async {
         phase = .empty
         
-        loadTask = Task {
-            do {
-                let data = try await ImageCache.loadData(
-                    for: url,
-                    authorizationToken: APIClient.shared.token
-                )
-                
-                #if os(iOS)
-                if let uiImage = UIImage(data: data) {
-                    phase = .success(Image(uiImage: uiImage))
-                    onSuccess?()
-                } else {
-                    phase = .failure(URLError(.cannotDecodeContentData))
-                }
-                #elseif os(macOS)
-                if let nsImage = NSImage(data: data) {
-                    phase = .success(Image(nsImage: nsImage))
-                    onSuccess?()
-                } else {
-                    phase = .failure(URLError(.cannotDecodeContentData))
-                }
-                #endif
-            } catch {
-                if !Task.isCancelled {
-                    phase = .failure(error)
-                }
+        do {
+            let image = try await ImageCache.thumbnail(
+                for: url,
+                authorizationToken: APIClient.shared.token,
+                maximumPixelSize: maximumPixelSize
+            )
+            try Task.checkCancellation()
+            phase = .success(Image(decorative: image, scale: 1, orientation: .up))
+            onSuccess?()
+        } catch {
+            if !Task.isCancelled {
+                phase = .failure(error)
             }
         }
     }
@@ -91,6 +53,5 @@ struct CachedAsyncImage<Content: View>: View {
     /// Trigger a force reload by bypassing memory (but still potentially hitting disk)
     func retry() {
         reloadID = UUID()
-        loadImage()
     }
 }

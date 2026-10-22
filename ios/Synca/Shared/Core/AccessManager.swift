@@ -9,6 +9,8 @@ final class AccessManager: ObservableObject {
     @Published var showAccessCenter = false
     @Published var shouldHighlightUpgrade = false
 
+    private var refreshID = UUID()
+
     private init() {}
 
     func refresh() async {
@@ -17,17 +19,23 @@ final class AccessManager: ObservableObject {
             return
         }
 
+        let requestID = UUID()
+        refreshID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if refreshID == requestID { isLoading = false } }
 
         do {
-            status = try await APIClient.shared.getAccessStatus()
+            let result = try await APIClient.shared.getAccessStatus()
+            guard refreshID == requestID, APIClient.shared.isAuthenticated else { return }
+            status = result
         } catch {
             print("[access] refresh failed: \(error)")
         }
     }
 
     func apply(_ newStatus: AccessStatus) {
+        refreshID = UUID()
+        isLoading = false
         status = newStatus
     }
 
@@ -40,6 +48,7 @@ final class AccessManager: ObservableObject {
     }
 
     func clear() {
+        refreshID = UUID()
         status = nil
         isLoading = false
         showAccessCenter = false

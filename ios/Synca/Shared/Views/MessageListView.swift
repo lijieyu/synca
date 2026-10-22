@@ -83,11 +83,18 @@ private struct StatusToastStyle: ViewModifier {
 }
 
 struct MessageListView: View {
+    private enum Timing {
+        static let scrollCoalescingNanoseconds: UInt64 = 50_000_000
+        static let errorDisplayNanoseconds: UInt64 = 6_000_000_000
+    }
+
     @EnvironmentObject var syncManager: SyncManager
     @EnvironmentObject var api: APIClient
     @EnvironmentObject var accessManager: AccessManager
     @EnvironmentObject var purchaseManager: PurchaseManager
     @ObservedObject private var settings = SettingsManager.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var scrollTask: Task<Void, Never>?
     @State private var inputText = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showFileImporter = false
@@ -113,6 +120,27 @@ struct MessageListView: View {
     var body: some View {
         NavigationStack {
             rootContent
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 4) {
+                Text(AccessManager.shared.status?.isUnlimited == true ? "storage.paid_hint" : "storage.free_hint")
+                    .font(.caption2).foregroundStyle(.secondary).padding(.horizontal)
+
+                if let progress = syncManager.uploadProgress {
+                    HStack(spacing: 12) {
+                        ProgressView(value: progress).accessibilityLabel(Text("storage.uploading"))
+                        Text(progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
+                        Button("common.cancel") { syncManager.cancelFileUpload() }
+                    }.padding().background(.regularMaterial)
+                } else if syncManager.failedFile != nil {
+                    HStack {
+                        Text("storage.retry_hint").font(.caption)
+                        Spacer()
+                        Button("storage.retry") { Task { await syncManager.retryFileUpload() } }
+                        Button("common.cancel") { syncManager.failedFile = nil }
+                    }.padding().background(.regularMaterial)
+                }
+            }
+            }
             .background(Color.syncaPageBackground.ignoresSafeArea())
             .navigationTitle("")
 #if os(iOS)
@@ -228,7 +256,7 @@ struct MessageListView: View {
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
             shouldScrollToBottomAfterInitialLoad = true
-            syncManager.restoreCachedDataIfAvailable()
+            await syncManager.restoreCachedDataIfAvailable()
             
             let pm = purchaseManager
             Task.detached(priority: .background) {
@@ -252,11 +280,21 @@ struct MessageListView: View {
                 showSessionExpired = true
             }
         }
-        .onChange(of: syncManager.errorMessage) { message in
-            guard message != nil else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                syncManager.errorMessage = nil
-            }
+        .task(id: syncManager.errorMessage) {
+            guard let message = syncManager.errorMessage else { return }
+            #if os(iOS)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            UIAccessibility.post(notification: .announcement, argument: message)
+            #elseif os(macOS)
+            NSAccessibility.post(
+                element: NSApp.mainWindow as Any? ?? NSApp as Any,
+                notification: .announcementRequested,
+                userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue]
+            )
+            #endif
+            try? await Task.sleep(nanoseconds: Timing.errorDisplayNanoseconds)
+            guard !Task.isCancelled, syncManager.errorMessage == message else { return }
+            syncManager.errorMessage = nil
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -385,11 +423,11 @@ struct MessageListView: View {
     }
 
     private var allTodoCount: Int {
-        syncManager.messages.filter { !$0.isCleared }.count
+        syncManager.todoCount()
     }
 
     private func todoCount(for categoryId: String?) -> Int {
-        syncManager.messages(for: categoryId).filter { !$0.isCleared }.count
+        syncManager.todoCount(for: categoryId)
     }
 
     private var clearActionMessage: String {
@@ -550,7 +588,7 @@ struct MessageListView: View {
         let uncompleted = filteredMessages.filter { !$0.isCleared }
 
         if !syncManager.hasCompletedInitialLoad {
-            Color.clear
+            ProgressView("message_list.loading")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if completed.isEmpty && uncompleted.isEmpty {
             emptyStateView
@@ -580,11 +618,14 @@ struct MessageListView: View {
                                 messageView(for: message)
                             }
                         }
+
+                        Color.clear
+                            .frame(height: 1)
+                            .id("bottom")
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, 8)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: filteredMessages)
                     .background(
                         Color.clear
                             .contentShape(Rectangle())
@@ -594,10 +635,6 @@ struct MessageListView: View {
                                 #endif
                             }
                     )
-
-                    Color.clear
-                        .frame(height: 1)
-                        .id("bottom")
                 }
                 #if os(iOS)
                 .scrollDismissesKeyboard(.immediately)
@@ -633,12 +670,17 @@ struct MessageListView: View {
                 .onAppear {
                     if syncManager.hasCompletedInitialLoad && !filteredMessages.isEmpty {
                         beginInitialLoadScrollWindow()
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
+                        scrollToBottomAfterLayoutSettles(proxy: proxy)
                     }
                 }
+                .onDisappear {
+                    scrollTask?.cancel()
+                    initialLoadScrollWindowID = UUID()
+                    shouldScrollToBottomAfterInitialLoad = false
+                }
             }
+            // A new category must not inherit the previous list's scroll geometry.
+            .id(syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId)
         }
     }
 
@@ -667,18 +709,20 @@ struct MessageListView: View {
         if let errorMessage = syncManager.errorMessage {
             Label {
                 Text(errorMessage)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.center)
             } icon: {
                 Image(systemName: "xmark.circle.fill")
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(.callout.weight(.semibold))
             .foregroundColor(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Color.red)
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
+            .frame(maxWidth: 480)
+            .padding(.horizontal, 16)
             .padding(.top, topInset)
             .transition(.move(edge: .top).combined(with: .opacity))
         } else if showFeedbackSuccessToast {
@@ -991,18 +1035,23 @@ struct MessageListView: View {
     }
 
     private func sendPendingFile(_ pendingFile: PendingFileUpload, categoryId: String?) async {
-        await syncManager.sendFile(data: pendingFile.data, fileName: pendingFile.fileName, mimeType: pendingFile.mimeType, categoryId: categoryId)
+        await syncManager.sendFile(file: pendingFile, categoryId: categoryId)
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
-        let delays: [TimeInterval] = [0, 0.10, 0.24, 0.45]
-
-        for delay in delays {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                withAnimation(.easeOut(duration: 0.25)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+        scrollTask?.cancel()
+        let categoryId = syncManager.selectedCategoryId
+        scrollTask = Task { @MainActor in
+            // Coalesce image-load notifications into a single pending scroll.
+            try? await Task.sleep(nanoseconds: Timing.scrollCoalescingNanoseconds)
+            guard !Task.isCancelled, categoryId == syncManager.selectedCategoryId else { return }
+            #if os(macOS)
+            proxy.scrollTo("bottom", anchor: .bottom)
+            #else
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
+            #endif
         }
     }
 
@@ -1337,9 +1386,7 @@ private struct TiledCategoryColumn: View {
                 onFile: { pendingFile in
                     Task {
                         await syncManager.sendFile(
-                            data: pendingFile.data,
-                            fileName: pendingFile.fileName,
-                            mimeType: pendingFile.mimeType,
+                            file: pendingFile,
                             categoryId: category.id
                         )
                     }
@@ -1489,9 +1536,7 @@ private struct TiledCategoryColumn: View {
                 continue
             }
             await syncManager.sendFile(
-                data: pendingFile.data,
-                fileName: pendingFile.fileName,
-                mimeType: pendingFile.mimeType,
+                file: pendingFile,
                 categoryId: category.id
             )
         }

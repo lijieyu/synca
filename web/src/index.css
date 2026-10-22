@@ -1321,3 +1321,32 @@ button.category-chip:hover {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+.storage-plans { display: grid; gap: 12px; text-align: left; min-width: 0; }
+.storage-plans section { padding: 16px; border: 1px solid var(--border-color); border-radius: 12px; }
+.storage-plans h4 { margin: 0 0 8px; font-size: 1rem; }
+.storage-plans p, .storage-plans ul { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.storage-plans ul { padding-inline-start: 20px; }
+.storage-plans .storage-plan-paid { border-color: var(--synca-purple); }
+.storage-notice, .attachment-expiry { color: var(--text-secondary); font-size: .8rem; line-height: 1.5; }
+.storage-plans progress { display: block; width: 100%; margin-top: 8px; accent-color: var(--synca-purple); }
+.transfer-status { padding: 4px 16px 8px; text-align: center; font-size: .75rem; color: var(--text-secondary); }
+.transfer-progress { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.transfer-progress button { color: var(--synca-purple); background: transparent; border: 0; min-height: 36px; cursor: pointer; }
+.transfer-progress progress { min-width: 100px; max-width: 50%; accent-color: var(--synca-purple); }
+.modal-content:has(.storage-plans) { max-height: 85dvh; overflow-y: auto; width: min(480px, calc(100vw - 32px)); box-sizing: border-box; }
+
+@media (max-width: 600px) {
+  .header { height: auto; min-height: 50px; padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+  .header-email { display: none; }
+  .header-account { padding: 4px 6px !important; gap: 4px !important; }
+  .modal-content:has(.storage-plans) { padding: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .modal-content { animation: none; }
+}
+
+.auth-image { max-width: 100%; }
+.auth-image .message-image { max-width: min(320px, 100%); }
+.attachment-placeholder { width: min(200px, 100%); min-height: 150px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 16px; background: var(--bg-color); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 8px; font: inherit; }
+button.attachment-placeholder { cursor: pointer; }

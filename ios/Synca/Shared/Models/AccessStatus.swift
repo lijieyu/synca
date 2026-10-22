@@ -12,7 +12,17 @@ struct LifetimeUpgradeOffer: Codable, Equatable {
     let code: String?
 }
 
+struct StorageAllowance: Codable, Equatable {
+    let usedBytes: Int64
+    let limitBytes: Int64
+    let imageLimitBytes: Int64
+    let fileLimitBytes: Int64
+    let retentionDays: Int
+    let canUploadFiles: Bool
+}
+
 struct AccessStatus: Codable, Equatable {
+    var storage: StorageAllowance? = nil
     let plan: String
     let isUnlimited: Bool
     let isTrial: Bool
