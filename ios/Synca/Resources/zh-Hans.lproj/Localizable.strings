@@ -253,3 +253,7 @@
 "storage.title" = "方案与中转空间";
 "storage.paid_title" = "解锁文件传输";
 "storage.used" = "已使用";
+
+"access.status_load_failed" = "暂时无法加载权益";
+"access.status_load_failed_detail" = "请检查网络连接后重试。";
+"common.retry" = "重试";

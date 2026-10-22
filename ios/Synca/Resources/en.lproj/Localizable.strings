@@ -253,3 +253,7 @@
 "storage.title" = "Plans & transfer storage";
 "storage.paid_title" = "Unlock file transfers";
 "storage.used" = "Used";
+
+"access.status_load_failed" = "Unable to load your plan";
+"access.status_load_failed_detail" = "Check your connection and try again.";
+"common.retry" = "Retry";

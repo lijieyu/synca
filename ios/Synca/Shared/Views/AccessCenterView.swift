@@ -23,8 +23,9 @@ struct AccessCenterView: View {
                 }
             }
             .task {
-                await purchaseManager.loadProducts()
                 await accessManager.refresh()
+                guard !Task.isCancelled else { return }
+                await purchaseManager.loadProducts()
             }
             .onDisappear {
                 toastDismissTask?.cancel()
@@ -84,10 +85,28 @@ struct AccessCenterView: View {
                 }.padding(20)
             }
 
-        } else {
+        } else if accessManager.isLoading {
             ProgressView("message_list.loading")
                 .frame(maxWidth: .infinity, minHeight: 260)
                 .padding(20)
+        } else {
+            VStack(spacing: 12) {
+                Label("access.status_load_failed", systemImage: "exclamationmark.icloud")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("access.status_load_failed_detail")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button("common.retry") {
+                    Task { await accessManager.refresh() }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 260)
+            .padding(20)
         }
     }
 
