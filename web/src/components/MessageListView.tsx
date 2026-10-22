@@ -486,17 +486,15 @@ export const MessageListView: React.FC = () => {
 
           <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 8px', opacity: 0.8 }} />
 
-          {email && (
-            <div className="header-account" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 8px 4px 14px', borderRadius: '20px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
+          <div className="header-account" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 8px 4px 14px', borderRadius: '20px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="header-email" style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>
+                {email && <span className="header-email" style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>}
                 {getPlanInfo()}
               </div>
               <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')} style={{ width: '28px', height: '28px', minWidth: '28px', background: 'transparent', margin: 0 }}>
                 <LogOut size={14} />
               </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
