@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { api, type MessageCategory, type SyncaMessage } from '../api/client';
+import { api, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
 import { Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
+import { Toast } from './Toast';
 import { AuthImage } from './AuthImage';
 
 interface Props {
@@ -26,11 +27,25 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
 );
 
 export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }) => {
+  const [actionError, setActionError] = useState('');
+  const [attachmentExpired, setAttachmentExpired] = useState(false);
+  const expired = attachmentExpired || message.attachmentExpired || Boolean(message.attachmentExpiresAt && Date.parse(message.attachmentExpiresAt) <= Date.now());
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileAction, setFileAction] = useState<'open' | 'download' | null>(null);
   const [isImageOpening, setIsImageOpening] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { t } = useTranslation();
+  const reportError = (error: unknown) => {
+    if (error instanceof DOMException && error.name === 'AbortError') return;
+    const expired = error instanceof StorageError && error.code === 'attachment_expired';
+    if (expired) setAttachmentExpired(true);
+    setActionError(t(expired ? 'storage.expired' : 'storage.action_failed'));
+  };
+  const openPreview = (objectUrl: string, previewWindow: Window | null) => {
+    if (previewWindow) previewWindow.location.href = objectUrl;
+    else window.open(objectUrl, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  };
   const fileExtension = useMemo(() => {
     if (!message.fileName) return '';
     const ext = message.fileName.split('.').pop();
@@ -79,7 +94,8 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
       await api.clearMessage(message.id);
       onUpdate();
     } catch (e) {
-      console.error(e);
+      reportError(e);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -91,13 +107,14 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
       await api.deleteMessage(message.id);
       onUpdate();
     } catch (e) {
-      console.error(e);
+      reportError(e);
+    } finally {
       setIsProcessing(false);
     }
   };
 
   const handleFileOpen = async () => {
-    if (!message.fileUrl || isProcessing) return;
+    if (expired || !message.fileUrl || isProcessing) return;
     const previewWindow = window.open('', '_blank');
     if (previewWindow) {
       previewWindow.opener = null;
@@ -105,15 +122,11 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
     setIsProcessing(true);
     setFileAction('open');
     try {
-      const objectUrl = await api.openProtectedFile(message.fileUrl);
-      if (previewWindow) {
-        previewWindow.location.href = objectUrl;
-      } else {
-        window.open(objectUrl, '_blank', 'noopener,noreferrer');
-      }
+      const objectUrl = await api.openProtectedFile(message.fileUrl, message.attachmentExpiresAt);
+      openPreview(objectUrl, previewWindow);
     } catch (e) {
       previewWindow?.close();
-      console.error(e);
+      reportError(e);
     } finally {
       setFileAction(null);
       setIsProcessing(false);
@@ -122,13 +135,13 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
 
   const handleFileDownload = async (event?: React.MouseEvent) => {
     event?.stopPropagation();
-    if (!message.fileUrl || isProcessing) return;
+    if (expired || !message.fileUrl || isProcessing) return;
     setIsProcessing(true);
     setFileAction('download');
     try {
-      await api.downloadProtectedFile(message.fileUrl, message.fileName);
+      await api.downloadProtectedFile(message.fileUrl, message.fileName, message.attachmentExpiresAt);
     } catch (e) {
-      console.error(e);
+      reportError(e);
     } finally {
       setFileAction(null);
       setIsProcessing(false);
@@ -136,22 +149,18 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
   };
 
   const handleImageOpen = async () => {
-    if (!message.imageUrl || isProcessing || isImageOpening) return;
+    if (expired || !message.imageUrl || isProcessing || isImageOpening) return;
     const previewWindow = window.open('', '_blank');
     if (previewWindow) {
       previewWindow.opener = null;
     }
     setIsImageOpening(true);
     try {
-      const objectUrl = await api.openProtectedFile(message.imageUrl);
-      if (previewWindow) {
-        previewWindow.location.href = objectUrl;
-      } else {
-        window.open(objectUrl, '_blank', 'noopener,noreferrer');
-      }
+      const objectUrl = await api.openProtectedFile(message.imageUrl, message.attachmentExpiresAt);
+      openPreview(objectUrl, previewWindow);
     } catch (e) {
       previewWindow?.close();
-      console.error(e);
+      reportError(e);
     } finally {
       setIsImageOpening(false);
     }
@@ -171,7 +180,8 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
       await api.updateMessageCategoryAssignment(message.id, categoryId);
       onUpdate();
     } catch (e) {
-      console.error(e);
+      reportError(e);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -186,14 +196,17 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
   return (
     <>
       <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
+        {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
+        {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (
           <div className="message-content">{linkify(message.textContent ?? '')}</div>
         )}
         
-        {message.type === 'image' && message.imageUrl && (
+        {!expired && message.type === 'image' && message.imageUrl && (
           <AuthImage
             url={message.imageUrl}
-            alt="Shared content"
+            expiresAt={message.attachmentExpiresAt}
+            alt={t('storage.shared_image')}
             className={`message-image ${isImageOpening ? 'opening' : ''}`}
             onClick={() => void handleImageOpen()}
             onKeyDown={handleImageKeyDown}
@@ -203,7 +216,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
           />
         )}
 
-        {message.type === 'file' && (
+        {!expired && message.type === 'file' && (
           <button className="file-card" onClick={handleFileOpen} disabled={isProcessing}>
             <div className="file-card-icon">{fileIcon}</div>
             <div className="file-card-meta">
@@ -246,7 +259,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
                     value={message.categoryId ?? ''}
                     onChange={(e) => handleCategoryChange(e.target.value)}
                     disabled={isProcessing}
-                    aria-label="Message category"
+                    aria-label={t('storage.message_category')}
                   >
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
@@ -260,7 +273,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
           </div>
           
           <div className="actions">
-            {message.type === 'file' && (
+            {!expired && message.type === 'file' && (
               <button className="action-btn" onClick={handleFileDownload} disabled={isProcessing} title={t('common.save', 'Save')}>
                 {fileAction === 'download' ? <span className="action-spinner" aria-hidden="true" /> : <Download size={16} />}
               </button>
@@ -270,6 +283,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
             </button>
             <button 
               className={`action-btn ${message.isCleared ? 'cleared-icon' : ''}`} 
+              aria-label={t(message.isCleared ? 'storage.completed' : 'storage.mark_complete')}
               onClick={handleClear} 
               disabled={message.isCleared || isProcessing}
             >
@@ -283,6 +297,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
         </div>
       </div>
 
+      <Toast variant="error" duration={6000} message={actionError} visible={Boolean(actionError)} onClose={() => setActionError('')} />
       {showDeleteModal && (
         <Modal
           title={t('message_bubble.delete_confirm_title', 'Confirm Delete')}

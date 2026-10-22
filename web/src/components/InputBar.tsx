@@ -1,9 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { api, DailyLimitError } from '../api/client';
+import { api, DailyLimitError, StorageError } from '../api/client';
 import { ImagePlus, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
-import { Modal } from './Modal';
+import { PlanDialog } from './PlanDialog';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
   onSent: () => void;
@@ -19,6 +20,11 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
 );
 
 export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
+  const { accessStatus } = useAuth();
+  const uploadController = useRef<AbortController | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [retryAttachment, setRetryAttachment] = useState<{ file: File; image: boolean; categoryId?: string | null } | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -31,7 +37,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
 
   const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,image/*';
   const supportedDocumentExtensionSet = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
-  const maxDocumentSize = 25 * 1024 * 1024;
+  const maxDocumentSize = 200 * 1024 * 1024;
   useEffect(() => {
     // Focus when not sending (initial mount and after message sent)
     if (!isSending) {
@@ -64,69 +70,53 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
       if (e instanceof DailyLimitError) {
         setShowLimitModal(true);
       } else {
-        setToastMsg(t('sync.error_context.send', 'Send failed'));
+        setToastMsg(t('storage.text_send_failed'));
         setShowToast(true);
       }
     }
     setIsSending(false);
   };
 
-  const sendImage = async (file: File) => {
+  const sendAttachment = async (file: File, image: boolean, targetCategoryId = categoryId) => {
     if (isSending) return;
+    if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null }); setShowLimitModal(true); return; }
+    if (!image && !supportedDocumentExtensionSet.has(file.name.split('.').pop()?.toLowerCase() ?? '')) {
+      setToastMsg(t('message_file.error_unsupported')); setShowToast(true); return;
+    }
+    if (file.size > (image ? 50 * 1024 * 1024 : maxDocumentSize)) {
+      setToastMsg(t(image ? 'storage.image_too_large' : 'message_file.error_too_large')); setShowToast(true); return;
+    }
+    const controller = new AbortController();
+    uploadController.current = controller;
+    setRetryAttachment(null);
+    setProgress(0);
     setIsSending(true);
     try {
-      await api.sendImageMessage(file, categoryId);
+      const options = { signal: controller.signal, onProgress: setProgress };
+      if (image) await api.sendImageMessage(file, targetCategoryId, options);
+      else await api.sendFileMessage(file, targetCategoryId, options);
       onSent();
-    } catch (err) {
-      console.error(err);
-      if (err instanceof DailyLimitError) {
-        setShowLimitModal(true);
-      } else {
-        setToastMsg(t('sync.error_context.send_image', 'Image send failed'));
+    } catch (error) {
+      setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null });
+      if (error instanceof DailyLimitError || (error instanceof StorageError && error.code === 'file_upload_requires_paid')) setShowLimitModal(true);
+      else if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setToastMsg(t(error instanceof StorageError && error.code === 'storage_limit_reached' ? 'storage.full' : image ? 'storage.image_send_failed' : 'storage.file_send_failed'));
         setShowToast(true);
       }
-    }
-    setIsSending(false);
-    if (imageInputRef.current) {
-      imageInputRef.current.value = '';
-    }
-  };
-
-  const sendFile = async (file: File) => {
-    if (isSending) return;
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-    if (!supportedDocumentExtensionSet.has(extension)) {
-      setToastMsg(t('message_file.error_unsupported', 'This file type is not supported.'));
-      setShowToast(true);
-      return;
-    }
-    if (file.size > maxDocumentSize) {
-      setToastMsg(t('message_file.error_too_large', 'Files must be 25 MB or smaller.'));
-      setShowToast(true);
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      await api.sendFileMessage(file, categoryId);
-      onSent();
-    } catch (err) {
-      console.error(err);
-      if (err instanceof DailyLimitError) {
-        setShowLimitModal(true);
-      } else {
-        setToastMsg(t('sync.error_context.send_file', 'File send failed'));
-        setShowToast(true);
-      }
-    }
-    setIsSending(false);
-    if (documentInputRef.current) {
-      documentInputRef.current.value = '';
+    } finally {
+      uploadController.current = null;
+      setProgress(null);
+      setIsSending(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      if (documentInputRef.current) documentInputRef.current.value = '';
     }
   };
+  const sendImage = (file: File) => sendAttachment(file, true);
+  const sendFile = (file: File) => sendAttachment(file, false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       await sendImage(file);
     }
@@ -134,6 +124,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
 
   const handleDocumentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       if (file.type.startsWith('image/')) {
         await sendImage(file);
@@ -165,6 +156,8 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Do not send while Enter is confirming Chinese/Japanese input (Safari also uses keyCode 229).
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     // Enter alone (no meta, no shift) = send
     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
@@ -207,6 +200,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
             <input
               type="file"
               accept="image/*"
+              aria-label={t('storage.choose_image')}
               onChange={handleFileChange}
               ref={imageInputRef}
               disabled={isSending}
@@ -218,6 +212,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
             <input
               type="file"
               accept={supportedDocumentExtensions}
+              aria-label={t('storage.choose_file')}
               onChange={handleDocumentChange}
               ref={documentInputRef}
               disabled={isSending}
@@ -233,11 +228,13 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             disabled={isSending}
+            aria-label={t('message_list.input_placeholder', 'Capture your thoughts...')}
             rows={1}
           />
 
           <button
             className="send-btn"
+            aria-label={t('common.send')}
             onClick={handleSendText}
             disabled={!text.trim() || isSending}
           >
@@ -246,18 +243,23 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
         </div>
       </div>
 
-      <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
+      <div className="transfer-status" aria-live="polite">
+        <span>{t(accessStatus?.isUnlimited ? 'storage.paid_hint' : 'storage.free_hint')}</span>
+        {progress !== null && <div className="transfer-progress">
+          <progress value={progress} max={1} aria-label={t('storage.uploading')} />
+          <span>{Math.round(progress * 100)}%</span>
+          <button onClick={() => uploadController.current?.abort()}>{t('common.cancel')}</button>
+        </div>}
+        {retryAttachment && !isSending && <div className="transfer-progress">
+          <span>{t('storage.retry_hint')}</span>
+          <button onClick={() => void sendAttachment(retryAttachment.file, retryAttachment.image, retryAttachment.categoryId)}>{t('storage.retry')}</button>
+          <button onClick={() => setRetryAttachment(null)}>{t('common.cancel')}</button>
+        </div>}
+      </div>
+      <Toast variant="error" duration={6000} message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 
-      {showLimitModal && (
-        <Modal
-          title={t('access.limit_reached_title', 'Daily Quota Reached')}
-          message={t('access.limit_reached_message', "Today's quota has been used up. Please download Synca from the App Store to complete the purchase and upgrade in-app.")}
-          confirmText={t('access.go_to_appstore', 'View on App Store')}
-          cancelText={t('common.ok', 'OK')}
-          onConfirm={() => window.open('https://apps.apple.com/app/synca-sync-your-aha-moment/id6761647007', '_blank')}
-          onCancel={() => setShowLimitModal(false)}
-        />
-      )}
+      {showLimitModal && <PlanDialog onClose={() => setShowLimitModal(false)} />}
+
     </>
   );
 };

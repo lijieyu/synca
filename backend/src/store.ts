@@ -3,6 +3,8 @@ import { sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs/promises';
 import path from 'path';
+import { DEFAULT_TIMEZONE_OFFSET_SECONDS, FREE_DAILY_MESSAGE_LIMIT, getUsageWindow } from './usagePolicy.js';
+import { storagePolicy } from './storagePolicy.js';
 import { SyncaUser, SyncaMessage, SyncaLifetimeUpgradeOfferKind, SyncaMessageCategory, SyncaMessageCategoryColor } from './types.js';
 import { UsersTable, MessagesTable, IapTransactionsTable, LifetimeUpgradeOfferCodesTable, MessageCategoriesTable } from './db_types.js';
 
@@ -21,15 +23,18 @@ function toUser(row: UsersTable): SyncaUser {
 }
 
 function toMessage(row: MessagesTable, baseUrl?: string): SyncaMessage {
+    const expired = Boolean(row.attachment_purged || (row.attachment_expires_at && row.attachment_expires_at <= new Date().toISOString()));
     return {
+        attachmentExpiresAt: row.attachment_expires_at,
+        attachmentExpired: expired,
         id: row.id,
         userId: row.user_id,
         type: row.type as 'text' | 'image' | 'file',
         textContent: row.text_content ?? undefined,
-        imagePath: row.image_path ?? undefined,
-        imageUrl: row.image_path && baseUrl ? `${baseUrl}/api/media/${row.image_path}` : undefined,
-        filePath: row.file_path ?? undefined,
-        fileUrl: row.file_path && baseUrl ? `${baseUrl}/api/media/${row.file_path}` : undefined,
+        imagePath: !row.is_deleted ? row.image_path ?? undefined : undefined,
+        imageUrl: !row.is_deleted && !expired && row.image_path && baseUrl ? `${baseUrl}/api/media/${row.image_path}` : undefined,
+        filePath: !row.is_deleted ? row.file_path ?? undefined : undefined,
+        fileUrl: !row.is_deleted && !expired && row.file_path && baseUrl ? `${baseUrl}/api/media/${row.file_path}` : undefined,
         fileName: row.file_name ?? undefined,
         fileSize: row.file_size ?? undefined,
         fileMimeType: row.file_mime_type ?? undefined,
@@ -371,98 +376,63 @@ export async function deleteAccount(input: {
     filesDir: string;
     feedbackUploadsDir: string;
 }): Promise<boolean> {
-    const messageRows = await db.selectFrom('messages')
-        .select(['image_path', 'file_path'])
-        .where('user_id', '=', input.userId)
-        .execute();
-
-    const feedbackRows = await db.selectFrom('feedbacks')
-        .select(['image_paths'])
-        .where('user_id', '=', input.userId)
-        .execute();
-
-    const storedImagePaths = messageRows
-        .map((row) => row.image_path)
-        .filter((value): value is string => Boolean(value));
-    const storedFilePaths = messageRows
-        .map((row) => row.file_path)
-        .filter((value): value is string => Boolean(value));
-    const feedbackImagePaths = feedbackRows.flatMap((row) => {
-        if (!row.image_paths) return [];
-        try {
-            const parsed = JSON.parse(row.image_paths);
-            return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string' && value.length > 0) : [];
-        } catch {
-            return [];
-        }
-    });
-
-    const user = await getUser(input.userId);
-    if (!user) {
-        return false;
-    }
-
+    if (!(await getUser(input.userId))) return false;
+    const cleanup: { id: string; filename: string; kind: 'image' | 'file' | 'feedback' }[] = [];
     await db.transaction().execute(async (trx) => {
-        await trx.deleteFrom('feedbacks')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('iap_transactions')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('device_push_tokens')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('lifetime_upgrade_offer_codes')
-            .where('assigned_user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('message_usage_events')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('messages')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('message_categories')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('sessions')
-            .where('user_id', '=', input.userId)
-            .execute();
-
-        await trx.deleteFrom('users')
-            .where('id', '=', input.userId)
-            .execute();
-    });
-
-    const fileTargets = [
-        ...storedImagePaths.map((value) => path.resolve(input.uploadsDir, value)),
-        ...storedFilePaths.map((value) => path.resolve(input.filesDir, value)),
-        ...feedbackImagePaths.map((value) => path.resolve(input.feedbackUploadsDir, value)),
-    ];
-
-    await Promise.all(fileTargets.map(async (target) => {
-        try {
-            await fs.unlink(target);
-        } catch (error: any) {
-            if (error?.code !== 'ENOENT') {
-                console.error(`[account/delete] Failed to remove file ${target}:`, error);
-            }
+        // Fence active uploads and capture paths under the same lock as deletion.
+        await sql`UPDATE upload_reservations SET expires_at='1970-01-01T00:00:00.000Z'
+            WHERE user_id=${input.userId}`.execute(trx);
+        const messageRows = await trx.selectFrom('messages').select(['image_path', 'file_path'])
+            .where('user_id', '=', input.userId).execute();
+        const feedbackRows = await trx.selectFrom('feedbacks').select('image_paths')
+            .where('user_id', '=', input.userId).execute();
+        for (const row of messageRows) {
+            if (row.image_path) cleanup.push({ id: uuidv4(), filename: row.image_path, kind: 'image' });
+            if (row.file_path) cleanup.push({ id: uuidv4(), filename: row.file_path, kind: 'file' });
         }
-    }));
-
+        for (const row of feedbackRows) {
+            if (!row.image_paths) continue;
+            try {
+                const paths = JSON.parse(row.image_paths);
+                if (Array.isArray(paths)) for (const filename of paths) {
+                    if (typeof filename === 'string' && filename.length > 0) {
+                        cleanup.push({ id: uuidv4(), filename, kind: 'feedback' });
+                    }
+                }
+            } catch { /* Malformed historical metadata has no usable paths. */ }
+        }
+        // These zero-byte expired records outlive the account only until physical
+        // deletion succeeds, allowing the normal sweeper to retry filesystem errors.
+        for (const item of cleanup) {
+            await sql`INSERT INTO upload_reservations(id,user_id,bytes,expires_at,filename,kind)
+                VALUES(${item.id},${input.userId},0,'1970-01-01T00:00:00.000Z',${item.filename},${item.kind})`.execute(trx);
+        }
+        await trx.deleteFrom('feedbacks').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('iap_transactions').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('device_push_tokens').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('lifetime_upgrade_offer_codes').where('assigned_user_id', '=', input.userId).execute();
+        await trx.deleteFrom('message_usage_events').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('messages').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('message_categories').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('sessions').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('users').where('id', '=', input.userId).execute();
+    });
+    for (const item of cleanup) {
+        const directory = item.kind === 'image' ? input.uploadsDir : item.kind === 'file' ? input.filesDir : input.feedbackUploadsDir;
+        try {
+            if (path.basename(item.filename) !== item.filename) throw new Error('invalid_media_path');
+            try { await fs.unlink(path.resolve(directory, item.filename)); }
+            catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+            await sql`DELETE FROM upload_reservations WHERE id=${item.id}`.execute(db);
+        } catch (error) { console.error('[account/delete] Media cleanup queued for retry', item.id, error); }
+    }
     return true;
 }
 
 // ── Message Category DAO ──
 
-async function ensureDefaultCategory(userId: string, now = new Date().toISOString()): Promise<MessageCategoriesTable> {
-    const existing = await db.selectFrom('message_categories')
+async function ensureDefaultCategory(userId: string, now = new Date().toISOString(), executor: typeof db = db): Promise<MessageCategoriesTable> {
+    const existing = await executor.selectFrom('message_categories')
         .selectAll()
         .where('user_id', '=', userId)
         .where('is_default', '=', 1)
@@ -473,7 +443,7 @@ async function ensureDefaultCategory(userId: string, now = new Date().toISOStrin
     }
 
     const id = uuidv4();
-    await db.insertInto('message_categories').values({
+    await executor.insertInto('message_categories').values({
         id,
         user_id: userId,
         name: 'Default',
@@ -484,7 +454,7 @@ async function ensureDefaultCategory(userId: string, now = new Date().toISOStrin
         updated_at: now,
     }).execute();
 
-    return (await db.selectFrom('message_categories')
+    return (await executor.selectFrom('message_categories')
         .selectAll()
         .where('id', '=', id)
         .executeTakeFirst())!;
@@ -649,12 +619,12 @@ export async function deleteMessageCategory(input: {
     return true;
 }
 
-async function resolveCategoryId(userId: string, categoryId: string | null | undefined, now: string): Promise<string> {
+async function resolveCategoryId(userId: string, categoryId: string | null | undefined, now: string, executor: typeof db = db): Promise<string> {
     if (!categoryId) {
-        return (await ensureDefaultCategory(userId, now)).id;
+        return (await ensureDefaultCategory(userId, now, executor)).id;
     }
 
-    const category = await db.selectFrom('message_categories')
+    const category = await executor.selectFrom('message_categories')
         .select(['id'])
         .where('id', '=', categoryId)
         .where('user_id', '=', userId)
@@ -664,7 +634,7 @@ async function resolveCategoryId(userId: string, categoryId: string | null | und
         return category.id;
     }
 
-    return (await ensureDefaultCategory(userId, now)).id;
+    return (await ensureDefaultCategory(userId, now, executor)).id;
 }
 
 export async function updateMessageCategoryAssignment(input: {
@@ -752,6 +722,12 @@ export async function getMessage(id: string, baseUrl?: string): Promise<SyncaMes
     } : undefined;
 }
 
+export class MessageWriteError extends Error {
+    constructor(public readonly code: 'unauthorized' | 'daily_limit_reached' | 'file_upload_requires_paid' | 'upload_cancelled' | 'storage_limit_reached') {
+        super(code);
+    }
+}
+
 export async function createMessage(message: {
     id: string;
     userId: string;
@@ -765,10 +741,38 @@ export async function createMessage(message: {
     categoryId?: string | null;
     sourceDevice?: string | null;
     now: string;
+    attachmentExpiresAt?: string;
+    reservationId?: string;
 }): Promise<void> {
-    const resolvedCategoryId = await resolveCategoryId(message.userId, message.categoryId, message.now);
     await db.transaction().execute(async (trx) => {
+        // Admission and insert share a transaction, so concurrent devices cannot
+        // both consume the final free message or commit after an account deletion.
+        const user = await trx.selectFrom('users').selectAll().where('id', '=', message.userId).executeTakeFirst();
+        if (!user) throw new MessageWriteError('unauthorized');
+        const currentTime = new Date();
+        const isPaid = Boolean(user.lifetime_purchased_at ||
+            (user.subscription_expires_at && user.subscription_expires_at > currentTime.toISOString()));
+        if (message.reservationId && message.type === 'file' && !isPaid) {
+            throw new MessageWriteError('file_upload_requires_paid');
+        }
+        if (message.reservationId) {
+            const usage = await trx.selectFrom('messages').select(eb => eb.fn.sum<number>('file_size').as('bytes'))
+                .where('user_id', '=', message.userId).where('is_deleted', '=', 0).where('attachment_purged', '=', 0)
+                .where('type', 'in', ['image', 'file']).executeTakeFirst();
+            if (Number(usage?.bytes ?? 0) + (message.fileSize ?? 0) > storagePolicy(isPaid).limitBytes) {
+                throw new MessageWriteError('storage_limit_reached');
+            }
+        }
+        if (!isPaid) {
+            const window = getUsageWindow(currentTime, user.timezone_offset_seconds ?? DEFAULT_TIMEZONE_OFFSET_SECONDS);
+            const usage = await trx.selectFrom('message_usage_events').select(eb => eb.fn.countAll<number>().as('count'))
+                .where('user_id', '=', message.userId).where('created_at', '>=', window.start)
+                .where('created_at', '<', window.end).executeTakeFirstOrThrow();
+            if (Number(usage.count) >= FREE_DAILY_MESSAGE_LIMIT) throw new MessageWriteError('daily_limit_reached');
+        }
+        const resolvedCategoryId = await resolveCategoryId(message.userId, message.categoryId, message.now, trx);
         await trx.insertInto('messages').values({
+            attachment_expires_at: message.attachmentExpiresAt ?? null,
             id: message.id,
             user_id: message.userId,
             type: message.type,
@@ -786,6 +790,12 @@ export async function createMessage(message: {
             updated_at: message.now,
         }).execute();
 
+        if (message.reservationId) {
+            const reservation = await sql`DELETE FROM upload_reservations WHERE id = ${message.reservationId}
+                AND user_id=${message.userId} AND kind=${message.type} AND bytes >= ${message.fileSize ?? 0}
+                AND expires_at > ${currentTime.toISOString()}`.execute(trx);
+            if (reservation.numAffectedRows !== 1n) throw new MessageWriteError('upload_cancelled');
+        }
         await trx.insertInto('message_usage_events').values({
             message_id: message.id,
             user_id: message.userId,
@@ -806,56 +816,35 @@ export async function clearMessage(id: string, userId: string): Promise<boolean>
     return result[0].numUpdatedRows > 0n;
 }
 
+// Preserve paths until unlink succeeds; the expiry sweeper retries disk failures.
+export async function purgeMessageMedia(message: Pick<MessagesTable, 'id' | 'image_path' | 'file_path' | 'is_deleted'>,
+    uploadsDir: string, filesDir: string, now = new Date().toISOString()): Promise<void> {
+    for (const [directory, filename] of [[uploadsDir, message.image_path], [filesDir, message.file_path]]) {
+        if (!filename) continue;
+        if (path.basename(filename) !== filename) throw new Error('invalid_media_path');
+        try { await fs.unlink(path.resolve(directory!, filename)); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    }
+    await db.updateTable('messages').set({
+        attachment_purged: 1, updated_at: sql<string>`MAX(updated_at, ${now})`,
+        ...(message.is_deleted ? { image_path: null, file_path: null } : {}),
+    }).where('id', '=', message.id).execute();
+}
+
 export async function deleteMessage(id: string, userId: string, uploadsDir: string, filesDir: string): Promise<boolean> {
     const now = new Date().toISOString();
-    
-    // 1. Get message info to check for stored media
-    const msg = await db.selectFrom('messages')
-        .select(['id', 'image_path', 'file_path'])
-        .where('id', '=', id)
-        .where('user_id', '=', userId)
-        .executeTakeFirst();
-    
-    if (!msg) return false;
+    const message = await db.selectFrom('messages').selectAll()
+        .where('id', '=', id).where('user_id', '=', userId).executeTakeFirst();
+    if (!message) return false;
 
-    // 2. Mark as deleted in DB
-    const result = await db.updateTable('messages')
-        .set({ 
-            is_deleted: 1, 
-            updated_at: now,
-            text_content: null, // Clear content for privacy
-            image_path: null,
-            file_path: null,
-            file_name: null,
-            file_size: null,
-            file_mime_type: null,
-        })
-        .where('id', '=', id)
-        .where('user_id', '=', userId)
-        .execute();
-    
-    const success = result[0].numUpdatedRows > 0n;
-
-    // 3. Physically delete stored media from disk if it exists
-    if (success) {
-        import('fs').then((fs) => {
-            import('path').then((path) => {
-                const mediaTargets = [
-                    msg.image_path ? path.resolve(uploadsDir, msg.image_path) : null,
-                    msg.file_path ? path.resolve(filesDir, msg.file_path) : null,
-                ].filter((target): target is string => Boolean(target));
-
-                mediaTargets.forEach((target) => {
-                    fs.unlink(target, (err) => {
-                        if (err) console.error(`[delete] Failed to remove file ${target}:`, err);
-                        else console.log(`[delete] Physically removed file ${target}`);
-                    });
-                });
-            });
-        });
-    }
-
-    return success;
+    await db.updateTable('messages').set({
+        is_deleted: 1, updated_at: now, text_content: null,
+        attachment_expires_at: now,
+        file_name: null, file_size: null, file_mime_type: null,
+    }).where('id', '=', id).where('user_id', '=', userId).execute();
+    try { await purgeMessageMedia({ ...message, is_deleted: 1 }, uploadsDir, filesDir, now); }
+    catch (error) { console.error('[delete] Media cleanup queued for retry', id, error); }
+    return true;
 }
 
 export async function clearAllMessages(userId: string, categoryId?: string | null): Promise<number> {
@@ -875,62 +864,28 @@ export async function clearAllMessages(userId: string, categoryId?: string | nul
 
 export async function deleteCompletedMessages(userId: string, uploadsDir: string, filesDir: string, categoryId?: string | null): Promise<number> {
     const now = new Date().toISOString();
+    let query = db.selectFrom('messages').selectAll()
+        .where('user_id', '=', userId).where('is_cleared', '=', 1).where('is_deleted', '=', 0);
+    if (categoryId) query = query.where('category_id', '=', categoryId);
+    const messages = await query.execute();
+    if (messages.length === 0) return 0;
 
-    let completedQuery = db.selectFrom('messages')
-        .select(['id', 'image_path', 'file_path'])
-        .where('user_id', '=', userId)
-        .where('is_cleared', '=', 1)
-        .where('is_deleted', '=', 0);
-
-    if (categoryId) {
-        completedQuery = completedQuery.where('category_id', '=', categoryId);
+    // Bound each statement to avoid SQLite's parameter limit with large histories.
+    for (let offset = 0; offset < messages.length; offset += 200) {
+        await db.updateTable('messages').set({
+            is_deleted: 1, updated_at: now, text_content: null,
+            attachment_expires_at: now,
+            attachment_purged: sql<number>`CASE WHEN image_path IS NULL AND file_path IS NULL THEN 1 ELSE attachment_purged END`,
+            file_name: null, file_size: null, file_mime_type: null,
+        }).where('user_id', '=', userId)
+            .where('id', 'in', messages.slice(offset, offset + 200).map(message => message.id)).execute();
     }
-
-    const completedMessages = await completedQuery.execute();
-
-    if (completedMessages.length === 0) {
-        return 0;
+    for (const message of messages) {
+        if (!message.image_path && !message.file_path) continue;
+        try { await purgeMessageMedia({ ...message, is_deleted: 1 }, uploadsDir, filesDir, now); }
+        catch (error) { console.error('[delete] Media cleanup queued for retry', message.id, error); }
     }
-
-    const ids = completedMessages.map((message) => message.id);
-    const imagePaths = completedMessages
-        .map((message) => message.image_path)
-        .filter((path): path is string => Boolean(path));
-    const filePaths = completedMessages
-        .map((message) => message.file_path)
-        .filter((path): path is string => Boolean(path));
-
-    const result = await db.updateTable('messages')
-        .set({
-            is_deleted: 1,
-            updated_at: now,
-            text_content: null,
-            image_path: null,
-            file_path: null,
-            file_name: null,
-            file_size: null,
-            file_mime_type: null,
-        })
-        .where('user_id', '=', userId)
-        .where('id', 'in', ids)
-        .execute();
-
-    if (imagePaths.length > 0 || filePaths.length > 0) {
-        import('fs').then((fs) => {
-            const targets = [
-                ...imagePaths.map((imagePath) => uploadsDir + '/' + imagePath),
-                ...filePaths.map((filePath) => filesDir + '/' + filePath),
-            ];
-            targets.forEach((fullPath) => {
-                fs.unlink(fullPath, (err) => {
-                    if (err) console.error(`[delete] Failed to remove file ${fullPath}:`, err);
-                    else console.log(`[delete] Physically removed file ${fullPath}`);
-                });
-            });
-        });
-    }
-
-    return Number(result[0].numUpdatedRows);
+    return messages.length;
 }
 
 export async function getUnclearedCount(userId: string): Promise<number> {
@@ -1108,6 +1063,7 @@ export async function canUserAccessMedia(userId: string, filename: string, isAdm
 }
 
 export async function resetDb() {
+    await sql`DELETE FROM upload_reservations`.execute(db);
     await db.deleteFrom('feedbacks').execute();
     await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();

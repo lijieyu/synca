@@ -18,6 +18,8 @@ export interface UsersTable {
 }
 
 export interface MessagesTable {
+    attachment_expires_at: string | null;
+    attachment_purged: Generated<number>;
     id: string;
     user_id: string;
     type: string; // 'text' | 'image' | 'file'

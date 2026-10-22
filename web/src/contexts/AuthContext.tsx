@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return;
     try {
       const res = await api.getMyProfile();
+      if (token !== localStorage.getItem('authToken')) return;
       if (res.isAdmin !== undefined) {
         setIsAdmin(res.isAdmin);
         localStorage.setItem('isAdmin', res.isAdmin ? 'true' : 'false');
@@ -60,8 +61,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'authToken' && event.key !== null) return;
+      api.resetSession();
+      setToken(localStorage.getItem('authToken'));
+      setIsAdmin(false);
+      setEmail(null);
+      setPlan(null);
+      setAccessStatus(null);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const login = (newToken: string, adminStatus?: boolean, userEmail?: string, userPlan?: string) => {
     localStorage.setItem('authToken', newToken);
+    api.resetSession();
+    setAccessStatus(null);
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userPlan');
+    setIsAdmin(false);
+    setEmail(null);
+    setPlan(null);
     if (adminStatus !== undefined) {
       localStorage.setItem('isAdmin', adminStatus ? 'true' : 'false');
       setIsAdmin(adminStatus);
@@ -79,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('authToken');
+    api.resetSession();
     localStorage.removeItem('isAdmin');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userPlan');

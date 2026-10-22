@@ -1,3 +1,5 @@
+import { prepareUpload, trackUpload, releaseUpload } from './storage.js';
+import { db } from './db.js';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -14,6 +16,7 @@ import {
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
     canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
     updateMessageCategoryAssignment, reorderMessageCategories, deleteAccount,
+    MessageWriteError,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -25,7 +28,7 @@ app.set('trust proxy', 1);
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID'],
 }));
 
 app.use(express.json());
@@ -35,7 +38,7 @@ const uploadsDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+// Attachments are only served through authenticated /api/media routes.
 
 const filesDir = path.resolve(process.cwd(), 'files');
 if (!fs.existsSync(filesDir)) {
@@ -67,6 +70,11 @@ const supportedDocumentMimeTypes = new Set([
     'application/x-zip-compressed',
 ]);
 const supportedCategoryColors = new Set(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
+const attachmentMetadata = z.object({
+    sourceDevice: z.string().max(50).optional(),
+    categoryId: z.string().uuid().nullable().optional(),
+    fileName: z.string().trim().min(1).max(255).optional(),
+});
 
 // Multer for image uploads
 const messageStorage = multer.diskStorage({
@@ -75,7 +83,9 @@ const messageStorage = multer.diskStorage({
     },
     filename: (_req, file, cb) => {
         const ext = imageExtensionForMimeType(file.mimetype);
-        cb(null, `${uuidv4()}${ext}`);
+        const filename = `${uuidv4()}${ext}`;
+        const id = (_req as any).res.locals.upload.reservationId;
+        trackUpload(id, filename).then(() => cb(null, filename), error => cb(error, ''));
     },
 });
 const feedbackStorage = multer.diskStorage({
@@ -93,14 +103,9 @@ const fileStorage = multer.diskStorage({
     },
     filename: (_req, file, cb) => {
         const ext = supportedFileExtension(file);
-        cb(null, `file-${uuidv4()}${ext ? `.${ext}` : ''}`);
-    },
-});
-const upload = multer({
-    storage: messageStorage,
-    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
-    fileFilter: (_req, file, cb) => {
-        cb(null, allowedImageMimeTypes.includes(file.mimetype));
+        const filename = `file-${uuidv4()}${ext ? `.${ext}` : ''}`;
+        const id = (_req as any).res.locals.upload.reservationId;
+        trackUpload(id, filename).then(() => cb(null, filename), error => cb(error, ''));
     },
 });
 const feedbackUpload = multer({
@@ -110,15 +115,12 @@ const feedbackUpload = multer({
         cb(null, allowedImageMimeTypes.includes(file.mimetype));
     },
 });
-const fileUpload = multer({
-    storage: fileStorage,
-    limits: { fileSize: 25 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-        // Accept first, then validate in the route so clients receive a precise
-        // unsupported_file_type error instead of a misleading no_file_provided.
-        cb(null, true);
-    },
-});
+const receiveAttachment = (kind: 'image' | 'file'): express.RequestHandler => (req, res, next) => {
+    multer({ storage: kind === 'image' ? messageStorage : fileStorage,
+        limits: { fileSize: res.locals.upload.bytes + 1, files: 1, fields: 4, fieldSize: 4096 },
+        fileFilter: (_req, file, cb) => cb(null, kind === 'file' || allowedImageMimeTypes.includes(file.mimetype)),
+    }).single(kind)(req, res, next);
+};
 
 function imageExtensionForMimeType(mimeType: string): string {
     switch (mimeType) {
@@ -210,6 +212,17 @@ app.get('/api/media/:filename', auth, async (req, res) => {
     const userId = getUserId(req);
     const user = await getUser(userId);
     
+    const attachment = await db.selectFrom('messages').select(['attachment_expires_at', 'attachment_purged', 'user_id'])
+        .where(eb => eb.or([eb('image_path', '=', filename), eb('file_path', '=', filename)])).executeTakeFirst();
+    if (attachment && attachment.user_id === userId && (attachment.attachment_purged ||
+        (attachment.attachment_expires_at && attachment.attachment_expires_at <= new Date().toISOString()))) {
+        return res.status(410).json({ error: 'attachment_expired' });
+    }
+    if (attachment && (attachment.attachment_purged || (attachment.attachment_expires_at && attachment.attachment_expires_at <= new Date().toISOString()))) {
+        return res.status(403).json({ error: 'forbidden' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     const authorized = await canUserAccessMedia(userId, filename, user?.isAdmin ?? false);
     if (!authorized) {
         return res.status(403).json({ error: 'forbidden' });
@@ -227,6 +240,11 @@ app.get('/api/media/:filename', auth, async (req, res) => {
     const contentType = lookupMimeType(filePath);
     if (contentType) {
         res.type(contentType);
+    }
+    if (path.dirname(filePath) === filesDir) {
+        // Documents are downloads, never executable content on our authenticated origin.
+        res.attachment(filename);
+        res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
     }
     res.sendFile(filePath);
 });
@@ -415,7 +433,8 @@ app.delete('/message-categories/:id', auth, async (req, res) => {
 });
 
 // Send text message
-app.post('/messages', auth, async (req, res) => {
+app.post('/messages', auth, async (req, res, next) => {
+    try {
     if (typeof req.body?.textContent === 'string' && req.body.textContent.length > 2000) {
         return res.status(400).json({ error: 'message_too_long' });
     }
@@ -461,20 +480,29 @@ app.post('/messages', auth, async (req, res) => {
     });
 
     res.status(201).json(message);
+    } catch (error) { next(error); }
 });
 
 // Send image message
-app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
+app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('image'), async (req, res, next) => {
+    res.locals.upload.processing = true;
+    try {
+    if (req.aborted || res.destroyed) return;
     const file = (req as any).file;
     if (!file) {
         return res.status(400).json({ error: 'no_image_provided' });
     }
 
+    if (file.size > res.locals.upload.bytes) {
+        return res.status(413).json({ error: 'file_too_large' });
+    }
+    const metadata = attachmentMetadata.safeParse(req.body);
+    if (!metadata.success) return res.status(400).json({ error: 'invalid_payload' });
     const userId = getUserId(req);
-    const id = uuidv4();
+    const id = res.locals.upload.messageId;
     const now = new Date().toISOString();
-    const sourceDevice = req.body?.sourceDevice ?? null;
-    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
+    const sourceDevice = metadata.data.sourceDevice ?? null;
+    const categoryId = metadata.data.categoryId ?? null;
 
     try {
         await assertCanCreateMessage(userId);
@@ -488,11 +516,15 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
         throw error;
     }
 
+    const expiresAt = new Date(Date.now() + res.locals.upload.retentionDays * 86400000).toISOString();
     await createMessage({
+        attachmentExpiresAt: expiresAt,
+        reservationId: res.locals.upload.reservationId,
         id,
         userId,
         type: 'image',
         imagePath: file.filename,
+        fileSize: file.size,
         categoryId,
         sourceDevice,
         now,
@@ -506,9 +538,14 @@ app.post('/messages/image', auth, upload.single('image'), async (req, res) => {
     });
 
     res.status(201).json(message);
+    } catch (error) { next(error); }
+    finally { await releaseUpload(res.locals.upload.reservationId).catch(console.error); }
 });
 
-app.post('/messages/file', auth, fileUpload.single('file'), async (req, res) => {
+app.post('/messages/file', auth, prepareUpload('file'), receiveAttachment('file'), async (req, res, next) => {
+    res.locals.upload.processing = true;
+    try {
+    if (req.aborted || res.destroyed) return;
     const file = (req as any).file as Express.Multer.File | undefined;
     if (!file) {
         return res.status(400).json({ error: 'no_file_provided' });
@@ -521,11 +558,16 @@ app.post('/messages/file', auth, fileUpload.single('file'), async (req, res) => 
         return res.status(400).json({ error: 'unsupported_file_type' });
     }
 
+    if (file.size > res.locals.upload.bytes) {
+        return res.status(413).json({ error: 'file_too_large' });
+    }
+    const metadata = attachmentMetadata.safeParse(req.body);
+    if (!metadata.success) return res.status(400).json({ error: 'invalid_payload' });
     const userId = getUserId(req);
-    const id = uuidv4();
+    const id = res.locals.upload.messageId;
     const now = new Date().toISOString();
-    const sourceDevice = req.body?.sourceDevice ?? null;
-    const categoryId = typeof req.body?.categoryId === 'string' ? req.body.categoryId : null;
+    const sourceDevice = metadata.data.sourceDevice ?? null;
+    const categoryId = metadata.data.categoryId ?? null;
 
     try {
         await assertCanCreateMessage(userId);
@@ -539,12 +581,15 @@ app.post('/messages/file', auth, fileUpload.single('file'), async (req, res) => 
         throw error;
     }
 
+    const expiresAt = new Date(Date.now() + res.locals.upload.retentionDays * 86400000).toISOString();
     await createMessage({
+        attachmentExpiresAt: expiresAt,
+        reservationId: res.locals.upload.reservationId,
         id,
         userId,
         type: 'file',
         filePath: file.filename,
-        fileName: req.body?.fileName?.trim() || file.originalname,
+        fileName: metadata.data.fileName || file.originalname,
         fileSize: file.size,
         fileMimeType: file.mimetype,
         categoryId,
@@ -559,6 +604,8 @@ app.post('/messages/file', auth, fileUpload.single('file'), async (req, res) => 
     });
 
     res.status(201).json(message);
+    } catch (error) { next(error); }
+    finally { await releaseUpload(res.locals.upload.reservationId).catch(console.error); }
 });
 
 app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) => {
@@ -889,10 +936,20 @@ async function buildResponseAccessStatus(userId: string, now?: Date) {
     return accessStatus;
 }
 
-app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err instanceof multer.MulterError) {
         const error = err.code === 'LIMIT_FILE_SIZE' ? 'file_too_large' : 'invalid_upload';
-        return res.status(400).json({ error });
+        return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error });
+    }
+    if (err instanceof MessageWriteError) {
+        const status = err.code === 'unauthorized' ? 401 : err.code === 'upload_cancelled' ? 409 :
+            err.code === 'storage_limit_reached' ? 413 : 403;
+        if (err.code === 'daily_limit_reached' || err.code === 'file_upload_requires_paid') {
+            void buildAccessStatus(getUserId(req)).then(accessStatus => {
+                res.status(status).json({ error: err.code, accessStatus });
+            }).catch(next);
+        } else res.status(status).json({ error: err.code });
+        return;
     }
     next(err);
 });

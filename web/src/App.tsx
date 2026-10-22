@@ -5,13 +5,13 @@ import { MessageListView } from './components/MessageListView';
 import { AdminLayout } from './components/AdminLayout';
 
 function App() {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, token } = useAuth();
 
   return (
     <Routes>
       <Route 
         path="/" 
-        element={isAuthenticated ? <MessageListView /> : <LoginView />} 
+        element={isAuthenticated ? <MessageListView key={token} /> : <LoginView />}
       />
       <Route 
         path="/admin/*" 
