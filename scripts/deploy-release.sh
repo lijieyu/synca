@@ -115,13 +115,21 @@ if 'location /message-categories {' not in source:
     end=source.index('\n    }',start)+6
     block=source[start:end].replace('location /messages {','location /message-categories {').replace('        proxy_request_buffering off;\n','')
     source=source[:end]+'\n\n'+block+source[end:]
-if 'location ~ ^/(en|zh-hans)/' not in source:
+if 'location ~ ^/(en|zh-hans)/' in source:
+    source=source.replace('(privacy-policy|user-agreement|support)', '(privacy-policy|terms-of-use|support)')
+else:
     position=source.index('    # SPA fallback:')
-    source=source[:position]+'''    location ~ ^/(en|zh-hans)/(privacy-policy|user-agreement|support)$ {
+    source=source[:position]+'''    location ~ ^/(en|zh-hans)/(privacy-policy|terms-of-use|support)$ {
         proxy_pass http://127.0.0.1:3002;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+'''+source[position:]
+if 'location ^~ /files/' not in source:
+    position=source.index('    # SPA fallback:')
+    source=source[:position]+'''    # Documents are served exclusively by the authenticated API.
+    location ^~ /files/ { return 404; }
 
 '''+source[position:]
 Path(sys.argv[2]).write_text(source)
