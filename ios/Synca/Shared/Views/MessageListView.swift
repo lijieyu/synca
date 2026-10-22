@@ -120,11 +120,8 @@ struct MessageListView: View {
     var body: some View {
         NavigationStack {
             rootContent
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 4) {
-                Text(AccessManager.shared.status?.isUnlimited == true ? "storage.paid_hint" : "storage.free_hint")
-                    .font(.caption2).foregroundStyle(.secondary).padding(.horizontal)
-
                 if let progress = syncManager.uploadProgress {
                     HStack(spacing: 12) {
                         ProgressView(value: progress).accessibilityLabel(Text("storage.uploading"))

@@ -236,8 +236,8 @@
 
 "common.send" = "Send";
 
-"storage.free_benefits" = "Free: images up to 50 MB · 200 MB storage · kept for 3 days";
-"storage.paid_files" = "Images up to 50 MB; files up to 200 MB";
+"storage.free_benefits" = "Image sync · 200 MB storage · kept for 3 days";
+"storage.paid_files" = "Image and file sync";
 "storage.paid_capacity" = "2 GB transfer storage; attachments kept for 7 days";
 "storage.retention_notice" = "Attachments expire automatically. Save a copy elsewhere. Lifetime purchase unlocks features, not permanent attachment storage.";
 "storage.paid_required" = "File transfers require a paid plan";
