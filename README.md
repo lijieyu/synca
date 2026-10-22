@@ -200,6 +200,10 @@ APNS_TOPIC=org.haerth.synca
 APNS_AUTH_KEY_PATH=/opt/synca/backend/certs/AuthKey_HCP7BQP4K5.p8
 ```
 
+APNs 是原有的后台同步功能。上面的 `.p8` 私钥需要单独安全配置到服务器，权限设为 `600`，不放入 Git 或发布包。后端部署会在切换服务前检查已启用推送的配置和私钥格式；更换密钥后需重启 `synca-api` 才会生效。
+
+后台同步使用 `content-available` 和优先级 `5`，不携带通知声音、弹窗或角标；App 完成同步后自行更新角标。验证时应分别确认服务端配置、Apple 接口响应和真实设备同步，接口返回成功不代表设备已完成同步。
+
 ### 常用运维命令
 
 ```bash

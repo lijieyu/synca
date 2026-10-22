@@ -67,9 +67,22 @@ if [ "$target" != web ]; then
   SYNCA_RELEASE_BACKUP="$release/backup/database.sqlite" node --input-type=module <<'NODE'
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import dotenv from 'dotenv';
 import SQLite from 'better-sqlite3';
 const env = dotenv.parse(fs.readFileSync('.env'));
+// Detect a missing/invalid push key before switching a healthy running service.
+if (String(env.APNS_ENABLED ?? '').toLowerCase() === 'true') {
+  for (const name of ['APNS_KEY_ID', 'APNS_TEAM_ID', 'APNS_TOPIC']) {
+    if (!env[name]?.trim()) throw new Error(`Missing required push setting: ${name}`);
+  }
+  const pem = env.APNS_AUTH_KEY?.trim() || fs.readFileSync(env.APNS_AUTH_KEY_PATH?.trim() || '', 'utf8');
+  const key = crypto.createPrivateKey(pem.replace(/\\n/g, '\n'));
+  if (key.asymmetricKeyType !== 'ec' || key.asymmetricKeyDetails?.namedCurve !== 'prime256v1') {
+    throw new Error('APNS signing key must be P-256');
+  }
+  console.log('APNS signing key is present and valid.');
+}
 const configured = env.DB_PATH?.trim();
 const source = configured ? (path.isAbsolute(configured) ? configured : path.resolve('data', configured)) : path.resolve('data/synca.sqlite');
 const database = new SQLite(source, { readonly: true, fileMustExist: true });

@@ -195,10 +195,10 @@ class ApnsProvider {
                         body: payload.message ?? '你有新的消息',
                     },
                     sound: 'default',
+                    ...(typeof payload.badge === 'number' ? { badge: payload.badge } : {}),
                 } : {
                     'content-available': 1,
                 }),
-                ...(typeof payload.badge === 'number' ? { badge: payload.badge } : {}),
             },
             ...(payload.data ?? {}),
         });

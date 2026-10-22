@@ -3,6 +3,8 @@ dist
 .DS_Store
 coverage
 .env
+# Apple signing credentials are provisioned securely on the server.
+*.p8
 data/synca.test.sqlite
 data/synca.sqlite
 /uploads
