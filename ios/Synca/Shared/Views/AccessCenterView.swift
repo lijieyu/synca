@@ -143,7 +143,6 @@ struct AccessCenterView: View {
                     benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
                     benefitRow(systemImage: "doc", text: "storage.paid_files")
                     benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
-                    Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
 
                 VStack(spacing: 10) {
@@ -820,8 +819,7 @@ struct AccessCenterView: View {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
             benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
             benefitRow(systemImage: "doc", text: "storage.paid_files")
-                    benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
-                    Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
         }
     }
 

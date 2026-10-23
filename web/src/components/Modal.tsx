@@ -13,11 +13,12 @@ interface Props {
   destructive?: boolean;
   children?: React.ReactNode;
   size?: 'compact' | 'large';
+  hideCancel?: boolean;
 }
 
 export const Modal: React.FC<Props> = ({ 
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size
+  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false
 }) => {
   const titleID = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
@@ -57,7 +58,7 @@ export const Modal: React.FC<Props> = ({
             <button className="modal-leading-action" onClick={onLeadingAction}>{leadingActionText}</button>
           )}
           <div className="modal-primary-actions">
-            <button className="modal-btn modal-btn-cancel" onClick={onCancel}>{cancelText}</button>
+            {!hideCancel && <button className="modal-btn modal-btn-cancel" onClick={onCancel}>{cancelText}</button>}
             <button 
               className={`modal-btn ${destructive ? 'modal-btn-destructive' : 'modal-btn-confirm'}`} 
               onClick={onConfirm}

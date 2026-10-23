@@ -53,7 +53,11 @@ export interface SyncaUser {
 
 export interface AccessStatus {
   storage?: { usedBytes: number; limitBytes: number; imageLimitBytes: number; fileLimitBytes: number; retentionDays: number; canUploadFiles: boolean };
-  plan: 'free' | 'unlimited';
+  plan: 'trial' | 'free' | 'unlimited';
+  unlimitedSource?: 'subscription' | 'lifetime' | null;
+  purchaseDate?: string | null;
+  subscriptionExpiresAt?: string | null;
+  storeProductId?: string | null;
   isUnlimited: boolean;
   isTrial: boolean;
   daysLeft: number | null;

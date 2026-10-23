@@ -2809,7 +2809,7 @@ private struct AboutSyncaSheet: View {
 
                         Link(destination: websiteURL) {
                             HStack(alignment: .center, spacing: 12) {
-                                Text(websiteURL.absoluteString)
+                                Text(String(format: String(localized: "message_list.about_website_format", bundle: .main), websiteURL.absoluteString))
                                     .font(.body)
                                     .foregroundStyle(systemLinkColor)
                                     .multilineTextAlignment(.leading)
