@@ -1350,3 +1350,19 @@ button.category-chip:hover {
 .auth-image .message-image { max-width: min(320px, 100%); }
 .attachment-placeholder { width: min(200px, 100%); min-height: 150px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 16px; background: var(--bg-color); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 8px; font: inherit; }
 button.attachment-placeholder { cursor: pointer; }
+
+/* Match the native access center's current-plan and upgrade hierarchy. */
+.storage-plans .plan-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.storage-plans .plan-badge { color: var(--synca-purple); background: color-mix(in srgb, var(--synca-purple) 12%, transparent); padding: 4px 12px; border-radius: 24px; }
+.storage-plans .storage-plan-paid { background: color-mix(in srgb, var(--synca-purple) 7%, transparent); }
+.storage-plans .plan-dates { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 12px 0 16px; font-size: .875rem; }
+.storage-plans .plan-dates dt, .storage-plans .plan-usage { color: var(--text-secondary); }
+.storage-plans .plan-dates dd { margin: 0; overflow-wrap: anywhere; }
+.storage-plans .plan-legal-links { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: .875rem; }
+.storage-plans .plan-legal-links a { color: var(--text-secondary); }
+.storage-plans .plan-options { display: grid; gap: 12px; margin-top: 16px; }
+.storage-plans .plan-options > div { border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; }
+.storage-plans .plan-options p { font-size: .875rem; color: var(--text-secondary); }
+.storage-plans .plan-download-link { display: block; text-align: center; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--synca-purple); color: white; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.storage-plans .plan-download-link:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
+.storage-plans .plan-upgrade { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
