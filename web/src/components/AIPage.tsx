@@ -10,7 +10,7 @@ type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
 type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
 type Operation = { id: string; kind: string; status: string; created_at: string; connectionName?: string };
 type Confirmation = { id: string; status: string; expiresAt: string; items?: { id: string; preview: string }[] };
-type Authorization = { clientName: string; scopes: Scope[]; redirectUri: string };
+type Authorization = { authorizationDays: number; autoRefresh: boolean; refreshIdleDays: number; clientName: string; scopes: Scope[]; redirectUri: string };
 
 export function AIPage() {
   const { token, isAuthenticated } = useAuth();
@@ -116,7 +116,8 @@ export function AIPage() {
       <p>{t('该应用名称由接入方提供。请确认它是你正在连接的应用。', 'This name is supplied by the connecting application. Verify that it is the app you intended to connect.')}</p>
       <p className="ai-wrap">{t('返回地址：', 'Return address: ')}{authorization.redirectUri}</p>
       <ul>{authorization.scopes.map(s => <li key={s}>{labels[s]}</li>)}</ul>
-      <p>{t('授权有效期 30 天，可随时撤销。外部 AI 将接收获准访问的数据。', 'Authorization lasts 30 days and can be revoked at any time. The external AI receives permitted data.')}</p>
+      <p>{t(`授权最长 ${authorization.authorizationDays} 天，可随时撤销。外部 AI 将接收获准访问的数据。`, `Authorization lasts up to ${authorization.authorizationDays} days and can be revoked at any time. The external AI receives permitted data.`)}</p>
+      <p>{authorization.autoRefresh ? t(`支持自动续期；连续 ${authorization.refreshIdleDays} 天未刷新或授权满一年后，需要重新授权。`, `Automatic refresh is supported. Reauthorize after ${authorization.refreshIdleDays} days without refreshing or after one year.`) : t('当前应用未申请自动续期，访问令牌 30 天后到期。请使用支持自动续期的配置重新连接。', 'This app did not request automatic refresh. Access expires in 30 days; reconnect with a refresh-enabled configuration.')}</p>
       <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} className={approve ? 'ai-primary' : ''} disabled={busy} onClick={() => void act(async () => {
         const result = await request<{ redirectUrl: string }>(`authorization/${encodeURIComponent(authorize!)}`, 'POST', { approve });
         window.location.assign(result.redirectUrl);

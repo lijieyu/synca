@@ -9,10 +9,11 @@
 公开地址为 `https://synca.haerth.cn/mcp`。部署前配置 `PUBLIC_URL=https://synca.haerth.cn`，必须与用户访问 Web 的 origin 一致，不能从请求 Host 推导授权地址。
 
 - OAuth：发现 `/.well-known/oauth-protected-resource/mcp` 和 `/.well-known/oauth-authorization-server`。支持公开客户端动态注册、授权码、S256 PKCE、精确匹配 redirect URI、resource 绑定和单次授权码交换。授权码有效 60 秒、授权页面请求有效 10 分钟。
-- OAuth access token 有效约 30 天，当前没有 refresh token。到期重新授权；Web 可以立即撤销。
+- 新 OAuth 授权最长 365 天。申请 `refresh_token` 的客户端获发 1 小时 access token 与一次性轮换 refresh token；刷新令牌连续 180 天未使用失效，每次刷新最多延续至原授权到期日。检测到旧刷新令牌重放会撤销整条连接。Web 撤销立即阻止访问和刷新。
+- 只申请授权码的客户端仍使用 30 天 access token，无自动续期。旧连接保持原有效期；启用续期需要重新注册并授权（旧客户端注册记录未获准 refresh grant 时，通常需要删除后重新添加 MCP）。
 - 手动配置：在 `/ai` 登录后创建个人令牌，在 AI 客户端的安全凭证配置中设置 `Authorization: Bearer <token>`。令牌只显示一次，服务端只存 SHA-256 摘要；期限 1–365 天。
 - 不将令牌放进 URL、提示词、聊天记录或版本库；Apple 登录会话不能用于 MCP，AI 令牌也不能用于账号、支付、反馈或管理员 API。
-- 已实现通用协议并通过官方 SDK 客户端联调，不代表所有第三方产品及其手机版本均开放自定义 MCP。上线后逐一验证目标客户端。动态注册支持 `none`、`client_secret_post`、`client_secret_basic`；密钥只保存 SHA-256 摘要，换取令牌时严格匹配注册的认证方式，仍要求 S256 PKCE。客户端同时申请 `authorization_code` 和 `refresh_token` 时，注册响应按 RFC 7591 协商为实际支持的 `authorization_code`，不会声称支持自动续期。不支持远程客户端元数据 URL 解析。
+- 已实现通用协议并通过官方 SDK 客户端联调，不代表所有第三方产品及其手机版本均开放自定义 MCP。上线后逐一验证目标客户端。动态注册支持 `none`、`client_secret_post`、`client_secret_basic`；密钥只保存 SHA-256 摘要，换取令牌时严格匹配注册的认证方式，仍要求 S256 PKCE。客户端可同时申请 `authorization_code` 和 `refresh_token`；刷新绑定原客户端、原资源和授权权限，仅可缩小权限。不支持远程客户端元数据 URL 解析。
 
 ## 工具与权限
 
@@ -86,3 +87,9 @@ MCP 测试覆盖官方 SDK 的实际 HTTP 握手/发现/工具调用、读写权
 ## 连接体验
 
 主流程为复制连接指令 → AI 添加/连接远程 MCP → OAuth 登录确认 → 返回对话验证。无需在说明页先登录或创建令牌。客户端在更多菜单通过系统浏览器打开共享说明页，并传递中英文偏好。个人令牌只作为不支持 OAuth 的高级兼容路径。提示词不含任何凭证，也不保证 AI 应用拥有自动安装能力；不支持自动安装时，由 AI 提供当前应用的必要步骤。
+
+### 授权与用量验收
+
+授权详情和批准接口必须使用用户登录 session；MCP token 不能批准授权。所有工具按 token 所属 user_id 隔离，操作结果还限定 connection_id。`get_usage.access.todayLimit=null` 且 `isUnlimited=true` 表示无每日记录上限；`unclearedCount` 只是尚未完成且未删除的记录数，不是剩余额度。无限版仍有附件容量及保留期限。
+
+刷新回归覆盖无登录批准、访问令牌过期、三种客户端认证、跨客户端刷新、错误资源、权限扩大、轮换重放、并发重放、180 天闲置和365天硬截止、撤销及重复迁移；旧连接不自动延长。
