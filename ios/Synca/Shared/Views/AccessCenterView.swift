@@ -6,7 +6,21 @@ struct AccessCenterView: View {
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var toastDismissTask: Task<Void, Never>?
+    @State private var contentHeight: CGFloat = 0
+    @ScaledMetric(relativeTo: .subheadline) private var purchaseTitleSize = 15
+    @ScaledMetric(relativeTo: .headline) private var purchasePriceSize = 18
+    @ScaledMetric(relativeTo: .caption) private var purchaseSubtitleSize = 12
+    @ScaledMetric(relativeTo: .headline) private var offerCodeSize = 18
+
+    private enum Layout {
+        static let pagePadding: CGFloat = 20
+        static let sectionSpacing: CGFloat = 16
+        static let navigationHeight: CGFloat = 64
+        static let minimumHeight: CGFloat = 320
+        static let macWidth: CGFloat = 460
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,12 +47,15 @@ struct AccessCenterView: View {
                 accessManager.clearUpgradeHighlight()
             }
         }
-        .frame(idealWidth: 430)
         #if os(macOS)
-        .frame(idealHeight: preferredMacHeight)
+        .frame(width: Layout.macWidth, height: preferredMacHeight)
         #else
-        .frame(minHeight: 420, idealHeight: 560)
+        .presentationDetents(sheetDetents)
+        .modifier(AccessSheetBackground())
         #endif
+        .onPreferenceChange(AccessContentHeightKey.self) { height in
+            if abs(contentHeight - height) > 1 { contentHeight = height }
+        }
         .overlay { purchaseToastOverlay }
         .onChange(of: purchaseManager.activeToast) { toast in
             toastDismissTask?.cancel()
@@ -69,20 +86,18 @@ struct AccessCenterView: View {
     private var contentContainer: some View {
         if let status = accessManager.status {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Layout.sectionSpacing) {
                     #if os(macOS)
                     Text("access.center_title").font(.title3.weight(.semibold))
                     #endif
                     content(for: status)
-                    if let storage = status.storage {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("storage.used").font(.subheadline)
-                            Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
-                                .font(.caption).foregroundStyle(.secondary)
-                            ProgressView(value: Double(min(storage.usedBytes, storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
-                        }.accessibilityElement(children: .combine)
+                }
+                .padding(Layout.pagePadding)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: AccessContentHeightKey.self, value: geometry.size.height)
                     }
-                }.padding(20)
+                }
             }
 
         } else if accessManager.isLoading {
@@ -113,10 +128,8 @@ struct AccessCenterView: View {
     private func currentFreeCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 14) {
-                moduleHeader(
-                    title: "access.current_plan_title",
-                    badge: AccessStatusPill(status: status)
-                )
+                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
+                Text("access.free_title").font(.title3.weight(.semibold))
 
                 Text(String(format: String(localized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
                     .font(.subheadline.weight(.semibold))
@@ -124,6 +137,7 @@ struct AccessCenterView: View {
 
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
                 benefitRow(systemImage: "photo", text: "storage.free_benefits")
+                storageUsage(status)
             }
         }
     }
@@ -131,10 +145,10 @@ struct AccessCenterView: View {
     private func unlockUnlimitedCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .accent) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center) {
+                adaptiveRow {
                     Text("access.unlock_title", bundle: .main)
                         .font(.headline)
-                    Spacer()
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                     restoreInlineButton
                 }
 
@@ -159,12 +173,9 @@ struct AccessCenterView: View {
     private func subscriptionCurrentCard(_ status: AccessStatus) -> some View {
         let showsTime = shouldShowTimeForPurchaseDetails(status)
 
-        return AccessModuleCard(style: .accent) {
+        return AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 16) {
-                moduleHeader(
-                    title: "access.current_plan_title",
-                    badge: AccessStatusPill(status: status)
-                )
+                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(currentSubscriptionName(status))
@@ -188,6 +199,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
+                storageUsage(status)
                 legalLinksSection
 
                 lifetimeUpgradeSection(status)
@@ -196,12 +208,9 @@ struct AccessCenterView: View {
     }
 
     private func lifetimeCurrentCard(_ status: AccessStatus) -> some View {
-        AccessModuleCard(style: .accent) {
+        AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 16) {
-                moduleHeader(
-                    title: "access.current_plan_title",
-                    badge: AccessStatusPill(status: status)
-                )
+                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(currentLifetimeName)
@@ -214,6 +223,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
+                storageUsage(status)
                 legalLinksSection
             }
         }
@@ -248,7 +258,7 @@ struct AccessCenterView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
+                adaptiveRow {
                     Text(product?.displayName ?? fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
                         .fixedSize(horizontal: false, vertical: true)
@@ -256,14 +266,14 @@ struct AccessCenterView: View {
                         .allowsTightening(true)
                         .layoutPriority(1)
 
-                    Spacer(minLength: 12)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
 
                     if let product {
                         HStack(spacing: 6) {
                             Text(product.displayPrice)
                                 .font(planOptionPriceFont)
                                 .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .minimumScaleFactor(0.8)
 
                             if currentProductID == productID.rawValue {
@@ -276,7 +286,7 @@ struct AccessCenterView: View {
 
                 Text(subscriptionSubtitle(for: productID, product: product, isEligibleForIntro: isEligibleForIntro))
                     .font(planOptionSubtitleFont)
-                    .foregroundStyle(.secondary.opacity(0.9))
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -296,14 +306,14 @@ struct AccessCenterView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
+                adaptiveRow {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
                         .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
                         .allowsTightening(true)
                         .layoutPriority(1)
-                    Spacer(minLength: 12)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
                     if currentProductID == SyncaProductID.lifetime.rawValue {
                         ProgressView()
                             .controlSize(.small)
@@ -311,13 +321,13 @@ struct AccessCenterView: View {
                         Text(price)
                             .font(planOptionPriceFont)
                             .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .fixedSize(horizontal: false, vertical: true)
                             .minimumScaleFactor(0.8)
                     }
                 }
                 Text("access.option_lifetime_subtitle", bundle: .main)
                     .font(planOptionSubtitleFont)
-                    .foregroundStyle(.secondary.opacity(0.9))
+                    .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -335,14 +345,14 @@ struct AccessCenterView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
+                adaptiveRow {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
                         .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
                         .allowsTightening(true)
                         .layoutPriority(1)
-                    Spacer(minLength: 12)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
                     if purchaseManager.purchasingProductID == SyncaProductID.lifetime.rawValue {
                         ProgressView()
                             .controlSize(.small)
@@ -350,13 +360,13 @@ struct AccessCenterView: View {
                         Text(price)
                             .font(planOptionPriceFont)
                             .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .fixedSize(horizontal: false, vertical: true)
                             .minimumScaleFactor(0.8)
                     }
                 }
                 Text("access.option_lifetime_subtitle", bundle: .main)
                     .font(planOptionSubtitleFont)
-                    .foregroundStyle(.secondary.opacity(0.9))
+                    .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -374,27 +384,26 @@ struct AccessCenterView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
+                adaptiveRow {
                     Text(currentLifetimeName)
                         .font(planOptionTitleFont)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                    Spacer()
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                     if purchaseManager.redeemingOfferKind == offer.kind {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        HStack(spacing: 6) {
+                        adaptiveRow {
                             if let original = purchaseManager.lifetimeProduct?.displayPrice {
                                 Text(original)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .strikethrough(true, color: .secondary)
+                                    .foregroundStyle(.white)
+                                    .strikethrough(true, color: .white)
                             }
                             Text(offer.discountedPriceLabel)
                                 .font(planOptionPriceFont)
                                 .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .minimumScaleFactor(0.8)
                         }
                     }
@@ -402,7 +411,7 @@ struct AccessCenterView: View {
 
                 Text("access.offer_code_redeem_hint", bundle: .main)
                     .font(.caption)
-                    .foregroundStyle(.secondary.opacity(0.9))
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -414,20 +423,24 @@ struct AccessCenterView: View {
     @ViewBuilder
     private func lifetimeOfferCodeBlock(_ offer: LifetimeUpgradeOffer) -> some View {
         if let code = offer.code, !code.isEmpty {
-            HStack(alignment: .center, spacing: 16) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+            layout {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("access.offer_code_label", bundle: .main)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(code)
-                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .font(.system(size: offerCodeSize, weight: .semibold, design: .monospaced))
                         .foregroundStyle(.primary)
                         .textSelection(.enabled)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.78)
                 }
 
-                Spacer(minLength: 12)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
 
                 Button {
                     purchaseManager.copyLifetimeOfferCode(code)
@@ -435,6 +448,7 @@ struct AccessCenterView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
                         Text(String(localized: "access.copy_offer_code", bundle: .main))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.black)
@@ -450,15 +464,15 @@ struct AccessCenterView: View {
     }
 
     private var planOptionTitleFont: Font {
-        .system(size: 15, weight: .semibold)
+        .system(size: purchaseTitleSize, weight: .semibold)
     }
 
     private var planOptionPriceFont: Font {
-        .system(size: 18, weight: .bold)
+        .system(size: purchasePriceSize, weight: .bold)
     }
 
     private var planOptionSubtitleFont: Font {
-        .system(size: 12, weight: .regular)
+        .system(size: purchaseSubtitleSize, weight: .regular)
     }
 
     private var restoreInlineButton: some View {
@@ -484,15 +498,30 @@ struct AccessCenterView: View {
         .disabled(purchaseManager.isRestoring)
     }
 
+    private func adaptiveRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        return layout { content() }
+    }
+
     @ViewBuilder
-    private func moduleHeader(title: LocalizedStringKey, badge: AccessStatusPill?) -> some View {
-        HStack(alignment: .center) {
-            Text(title)
-                .font(.headline)
-            Spacer()
-            if let badge {
-                badge
+    private func storageUsage(_ status: AccessStatus) -> some View {
+        if let storage = status.storage {
+            VStack(alignment: .leading, spacing: 8) {
+                Divider().padding(.bottom, 4)
+                adaptiveRow {
+                    Text("storage.used")
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
+                    Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+                        .monospacedDigit()
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                    .accessibilityHidden(true)
             }
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -506,6 +535,7 @@ struct AccessCenterView: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -542,13 +572,14 @@ struct AccessCenterView: View {
     }
 
     private func detailRow(_ key: LocalizedStringKey, value: String, compact: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        adaptiveRow {
             Text(key)
                 .font(compact ? .footnote : .subheadline)
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(compact ? .footnote.weight(.medium) : .subheadline.weight(.medium))
                 .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -569,11 +600,11 @@ struct AccessCenterView: View {
     }
 
     private var legalLinksSection: some View {
-        HStack(spacing: 12) {
+        adaptiveRow {
             legalLinkButton(titleKey: "access.privacy_policy_link_title", url: AppLinks.privacyPolicyURL)
             legalLinkButton(titleKey: "access.terms_link_title", url: AppLinks.termsOfUseURL)
         }
-        .padding(.top, 10)
+        .padding(.top, 2)
     }
 
     private func product(for productID: SyncaProductID) -> Product? {
@@ -760,14 +791,18 @@ struct AccessCenterView: View {
 
     #if os(macOS)
     private var preferredMacHeight: CGFloat {
-        guard let status = accessManager.status else { return 420 }
-        if status.unlimitedSource == "lifetime" {
-            return 480
+        let availableHeight = (NSScreen.main?.visibleFrame.height ?? 900) - 100
+        // macOS adds the sheet toolbar outside the measured scroll content.
+        return min(max(contentHeight, Layout.minimumHeight), min(740, availableHeight))
+    }
+    #else
+    private var sheetDetents: Set<PresentationDetent> {
+        // Long purchase screens and accessibility sizes need the full scrollable sheet.
+        guard accessManager.status?.unlimitedSource == "lifetime", !dynamicTypeSize.isAccessibilitySize else {
+            return [.large]
         }
-        if status.unlimitedSource == "subscription" {
-            return 580
-        }
-        return 680
+        let height = max(Layout.minimumHeight, contentHeight + Layout.navigationHeight)
+        return [.height(height), .large]
     }
     #endif
 
@@ -975,6 +1010,26 @@ struct AccessStatusPill: View {
     }
 }
 
+#if os(iOS)
+private struct AccessSheetBackground: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content.presentationBackground(Color(uiColor: .systemBackground))
+        } else {
+            content.background(Color(uiColor: .systemBackground))
+        }
+    }
+}
+#endif
+
+private struct AccessContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 private struct AccessModuleCard<Content: View>: View {
     enum Style {
         case neutral
@@ -1033,6 +1088,7 @@ private struct PlanPurchaseInteractivity: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .disabled(!isInteractionEnabled)
             .allowsHitTesting(isInteractionEnabled)
             .overlay {
                 if isBusy {
