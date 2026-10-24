@@ -119,7 +119,24 @@ export interface LifetimeUpgradeOfferCodesTable {
     updated_at: string;
 }
 
+export interface AIConnectionsTable {
+    id: string; user_id: string; name: string; token_hash: string; scopes: string;
+    created_at: string; expires_at: string; revoked_at: string | null; last_used_at: string | null; client_id: string | null;
+}
+export interface AIOperationsTable {
+    id: string; user_id: string; connection_id: string; kind: string; payload: string;
+    result: string | null; created_at: string; expires_at: string | null; status: string; request_key: string | null;
+}
+export interface AIOAuthClientsTable { id: string; metadata: string; created_at: string }
+export interface AIOAuthRequestsTable {
+    id: string; client_id: string; redirect_uri: string; challenge: string; state: string | null;
+    scopes: string; expires_at: string; code_hash: string | null; connection_id: string | null; resource: string;
+}
 export interface Database {
+    ai_connections: AIConnectionsTable;
+    ai_operations: AIOperationsTable;
+    ai_oauth_clients: AIOAuthClientsTable;
+    ai_oauth_requests: AIOAuthRequestsTable;
     users: UsersTable;
     messages: MessagesTable;
     message_categories: MessageCategoriesTable;

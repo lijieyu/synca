@@ -1,3 +1,4 @@
+import { AIPage } from './components/AIPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { LoginView } from './components/LoginView';
@@ -9,6 +10,7 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/ai" element={<AIPage key={token ?? "anonymous"} />} />
       <Route 
         path="/" 
         element={isAuthenticated ? <MessageListView key={token} /> : <LoginView />}

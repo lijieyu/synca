@@ -1,0 +1,47 @@
+.ai-page { height: 100dvh; overflow: auto; background: var(--bg-color); color: var(--text-main); }
+.ai-page .ai-content { max-width: 920px; margin: auto; padding: 24px clamp(18px, 5vw, 48px) 48px; }
+.ai-page .ai-nav { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+.ai-page a { color: var(--synca-purple, #6655cc); text-underline-offset: 4px; }
+.ai-page .ai-hero { padding: 64px 0 40px; max-width: 700px; }
+.ai-page .ai-eyebrow { font-size: 12px; letter-spacing: .16em; color: var(--text-secondary); }
+.ai-page h1 { white-space: pre-line; font-size: clamp(32px, 6vw, 54px); line-height: 1.2; letter-spacing: -.035em; margin: 18px 0 22px; }
+.ai-page h2 { font-size: 22px; margin-bottom: 16px; }
+.ai-page h3 { font-size: 16px; margin-bottom: 6px; }
+.ai-page p, .ai-page li { line-height: 1.7; overflow-wrap: anywhere; }
+.ai-page p { margin-bottom: 16px; }
+.ai-page button, .ai-page .ai-primary { min-height: 44px; padding: 10px 16px; border: 1px solid var(--border-color, #aaa6); border-radius: 10px; cursor: pointer; background: var(--bg-color); color: var(--text-main); font: inherit; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.ai-page .ai-primary { background: #6554c0; border-color: #6554c0; color: #fff; }
+.ai-page button:disabled { opacity: .5; cursor: default; }
+.ai-page :focus-visible { outline: 3px solid #927eff; outline-offset: 3px; }
+.ai-page .ai-examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+.ai-page .ai-examples p { padding: 16px; border-left: 2px solid #8a79dc; margin: 0; }
+.ai-page .ai-card { border: 1px solid var(--border-color, #aaa6); border-radius: 16px; padding: clamp(18px, 4vw, 28px); margin-bottom: 24px; scroll-margin-top: 20px; }
+.ai-page .ai-muted { color: var(--text-secondary); font-size: 14px; }
+.ai-page ol, .ai-page ul { padding-left: 24px; margin-bottom: 20px; }
+.ai-page .ai-copy { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; }
+.ai-page code { overflow-wrap: anywhere; word-break: break-word; flex: 1; min-width: 140px; font-size: 14px; user-select: all; }
+.ai-page summary { cursor: pointer; padding: 12px 0; }
+.ai-page form { display: grid; gap: 18px; }
+.ai-page label:not(.ai-check) { display: grid; gap: 8px; }
+.ai-page input:not([type=checkbox]), .ai-page select { width: 100%; min-height: 44px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color, #aaa6); border-radius: 8px; padding: 10px; font: inherit; }
+.ai-page fieldset { border: 1px solid var(--border-color, #aaa6); border-radius: 10px; padding: 12px 16px; }
+.ai-page legend { padding: 0 6px; }
+.ai-page .ai-check { min-height: 44px; display: flex; align-items: center; gap: 12px; }
+.ai-page input[type=checkbox] { width: 18px; height: 18px; accent-color: #6554c0; flex-shrink: 0; }
+.ai-page .ai-connection { display: flex; justify-content: space-between; align-items: start; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--border-color, #aaa6); }
+.ai-page .ai-connection p { margin-bottom: 6px; }
+.ai-page .ai-log { list-style: none; padding: 0; }
+.ai-page .ai-log li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: 14px; }
+.ai-page .ai-log time { color: var(--text-secondary); }
+.ai-page .ai-secret { margin-top: 24px; padding: 18px; border: 1px solid #8a79dc; border-radius: 10px; }
+.ai-page .ai-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.ai-page .ai-danger { background: #b42332; border-color: #b42332; color: white; }
+.ai-page .ai-error { padding: 16px; border: 1px solid #b42332; border-radius: 10px; margin-bottom: 20px; overflow-wrap: anywhere; }
+.ai-page .ai-error button { margin-left: 12px; }
+.ai-page .ai-notice:not(:empty) { margin-bottom: 20px; }
+.ai-page .ai-preview { max-height: 360px; overflow: auto; }
+.ai-page .ai-wrap { overflow-wrap: anywhere; }
+.ai-page .ai-login .auth-container { height: auto; padding: 32px 0; }
+@media (max-width: 600px) { .ai-page .ai-examples { grid-template-columns: 1fr; } .ai-page .ai-hero { padding-top: 40px; } .ai-page .ai-connection { flex-direction: column; gap: 8px; } }
+
+@media (prefers-color-scheme: dark) { .ai-page a:not(.ai-primary) { color: #b7aaff; } }

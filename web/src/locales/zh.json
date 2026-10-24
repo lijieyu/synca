@@ -176,5 +176,8 @@
   "access.privacy_policy_link_title": "隐私政策",
   "access.terms_link_title": "使用条款",
   "access.status_load_failed": "暂时无法加载权益",
-  "access.download_to_purchase": "下载 Synca，在 App 内购买"
+  "access.download_to_purchase": "下载 Synca，在 App 内购买",
+  "ai": {
+    "connect": "连接 AI"
+  }
 }

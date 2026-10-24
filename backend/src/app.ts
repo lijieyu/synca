@@ -1,3 +1,6 @@
+import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension, isSupportedDocument } from './attachmentPolicy.js';
+import { createAIRouter, aiRateLimit } from './aiRoutes.js';
+import { authenticate as authenticateAI, requireScope as requireAIScope, AIError, assertActive, type Actor, publicOrigin } from './aiCore.js';
 import { prepareUpload, trackUpload, releaseUpload } from './storage.js';
 import { db } from './db.js';
 import express from 'express';
@@ -28,10 +31,24 @@ app.set('trust proxy', 1);
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'MCP-Protocol-Version', 'Mcp-Session-Id'],
+    exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'],
 }));
 
+app.use(['/mcp', '/api/ai', '/oauth'], aiRateLimit);
+
+// Only authenticated integrations may submit inline attachments. Other JSON APIs keep their existing small limit.
+app.use(['/mcp', '/api/ai/tools/create_attachment'], async (req, res, next) => {
+    try { await authenticateAI(req.header('Authorization')); next(); }
+    catch (error) {
+        if (error instanceof AIError) {
+            res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${publicOrigin()}/.well-known/oauth-protected-resource/mcp"`);
+            res.status(error.status).json({ error: error.code });
+        } else next(error);
+    }
+}, express.json({ limit: '8mb' }));
 app.use(express.json());
+app.use(createAIRouter(notifyOtherDevices));
 
 // Serve uploaded images
 const uploadsDir = path.resolve(process.cwd(), 'uploads');
@@ -50,25 +67,6 @@ if (!fs.existsSync(feedbackUploadsDir)) {
     fs.mkdirSync(feedbackUploadsDir, { recursive: true });
 }
 
-const allowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
-const supportedDocumentMimeTypeByExtension: Record<string, string> = {
-    pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    xls: 'application/vnd.ms-excel',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ppt: 'application/vnd.ms-powerpoint',
-    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    txt: 'text/plain',
-    md: 'text/markdown',
-    csv: 'text/csv',
-    zip: 'application/zip',
-};
-const supportedDocumentExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
-const supportedDocumentMimeTypes = new Set([
-    ...Object.values(supportedDocumentMimeTypeByExtension),
-    'application/x-zip-compressed',
-]);
 const supportedCategoryColors = new Set(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
 const attachmentMetadata = z.object({
     sourceDevice: z.string().max(50).optional(),
@@ -122,41 +120,6 @@ const receiveAttachment = (kind: 'image' | 'file'): express.RequestHandler => (r
     }).single(kind)(req, res, next);
 };
 
-function imageExtensionForMimeType(mimeType: string): string {
-    switch (mimeType) {
-        case 'image/jpeg': return '.jpg';
-        case 'image/webp': return '.webp';
-        case 'image/heic': return '.heic';
-        case 'image/heif': return '.heif';
-        case 'image/gif': return '.gif';
-        default: return '.png';
-    }
-}
-
-function supportedFileExtension(file: Express.Multer.File | Pick<Express.Multer.File, 'mimetype' | 'originalname'>): string {
-    const originalExt = path.extname(file.originalname ?? '').replace('.', '').toLowerCase();
-    if (supportedDocumentExtensions.has(originalExt)) {
-        return originalExt;
-    }
-
-    for (const [ext, mimeType] of Object.entries(supportedDocumentMimeTypeByExtension)) {
-        if (file.mimetype === mimeType) {
-            return ext;
-        }
-    }
-
-    if (file.mimetype === 'application/x-zip-compressed') {
-        return 'zip';
-    }
-
-    return 'bin';
-}
-
-function isSupportedDocument(file: Pick<Express.Multer.File, 'mimetype' | 'originalname'>): boolean {
-    const ext = supportedFileExtension(file);
-    return supportedDocumentExtensions.has(ext) || supportedDocumentMimeTypes.has(file.mimetype ?? '');
-}
-
 function cleanupUploadedFiles(files: Express.Multer.File[] | undefined) {
     for (const file of files ?? []) {
         if (file.path && fs.existsSync(file.path)) {
@@ -168,6 +131,24 @@ function cleanupUploadedFiles(files: Express.Multer.File[] | undefined) {
 // ── Auth middleware ──
 
 async function auth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    if (req.header('Authorization')?.startsWith('Bearer synca_ai_')) {
+        try {
+            // Integration credentials are NEVER accepted by account, admin, purchases or legacy mutation routes.
+            const upload = req.method === 'POST' && ['/messages/image', '/messages/file'].includes(req.path);
+            const download = req.method === 'GET' && /^\/api\/media\/[^/]+$/.test(req.path);
+            if (!upload && !download) return res.status(403).json({ error: 'use_ai_api' });
+            const actor = await authenticateAI(req.header('Authorization'));
+            requireAIScope(actor, 'attachments');
+            requireAIScope(actor, upload ? 'create' : 'read');
+            if (upload && (!req.header('X-Upload-ID') || !req.header('X-Upload-Size'))) return res.status(400).json({ error: 'upload_headers_required' });
+            (req as any).userId = actor.userId;
+            res.locals.aiActor = actor;
+            return next();
+        } catch (error) {
+            if (error instanceof AIError) return res.status(error.status).json({ error: error.code });
+            return next(error);
+        }
+    }
     const userId = await getUserIdFromToken(req.header('Authorization'));
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
     (req as any).userId = userId;
@@ -223,7 +204,7 @@ app.get('/api/media/:filename', auth, async (req, res) => {
     }
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    const authorized = await canUserAccessMedia(userId, filename, user?.isAdmin ?? false);
+    const authorized = await canUserAccessMedia(userId, filename, res.locals.aiActor ? false : (user?.isAdmin ?? false));
     if (!authorized) {
         return res.status(403).json({ error: 'forbidden' });
     }
@@ -501,7 +482,7 @@ app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('ima
     const userId = getUserId(req);
     const id = res.locals.upload.messageId;
     const now = new Date().toISOString();
-    const sourceDevice = metadata.data.sourceDevice ?? null;
+    const sourceDevice = res.locals.aiActor ? `AI: ${res.locals.aiActor.name}`.slice(0, 50) : metadata.data.sourceDevice ?? null;
     const categoryId = metadata.data.categoryId ?? null;
 
     try {
@@ -520,6 +501,13 @@ app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('ima
     await createMessage({
         attachmentExpiresAt: expiresAt,
         reservationId: res.locals.upload.reservationId,
+        beforeCommit: res.locals.aiActor ? async trx => {
+            const actor = res.locals.aiActor as Actor;
+            await assertActive(actor, trx);
+            await trx.insertInto('ai_operations').values({ id: uuidv4(), user_id: actor.userId, connection_id: actor.id,
+                kind: 'upload_attachment', payload: JSON.stringify({ messageId: id }), result: JSON.stringify({ id }),
+                created_at: now, expires_at: null, status: 'completed', request_key: null }).execute();
+        } : undefined,
         id,
         userId,
         type: 'image',
@@ -566,7 +554,7 @@ app.post('/messages/file', auth, prepareUpload('file'), receiveAttachment('file'
     const userId = getUserId(req);
     const id = res.locals.upload.messageId;
     const now = new Date().toISOString();
-    const sourceDevice = metadata.data.sourceDevice ?? null;
+    const sourceDevice = res.locals.aiActor ? `AI: ${res.locals.aiActor.name}`.slice(0, 50) : metadata.data.sourceDevice ?? null;
     const categoryId = metadata.data.categoryId ?? null;
 
     try {
@@ -585,6 +573,13 @@ app.post('/messages/file', auth, prepareUpload('file'), receiveAttachment('file'
     await createMessage({
         attachmentExpiresAt: expiresAt,
         reservationId: res.locals.upload.reservationId,
+        beforeCommit: res.locals.aiActor ? async trx => {
+            const actor = res.locals.aiActor as Actor;
+            await assertActive(actor, trx);
+            await trx.insertInto('ai_operations').values({ id: uuidv4(), user_id: actor.userId, connection_id: actor.id,
+                kind: 'upload_attachment', payload: JSON.stringify({ messageId: id }), result: JSON.stringify({ id }),
+                created_at: now, expires_at: null, status: 'completed', request_key: null }).execute();
+        } : undefined,
         id,
         userId,
         type: 'file',
@@ -937,6 +932,7 @@ async function buildResponseAccessStatus(userId: string, now?: Date) {
 }
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof AIError) return res.status(err.status).json({ error: err.code });
     if (err instanceof multer.MulterError) {
         const error = err.code === 'LIMIT_FILE_SIZE' ? 'file_too_large' : 'invalid_upload';
         return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error });

@@ -1,0 +1,157 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
+import { LoginView } from './LoginView';
+import './AIPage.css';
+
+type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
+type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
+type Operation = { id: string; kind: string; status: string; created_at: string; connectionName?: string };
+type Confirmation = { id: string; status: string; expiresAt: string; items?: { id: string; preview: string }[] };
+type Authorization = { clientName: string; scopes: Scope[]; redirectUri: string };
+
+export function AIPage() {
+  const { token, isAuthenticated } = useAuth();
+  const { i18n } = useTranslation();
+  const zh = i18n.language.startsWith('zh');
+  const t = (cn: string, en: string) => zh ? cn : en;
+  const labels: Record<Scope, string> = { read: t('读取记录与用量', 'Read records and usage'), create: t('新增记录和分类', 'Create records and categories'),
+    update: t('编辑、分类与处理状态', 'Edit, categorize and complete'), delete: t('申请删除记录、删除分类', 'Request record deletion; delete categories'), attachments: t('传输图片和文件', 'Transfer images and files') };
+  const actionLabels: Record<string, string> = {
+    create_message: t('新增文字', 'Created text'), create_attachment: t('新增附件', 'Created attachment'), upload_attachment: t('上传附件', 'Uploaded attachment'),
+    update_messages: t('修改记录', 'Updated records'), delete_messages: t('删除记录', 'Delete records'),
+    category_create: t('新建分类', 'Created category'), category_update: t('修改分类', 'Updated category'), category_delete: t('删除分类', 'Deleted category'), category_reorder: t('分类排序', 'Reordered categories'),
+  };
+  const statusLabels: Record<string, string> = { pending: t('待确认', 'Pending approval'), completed: t('已完成', 'Completed'), cancelled: t('已取消', 'Cancelled'), expired: t('已过期', 'Expired') };
+  const params = new URLSearchParams(window.location.search);
+  const authorize = params.get('authorize');
+  const confirm = params.get('confirm');
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [authorization, setAuthorization] = useState<Authorization | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [permissions, setPermissions] = useState<Scope[]>(['read']);
+  const [name, setName] = useState('');
+  const [days, setDays] = useState(90);
+  const [credential, setCredential] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [loginVisible, setLoginVisible] = useState(Boolean(authorize || confirm));
+  const endpoint = `${window.location.origin}/mcp`;
+  const request = useCallback(async <T,>(path: string, method = 'GET', body?: unknown): Promise<T> => {
+    const response = await fetch(`/api/ai/${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }, [token]);
+  const refresh = useCallback(async () => {
+    const [c, o] = await Promise.all([request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations')]);
+    setConnections(c.connections); setOperations(o.operations);
+  }, [request]);
+  useEffect(() => {
+    document.title = zh ? '连接 AI · Synca' : 'Connect AI · Synca';
+    return () => { document.title = 'Synca'; };
+  }, [zh]);
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    setLoading(true);
+    const load = async () => {
+      const [c, o, a, d] = await Promise.all([
+        request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations'),
+        authorize ? request<Authorization>(`authorization/${encodeURIComponent(authorize)}`) : null,
+        confirm ? request<Confirmation>(`confirmations/${encodeURIComponent(confirm)}`) : null,
+      ]);
+      if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); setConfirmation(d); }
+    };
+    void load().catch(e => { if (active) setError(String(e.message)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, request, authorize, confirm]);
+  const act = async (fn: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true); setError(''); setNotice('');
+    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+  };
+  const copy = (value: string) => act(async () => { await navigator.clipboard.writeText(value); setNotice(t('已复制', 'Copied')); });
+  const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
+  return <main className="ai-page"><div className="ai-content">
+    <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link to="/">← Synca</Link><Link to="/ai">{t('连接 AI', 'Connect AI')}</Link></nav>
+    {!authorize && !confirm && <><header className="ai-hero"><span className="ai-eyebrow">SYNCA × AI</span>
+      <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
+      <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。手机、Mac 和 Web 自动同步。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca, synced across phone, Mac and web.')}</p>
+      <a className="ai-primary" href="#connect">{t('开始连接', 'Get connected')}</a>
+    </header>
+    <section className="ai-examples" aria-label={t('使用示例', 'Examples')}>
+      {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}>{v}</p>)}
+    </section>
+    <section className="ai-card" id="connect"><h2>{t('连接你的 AI 应用', 'Connect your AI app')}</h2>
+      <ol><li>{t('在 AI 应用中添加远程 MCP 服务，填入下方地址。', 'Add a remote MCP server in your AI app using the address below.')}</li>
+        <li>{t('支持 OAuth 的应用会打开 Synca 授权页；手动配置时使用个人令牌。', 'OAuth-capable apps open a Synca consent page. For manual configuration, use a personal token.')}</li>
+        <li>{t('授权后，从“列出最近的 Synca 记录”开始。', 'After authorization, try “List my recent Synca records”.')}</li></ol>
+      <div className="ai-copy"><code>{endpoint}</code><button onClick={() => void copy(endpoint)} disabled={busy}>{t('复制地址', 'Copy URL')}</button></div>
+      <p className="ai-muted">{t('协议：Streamable HTTP。是否支持自定义 MCP，取决于 AI 产品及其手机端版本。连接服务不包含模型费用。', 'Transport: Streamable HTTP. Custom MCP support depends on your AI product and its mobile version. Model costs are not included.')}</p>
+      <details><summary>{t('手动配置说明', 'Manual configuration')}</summary><p>{t('服务器地址使用上方 URL，认证选择 Bearer Token，将下方生成的个人令牌填入应用的安全凭证字段。不要把令牌发到聊天里。', 'Use the URL above and Bearer Token authentication. Put the personal token below in your app’s secure credential field, never in chat.')}</p>
+        <p>{t('可用操作：搜索、读取、新增、编辑、分类、恢复未处理、删除申请、附件传输与用量查询。大文件通过鉴权 HTTP 上传或下载，AI 应用需具备对应传输能力。', 'Tools cover search, read, create, edit, categories, completion, deletion requests, attachment transfer and usage. Large files use authenticated HTTP upload/download and require client-side transfer support.')}</p></details>
+    </section>
+    </>}
+    <div aria-live="polite" role="status" className="ai-notice">{notice}</div>
+    {error && <div role="alert" className="ai-error">{t('操作未完成：', 'Could not complete: ')}{error}<button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button></div>}
+    {loading && <p role="status">{t('正在加载连接信息…', 'Loading connections…')}</p>}
+    {!isAuthenticated && <section className="ai-card"><h2>{t('登录后授权或创建令牌', 'Sign in to authorize or create a token')}</h2>
+      <p>{t('授权的 AI 服务将接收你允许访问的内容。你可以随时撤销后续访问，但无法收回对方已经读取的数据。', 'Authorized AI services receive the content you permit. You can revoke future access, but cannot recall data already read.')}</p>
+      {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('登录 Synca', 'Sign in to Synca')}</button> : <div className="ai-login"><LoginView showAILink={false} /></div>}
+    </section>}
+    {isAuthenticated && authorization && <section className="ai-card ai-consent"><h2>{t('授权连接', 'Authorize connection')} · {authorization.clientName}</h2>
+      <p>{t('该应用名称由接入方提供。请确认它是你正在连接的应用。', 'This name is supplied by the connecting application. Verify that it is the app you intended to connect.')}</p>
+      <p className="ai-wrap">{t('返回地址：', 'Return address: ')}{authorization.redirectUri}</p>
+      <ul>{authorization.scopes.map(s => <li key={s}>{labels[s]}</li>)}</ul>
+      <p>{t('授权有效期 30 天，可随时撤销。外部 AI 将接收获准访问的数据。', 'Authorization lasts 30 days and can be revoked at any time. The external AI receives permitted data.')}</p>
+      <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} className={approve ? 'ai-primary' : ''} disabled={busy} onClick={() => void act(async () => {
+        const result = await request<{ redirectUrl: string }>(`authorization/${encodeURIComponent(authorize!)}`, 'POST', { approve });
+        window.location.assign(result.redirectUrl);
+      })}>{approve ? t('允许连接', 'Allow connection') : t('拒绝', 'Deny')}</button>)}</div>
+    </section>}
+    {isAuthenticated && confirmation && <section className="ai-card"><h2>{t('确认删除记录', 'Confirm record deletion')}</h2>
+      <p>{t('只删除下面列出的记录。删除不可撤销；记录在此期间发生变化时，需要重新申请。', 'Only the listed records will be deleted. This cannot be undone; changed records require a new request.')}</p>
+      <p>{t('状态：', 'Status: ')}{statusLabels[confirmation.status] ?? confirmation.status} · {t('有效至：', 'Expires: ')}{new Date(confirmation.expiresAt).toLocaleString(zh ? 'zh-CN' : 'en-US')}</p>
+      <ol className="ai-preview">{confirmation.items?.map(item => <li key={item.id}>{item.preview}</li>)}</ol>
+      {confirmation.status === 'pending' && <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} disabled={busy || Date.parse(confirmation.expiresAt) <= Date.now()} className={approve ? 'ai-danger' : ''} onClick={() => void act(async () => {
+        await request(`confirmations/${encodeURIComponent(confirm!)}`, 'POST', { approve });
+        setConfirmation({ ...confirmation, status: approve ? 'completed' : 'cancelled' });
+        setNotice(approve ? t('已删除所选记录', 'Selected records deleted') : t('已取消', 'Cancelled')); await refresh();
+      })}>{approve ? t(`确认删除 ${confirmation.items?.length ?? 0} 条`, `Delete ${confirmation.items?.length ?? 0} records`) : t('取消', 'Cancel')}</button>)}</div>}
+    </section>}
+    {isAuthenticated && !authorize && !confirm && <>
+      <section className="ai-card"><h2>{t('个人访问令牌', 'Personal access token')}</h2>
+        <p>{t('每个工具使用独立令牌。默认只读，按需开启写入；删除记录仍需在 Synca 网页确认。', 'Use a separate token for each tool. Read-only by default; enable writes as needed. Record deletion still requires confirmation on Synca’s website.')}</p>
+        <form onSubmit={e => { e.preventDefault(); void act(async () => {
+          const result = await request<{ token: string }>('connections', 'POST', { name, scopes: permissions, expiresInDays: days });
+          setCredential(result.token); setName(''); setNotice(t('令牌已创建，请立即保存', 'Token created. Save it now.')); await refresh();
+        }); }}>
+          <label>{t('连接名称', 'Connection name')}<input required maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder={t('例如：我的 AI 助手', 'e.g. My AI assistant')} /></label>
+          <fieldset><legend>{t('允许的能力', 'Permissions')}</legend>{(Object.keys(labels) as Scope[]).map(s => <label className="ai-check" key={s}><input type="checkbox" checked={permissions.includes(s)} onChange={e => setPermissions(e.target.checked ? [...permissions, s] : permissions.filter(v => v !== s))} />{labels[s]}</label>)}</fieldset>
+          <label>{t('有效期', 'Expires after')}<select value={days} onChange={e => setDays(Number(e.target.value))}>{[7, 30, 90, 365].map(d => <option value={d} key={d}>{d} {t('天', 'days')}</option>)}</select></label>
+          <p className="ai-muted">{t('附件上传还需“新增”权限，下载还需“读取”权限。外部服务的数据保留规则由该服务决定。', 'Attachment upload also requires Create; download requires Read. External services determine their own data retention.')}</p>
+          <button className="ai-primary" disabled={busy || !permissions.length || !name.trim() || !!credential}>{t('创建令牌', 'Create token')}</button>
+        </form>
+        {credential && <div className="ai-secret"><strong>{t('仅显示一次，请保存到工具的安全凭证设置中。', 'Shown once. Save in your tool’s secure credentials.')}</strong>
+          <div className="ai-copy"><code>{credential}</code><button disabled={busy} onClick={() => void copy(credential)}>{t('复制令牌', 'Copy token')}</button></div>
+          <button onClick={() => { setCredential(null); setNotice(t('令牌已隐藏', 'Token hidden')); }}>{t('已保存，隐藏令牌', 'Saved — hide token')}</button></div>}
+      </section>
+      <section className="ai-card"><h2>{t('已连接的应用', 'Connected apps')}</h2>
+        {!activeConnections.length && <p className="ai-muted">{t('还没有有效连接。', 'No active connections yet.')}</p>}
+        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3><p>{c.scopes.map(s => labels[s]).join(' · ')}</p>
+          <p className="ai-muted">{t('到期：', 'Expires: ')}{new Date(c.expires_at).toLocaleDateString(zh ? 'zh-CN' : 'en-US')} · {t('最近访问：', 'Last access: ')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(zh ? 'zh-CN' : 'en-US') : t('尚未使用', 'Not used yet')}</p></div>
+          <button disabled={busy} onClick={() => void act(async () => { await request(`connections/${c.id}`, 'DELETE'); setCredential(null); await refresh(); setNotice(t('已撤销连接', 'Connection revoked')); })}>{t('撤销', 'Revoke')}</button></article>)}
+      </section>
+      <section className="ai-card"><h2>{t('最近操作', 'Recent operations')}</h2>{!operations.length && <p className="ai-muted">{t('暂无操作记录。', 'No operations yet.')}</p>}
+        <ul className="ai-log">{operations.map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(zh ? 'zh-CN' : 'en-US')}</time></li>)}</ul>
+      </section>
+    </>}
+    <footer className="ai-muted">Synca · <Link to="/">{t('返回记录', 'Back to records')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('隐私政策', 'Privacy policy')}</a></footer>
+  </div></main>;
+}
