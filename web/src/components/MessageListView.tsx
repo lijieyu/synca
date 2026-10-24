@@ -6,7 +6,7 @@ import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage
 import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Grid2x2, Lightbulb, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Grid2x2, Infinity as InfinityIcon, Lightbulb, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -445,9 +445,8 @@ export const MessageListView: React.FC = () => {
     }
 
     return (
-      <button type="button" onClick={() => setShowPlan(true)} aria-label={t('storage.title')} className={`header-plan ${isUnlimited ? 'is-unlimited' : ''}`}>
-        {label}
-        {isUnlimited && <span aria-hidden="true">✦</span>}
+      <button type="button" onClick={() => setShowPlan(true)} aria-label={`${label} · ${t('storage.title')}`} className={`header-plan ${isUnlimited ? 'is-unlimited' : ''}`}>
+        <span className="header-plan-label">{label}{isUnlimited && <InfinityIcon size={16} strokeWidth={2.5} aria-hidden="true" />}</span>
       </button>
     );
   };

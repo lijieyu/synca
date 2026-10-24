@@ -30,7 +30,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     </div>}
     {kind === 'about' && <div className="about-panel">
       <div className="about-identity"><img src="/logo.png" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')}</p></div></div>
-      <p className="about-description">{t('navigation.about')}</p>
+      <p className="about-description">{t('app.slogan')}</p>
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
     </div>}
     {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form className="shell-form" onSubmit={async e => {
