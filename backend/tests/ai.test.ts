@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { randomUUID, createHash } from 'node:crypto';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -22,13 +22,18 @@ async function record(text = 'hello Synca') {
 }
 if (!process.env.DB_PATH?.includes('test')) throw new Error('AI tests require an isolated test DB_PATH');
 beforeAll(runMigrations);
+let testClock = Date.now();
 afterEach(async () => {
     const files = await db.selectFrom('messages').select(['image_path', 'file_path']).where('user_id', '=', userId).execute();
     for (const file of files) for (const [folder, name] of [['uploads', file.image_path], ['files', file.file_path]]) {
         if (name && path.basename(name) === name) await fs.unlink(path.resolve(folder!, name)).catch(() => {});
     }
 });
+afterEach(() => vi.useRealTimers());
 beforeEach(async () => {
+    // Each independent case gets a fresh rate-limit window without changing production limits.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(testClock += 61000);
     await resetDb();
     userId = randomUUID(); session = randomUUID();
     await createUser({ id: userId, appleUserId: userId, nickname: 'AI test', now: new Date().toISOString() });
@@ -60,10 +65,19 @@ describe('AI authorization and content contract', () => {
             await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`), { requestInit: { headers: { Authorization: auth() } } }));
             const tools = await client.listTools();
             expect(tools.tools.map(t => t.name)).toContain('update_records');
+            expect(tools.tools.find(t => t.name === 'delete_records')?.annotations?.destructiveHint).toBe(true);
             const result = await client.callTool({ name: 'create_record', arguments: { textContent: 'MCP actual call', idempotencyKey: randomUUID() } });
             expect(result.isError).not.toBe(true);
             const listing = await client.callTool({ name: 'search_records', arguments: { query: 'MCP' } });
             expect(JSON.stringify(listing)).toContain('MCP actual call');
+            const record = JSON.parse((listing.content as { text: string }[])[0].text).messages[0];
+            const preview = await client.callTool({ name: 'prepare_delete_records', arguments: { items: [{ id: record.id, expectedUpdatedAt: record.updatedAt }] } });
+            const operation = JSON.parse((preview.content as { text: string }[])[0].text);
+            const refused = await client.callTool({ name: 'delete_records', arguments: { operationId: operation.operationId, confirmed: false } });
+            expect(refused.isError).toBe(true);
+            const deleted = await client.callTool({ name: 'delete_records', arguments: { operationId: operation.operationId, confirmed: true } });
+            expect(deleted.isError).not.toBe(true);
+            expect(JSON.parse((deleted.content as { text: string }[])[0].text).deletedCount).toBe(1);
         } finally { await client.close(); await new Promise<void>(resolve => server.close(() => resolve())); }
     });
     it('retries text creation without duplication, rejects key reuse and retains existing client limits', async () => {
@@ -124,7 +138,7 @@ describe('AI authorization and content contract', () => {
         const op = await db.selectFrom('ai_operations').selectAll().where('id', '=', prepared.body.operationId).executeTakeFirstOrThrow();
         expect(op.status).toBe('expired'); expect(op.payload).not.toContain('private preview');
         expect((await call('read_record', { id: m.id })).status).toBe(200);
-        expect((await request(app).post(`/api/ai/confirmations/${op.id}`).set('Authorization', `Bearer ${session}`).send({ approve: true })).status).toBe(410);
+        expect((await call('delete_records', { operationId: op.id, confirmed: true })).status).toBe(410);
     });
     it('paginates deterministic ties, escapes LIKE and rejects invalid cursors', async () => {
         const a = await record('100% idea'); await record('100x idea'); await record('中文灵感');
@@ -156,26 +170,61 @@ describe('AI authorization and content contract', () => {
         expect((await call('manage_category', { action: 'delete', id: category.body.id, expectedUpdatedAt: category.body.updatedAt, idempotencyKey: randomUUID() })).status).toBe(200);
         expect((await call('read_record', { id: m.id })).body.categoryIsDefault).toBe(true);
     });
-    it('requires a human session for deletion and binds the exact preview, version, connection and expiry', async () => {
+    it('requires confirmation, isolates connections and users, removes web confirmation and safely retries', async () => {
         const m = await record();
         const prepare = await call('prepare_delete_records', { items: [{ id: m.id, expectedUpdatedAt: m.updatedAt }] });
-        expect(prepare.body.count).toBe(1);
-        const path = `/api/ai/confirmations/${prepare.body.operationId}`;
-        expect((await request(app).post(path).set('Authorization', auth()).send({ approve: true })).status).toBe(401);
+        expect(prepare.body).toMatchObject({ count: 1, requiresConfirmation: true, items: [{ id: m.id }] });
+        expect(prepare.body.confirmationUrl).toBeUndefined();
+        const args = { operationId: prepare.body.operationId, confirmed: true };
+        expect((await call('delete_records', { operationId: args.operationId })).status).toBe(400);
+        expect((await call('delete_records', { ...args, confirmed: false })).status).toBe(400);
+        const sibling = await connection(userId, 'another AI', ['read', 'delete'], 30);
+        expect((await call('delete_records', args, sibling.token)).status).toBe(404);
+        const reader = await connection(userId, 'reader', ['read'], 30);
+        expect((await call('delete_records', args, reader.token)).status).toBe(403);
+        const otherId = randomUUID();
+        await createUser({ id: otherId, appleUserId: otherId, nickname: 'Other', now: new Date().toISOString() });
+        const other = await connection(otherId, 'other', ['delete'], 30);
+        expect((await call('delete_records', args, other.token)).status).toBe(404);
         expect((await call('read_record', { id: m.id })).status).toBe(200);
-        expect((await request(app).post(path).set('Authorization', `Bearer ${session}`).send({ approve: true })).body.deletedCount).toBe(1);
-        expect((await request(app).post(path).set('Authorization', `Bearer ${session}`).send({ approve: true })).body.deletedCount).toBe(1);
+        const oldPath = `/api/ai/confirmations/${args.operationId}`;
+        expect((await request(app).post(oldPath).set('Authorization', `Bearer ${session}`).send({ approve: true })).status).toBe(404);
+        expect((await request(app).get(oldPath).set('Authorization', `Bearer ${session}`)).status).toBe(404);
+        const results = await Promise.all([call('delete_records', args), call('delete_records', args)]);
+        for (const result of results) { expect(result.status).toBe(200); expect(result.body.deletedCount).toBe(1); }
         expect((await call('read_record', { id: m.id })).status).toBe(404);
+        expect((await call('get_operation', { id: args.operationId })).body.status).toBe('completed');
         const legacy = await request(app).get(`/messages?since=${encodeURIComponent(m.updatedAt)}`).set('Authorization', `Bearer ${session}`);
         expect(legacy.body.messages.find((x: { id: string }) => x.id === m.id).isDeleted).toBe(true);
     });
-    it('refuses deletion if a previewed record changed or the connection was revoked', async () => {
+    it('refuses deletion if a preview changed, expired or its connection was revoked', async () => {
         const m = await record();
         const prepared = await call('prepare_delete_records', { items: [{ id: m.id, expectedUpdatedAt: m.updatedAt }] });
+        const args = { operationId: prepared.body.operationId, confirmed: true };
         await call('update_records', { items: [{ id: m.id, expectedUpdatedAt: m.updatedAt }], textContent: 'newer' });
-        expect((await request(app).post(`/api/ai/confirmations/${prepared.body.operationId}`).set('Authorization', `Bearer ${session}`).send({ approve: true })).status).toBe(409);
+        expect((await call('delete_records', args)).status).toBe(409);
+        await db.updateTable('ai_operations').set({ expires_at: '2000-01-01T00:00:00.000Z' }).where('id', '=', args.operationId).execute();
+        expect((await call('delete_records', args)).status).toBe(410);
         await request(app).delete(`/api/ai/connections/${connectionId}`).set('Authorization', `Bearer ${session}`);
-        expect((await request(app).post(`/api/ai/confirmations/${prepared.body.operationId}`).set('Authorization', `Bearer ${session}`).send({ approve: true })).status).toBe(403);
+        expect((await call('delete_records', args)).status).toBe(401);
+    });
+    it('keeps the exact deletion snapshot and rolls back an entire stale batch', async () => {
+        const a = await record('first'), b = await record('second');
+        await call('update_records', { items: [a, b].map(m => ({ id: m.id, expectedUpdatedAt: m.updatedAt })), isCleared: true });
+        const prepared = await call('prepare_delete_records', { completedOnly: true });
+        expect(prepared.body.count).toBe(2);
+        const later = await record('later');
+        await call('update_records', { items: [{ id: later.id, expectedUpdatedAt: later.updatedAt }], isCleared: true });
+        const last = prepared.body.items.at(-1);
+        await call('update_records', { items: [{ id: last.id, expectedUpdatedAt: last.updatedAt }], textContent: 'changed' });
+        expect((await call('delete_records', { operationId: prepared.body.operationId, confirmed: true })).status).toBe(409);
+        for (const m of [a, b, later]) expect((await call('read_record', { id: m.id })).status).toBe(200);
+        const fresh = await call('prepare_delete_records', { items: await Promise.all([a, b].map(async m => {
+            const current = (await call('read_record', { id: m.id })).body;
+            return { id: m.id, expectedUpdatedAt: current.updatedAt };
+        })) });
+        expect((await call('delete_records', { operationId: fresh.body.operationId, confirmed: true })).body.deletedCount).toBe(2);
+        expect((await call('read_record', { id: later.id })).status).toBe(200);
     });
     it('uploads inline images and files idempotently and applies the existing paid-file policy', async () => {
         const args = { kind: 'image', fileName: 'pixel.png', mimeType: 'image/png', idempotencyKey: randomUUID(),
@@ -245,7 +294,7 @@ describe('MCP OAuth consent and PKCE', () => {
         const verifier = 'z'.repeat(43);
         const start = await request(app).get('/oauth/authorize').query({ client_id, redirect_uri: redirect,
             response_type: 'code', code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'), scope: 'read' });
-        expect(start.status).toBe(302);
+        expect(start.status, start.text).toBe(302);
         const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
         const consent = await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`).send({ approve: true });
         const code = new URL(consent.body.redirectUrl).searchParams.get('code');
@@ -356,7 +405,7 @@ describe('MCP OAuth consent and PKCE', () => {
             code_challenge: createHash('sha256').update(verifier).digest('base64url'), scope: 'read create', state: 'original-state', resource: 'https://synca.haerth.cn/mcp' };
         expect((await request(app).get('/oauth/authorize').query({ ...query, redirect_uri: 'https://evil.example' })).status).toBe(400);
         const start = await request(app).get('/oauth/authorize').query(query);
-        expect(start.status).toBe(302);
+        expect(start.status, start.text).toBe(302);
         const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
         expect((await request(app).get(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`)).body.scopes).toEqual(['read', 'create']);
         const consent = await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`).send({ approve: true });

@@ -8,6 +8,8 @@
   "common.ok": "好的",
   "common.cancel": "取消",
   "common.delete": "删除",
+  "message_bubble.copied": "已复制",
+  "message_bubble.copy_failed": "复制失败，请检查浏览器剪贴板权限；图片也可打开后保存。",
   "common.copy": "拷贝",
   "common.save": "保存",
   "message.date.yesterday": "昨天 %@",

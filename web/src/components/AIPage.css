@@ -31,7 +31,6 @@
 .ai-page .ai-error { padding: 16px; border: 1px solid #b42332; border-radius: 10px; margin-bottom: 20px; overflow-wrap: anywhere; }
 .ai-page .ai-error button { margin-left: 12px; }
 .ai-page .ai-notice:not(:empty) { margin-bottom: 20px; }
-.ai-page .ai-preview { max-height: 360px; overflow: auto; }
 .ai-page .ai-wrap { overflow-wrap: anywhere; }
 .ai-page .ai-login .auth-container { height: auto; padding: 32px 0; }
 @media (max-width: 600px) { .ai-page .ai-examples { grid-template-columns: 1fr; } .ai-page .ai-hero { padding-top: 40px; } .ai-page .ai-connection { flex-direction: column; gap: 8px; } }
@@ -42,6 +41,7 @@
 .ai-page { --ai-accent: #6849cf; --ai-surface: #fff; --ai-ink: #252333; --ai-muted: #6c687d; --ai-line: #e7e3f0; background: #f7f6fb; color: var(--ai-ink); }
 .ai-page .ai-content { max-width: 1160px; padding: 24px 48px 40px; }
 .ai-page .ai-nav { padding: 0 0 24px; border-bottom: 1px solid var(--ai-line); }
+.ai-authorization-page .ai-nav { margin-bottom: 24px; }
 .ai-page .ai-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ai-ink); font-size: 21px; font-weight: 650; text-decoration: none; letter-spacing: -.6px; }
 .ai-page .ai-brand img { width: 34px; height: 34px; border-radius: 10px; }
 .ai-page .ai-intro-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 60px; padding: 64px 0 40px; }

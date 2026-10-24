@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
-import { Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Toast } from './Toast';
 import { AuthImage } from './AuthImage';
+import { copyProtectedImage } from '../utils/clipboard';
 
 interface Props {
   message: SyncaMessage;
@@ -28,6 +29,13 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
 
 export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }) => {
   const [actionError, setActionError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
   const [attachmentExpired, setAttachmentExpired] = useState(false);
   const expired = attachmentExpired || message.attachmentExpired || Boolean(message.attachmentExpiresAt && Date.parse(message.attachmentExpiresAt) <= Date.now());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -98,6 +106,21 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleCopy = async () => {
+    if (isCopying || isProcessing || (message.type === 'image' && expired)) return;
+    setIsCopying(true); setCopied(false); setActionError('');
+    try {
+      if (message.type === 'text') await navigator.clipboard.writeText(message.textContent ?? '');
+      else if (message.type === 'image' && message.imageUrl) await copyProtectedImage(message.imageUrl, message.attachmentExpiresAt);
+      else return;
+      setCopied(true);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      if (error instanceof StorageError && error.code === 'attachment_expired') reportError(error);
+      else setActionError(t('message_bubble.copy_failed'));
+    } finally { setIsCopying(false); }
   };
 
   const handleDelete = async () => {
@@ -231,7 +254,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
         )}
 
         <div className="message-header">
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="message-metadata">
             <span>{formatTime(message.createdAt)}</span>
             <span>·</span>
             <span>{message.sourceDevice}</span>
@@ -278,6 +301,12 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
                 {fileAction === 'download' ? <span className="action-spinner" aria-hidden="true" /> : <Download size={16} />}
               </button>
             )}
+            {(message.type === 'text' || (message.type === 'image' && !expired && message.imageUrl)) && (
+              <button className={`action-btn message-copy${copied ? ' is-copied' : ''}`} onClick={() => void handleCopy()} disabled={isProcessing || isCopying}
+                title={t(copied ? 'message_bubble.copied' : 'common.copy')} aria-label={t(copied ? 'message_bubble.copied' : 'common.copy')} aria-busy={isCopying}>
+                {isCopying ? <span className="action-spinner" aria-hidden="true" /> : copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+              </button>
+            )}
             <button className="action-btn" onClick={() => setShowDeleteModal(true)} disabled={isProcessing} title={t('common.delete', 'Delete')}>
               <Trash2 size={16} />
             </button>
@@ -297,6 +326,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
         </div>
       </div>
 
+      <span className="copy-announcement" role="status">{copied ? t('message_bubble.copied') : ''}</span>
       <Toast variant="error" duration={6000} message={actionError} visible={Boolean(actionError)} onClose={() => setActionError('')} />
       {showDeleteModal && (
         <Modal

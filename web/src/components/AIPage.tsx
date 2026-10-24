@@ -10,7 +10,6 @@ import './AIPage.css';
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
 type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
 type Operation = { id: string; kind: string; status: string; created_at: string; connectionName?: string };
-type Confirmation = { id: string; status: string; expiresAt: string; items?: { id: string; preview: string }[] };
 type Authorization = { authorizationDays: number; autoRefresh: boolean; refreshIdleDays: number; clientName: string; scopes: Scope[]; redirectUri: string };
 
 export function AIPage() {
@@ -19,7 +18,7 @@ export function AIPage() {
   const zh = i18n.language.startsWith('zh');
   const t = (cn: string, en: string) => zh ? cn : en;
   const labels: Record<Scope, string> = { read: t('读取记录与用量', 'Read records and usage'), create: t('新增记录和分类', 'Create records and categories'),
-    update: t('编辑、分类与处理状态', 'Edit, categorize and complete'), delete: t('申请删除记录、删除分类', 'Request record deletion; delete categories'), attachments: t('传输图片和文件', 'Transfer images and files') };
+    update: t('编辑、分类与处理状态', 'Edit, categorize and complete'), delete: t('确认后删除记录、删除分类', 'Delete records after confirmation; delete categories'), attachments: t('传输图片和文件', 'Transfer images and files') };
   const actionLabels: Record<string, string> = {
     create_message: t('新增文字', 'Created text'), create_attachment: t('新增附件', 'Created attachment'), upload_attachment: t('上传附件', 'Uploaded attachment'),
     update_messages: t('修改记录', 'Updated records'), delete_messages: t('删除记录', 'Delete records'),
@@ -28,11 +27,9 @@ export function AIPage() {
   const statusLabels: Record<string, string> = { pending: t('待确认', 'Pending approval'), completed: t('已完成', 'Completed'), cancelled: t('已取消', 'Cancelled'), expired: t('已过期', 'Expired') };
   const params = new URLSearchParams(window.location.search);
   const authorize = params.get('authorize');
-  const confirm = params.get('confirm');
   const [connections, setConnections] = useState<Connection[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +41,7 @@ export function AIPage() {
     const timer = window.setTimeout(() => setCopied(false), 2500);
     return () => window.clearTimeout(timer);
   }, [copied]);
-  const [loginVisible, setLoginVisible] = useState(Boolean(authorize || confirm));
+  const [loginVisible, setLoginVisible] = useState(Boolean(authorize));
   const endpoint = `${window.location.origin}/mcp`;
   const connectionPrompt = t(
     `请帮我连接 Synca，使用远程 MCP 服务 ${endpoint}（Streamable HTTP），通过 OAuth 登录授权。请使用你所在应用提供的 MCP 安装和连接能力；若已安装请直接连接，不要重复添加。请引导我在当前软件内完成 MCP 配置和 OAuth 授权：名称 Synca，服务器地址 ${endpoint}，传输方式 Streamable HTTP，身份验证 OAuth。若无法直接添加，请明确说明，并根据当前软件实际界面逐步告诉我在哪里添加、每项填什么、如何点击连接，再引导我打开官方 Synca 登录授权页，亲自登录并确认所需权限。不要编造菜单路径；不确定时请先询问软件版本或让我提供当前界面。不要让我把密码、验证码或访问令牌发到对话里。不要把提供配置说明当作安装成功。连接成功后，读取最近 5 条 Synca 记录验证连接，不要修改或删除内容。`,
@@ -70,16 +67,15 @@ export function AIPage() {
     let active = true;
     setLoading(true);
     const load = async () => {
-      const [c, o, a, d] = await Promise.all([
+      const [c, o, a] = await Promise.all([
         request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations'),
         authorize ? request<Authorization>(`authorization/${encodeURIComponent(authorize)}`) : null,
-        confirm ? request<Confirmation>(`confirmations/${encodeURIComponent(confirm)}`) : null,
       ]);
-      if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); setConfirmation(d); }
+      if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); }
     };
     void load().catch(e => { if (active) setError(String(e.message)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token, request, authorize, confirm]);
+  }, [token, request, authorize]);
   const act = async (fn: () => Promise<void>) => {
     if (busy) return;
     setBusy(true); setError(''); setNotice('');
@@ -87,11 +83,11 @@ export function AIPage() {
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <main className={`ai-page${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible}><div className="ai-content">
+  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible}><div className="ai-content">
     <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link></nav>
-    {!authorize && !confirm && <><div className="ai-intro-grid"><header className="ai-hero">
+    {!authorize && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
-      <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。手机、Mac 和 Web 自动同步。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca, synced across phone, Mac and web.')}</p>
+      <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca.')}</p>
     </header>
     <section className="ai-card ai-connect" id="connect"><h2>{t('只需三步，连接你的AI', 'Connect your AI in three steps')}</h2>
       <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
@@ -105,10 +101,10 @@ export function AIPage() {
       {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}><MessageSquare size={18} aria-hidden="true" />{v}</p>)}
     </section>
     </>}
-    {(authorize || confirm || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
+    {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
     {error && <div role="alert" className="ai-error">{t('操作未完成：', 'Could not complete: ')}{error}<button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button></div>}
     {loading && <p role="status">{t('正在加载连接信息…', 'Loading connections…')}</p>}
-    {!isAuthenticated && <section className={`ai-card ${!authorize && !confirm ? 'ai-manage' : ''}`}><h2>{authorize || confirm ? t('登录 Synca 以继续', 'Sign in to Synca to continue') : t('管理已连接的 AI', 'Manage connected AI apps')}</h2>
+    {!isAuthenticated && <section className={`ai-card ${!authorize ? 'ai-manage' : ''}`}><h2>{authorize ? t('登录 Synca 以继续', 'Sign in to Synca to continue') : t('管理已连接的 AI', 'Manage connected AI apps')}</h2>
       <p>{t('授权的 AI 服务将接收你允许访问的内容。你可以随时撤销后续访问，但无法收回对方已经读取的数据。', 'Authorized AI services receive the content you permit. You can revoke future access, but cannot recall data already read.')}</p>
       {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('登录 Synca', 'Sign in to Synca')}</button> : <div className="ai-login"><LoginView /></div>}
     </section>}
@@ -123,17 +119,7 @@ export function AIPage() {
         window.location.assign(result.redirectUrl);
       })}>{approve ? t('允许连接', 'Allow connection') : t('拒绝', 'Deny')}</button>)}</div>
     </section>}
-    {isAuthenticated && confirmation && <section className="ai-card"><h2>{t('确认删除记录', 'Confirm record deletion')}</h2>
-      <p>{t('只删除下面列出的记录。删除不可撤销；记录在此期间发生变化时，需要重新申请。', 'Only the listed records will be deleted. This cannot be undone; changed records require a new request.')}</p>
-      <p>{t('状态：', 'Status: ')}{statusLabels[confirmation.status] ?? confirmation.status} · {t('有效至：', 'Expires: ')}{new Date(confirmation.expiresAt).toLocaleString(zh ? 'zh-CN' : 'en-US')}</p>
-      <ol className="ai-preview">{confirmation.items?.map(item => <li key={item.id}>{item.preview}</li>)}</ol>
-      {confirmation.status === 'pending' && <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} disabled={busy || Date.parse(confirmation.expiresAt) <= Date.now()} className={approve ? 'ai-danger' : ''} onClick={() => void act(async () => {
-        await request(`confirmations/${encodeURIComponent(confirm!)}`, 'POST', { approve });
-        setConfirmation({ ...confirmation, status: approve ? 'completed' : 'cancelled' });
-        setNotice(approve ? t('已删除所选记录', 'Selected records deleted') : t('已取消', 'Cancelled')); await refresh();
-      })}>{approve ? t(`确认删除 ${confirmation.items?.length ?? 0} 条`, `Delete ${confirmation.items?.length ?? 0} records`) : t('取消', 'Cancel')}</button>)}</div>}
-    </section>}
-    {isAuthenticated && !authorize && !confirm && <>
+    {isAuthenticated && !authorize && <>
       <section className="ai-card"><h2>{t('已连接的应用', 'Connected apps')}</h2>
         {!activeConnections.length && <p className="ai-muted">{t('还没有有效连接。', 'No active connections yet.')}</p>}
         {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3><p>{c.scopes.map(s => labels[s]).join(' · ')}</p>
