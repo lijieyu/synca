@@ -8,6 +8,8 @@
   "common.ok": "OK",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
+  "message_bubble.copied": "Copied",
+  "message_bubble.copy_failed": "Could not copy. Check clipboard permissions, or open the image and save it.",
   "common.copy": "Copy",
   "common.save": "Save",
   "message.date.yesterday": "Yesterday %@",

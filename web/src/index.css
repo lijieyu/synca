@@ -1375,3 +1375,14 @@ button.attachment-placeholder { cursor: pointer; }
 .storage-plans .plan-download-link { display: block; text-align: center; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--synca-purple); color: white; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
 .storage-plans .plan-download-link:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
 .storage-plans .plan-upgrade { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
+
+/* Record actions stay reachable when metadata wraps on narrow screens. */
+.message-header { flex-wrap: wrap; }
+.message-metadata { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.message-header .actions { margin-left: auto; flex-shrink: 0; gap: 4px; }
+.message-header .action-btn { min-width: 32px; min-height: 32px; border-radius: 8px; }
+.message-header .action-btn:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 2px; }
+.message-copy.is-copied { color: #18752c; }
+.copy-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (pointer: coarse) { .message-header .action-btn { min-width: 44px; min-height: 44px; } }
+@media (prefers-color-scheme: dark) { .message-copy.is-copied { color: #75d58a; } }
