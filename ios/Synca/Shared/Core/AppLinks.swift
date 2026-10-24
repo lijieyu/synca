@@ -4,6 +4,13 @@ enum AppLinks {
     private static let baseURL = URL(string: "https://synca.haerth.cn")!
     private static let standardTermsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 
+    static var aiConnectionURL: URL {
+        var components = URLComponents(url: baseURL.appendingPathComponent("ai"), resolvingAgainstBaseURL: false)!
+        let language = Locale.preferredLanguages.first?.lowercased().hasPrefix("zh") == true ? "zh" : "en"
+        components.queryItems = [URLQueryItem(name: "lng", value: language)]
+        return components.url!
+    }
+
     static var privacyPolicyURL: URL {
         localizedURL(pathEN: "/en/privacy-policy", pathZH: "/zh-hans/privacy-policy")
     }

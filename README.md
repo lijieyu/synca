@@ -4,7 +4,14 @@
 
 ## AI 连接（1.0.5）
 
-云端 MCP 与 Web `/ai` 接入页面已加入，支持外部 AI 对话式管理记录、分类和附件。授权、工具契约、兼容性及发布验收见 [MCP 接入说明](docs/MCP.md)。iOS/macOS 沿用现有同步协议，本批不修改客户端版本号。
+云端 MCP 与 Web `/ai` 接入页面已加入，支持外部 AI 对话式管理记录、分类和附件。授权、工具契约、兼容性及发布验收见 [MCP 接入说明](docs/MCP.md)。iOS/macOS 沿用现有同步协议，1.0.5 在 iPhone/Mac 的更多菜单提供“连接 AI”入口，共用 Web 说明页；以复制连接指令和 OAuth 登录授权为主流程。
+
+## 跨端导航约定
+
+- iOS、macOS、Web 的套餐/额度标记紧跟 Synca 标题，可点击查看套餐。
+- 功能菜单固定顺序：账号 → 分类管理 → 连接 AI → 提交反馈 → 关于 Synca。新增或调整菜单时，一起检查 `ios/Synca/Shared/Views/MessageListView.swift` 与 `web/src/components/FunctionMenu.tsx`，保持内容、顺序和中英文命名一致。
+- 退出登录放在账号面板；Web 管理员后台入口也收在账号面板，不改变普通用户菜单。
+- 连接 AI 共用 `/ai` 页面；验收覆盖手机窄屏、长文本、键盘焦点和深浅色模式。
 
 ## 核心功能
 

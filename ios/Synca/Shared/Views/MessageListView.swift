@@ -790,6 +790,10 @@ struct MessageListView: View {
                 Label("message_list.manage_categories", systemImage: "tag")
             }
 
+            Link(destination: AppLinks.aiConnectionURL) {
+                Label("message_list.connect_ai", systemImage: "sparkles")
+            }
+
             Button {
                 showFeedbackComposer = true
             } label: {

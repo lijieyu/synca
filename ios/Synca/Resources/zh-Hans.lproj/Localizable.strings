@@ -258,3 +258,5 @@
 "access.status_load_failed" = "暂时无法加载权益";
 "access.status_load_failed_detail" = "请检查网络连接后重试。";
 "common.retry" = "重试";
+
+"message_list.connect_ai" = "连接 AI";

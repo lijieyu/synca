@@ -1,10 +1,12 @@
+import { FunctionMenu } from './FunctionMenu';
+import { ShellPanel } from './ShellPanel';
 import { PlanDialog } from './PlanDialog';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Grid2x2, Lightbulb, LogOut, Plus, RefreshCcw, Rows3, Settings2, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Grid2x2, Lightbulb, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -107,7 +109,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
             <CategoryTodoBadge count={pending.length} />
           </span>
           <div className="category-column-actions">
-            <button className="header-btn" onClick={() => void onRefresh()} title={t('message_list.sync_success', 'Sync')}>
+            <button className="header-btn" onClick={() => void onRefresh()} title={t('navigation.sync')} aria-label={t('navigation.sync')}>
               <RefreshCcw size={16} />
             </button>
             <button
@@ -150,6 +152,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
 };
 
 export const MessageListView: React.FC = () => {
+  const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
   const [showPlan, setShowPlan] = useState(false);
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [categories, setCategories] = useState<MessageCategory[]>([]);
@@ -432,19 +435,17 @@ export const MessageListView: React.FC = () => {
     if (!plan || !accessStatus) return null;
 
     let label = plan;
-    let color = 'rgba(142, 142, 147, 0.15)';
     let isUnlimited = false;
 
     if (plan === 'unlimited') {
       label = t('access.status_unlimited_compact');
-      color = 'rgba(125, 77, 255, 0.15)';
       isUnlimited = true;
     } else if (plan === 'free') {
       label = t('access.status_free_compact', { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 });
     }
 
     return (
-      <button type="button" onClick={() => setShowPlan(true)} aria-label={t('storage.title')} className="admin-tag" style={{ background: color, marginLeft: '6px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      <button type="button" onClick={() => setShowPlan(true)} aria-label={t('storage.title')} className={`header-plan ${isUnlimited ? 'is-unlimited' : ''}`}>
         {label}
         {isUnlimited && <span aria-hidden="true">✦</span>}
       </button>
@@ -453,26 +454,19 @@ export const MessageListView: React.FC = () => {
 
   return (
     <div className={`app-container ${layoutMode === 'tiled' ? 'tiled-layout' : ''}`}>
+      {panel && <ShellPanel kind={panel} email={email} isAdmin={isAdmin} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showPlan && <PlanDialog onClose={() => setShowPlan(false)} />}
       <div className="header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="header-brand">
           <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
           <h1 className="header-title">{t('app.name', 'Synca')}</h1>
+          {getPlanInfo()}
         </div>
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          <a className="header-btn" href="/ai" style={{ width: 'auto', padding: '0 8px', fontSize: '13px', textDecoration: 'none' }}>{t('ai.connect', '连接 AI')}</a>
-          {isAdmin && (
-            <button className="header-btn" onClick={() => window.open('/admin', '_blank')} title="Admin Dashboard">
-              <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)', padding: '0 4px' }}>Manage</span>
-            </button>
-          )}
-          <button className="header-btn" onClick={openCategoryManager} title="Manage categories">
-            <Settings2 size={18} />
-          </button>
-          <button className="header-btn" onClick={() => setLayoutMode(layoutMode === 'single' ? 'tiled' : 'single')} title="Toggle layout">
+        <div className="header-actions">
+          <button className="header-btn" onClick={() => setLayoutMode(layoutMode === 'single' ? 'tiled' : 'single')} aria-label={t('navigation.layout')} title={t('navigation.layout')}>
             {layoutMode === 'single' ? <Grid2x2 size={18} /> : <Rows3 size={18} />}
           </button>
-          <button className="header-btn" onClick={() => void handleRefresh()} title={t('message_list.sync_success', 'Sync')}>
+          <button className="header-btn" onClick={() => void handleRefresh()} title={t('navigation.sync')} aria-label={t('navigation.sync')}>
             <RefreshCcw size={18} />
           </button>
           <button
@@ -485,17 +479,8 @@ export const MessageListView: React.FC = () => {
             <Trash2 size={18} />
           </button>
 
-          <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 8px', opacity: 0.8 }} />
+          <FunctionMenu onAccount={() => setPanel('account')} onCategories={openCategoryManager} onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} />
 
-          <div className="header-account" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 8px 4px 14px', borderRadius: '20px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {email && <span className="header-email" style={{ fontSize: '12px', fontWeight: 500, opacity: 0.9 }}>{email}</span>}
-                {getPlanInfo()}
-              </div>
-              <button className="header-btn" onClick={() => setShowLogoutModal(true)} title={t('message_list.logout', 'Sign Out')} style={{ width: '28px', height: '28px', minWidth: '28px', background: 'transparent', margin: 0 }}>
-                <LogOut size={14} />
-              </button>
-          </div>
         </div>
       </div>
 
