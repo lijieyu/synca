@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowUpRight, Copy, Check, Sparkles, ShieldCheck, MessageSquare, Link2 } from 'lucide-react';
+import { ArrowUpRight, Copy, Check, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -88,13 +88,12 @@ export function AIPage() {
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
   return <main className={`ai-page${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible}><div className="ai-content">
-    <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link><Link className="ai-back" to="/">{t('打开 Synca', 'Open Synca')} <ArrowUpRight size={16} /></Link></nav>
-    {!authorize && !confirm && <><div className="ai-intro-grid"><header className="ai-hero"><span className="ai-eyebrow"><Sparkles size={15} /> SYNCA × AI</span>
+    <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link></nav>
+    {!authorize && !confirm && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
       <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。手机、Mac 和 Web 自动同步。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca, synced across phone, Mac and web.')}</p>
-      <div className="ai-assurance"><ShieldCheck size={17} />{t('由你授权，随时断开', 'Your permission. Your control.')}</div>
     </header>
-    <section className="ai-card ai-connect" id="connect"><div className="ai-connect-icon"><Link2 size={24} /></div><span className="ai-step-label">{t('只需三步', 'THREE SIMPLE STEPS')}</span><h2>{t('连接你的 AI 应用', 'Connect your AI app')}</h2>
+    <section className="ai-card ai-connect" id="connect"><h2>{t('只需三步，连接你的AI', 'Connect your AI in three steps')}</h2>
       <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
         <li>{t('跟随 AI 指导，在当前软件内完成配置与授权。', 'Follow your AI’s guidance to configure and authorize Synca in your current app.')}</li>
         <li>{t('回到对话，让 AI 查找或整理你的记录。', 'Return to the conversation to find and organize your records.')}</li></ol>
@@ -111,7 +110,7 @@ export function AIPage() {
     {loading && <p role="status">{t('正在加载连接信息…', 'Loading connections…')}</p>}
     {!isAuthenticated && <section className={`ai-card ${!authorize && !confirm ? 'ai-manage' : ''}`}><h2>{authorize || confirm ? t('登录 Synca 以继续', 'Sign in to Synca to continue') : t('管理已连接的 AI', 'Manage connected AI apps')}</h2>
       <p>{t('授权的 AI 服务将接收你允许访问的内容。你可以随时撤销后续访问，但无法收回对方已经读取的数据。', 'Authorized AI services receive the content you permit. You can revoke future access, but cannot recall data already read.')}</p>
-      {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('登录 Synca', 'Sign in to Synca')}</button> : <div className="ai-login"><LoginView showAILink={false} /></div>}
+      {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('登录 Synca', 'Sign in to Synca')}</button> : <div className="ai-login"><LoginView /></div>}
     </section>}
     {isAuthenticated && authorization && <section className="ai-card ai-consent"><h2>{t('授权连接', 'Authorize connection')} · {authorization.clientName}</h2>
       <p>{t('该应用名称由接入方提供。请确认它是你正在连接的应用。', 'This name is supplied by the connecting application. Verify that it is the app you intended to connect.')}</p>

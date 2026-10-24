@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { useTranslation } from 'react-i18next';
 
-export const LoginView: React.FC<{ showAILink?: boolean }> = ({ showAILink = true }) => {
+export const LoginView: React.FC = () => {
   const { login } = useAuth();
   const { t } = useTranslation();
   const scriptLoaded = useRef(false);
@@ -84,7 +84,6 @@ export const LoginView: React.FC<{ showAILink?: boolean }> = ({ showAILink = tru
       <p>{t('app.slogan', 'Sync Your Aha Moment')}</p>
       
       <div id="appleid-signin" data-color="black" data-border="true" data-type="sign in"></div>
-      {showAILink && <a href="/ai" style={{ color: 'var(--text-main)', textUnderlineOffset: '4px' }}>{t('ai.connect', '连接 AI')}</a>}
     </div>
   );
 };
