@@ -121,6 +121,7 @@ export interface LifetimeUpgradeOfferCodesTable {
 
 export interface AIConnectionsTable {
     id: string; user_id: string; name: string; token_hash: string; scopes: string;
+    access_expires_at: Generated<string | null>;
     created_at: string; expires_at: string; revoked_at: string | null; last_used_at: string | null; client_id: string | null;
 }
 export interface AIOperationsTable {
@@ -134,6 +135,7 @@ export interface AIOAuthRequestsTable {
 }
 export interface Database {
     ai_connections: AIConnectionsTable;
+    ai_refresh_tokens: { token_hash: string; connection_id: string; expires_at: string; consumed_at: string | null; created_at: string };
     ai_operations: AIOperationsTable;
     ai_oauth_clients: AIOAuthClientsTable;
     ai_oauth_requests: AIOAuthRequestsTable;

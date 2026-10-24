@@ -1,7 +1,8 @@
+import { issueOAuthTokens, refreshOAuthTokens, OAUTH_GRANT_DAYS, OAUTH_REFRESH_IDLE_DAYS } from './aiOAuthTokens.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import express, { type RequestHandler } from 'express';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -96,7 +97,7 @@ export function createAIRouter(notify: (userId: string) => Promise<void>) {
         list_categories: { description: 'List categories and versions, including protected default category.', schema: z.object({}).strict(), scope: 'read' as Scope, run: (a: Actor) => listMessageCategories(a.userId) },
         manage_category: { description: 'Create, rename, recolor, reorder or delete categories. Deleting a category moves its records to Default; it does not delete records. Update/delete require current version. Reorder supplies all non-default categoryIds and matching categoryVersions (id, expectedUpdatedAt).', schema: categorySchema, scope: null, run: changeCategory },
         prepare_delete_records: { description: 'Prepare deletion of explicit records or completed records (up to 500). Returns a URL the human must open to approve. Never claim deletion until operation status is completed.', schema: deleteSchema, scope: 'delete' as Scope, run: prepareDelete },
-        get_usage: { description: 'Read account usage, storage limits, attachment retention and unprocessed count.', schema: z.object({}).strict(), scope: 'read' as Scope, run: async (a: Actor) => ({ access: await buildAccessStatus(a.userId), unclearedCount: await getUnclearedCount(a.userId) }) },
+        get_usage: { description: 'Read account plan and usage. access.todayLimit=null with isUnlimited=true means unlimited daily records. unclearedCount is the number of existing unfinished records, NOT a remaining quota. Storage limits still apply.', schema: z.object({}).strict(), scope: 'read' as Scope, run: async (a: Actor) => ({ access: await buildAccessStatus(a.userId), unclearedCount: await getUnclearedCount(a.userId) }) },
         get_operation: { description: 'Check the status of an operation created by this connection.', schema: z.object({ id: z.string().uuid() }).strict(), scope: null, run: async (a: Actor, p: { id: string }) => {
             const row = await db.selectFrom('ai_operations').select(['id', 'kind', 'status', 'result', 'expires_at'])
                 .where('id', '=', p.id).where('user_id', '=', a.userId).where('connection_id', '=', a.id).executeTakeFirst();
@@ -191,21 +192,26 @@ function installOAuth(router: express.Router) {
         resource: resource(), authorization_servers: [publicOrigin()], scopes_supported: scopes, bearer_methods_supported: ['header'] }));
     router.get('/.well-known/oauth-authorization-server', (_req, res) => res.json({
         issuer: publicOrigin(), authorization_endpoint: `${publicOrigin()}/oauth/authorize`, token_endpoint: `${publicOrigin()}/oauth/token`,
-        registration_endpoint: `${publicOrigin()}/oauth/register`, response_types_supported: ['code'], grant_types_supported: ['authorization_code'],
-        token_endpoint_auth_methods_supported: ['none'], code_challenge_methods_supported: ['S256'], scopes_supported: scopes }));
+        registration_endpoint: `${publicOrigin()}/oauth/register`, response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
+        token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'], code_challenge_methods_supported: ['S256'], scopes_supported: scopes }));
     const redirectSchema = z.string().url().max(2048).refine(value => {
         const u = new URL(value);
         return !u.hash && !u.username && !u.password && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname)));
     }, 'HTTPS or loopback redirect required');
     router.post('/oauth/register', wrap(async (req, res) => {
         const meta = z.object({ client_name: z.string().trim().min(1).max(80).default('AI client'),
-            redirect_uris: z.array(redirectSchema).min(1).max(10), token_endpoint_auth_method: z.literal('none').default('none'),
-            grant_types: z.array(z.literal('authorization_code')).default(['authorization_code']), response_types: z.array(z.literal('code')).default(['code']) }).parse(req.body);
+            redirect_uris: z.array(redirectSchema).min(1).max(10), token_endpoint_auth_method: z.enum(['none', 'client_secret_post', 'client_secret_basic']).default('none'),
+            grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])).min(1).max(2).default(['authorization_code']).refine(v => v.includes('authorization_code')).transform(v => [...new Set(v)]), response_types: z.array(z.literal('code')).min(1).max(1).default(['code']) }).parse(req.body);
         const total = await db.selectFrom('ai_oauth_clients').select(eb => eb.fn.countAll<number>().as('n')).executeTakeFirstOrThrow();
         if (Number(total.n) >= 10000) throw new AIError(429, 'registration_capacity_reached');
         const clientId = randomUUID();
-        await db.insertInto('ai_oauth_clients').values({ id: clientId, metadata: JSON.stringify(meta), created_at: new Date().toISOString() }).execute();
-        res.status(201).json({ ...meta, client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000) });
+        // Return only validated, implemented grants and persist client authentication policy.
+        const clientSecret = meta.token_endpoint_auth_method === 'none' ? undefined : secret();
+        await db.insertInto('ai_oauth_clients').values({ id: clientId,
+            metadata: JSON.stringify({ ...meta, ...(clientSecret ? { client_secret_hash: hash(clientSecret) } : {}) }),
+            created_at: new Date().toISOString() }).execute();
+        res.status(201).json({ ...meta, client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000),
+            ...(clientSecret ? { client_secret: clientSecret, client_secret_expires_at: 0 } : {}) });
     }));
     router.get('/oauth/authorize', wrap(async (req, res) => {
         const args = z.object({ client_id: z.string().uuid(), redirect_uri: redirectSchema, response_type: z.literal('code'),
@@ -227,7 +233,8 @@ function installOAuth(router: express.Router) {
             .select(['metadata', 'scopes', 'redirect_uri']).where('ai_oauth_requests.id', '=', req.params.id)
             .where('expires_at', '>', new Date().toISOString()).where('connection_id', 'is', null).executeTakeFirst();
         if (!row) throw new AIError(410, 'authorization_expired');
-        res.json({ clientName: JSON.parse(row.metadata).client_name, scopes: JSON.parse(row.scopes), redirectUri: row.redirect_uri });
+        res.json({ clientName: JSON.parse(row.metadata).client_name, scopes: JSON.parse(row.scopes), redirectUri: row.redirect_uri,
+            authorizationDays: OAUTH_GRANT_DAYS, autoRefresh: JSON.parse(row.metadata).grant_types.includes('refresh_token'), refreshIdleDays: OAUTH_REFRESH_IDLE_DAYS });
     }));
     router.post('/api/ai/authorization/:id', session, wrap(async (req, res) => {
         const args = z.object({ approve: z.boolean() }).strict().parse(req.body);
@@ -248,7 +255,7 @@ function installOAuth(router: express.Router) {
             const id = randomUUID();
             await trx.insertInto('ai_connections').values({ id, user_id: res.locals.userId, name: JSON.parse(row.metadata).client_name,
                 scopes: row.scopes, token_hash: hash(secret()), created_at: new Date().toISOString(),
-                expires_at: new Date(Date.now() + 30 * 86400000).toISOString(), revoked_at: null, last_used_at: null, client_id: row.client_id }).execute();
+                expires_at: new Date(Date.now() + OAUTH_GRANT_DAYS * 86400000).toISOString(), revoked_at: null, last_used_at: null, client_id: row.client_id }).execute();
             const code = secret();
             await trx.updateTable('ai_oauth_requests').set({ code_hash: hash(code), connection_id: id,
                 expires_at: new Date(Date.now() + 60000).toISOString() }).where('id', '=', row.id).execute();
@@ -257,20 +264,50 @@ function installOAuth(router: express.Router) {
         res.json({ redirectUrl: url });
     }));
     router.post('/oauth/token', express.urlencoded({ extended: false, limit: '8kb' }), wrap(async (req, res) => {
+        // Authenticate the registered client before consuming its one-use authorization code.
+        const body = z.object({ client_id: z.string().uuid().optional(), client_secret: z.string().max(512).optional() }).passthrough().parse(req.body);
+        let clientId = body.client_id, suppliedSecret = body.client_secret;
+        let method = suppliedSecret === undefined ? 'none' : 'client_secret_post';
+        const header = req.header('Authorization');
+        if (header) {
+            if (!/^Basic [A-Za-z0-9+/]+={0,2}$/i.test(header) || body.client_secret !== undefined) throw new AIError(401, 'invalid_client');
+            const credentials = Buffer.from(header.slice(6), 'base64').toString('utf8');
+            const colon = credentials.indexOf(':');
+            if (colon < 0) throw new AIError(401, 'invalid_client');
+            try {
+                const decode = (v: string) => decodeURIComponent(v.replace(/\+/g, ' '));
+                const basicId = decode(credentials.slice(0, colon));
+                if (clientId && clientId !== basicId) throw new Error('client mismatch');
+                clientId = basicId; suppliedSecret = decode(credentials.slice(colon + 1));
+            } catch { throw new AIError(401, 'invalid_client'); }
+            method = 'client_secret_basic';
+        }
+        if (!clientId) throw new AIError(401, 'invalid_client');
+        const client = await db.selectFrom('ai_oauth_clients').select('metadata').where('id', '=', clientId).executeTakeFirst();
+        if (!client) throw new AIError(401, 'invalid_client');
+        const metadata = JSON.parse(client.metadata);
+        if ((metadata.token_endpoint_auth_method ?? 'none') !== method) throw new AIError(401, 'invalid_client');
+        if (method !== 'none') {
+            const expected = metadata.client_secret_hash;
+            if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected) || !suppliedSecret ||
+                !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hash(suppliedSecret), 'hex'))) throw new AIError(401, 'invalid_client');
+        }
+        if (body.grant_type === 'refresh_token') {
+            if (!metadata.grant_types.includes('refresh_token')) throw new AIError(400, 'unauthorized_client');
+            const args = z.object({ refresh_token: z.string().min(1).max(200), resource: z.string().optional(), scope: z.string().max(200).optional() }).parse(body);
+            return res.json(await refreshOAuthTokens(clientId, args.refresh_token, args.resource, args.scope));
+        }
         const args = z.object({ grant_type: z.literal('authorization_code'), client_id: z.string().uuid(), code: z.string().max(200),
-            code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/), redirect_uri: redirectSchema, resource: z.string().optional() }).parse(req.body);
+            code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/), redirect_uri: redirectSchema, resource: z.string().optional() }).parse({ ...body, client_id: clientId });
         const token = await db.transaction().execute(async trx => {
             const row = await trx.selectFrom('ai_oauth_requests').selectAll().where('code_hash', '=', hash(args.code))
                 .where('client_id', '=', args.client_id).where('redirect_uri', '=', args.redirect_uri)
                 .where('expires_at', '>', new Date().toISOString()).executeTakeFirst();
             if (!row?.connection_id || (args.resource && args.resource !== row.resource) ||
                 createHash('sha256').update(args.code_verifier).digest('base64url') !== row.challenge) throw new AIError(400, 'invalid_grant');
-            const value = `synca_ai_${secret()}`;
-            const updated = await trx.updateTable('ai_connections').set({ token_hash: hash(value) }).where('id', '=', row.connection_id)
-                .where('revoked_at', 'is', null).where('expires_at', '>', new Date().toISOString()).executeTakeFirst();
-            if (updated.numUpdatedRows !== 1n) throw new AIError(400, 'invalid_grant');
+            const issued = await issueOAuthTokens(trx, row.connection_id, metadata.grant_types.includes('refresh_token'));
             await trx.deleteFrom('ai_oauth_requests').where('id', '=', row.id).execute();
-            return { access_token: value, token_type: 'Bearer', expires_in: 30 * 86400 - 60, scope: JSON.parse(row.scopes).join(' ') };
+            return issued;
         });
         res.json(token);
     }));

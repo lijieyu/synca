@@ -14,16 +14,19 @@ interface Props {
   children?: React.ReactNode;
   size?: 'compact' | 'large';
   hideCancel?: boolean;
+  className?: string;
+  secondaryAction?: React.ReactNode;
+  neutral?: boolean;
 }
 
-export const Modal: React.FC<Props> = ({ 
+export const Modal: React.FC<Props> = ({
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false
+  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false, className = '', secondaryAction, neutral = false
 }) => {
   const titleID = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
   const cancelRef = React.useRef(onCancel);
-  cancelRef.current = onCancel;
+  React.useLayoutEffect(() => { cancelRef.current = onCancel; }, [onCancel]);
   const contentSizeClass = size === 'compact' ? '' : (children || size === 'large' ? 'modal-content-large' : '');
 
   React.useEffect(() => {
@@ -49,7 +52,7 @@ export const Modal: React.FC<Props> = ({
 
   return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
-      <div ref={dialogRef} tabIndex={-1} className={`modal-content ${contentSizeClass}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleID}>
+      <div ref={dialogRef} tabIndex={-1} className={`modal-content ${contentSizeClass} ${className}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleID}>
         <h3 id={titleID} className="modal-title">{title}</h3>
         {message ? <p className="modal-message">{message}</p> : null}
         {children}
@@ -58,9 +61,10 @@ export const Modal: React.FC<Props> = ({
             <button className="modal-leading-action" onClick={onLeadingAction}>{leadingActionText}</button>
           )}
           <div className="modal-primary-actions">
+            {secondaryAction}
             {!hideCancel && <button className="modal-btn modal-btn-cancel" onClick={onCancel}>{cancelText}</button>}
-            <button 
-              className={`modal-btn ${destructive ? 'modal-btn-destructive' : 'modal-btn-confirm'}`} 
+            <button
+              className={`modal-btn ${destructive ? 'modal-btn-destructive' : neutral ? 'modal-btn-cancel' : 'modal-btn-confirm'}`}
               onClick={onConfirm}
             >
               {confirmText}

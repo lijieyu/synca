@@ -335,6 +335,15 @@ export async function runMigrations() {
         token_hash TEXT UNIQUE NOT NULL, scopes TEXT NOT NULL, created_at TEXT NOT NULL,
         expires_at TEXT NOT NULL, revoked_at TEXT, last_used_at TEXT, client_id TEXT
     )`.execute(db);
+    const connectionColumns = await sql<{ name: string }>`PRAGMA table_info(ai_connections)`.execute(db);
+    if (!connectionColumns.rows.some(column => column.name === 'access_expires_at')) {
+        await sql`ALTER TABLE ai_connections ADD COLUMN access_expires_at TEXT`.execute(db);
+    }
+    await sql`CREATE TABLE IF NOT EXISTS ai_refresh_tokens (
+        token_hash TEXT PRIMARY KEY, connection_id TEXT NOT NULL, expires_at TEXT NOT NULL,
+        consumed_at TEXT, created_at TEXT NOT NULL
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_ai_refresh_connection ON ai_refresh_tokens(connection_id)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_ai_connections_user ON ai_connections(user_id)`.execute(db);
     await sql`CREATE TABLE IF NOT EXISTS ai_operations (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL, connection_id TEXT NOT NULL,

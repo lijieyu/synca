@@ -10,10 +10,12 @@ export function FunctionMenu({ onAccount, onCategories, onFeedback, onAbout }: {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const keyboardOpen = useRef(false);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
-    root.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus();
+    if (keyboardOpen.current) root.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus();
+    keyboardOpen.current = false;
     const dismiss = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
@@ -28,7 +30,7 @@ export function FunctionMenu({ onAccount, onCategories, onFeedback, onAbout }: {
   ];
   return <div className="function-menu" ref={root} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
     <button ref={trigger} className="header-btn" aria-label={t('navigation.more')} title={t('navigation.more')} aria-haspopup="menu" aria-expanded={open}
-      onClick={() => setOpen(!open)} onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } }}><CircleEllipsis size={21} /></button>
+      onClick={() => { keyboardOpen.current = false; setOpen(!open); }} onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); keyboardOpen.current = true; if (open) root.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus(); else setOpen(true); } if (e.key === 'Escape') close(); }}><CircleEllipsis size={21} /></button>
     {open && <div className="function-menu-panel" role="menu" aria-label={t('navigation.more')} onKeyDown={e => {
       const nodes = [...e.currentTarget.querySelectorAll<HTMLElement>('[role=menuitem]')];
       const index = nodes.indexOf(document.activeElement as HTMLElement);
@@ -37,7 +39,7 @@ export function FunctionMenu({ onAccount, onCategories, onFeedback, onAbout }: {
         e.preventDefault(); nodes[e.key === 'Home' ? 0 : e.key === 'End' ? nodes.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length]?.focus();
       }
     }}>{items.map(({ title, Icon, action, href }) => href
-      ? <a key={title} role="menuitem" href={href}><Icon size={18} aria-hidden="true" />{title}</a>
+      ? <a key={title} role="menuitem" href={href} target="_blank" rel="noopener noreferrer" onClick={close}><Icon size={18} aria-hidden="true" />{title}</a>
       : <button key={title} role="menuitem" onClick={() => { close(); action?.(); }}><Icon size={18} aria-hidden="true" />{title}</button>)}</div>}
   </div>;
 }

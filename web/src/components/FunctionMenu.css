@@ -19,3 +19,28 @@
 .shell-links { display: flex; gap: 16px; flex-wrap: wrap; }
 .shell-links a { color: var(--synca-purple); }
 @media (max-width: 600px) { .app-container .header { padding: 8px 12px; gap: 4px 8px; } .header-brand { gap: 6px; } .header-actions { gap: 0; } .header-actions .header-btn { width: 36px; height: 44px; } .header-brand img { display: none; } }
+
+/* Account: compact identity panel with separate session and dismissal actions. */
+.modal-content.account-modal { width: min(420px, calc(100vw - 32px)); padding: 24px; border-radius: 20px; min-height: 0; max-height: calc(100dvh - 32px); overflow-y: auto; text-align: left; }
+.account-modal .modal-title { margin: 0; font-size: 17px; }
+.account-identity { display: flex; align-items: center; gap: 14px; padding: 28px 0; }
+.account-avatar { display: grid; place-items: center; flex: 0 0 52px; height: 52px; border-radius: 50%; background: var(--synca-mint-light); color: var(--text-main); }
+.account-details { min-width: 0; }
+.account-email { font-size: 16px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.account-provider { margin-top: 5px; font-size: 13px; line-height: 1.5; color: #626268; }
+@media (prefers-color-scheme: dark) { .account-provider { color: #b1b1b8; } }
+@media (prefers-reduced-motion: reduce) { .modal-overlay:has(.account-modal), .account-modal { animation: none; } .account-modal button { transition: none; } }
+
+.modal-content.about-modal { width: min(420px, calc(100vw - 32px)); }
+.modal-content.feedback-modal { width: min(520px, calc(100vw - 32px)); overflow-y: auto; }
+.about-identity { display: flex; align-items: center; gap: 16px; padding: 24px 0 20px; }
+.about-identity img { border-radius: 14px; }
+.about-identity h4 { font-size: 23px; font-weight: 650; letter-spacing: -.5px; }
+.about-identity p { margin-top: 4px; font-size: 13px; color: var(--text-main); opacity: .7; }
+.about-description { font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+.about-panel .shell-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; text-underline-offset: 4px; }
+.shell-form > button { justify-self: end; min-width: 80px; }
+.modal-content button:focus-visible, .modal-content a:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
+
+.about-panel .shell-links a { color: #6136d6; }
+@media (prefers-color-scheme: dark) { .about-panel .shell-links a { color: #bba2ff; } }

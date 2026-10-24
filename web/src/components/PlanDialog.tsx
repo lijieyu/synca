@@ -33,7 +33,7 @@ export function PlanDialog({ onClose }: { onClose: () => void }) {
   </div>;
   const download = <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
   return <Modal title={t('access.center_title')} message="" onCancel={onClose}
-    onConfirm={onClose} confirmText={t('common.ok')} hideCancel>
+    onConfirm={onClose} confirmText={t('common.ok')} hideCancel neutral>
     <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>

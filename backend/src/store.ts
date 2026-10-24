@@ -418,6 +418,7 @@ export async function deleteAccount(input: {
         await trx.deleteFrom('ai_oauth_requests').where('connection_id', 'in',
             trx.selectFrom('ai_connections').select('id').where('user_id', '=', input.userId)).execute();
         await trx.deleteFrom('ai_operations').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('ai_refresh_tokens').where('connection_id', 'in', trx.selectFrom('ai_connections').select('id').where('user_id', '=', input.userId)).execute();
         await trx.deleteFrom('ai_connections').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('sessions').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('users').where('id', '=', input.userId).execute();
@@ -900,6 +901,7 @@ export async function getUnclearedCount(userId: string): Promise<number> {
         .select((eb) => eb.fn.count<string>('id').as('count'))
         .where('user_id', '=', userId)
         .where('is_cleared', '=', 0)
+        .where('is_deleted', '=', 0)
         .executeTakeFirst();
     return Number(row?.count ?? 0);
 }
@@ -1073,6 +1075,7 @@ export async function resetDb() {
     await db.deleteFrom('ai_oauth_requests').execute();
     await db.deleteFrom('ai_oauth_clients').execute();
     await db.deleteFrom('ai_operations').execute();
+    await db.deleteFrom('ai_refresh_tokens').execute();
     await db.deleteFrom('ai_connections').execute();
     await sql`DELETE FROM upload_reservations`.execute(db);
     await db.deleteFrom('feedbacks').execute();

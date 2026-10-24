@@ -9,7 +9,7 @@ import app from '../src/app.js';
 import { db } from '../src/db.js';
 import { runMigrations } from '../src/migrate.js';
 import { resetDb, createSession, createUser } from '../src/store.js';
-import { connection, cleanupAIState } from '../src/aiCore.js';
+import { connection, cleanupAIState, hash } from '../src/aiCore.js';
 import type { Server } from 'node:http';
 
 let userId: string, session: string, token: string, connectionId: string;
@@ -87,6 +87,26 @@ describe('AI authorization and content contract', () => {
         expect((await call('prepare_delete_records', { items: [{ id: m.id, expectedUpdatedAt: m.updatedAt }] }, other.token)).status).toBe(404);
         const cats = await call('list_categories', {}, other.token);
         expect((await call('update_records', { items: [{ id: m.id, expectedUpdatedAt: m.updatedAt }], categoryId: cats.body[0].id })).status).toBe(404);
+    });
+    it('keeps usage, categories and operation results scoped to the token owner', async () => {
+        const m = await record();
+        await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', userId).execute();
+        const usage = await call('get_usage');
+        expect(usage.body.access.isUnlimited).toBe(true);
+        expect(usage.body.access.todayLimit).toBeNull();
+        expect(usage.body.unclearedCount).toBe(1);
+        const otherId = randomUUID();
+        await createUser({ id: otherId, appleUserId: otherId, nickname: 'Other', now: new Date().toISOString() });
+        const other = await connection(otherId, 'Other', ['read', 'delete', 'update'], 30);
+        const otherUsage = await call('get_usage', {}, other.token);
+        expect(otherUsage.body.unclearedCount).toBe(0);
+        expect(otherUsage.body.access.isUnlimited).toBe(false);
+        const ownCategories = (await call('list_categories')).body;
+        const foreignCategories = (await call('list_categories', {}, other.token)).body;
+        expect(foreignCategories.some((c: { id: string }) => ownCategories.some((own: { id: string }) => own.id === c.id))).toBe(false);
+        const op = await db.selectFrom('ai_operations').select('id').where('user_id', '=', userId).executeTakeFirstOrThrow();
+        expect((await call('get_operation', { id: op.id }, other.token)).status).toBe(404);
+        expect((await call('read_record', { id: m.id, userId }, other.token)).status).toBe(400);
     });
     it('serializes concurrent retries and rejects invalid category creation without leaking a default record', async () => {
         const args = { textContent: 'Concurrent', idempotencyKey: randomUUID() };
@@ -200,6 +220,132 @@ describe('MCP OAuth consent and PKCE', () => {
         expect((await request(app).post('/mcp').set('Origin', 'https://evil.example').set('Authorization', auth()).send({})).status).toBe(403);
         expect((await request(app).post('/mcp').send({})).headers['www-authenticate']).toContain('oauth-protected-resource/mcp');
         expect((await request(app).post('/oauth/register').send({ redirect_uris: ['http://evil.example/callback'] })).status).toBe(400);
+    });
+    it('advertises implemented auth methods and rejects unsupported or unsafe registration', async () => {
+        const metadata = await request(app).get('/.well-known/oauth-authorization-server');
+        expect(metadata.body.token_endpoint_auth_methods_supported).toEqual(['none', 'client_secret_post', 'client_secret_basic']);
+        expect(metadata.body.grant_types_supported).toEqual(['authorization_code', 'refresh_token']);
+        for (const extra of [{ grant_types: ['refresh_token'] }, { grant_types: ['client_credentials'] },
+            { token_endpoint_auth_method: 'private_key_jwt' }, { response_types: [] },
+            { redirect_uris: ['https://user:password@client.example/callback'] }, { redirect_uris: ['https://client.example/callback#fragment'] }]) {
+            expect((await request(app).post('/oauth/register').send({ redirect_uris: ['https://client.example/callback'], ...extra })).status).toBe(400);
+        }
+    });
+    it.each(['none', 'client_secret_post', 'client_secret_basic'])('negotiates refresh requests and completes PKCE with %s', async method => {
+        const redirect = 'http://127.0.0.1:34567/callback';
+        const registration = await request(app).post('/oauth/register').send({ client_name: 'Compatibility test', redirect_uris: [redirect],
+            grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: method });
+        expect(registration.status, JSON.stringify(registration.body)).toBe(201);
+        expect(registration.body.grant_types).toEqual(['authorization_code', 'refresh_token']);
+        expect(registration.body.token_endpoint_auth_method).toBe(method);
+        const { client_id, client_secret } = registration.body;
+        const stored = await db.selectFrom('ai_oauth_clients').selectAll().where('id', '=', client_id).executeTakeFirstOrThrow();
+        if (method === 'none') expect(client_secret).toBeUndefined();
+        else { expect(client_secret.length).toBeGreaterThan(30); expect(stored.metadata).not.toContain(client_secret); }
+        const verifier = 'z'.repeat(43);
+        const start = await request(app).get('/oauth/authorize').query({ client_id, redirect_uri: redirect,
+            response_type: 'code', code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'), scope: 'read' });
+        expect(start.status).toBe(302);
+        const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
+        const consent = await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`).send({ approve: true });
+        const code = new URL(consent.body.redirectUrl).searchParams.get('code');
+        const args = { grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirect };
+        if (method !== 'none') {
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id })).status).toBe(401);
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id, client_secret: 'wrong' })).status).toBe(401);
+        }
+        if (method === 'client_secret_basic') {
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id, client_secret })).status).toBe(401);
+            expect((await request(app).post('/oauth/token').set('Authorization', `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`).type('form').send({ ...args, client_id, client_secret })).status).toBe(401);
+        }
+        const exchange = () => {
+            let r = request(app).post('/oauth/token').type('form');
+            if (method === 'client_secret_basic') r = r.set('Authorization', `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`);
+            return r.send({ ...args, ...(method === 'client_secret_basic' ? {} : { client_id }), ...(method === 'client_secret_post' ? { client_secret } : {}) });
+        };
+        const result = await exchange();
+        expect(result.status, JSON.stringify(result.body)).toBe(200);
+        expect((await call('get_usage', {}, result.body.access_token)).status).toBe(200);
+        expect(result.body.expires_in).toBe(3600);
+        expect(result.body.refresh_token).toMatch(/^synca_refresh_/);
+        let refreshRequest = request(app).post('/oauth/token').type('form');
+        if (method === 'client_secret_basic') refreshRequest = refreshRequest.set('Authorization', `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`);
+        const rotated = await refreshRequest.send({ grant_type: 'refresh_token', refresh_token: result.body.refresh_token,
+            ...(method === 'client_secret_basic' ? {} : { client_id }), ...(method === 'client_secret_post' ? { client_secret } : {}) });
+        expect(rotated.status).toBe(200);
+        expect(rotated.body.refresh_token).not.toBe(result.body.refresh_token);
+        result.body.access_token = rotated.body.access_token;
+        expect((await call('create_record', { textContent: 'no write permission', idempotencyKey: randomUUID() }, result.body.access_token)).status).toBe(403);
+        expect((await exchange()).status).toBe(400);
+        const connections = await request(app).get('/api/ai/connections').set('Authorization', `Bearer ${session}`);
+        expect(JSON.stringify(connections.body)).not.toContain(client_secret ?? 'client_secret_hash');
+        const linked = connections.body.connections.find((c: { name: string }) => c.name === 'Compatibility test');
+        await request(app).delete(`/api/ai/connections/${linked.id}`).set('Authorization', `Bearer ${session}`);
+        expect((await call('get_usage', {}, result.body.access_token)).status).toBe(401);
+    });
+    async function renewable() {
+        const reg = await request(app).post('/oauth/register').send({ redirect_uris: ['https://client.example/callback'], grant_types: ['authorization_code', 'refresh_token'] });
+        const clientId = reg.body.client_id;
+        const verifier = 'r'.repeat(43);
+        const start = await request(app).get('/oauth/authorize').query({ client_id: clientId, redirect_uri: 'https://client.example/callback',
+            response_type: 'code', code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'), scope: 'read create' });
+        const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
+        expect((await request(app).get(`/api/ai/authorization/${id}`)).status).toBe(401);
+        expect((await request(app).post(`/api/ai/authorization/${id}`).send({ approve: true })).status).toBe(401);
+        expect((await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', auth()).send({ approve: true })).status).toBe(401);
+        const consent = await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`).send({ approve: true });
+        const exchanged = await request(app).post('/oauth/token').type('form').send({ grant_type: 'authorization_code', client_id: clientId,
+            code: new URL(consent.body.redirectUrl).searchParams.get('code'), code_verifier: verifier, redirect_uri: 'https://client.example/callback' });
+        expect(exchanged.status).toBe(200);
+        const row = await db.selectFrom('ai_connections').selectAll().where('token_hash', '=', hash(exchanged.body.access_token)).executeTakeFirstOrThrow();
+        expect(Math.round((Date.parse(row.expires_at) - Date.parse(row.created_at)) / 86400000)).toBe(365);
+        return { clientId, row, tokens: exchanged.body };
+    }
+    const renew = (clientId: string, refresh_token: string, extra = {}) => request(app).post('/oauth/token').type('form')
+        .send({ grant_type: 'refresh_token', client_id: clientId, refresh_token, ...extra });
+    it('refreshes expired access, binds client/resource/scope, and revokes the family on replay', async () => {
+        const { clientId, row, tokens } = await renewable();
+        const other = await request(app).post('/oauth/register').send({ redirect_uris: ['https://other.example/callback'], grant_types: ['authorization_code', 'refresh_token'] });
+        expect((await renew(other.body.client_id, tokens.refresh_token)).status).toBe(400);
+        expect((await renew(clientId, tokens.refresh_token, { resource: 'https://evil.example' })).status).toBe(400);
+        expect((await renew(clientId, tokens.refresh_token, { scope: 'read delete' })).status).toBe(400);
+        await db.updateTable('ai_connections').set({ access_expires_at: '2000-01-01T00:00:00.000Z' }).where('id', '=', row.id).execute();
+        expect((await call('get_usage', {}, tokens.access_token)).status).toBe(401);
+        const next = await renew(clientId, tokens.refresh_token, { scope: 'read' });
+        expect(next.status).toBe(200);
+        expect(next.body.scope).toBe('read');
+        expect((await call('get_usage', {}, next.body.access_token)).status).toBe(200);
+        expect((await renew(clientId, next.body.refresh_token, { scope: 'create' })).status).toBe(400);
+        const stored = await db.selectFrom('ai_refresh_tokens').selectAll().where('connection_id', '=', row.id).execute();
+        expect(JSON.stringify(stored)).not.toContain(tokens.refresh_token);
+        expect((await renew(clientId, tokens.refresh_token)).status).toBe(400);
+        expect((await call('get_usage', {}, next.body.access_token)).status).toBe(401);
+        expect((await renew(clientId, next.body.refresh_token)).status).toBe(400);
+    });
+    it.each(['idle', 'grant', 'revoked'])('rejects refresh after %s expiry or revocation', async reason => {
+        const { clientId, row, tokens } = await renewable();
+        if (reason === 'idle') await db.updateTable('ai_refresh_tokens').set({ expires_at: '2000-01-01T00:00:00.000Z' }).where('connection_id', '=', row.id).execute();
+        else await db.updateTable('ai_connections').set(reason === 'grant' ? { expires_at: '2000-01-01T00:00:00.000Z' } : { revoked_at: new Date().toISOString() }).where('id', '=', row.id).execute();
+        expect((await renew(clientId, tokens.refresh_token)).status).toBe(400);
+    });
+    it('does not extend the one-year grant and detects concurrent refresh reuse', async () => {
+        const { clientId, row, tokens } = await renewable();
+        const end = new Date(Date.now() + 90000).toISOString();
+        await db.updateTable('ai_connections').set({ expires_at: end }).where('id', '=', row.id).execute();
+        const results = await Promise.all([renew(clientId, tokens.refresh_token), renew(clientId, tokens.refresh_token)]);
+        expect(results.map(r => r.status).sort()).toEqual([200, 400]);
+        const winner = results.find(r => r.status === 200)!;
+        expect(winner.body.expires_in).toBeLessThanOrEqual(90);
+        expect((await call('get_usage', {}, winner.body.access_token)).status).toBe(401);
+        const latest = await db.selectFrom('ai_connections').selectAll().where('id', '=', row.id).executeTakeFirstOrThrow();
+        expect(latest.expires_at).toBe(end);
+    });
+    it('keeps legacy tokens valid through additive migrations and excludes deleted records from counts', async () => {
+        await runMigrations(); await runMigrations();
+        const made = await record();
+        expect((await call('get_usage')).body.unclearedCount).toBe(1);
+        await db.updateTable('messages').set({ is_deleted: 1 }).where('id', '=', made.id).execute();
+        expect((await call('get_usage')).body.unclearedCount).toBe(0);
     });
     it('binds authorization code to consent, client, redirect URI, resource and one-use PKCE exchange', async () => {
         const registration = await request(app).post('/oauth/register').send({ client_name: 'Client', redirect_uris: ['https://client.example/callback'] });

@@ -37,7 +37,7 @@ export async function authenticate(header?: string): Promise<Actor> {
     const row = await db.selectFrom('ai_connections').innerJoin('users', 'users.id', 'ai_connections.user_id')
         .selectAll('ai_connections').where('token_hash', '=', hash(header.slice(7)))
         .where('revoked_at', 'is', null).where('expires_at', '>', now).executeTakeFirst();
-    if (!row) throw new AIError(401, 'invalid_token');
+    if (!row || (row.access_expires_at && row.access_expires_at <= now)) throw new AIError(401, 'invalid_token');
     await db.updateTable('ai_connections').set({ last_used_at: now }).where('id', '=', row.id).execute();
     return { id: row.id, userId: row.user_id, name: row.name, scopes: scopeSchema.parse(JSON.parse(row.scopes)) };
 }
@@ -297,6 +297,8 @@ export async function createAttachment(actor: Actor, args: z.infer<typeof attach
 export async function cleanupAIState() {
     const now = new Date().toISOString();
     await db.deleteFrom('ai_oauth_requests').where('expires_at', '<=', now).execute();
+    await db.deleteFrom('ai_refresh_tokens').where('connection_id', 'in',
+        db.selectFrom('ai_connections').select('id').where(eb => eb.or([eb('expires_at', '<=', now), eb('revoked_at', 'is not', null)]))).execute();
     const pending = await db.selectFrom('ai_operations').select(['id', 'status', 'payload']).where('kind', '=', 'delete_messages')
         .where('expires_at', '<=', now).where('status', 'in', ['pending', 'cancelled']).limit(200).execute();
     for (const row of pending) {
