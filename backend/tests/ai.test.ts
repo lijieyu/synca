@@ -201,6 +201,59 @@ describe('MCP OAuth consent and PKCE', () => {
         expect((await request(app).post('/mcp').send({})).headers['www-authenticate']).toContain('oauth-protected-resource/mcp');
         expect((await request(app).post('/oauth/register').send({ redirect_uris: ['http://evil.example/callback'] })).status).toBe(400);
     });
+    it('advertises implemented auth methods and rejects unsupported or unsafe registration', async () => {
+        const metadata = await request(app).get('/.well-known/oauth-authorization-server');
+        expect(metadata.body.token_endpoint_auth_methods_supported).toEqual(['none', 'client_secret_post', 'client_secret_basic']);
+        expect(metadata.body.grant_types_supported).toEqual(['authorization_code']);
+        for (const extra of [{ grant_types: ['refresh_token'] }, { grant_types: ['client_credentials'] },
+            { token_endpoint_auth_method: 'private_key_jwt' }, { response_types: [] },
+            { redirect_uris: ['https://user:password@client.example/callback'] }, { redirect_uris: ['https://client.example/callback#fragment'] }]) {
+            expect((await request(app).post('/oauth/register').send({ redirect_uris: ['https://client.example/callback'], ...extra })).status).toBe(400);
+        }
+    });
+    it.each(['none', 'client_secret_post', 'client_secret_basic'])('negotiates refresh requests and completes PKCE with %s', async method => {
+        const redirect = 'http://127.0.0.1:34567/callback';
+        const registration = await request(app).post('/oauth/register').send({ client_name: 'Compatibility test', redirect_uris: [redirect],
+            grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: method });
+        expect(registration.status, JSON.stringify(registration.body)).toBe(201);
+        expect(registration.body.grant_types).toEqual(['authorization_code']);
+        expect(registration.body.token_endpoint_auth_method).toBe(method);
+        const { client_id, client_secret } = registration.body;
+        const stored = await db.selectFrom('ai_oauth_clients').selectAll().where('id', '=', client_id).executeTakeFirstOrThrow();
+        if (method === 'none') expect(client_secret).toBeUndefined();
+        else { expect(client_secret.length).toBeGreaterThan(30); expect(stored.metadata).not.toContain(client_secret); }
+        const verifier = 'z'.repeat(43);
+        const start = await request(app).get('/oauth/authorize').query({ client_id, redirect_uri: redirect,
+            response_type: 'code', code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'), scope: 'read' });
+        expect(start.status).toBe(302);
+        const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
+        const consent = await request(app).post(`/api/ai/authorization/${id}`).set('Authorization', `Bearer ${session}`).send({ approve: true });
+        const code = new URL(consent.body.redirectUrl).searchParams.get('code');
+        const args = { grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirect };
+        if (method !== 'none') {
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id })).status).toBe(401);
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id, client_secret: 'wrong' })).status).toBe(401);
+        }
+        if (method === 'client_secret_basic') {
+            expect((await request(app).post('/oauth/token').type('form').send({ ...args, client_id, client_secret })).status).toBe(401);
+            expect((await request(app).post('/oauth/token').set('Authorization', `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`).type('form').send({ ...args, client_id, client_secret })).status).toBe(401);
+        }
+        const exchange = () => {
+            let r = request(app).post('/oauth/token').type('form');
+            if (method === 'client_secret_basic') r = r.set('Authorization', `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`);
+            return r.send({ ...args, ...(method === 'client_secret_basic' ? {} : { client_id }), ...(method === 'client_secret_post' ? { client_secret } : {}) });
+        };
+        const result = await exchange();
+        expect(result.status, JSON.stringify(result.body)).toBe(200);
+        expect((await call('get_usage', {}, result.body.access_token)).status).toBe(200);
+        expect((await call('create_record', { textContent: 'no write permission', idempotencyKey: randomUUID() }, result.body.access_token)).status).toBe(403);
+        expect((await exchange()).status).toBe(400);
+        const connections = await request(app).get('/api/ai/connections').set('Authorization', `Bearer ${session}`);
+        expect(JSON.stringify(connections.body)).not.toContain(client_secret ?? 'client_secret_hash');
+        const linked = connections.body.connections.find((c: { name: string }) => c.name === 'Compatibility test');
+        await request(app).delete(`/api/ai/connections/${linked.id}`).set('Authorization', `Bearer ${session}`);
+        expect((await call('get_usage', {}, result.body.access_token)).status).toBe(401);
+    });
     it('binds authorization code to consent, client, redirect URI, resource and one-use PKCE exchange', async () => {
         const registration = await request(app).post('/oauth/register').send({ client_name: 'Client', redirect_uris: ['https://client.example/callback'] });
         expect(registration.status).toBe(201);

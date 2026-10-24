@@ -43,8 +43,8 @@ export function AIPage() {
   const [loginVisible, setLoginVisible] = useState(Boolean(authorize || confirm));
   const endpoint = `${window.location.origin}/mcp`;
   const connectionPrompt = t(
-    `请帮我连接 Synca，使用远程 MCP 服务 ${endpoint}（Streamable HTTP），通过 OAuth 登录授权。请使用你所在应用提供的 MCP 安装和连接能力；若已安装请直接连接，不要重复添加。打开官方 Synca 登录授权页，让我亲自登录并确认所需权限，不要让我把密码、验证码或访问令牌发到对话里。若你无法自动添加 MCP，请明确说明，并给出当前应用最短的添加步骤，不要假装已经安装。连接成功后，读取最近 5 条 Synca 记录验证连接，不要修改或删除内容。`,
-    `Please connect me to Synca using its remote MCP server ${endpoint} (Streamable HTTP) with OAuth authorization. Use this app's supported MCP installation and connection capabilities; reuse an existing connection instead of adding a duplicate. Open the official Synca sign-in and consent page so I can personally sign in and approve the required permissions. Never ask me to paste passwords, verification codes, or access tokens into chat. If you cannot add MCP servers automatically, say so and give the shortest setup steps for this app; do not claim it is installed. After connecting, read my 5 most recent Synca records to verify the connection without changing or deleting anything.`,
+    `请帮我连接 Synca，使用远程 MCP 服务 ${endpoint}（Streamable HTTP），通过 OAuth 登录授权。请使用你所在应用提供的 MCP 安装和连接能力；若已安装请直接连接，不要重复添加。请引导我在当前软件内完成 MCP 配置和 OAuth 授权：名称 Synca，服务器地址 ${endpoint}，传输方式 Streamable HTTP，身份验证 OAuth。若无法直接添加，请明确说明，并根据当前软件实际界面逐步告诉我在哪里添加、每项填什么、如何点击连接，再引导我打开官方 Synca 登录授权页，亲自登录并确认所需权限。不要编造菜单路径；不确定时请先询问软件版本或让我提供当前界面。不要让我把密码、验证码或访问令牌发到对话里。不要把提供配置说明当作安装成功。连接成功后，读取最近 5 条 Synca 记录验证连接，不要修改或删除内容。`,
+    `Please connect me to Synca using its remote MCP server ${endpoint} (Streamable HTTP) with OAuth authorization. Use this app's supported MCP installation and connection capabilities; reuse an existing connection instead of adding a duplicate. Guide me through configuration and OAuth authorization inside the app I am currently using: name Synca, server URL ${endpoint}, transport Streamable HTTP, authentication OAuth. If you cannot add it directly, say so and guide me step by step through the actual app settings, what to enter, and how to connect, then open the official Synca sign-in and consent page for me to sign in and approve permissions. Do not invent menu paths; if unsure, ask for the app version or current screen. Never ask me to paste passwords, verification codes, or access tokens into chat. Providing instructions does not mean installation succeeded. After connecting, read my 5 most recent Synca records to verify the connection without changing or deleting anything.`,
   );
   const request = useCallback(async <T,>(path: string, method = 'GET', body?: unknown): Promise<T> => {
     const response = await fetch(`/api/ai/${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -92,7 +92,7 @@ export function AIPage() {
     </header>
     <section className="ai-card ai-connect" id="connect"><div className="ai-connect-icon"><Link2 size={24} /></div><span className="ai-step-label">{t('只需三步', 'THREE SIMPLE STEPS')}</span><h2>{t('连接你的 AI 应用', 'Connect your AI app')}</h2>
       <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
-        <li>{t('跟随 AI 打开的 Synca 授权页，登录并确认权限。', 'Sign in and approve permissions on the Synca authorization page opened by your AI.')}</li>
+        <li>{t('跟随 AI 指导，在当前软件内完成配置与授权。', 'Follow your AI’s guidance to configure and authorize Synca in your current app.')}</li>
         <li>{t('回到对话，让 AI 查找或整理你的记录。', 'Return to the conversation to find and organize your records.')}</li></ol>
       <button className="ai-primary" disabled={busy} onClick={() => void copy(connectionPrompt)}>{notice ? <Check size={18} /> : <Copy size={18} />}{t('复制指令给AI', 'Copy instructions for AI')}</button>
       <span className="ai-inline-notice" role="status">{notice}</span>

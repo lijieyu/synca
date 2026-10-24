@@ -177,7 +177,7 @@ export const MessageListView: React.FC = () => {
   const fetchRevision = useRef(0);
   const pendingFetches = useRef(0);
 
-  const { logout, isAdmin, email, plan, accessStatus, refreshAccessStatus } = useAuth();
+  const { logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
 
   const fetchData = async (scrollToBottom = false) => {
@@ -454,7 +454,7 @@ export const MessageListView: React.FC = () => {
 
   return (
     <div className={`app-container ${layoutMode === 'tiled' ? 'tiled-layout' : ''}`}>
-      {panel && <ShellPanel kind={panel} email={email} isAdmin={isAdmin} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
+      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showPlan && <PlanDialog onClose={() => setShowPlan(false)} />}
       <div className="header">
         <div className="header-brand">

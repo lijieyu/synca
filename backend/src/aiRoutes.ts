@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import express, { type RequestHandler } from 'express';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID, createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -192,20 +192,25 @@ function installOAuth(router: express.Router) {
     router.get('/.well-known/oauth-authorization-server', (_req, res) => res.json({
         issuer: publicOrigin(), authorization_endpoint: `${publicOrigin()}/oauth/authorize`, token_endpoint: `${publicOrigin()}/oauth/token`,
         registration_endpoint: `${publicOrigin()}/oauth/register`, response_types_supported: ['code'], grant_types_supported: ['authorization_code'],
-        token_endpoint_auth_methods_supported: ['none'], code_challenge_methods_supported: ['S256'], scopes_supported: scopes }));
+        token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'], code_challenge_methods_supported: ['S256'], scopes_supported: scopes }));
     const redirectSchema = z.string().url().max(2048).refine(value => {
         const u = new URL(value);
         return !u.hash && !u.username && !u.password && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname)));
     }, 'HTTPS or loopback redirect required');
     router.post('/oauth/register', wrap(async (req, res) => {
         const meta = z.object({ client_name: z.string().trim().min(1).max(80).default('AI client'),
-            redirect_uris: z.array(redirectSchema).min(1).max(10), token_endpoint_auth_method: z.literal('none').default('none'),
-            grant_types: z.array(z.literal('authorization_code')).default(['authorization_code']), response_types: z.array(z.literal('code')).default(['code']) }).parse(req.body);
+            redirect_uris: z.array(redirectSchema).min(1).max(10), token_endpoint_auth_method: z.enum(['none', 'client_secret_post', 'client_secret_basic']).default('none'),
+            grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])).min(1).max(2).default(['authorization_code']).refine(v => v.includes('authorization_code')).transform(() => ['authorization_code']), response_types: z.array(z.literal('code')).min(1).max(1).default(['code']) }).parse(req.body);
         const total = await db.selectFrom('ai_oauth_clients').select(eb => eb.fn.countAll<number>().as('n')).executeTakeFirstOrThrow();
         if (Number(total.n) >= 10000) throw new AIError(429, 'registration_capacity_reached');
         const clientId = randomUUID();
-        await db.insertInto('ai_oauth_clients').values({ id: clientId, metadata: JSON.stringify(meta), created_at: new Date().toISOString() }).execute();
-        res.status(201).json({ ...meta, client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000) });
+        // Negotiate only implemented grants (RFC 7591 section 3.2.1); do not promise refresh support.
+        const clientSecret = meta.token_endpoint_auth_method === 'none' ? undefined : secret();
+        await db.insertInto('ai_oauth_clients').values({ id: clientId,
+            metadata: JSON.stringify({ ...meta, ...(clientSecret ? { client_secret_hash: hash(clientSecret) } : {}) }),
+            created_at: new Date().toISOString() }).execute();
+        res.status(201).json({ ...meta, client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000),
+            ...(clientSecret ? { client_secret: clientSecret, client_secret_expires_at: 0 } : {}) });
     }));
     router.get('/oauth/authorize', wrap(async (req, res) => {
         const args = z.object({ client_id: z.string().uuid(), redirect_uri: redirectSchema, response_type: z.literal('code'),
@@ -257,8 +262,36 @@ function installOAuth(router: express.Router) {
         res.json({ redirectUrl: url });
     }));
     router.post('/oauth/token', express.urlencoded({ extended: false, limit: '8kb' }), wrap(async (req, res) => {
+        // Authenticate the registered client before consuming its one-use authorization code.
+        const body = z.object({ client_id: z.string().uuid().optional(), client_secret: z.string().max(512).optional() }).passthrough().parse(req.body);
+        let clientId = body.client_id, suppliedSecret = body.client_secret;
+        let method = suppliedSecret === undefined ? 'none' : 'client_secret_post';
+        const header = req.header('Authorization');
+        if (header) {
+            if (!/^Basic [A-Za-z0-9+/]+={0,2}$/i.test(header) || body.client_secret !== undefined) throw new AIError(401, 'invalid_client');
+            const credentials = Buffer.from(header.slice(6), 'base64').toString('utf8');
+            const colon = credentials.indexOf(':');
+            if (colon < 0) throw new AIError(401, 'invalid_client');
+            try {
+                const decode = (v: string) => decodeURIComponent(v.replace(/\+/g, ' '));
+                const basicId = decode(credentials.slice(0, colon));
+                if (clientId && clientId !== basicId) throw new Error('client mismatch');
+                clientId = basicId; suppliedSecret = decode(credentials.slice(colon + 1));
+            } catch { throw new AIError(401, 'invalid_client'); }
+            method = 'client_secret_basic';
+        }
+        if (!clientId) throw new AIError(401, 'invalid_client');
+        const client = await db.selectFrom('ai_oauth_clients').select('metadata').where('id', '=', clientId).executeTakeFirst();
+        if (!client) throw new AIError(401, 'invalid_client');
+        const metadata = JSON.parse(client.metadata);
+        if ((metadata.token_endpoint_auth_method ?? 'none') !== method) throw new AIError(401, 'invalid_client');
+        if (method !== 'none') {
+            const expected = metadata.client_secret_hash;
+            if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected) || !suppliedSecret ||
+                !timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(hash(suppliedSecret), 'hex'))) throw new AIError(401, 'invalid_client');
+        }
         const args = z.object({ grant_type: z.literal('authorization_code'), client_id: z.string().uuid(), code: z.string().max(200),
-            code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/), redirect_uri: redirectSchema, resource: z.string().optional() }).parse(req.body);
+            code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/), redirect_uri: redirectSchema, resource: z.string().optional() }).parse({ ...body, client_id: clientId });
         const token = await db.transaction().execute(async trx => {
             const row = await trx.selectFrom('ai_oauth_requests').selectAll().where('code_hash', '=', hash(args.code))
                 .where('client_id', '=', args.client_id).where('redirect_uri', '=', args.redirect_uri)

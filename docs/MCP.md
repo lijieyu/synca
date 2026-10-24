@@ -12,7 +12,7 @@
 - OAuth access token 有效约 30 天，当前没有 refresh token。到期重新授权；Web 可以立即撤销。
 - 手动配置：在 `/ai` 登录后创建个人令牌，在 AI 客户端的安全凭证配置中设置 `Authorization: Bearer <token>`。令牌只显示一次，服务端只存 SHA-256 摘要；期限 1–365 天。
 - 不将令牌放进 URL、提示词、聊天记录或版本库；Apple 登录会话不能用于 MCP，AI 令牌也不能用于账号、支付、反馈或管理员 API。
-- 已实现通用协议并通过官方 SDK 客户端联调，不代表所有第三方产品及其手机版本均开放自定义 MCP。上线后逐一验证目标客户端。动态注册只支持 `token_endpoint_auth_method=none`；不支持远程客户端元数据 URL 解析。
+- 已实现通用协议并通过官方 SDK 客户端联调，不代表所有第三方产品及其手机版本均开放自定义 MCP。上线后逐一验证目标客户端。动态注册支持 `none`、`client_secret_post`、`client_secret_basic`；密钥只保存 SHA-256 摘要，换取令牌时严格匹配注册的认证方式，仍要求 S256 PKCE。客户端同时申请 `authorization_code` 和 `refresh_token` 时，注册响应按 RFC 7591 协商为实际支持的 `authorization_code`，不会声称支持自动续期。不支持远程客户端元数据 URL 解析。
 
 ## 工具与权限
 
