@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginView } from './LoginView';
+import { Modal } from './Modal';
 import './AIPage.css';
 
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
@@ -36,6 +37,13 @@ export function AIPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
   const [loginVisible, setLoginVisible] = useState(Boolean(authorize || confirm));
   const endpoint = `${window.location.origin}/mcp`;
   const connectionPrompt = t(
@@ -77,9 +85,9 @@ export function AIPage() {
     setBusy(true); setError(''); setNotice('');
     try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
   };
-  const copy = (value: string) => act(async () => { await navigator.clipboard.writeText(value); setNotice(t('已复制', 'Copied')); });
+  const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <main className="ai-page"><div className="ai-content">
+  return <main className={`ai-page${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible}><div className="ai-content">
     <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link><Link className="ai-back" to="/">{t('打开 Synca', 'Open Synca')} <ArrowUpRight size={16} /></Link></nav>
     {!authorize && !confirm && <><div className="ai-intro-grid"><header className="ai-hero"><span className="ai-eyebrow"><Sparkles size={15} /> SYNCA × AI</span>
       <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
@@ -90,10 +98,9 @@ export function AIPage() {
       <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
         <li>{t('跟随 AI 指导，在当前软件内完成配置与授权。', 'Follow your AI’s guidance to configure and authorize Synca in your current app.')}</li>
         <li>{t('回到对话，让 AI 查找或整理你的记录。', 'Return to the conversation to find and organize your records.')}</li></ol>
-      <button className="ai-primary" disabled={busy} onClick={() => void copy(connectionPrompt)}>{notice ? <Check size={18} /> : <Copy size={18} />}{t('复制指令给AI', 'Copy instructions for AI')}</button>
-      <span className="ai-inline-notice" role="status">{notice}</span>
+      <button className="ai-primary" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}<span aria-live="polite">{copied ? t('已复制', 'Copied') : t('复制指令给AI', 'Copy instructions for AI')}</span></button>
       <p className="ai-muted">{t('无需先在这里登录，也不用生成或复制密钥。若 AI 无法自动添加连接，它会引导你完成必要的设置；是否支持取决于应用和版本。', 'No sign-in here or API key is needed to start. If your AI cannot add the connection automatically, it will guide you through the required setup. Support depends on the app and version.')}</p>
-      <details><summary>{t('查看将复制的指令', 'Preview the instruction')}</summary><p className="ai-prompt">{connectionPrompt}</p></details>
+      <button className="ai-preview-trigger" aria-haspopup="dialog" onClick={() => setPreviewVisible(true)}>{t('查看将复制的指令', 'Preview the instruction')}<ArrowUpRight size={15} aria-hidden="true" /></button>
     </section></div>
     <section className="ai-examples" aria-label={t('使用示例', 'Examples')}>
       {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}><MessageSquare size={18} aria-hidden="true" />{v}</p>)}
@@ -139,5 +146,8 @@ export function AIPage() {
       </section>
     </>}
     <footer className="ai-muted">Synca · <Link to="/">{t('返回记录', 'Back to records')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('隐私政策', 'Privacy policy')}</a></footer>
+    {previewVisible && <Modal title={t('将复制的指令', 'Instruction preview')} message="" confirmText={t('关闭', 'Close')} onConfirm={() => setPreviewVisible(false)} onCancel={() => setPreviewVisible(false)} hideCancel neutral className="ai-prompt-modal">
+      <div className="ai-prompt-scroll"><p>{connectionPrompt}</p></div>
+    </Modal>}
   </div></main>;
 }
