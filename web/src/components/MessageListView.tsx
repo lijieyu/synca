@@ -460,6 +460,7 @@ export const MessageListView: React.FC = () => {
           <h1 className="header-title">{t('app.name', 'Synca')}</h1>
         </div>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <a className="header-btn" href="/ai" style={{ width: 'auto', padding: '0 8px', fontSize: '13px', textDecoration: 'none' }}>{t('ai.connect', '连接 AI')}</a>
           {isAdmin && (
             <button className="header-btn" onClick={() => window.open('/admin', '_blank')} title="Admin Dashboard">
               <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--synca-purple)', padding: '0 4px' }}>Manage</span>

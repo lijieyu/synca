@@ -176,5 +176,8 @@
   "access.privacy_policy_link_title": "Privacy Policy",
   "access.terms_link_title": "Terms of Use",
   "access.status_load_failed": "Unable to load your plan",
-  "access.download_to_purchase": "Download Synca to purchase in the app"
+  "access.download_to_purchase": "Download Synca to purchase in the app",
+  "ai": {
+    "connect": "Connect AI"
+  }
 }

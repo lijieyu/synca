@@ -1,5 +1,6 @@
 import { db } from './db.js';
-import { sql } from 'kysely';
+import { sql, type Transaction } from 'kysely';
+import type { Database } from './db_types.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs/promises';
 import path from 'path';
@@ -414,6 +415,10 @@ export async function deleteAccount(input: {
         await trx.deleteFrom('message_usage_events').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('messages').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('message_categories').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('ai_oauth_requests').where('connection_id', 'in',
+            trx.selectFrom('ai_connections').select('id').where('user_id', '=', input.userId)).execute();
+        await trx.deleteFrom('ai_operations').where('user_id', '=', input.userId).execute();
+        await trx.deleteFrom('ai_connections').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('sessions').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('users').where('id', '=', input.userId).execute();
     });
@@ -743,6 +748,7 @@ export async function createMessage(message: {
     now: string;
     attachmentExpiresAt?: string;
     reservationId?: string;
+    beforeCommit?: (trx: Transaction<Database>) => Promise<void>;
 }): Promise<void> {
     await db.transaction().execute(async (trx) => {
         // Admission and insert share a transaction, so concurrent devices cannot
@@ -802,6 +808,7 @@ export async function createMessage(message: {
             created_at: message.now,
             recorded_at: message.now,
         }).execute();
+        await message.beforeCommit?.(trx);
     });
 }
 
@@ -1063,6 +1070,10 @@ export async function canUserAccessMedia(userId: string, filename: string, isAdm
 }
 
 export async function resetDb() {
+    await db.deleteFrom('ai_oauth_requests').execute();
+    await db.deleteFrom('ai_oauth_clients').execute();
+    await db.deleteFrom('ai_operations').execute();
+    await db.deleteFrom('ai_connections').execute();
     await sql`DELETE FROM upload_reservations`.execute(db);
     await db.deleteFrom('feedbacks').execute();
     await db.deleteFrom('iap_transactions').execute();

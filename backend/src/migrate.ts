@@ -330,6 +330,27 @@ export async function runMigrations() {
     )`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_upload_user ON upload_reservations(user_id)`.execute(db);
 
+    await sql`CREATE TABLE IF NOT EXISTS ai_connections (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
+        token_hash TEXT UNIQUE NOT NULL, scopes TEXT NOT NULL, created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL, revoked_at TEXT, last_used_at TEXT, client_id TEXT
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_ai_connections_user ON ai_connections(user_id)`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS ai_operations (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, connection_id TEXT NOT NULL,
+        kind TEXT NOT NULL, payload TEXT NOT NULL, result TEXT, created_at TEXT NOT NULL,
+        expires_at TEXT, status TEXT NOT NULL, request_key TEXT,
+        UNIQUE(connection_id, request_key)
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_ai_operations_user ON ai_operations(user_id, created_at)`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS ai_oauth_clients (
+        id TEXT PRIMARY KEY, metadata TEXT NOT NULL, created_at TEXT NOT NULL
+    )`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS ai_oauth_requests (
+        id TEXT PRIMARY KEY, client_id TEXT NOT NULL, redirect_uri TEXT NOT NULL,
+        challenge TEXT NOT NULL, state TEXT, scopes TEXT NOT NULL, expires_at TEXT NOT NULL,
+        code_hash TEXT UNIQUE, connection_id TEXT, resource TEXT NOT NULL
+    )`.execute(db);
     console.log('[migrate] Migrations complete.');
 }
 
