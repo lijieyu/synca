@@ -9,7 +9,7 @@
 ## 跨端导航约定
 
 - iOS、macOS、Web 的套餐/额度标记紧跟 Synca 标题，可点击查看套餐。
-- 功能菜单固定顺序：账号 → 分类管理 → 连接 AI → 提交反馈 → 关于 Synca。新增或调整菜单时，一起检查 `ios/Synca/Shared/Views/MessageListView.swift` 与 `web/src/components/FunctionMenu.tsx`，保持内容、顺序和中英文命名一致。
+- 功能菜单固定顺序：账号 → 分类管理 → 连接 AI → 提交反馈 → 关于 Synca。新增或调整菜单时，一起检查 `ios/Synca/Shared/Views/MessageListView.swift` 、`ios/Synca/macOS/MacWindowBehavior.swift` 与 `web/src/components/FunctionMenu.tsx`，保持内容、顺序和中英文命名一致。
 - 退出登录放在账号面板；客户端账号面板不展示管理后台链接。
 - 连接 AI 共用 `/ai` 页面；验收覆盖手机窄屏、长文本、键盘焦点和深浅色模式。
 
