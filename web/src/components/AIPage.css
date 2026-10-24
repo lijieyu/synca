@@ -18,22 +18,15 @@
 .ai-page .ai-card { border: 1px solid var(--border-color, #aaa6); border-radius: 16px; padding: clamp(18px, 4vw, 28px); margin-bottom: 24px; scroll-margin-top: 20px; }
 .ai-page .ai-muted { color: var(--text-secondary); font-size: 14px; }
 .ai-page ol, .ai-page ul { padding-left: 24px; margin-bottom: 20px; }
-.ai-page .ai-copy { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; }
-.ai-page code { overflow-wrap: anywhere; word-break: break-word; flex: 1; min-width: 140px; font-size: 14px; user-select: all; }
 .ai-page summary { cursor: pointer; padding: 12px 0; }
 .ai-page form { display: grid; gap: 18px; }
 .ai-page label:not(.ai-check) { display: grid; gap: 8px; }
 .ai-page input:not([type=checkbox]), .ai-page select { width: 100%; min-height: 44px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color, #aaa6); border-radius: 8px; padding: 10px; font: inherit; }
-.ai-page fieldset { border: 1px solid var(--border-color, #aaa6); border-radius: 10px; padding: 12px 16px; }
-.ai-page legend { padding: 0 6px; }
-.ai-page .ai-check { min-height: 44px; display: flex; align-items: center; gap: 12px; }
-.ai-page input[type=checkbox] { width: 18px; height: 18px; accent-color: #6554c0; flex-shrink: 0; }
 .ai-page .ai-connection { display: flex; justify-content: space-between; align-items: start; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--border-color, #aaa6); }
 .ai-page .ai-connection p { margin-bottom: 6px; }
 .ai-page .ai-log { list-style: none; padding: 0; }
 .ai-page .ai-log li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: 14px; }
 .ai-page .ai-log time { color: var(--text-secondary); }
-.ai-page .ai-secret { margin-top: 24px; padding: 18px; border: 1px solid #8a79dc; border-radius: 10px; }
 .ai-page .ai-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .ai-page .ai-danger { background: #b42332; border-color: #b42332; color: white; }
 .ai-page .ai-error { padding: 16px; border: 1px solid #b42332; border-radius: 10px; margin-bottom: 20px; overflow-wrap: anywhere; }

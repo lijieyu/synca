@@ -32,10 +32,6 @@ export function AIPage() {
   const [operations, setOperations] = useState<Operation[]>([]);
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
-  const [permissions, setPermissions] = useState<Scope[]>(['read']);
-  const [name, setName] = useState('');
-  const [days, setDays] = useState(90);
-  const [credential, setCredential] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -98,8 +94,6 @@ export function AIPage() {
       <span className="ai-inline-notice" role="status">{notice}</span>
       <p className="ai-muted">{t('无需先在这里登录，也不用生成或复制密钥。若 AI 无法自动添加连接，它会引导你完成必要的设置；是否支持取决于应用和版本。', 'No sign-in here or API key is needed to start. If your AI cannot add the connection automatically, it will guide you through the required setup. Support depends on the app and version.')}</p>
       <details><summary>{t('查看将复制的指令', 'Preview the instruction')}</summary><p className="ai-prompt">{connectionPrompt}</p></details>
-      <details><summary>{t('高级：手动配置', 'Advanced: manual setup')}</summary><div className="ai-copy"><code>{endpoint}</code><button onClick={() => void copy(endpoint)} disabled={busy}>{t('复制地址', 'Copy URL')}</button></div><p>{t('优先选择 OAuth 登录授权。仅当应用不支持 OAuth 时，服务器地址使用上方 URL，认证选择 Bearer Token，将下方生成的个人令牌填入应用的安全凭证字段。不要把令牌发到聊天里。', 'Choose OAuth sign-in first. Only if your app lacks OAuth support, use the URL above and Bearer Token authentication. Put the personal token below in your app’s secure credential field, never in chat.')}</p>
-        <p>{t('可用操作：搜索、读取、新增、编辑、分类、恢复未处理、删除申请、附件传输与用量查询。大文件通过鉴权 HTTP 上传或下载，AI 应用需具备对应传输能力。', 'Tools cover search, read, create, edit, categories, completion, deletion requests, attachment transfer and usage. Large files use authenticated HTTP upload/download and require client-side transfer support.')}</p></details>
     </section></div>
     <section className="ai-examples" aria-label={t('使用示例', 'Examples')}>
       {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}><MessageSquare size={18} aria-hidden="true" />{v}</p>)}
@@ -134,27 +128,11 @@ export function AIPage() {
       })}>{approve ? t(`确认删除 ${confirmation.items?.length ?? 0} 条`, `Delete ${confirmation.items?.length ?? 0} records`) : t('取消', 'Cancel')}</button>)}</div>}
     </section>}
     {isAuthenticated && !authorize && !confirm && <>
-      <details className="ai-card"><summary>{t('高级：个人访问令牌（仅用于不支持 OAuth 的应用）', 'Advanced: personal tokens (apps without OAuth only)')}</summary>
-        <p>{t('每个工具使用独立令牌。默认只读，按需开启写入；删除记录仍需在 Synca 网页确认。', 'Use a separate token for each tool. Read-only by default; enable writes as needed. Record deletion still requires confirmation on Synca’s website.')}</p>
-        <form onSubmit={e => { e.preventDefault(); void act(async () => {
-          const result = await request<{ token: string }>('connections', 'POST', { name, scopes: permissions, expiresInDays: days });
-          setCredential(result.token); setName(''); setNotice(t('令牌已创建，请立即保存', 'Token created. Save it now.')); await refresh();
-        }); }}>
-          <label>{t('连接名称', 'Connection name')}<input required maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder={t('例如：我的 AI 助手', 'e.g. My AI assistant')} /></label>
-          <fieldset><legend>{t('允许的能力', 'Permissions')}</legend>{(Object.keys(labels) as Scope[]).map(s => <label className="ai-check" key={s}><input type="checkbox" checked={permissions.includes(s)} onChange={e => setPermissions(e.target.checked ? [...permissions, s] : permissions.filter(v => v !== s))} />{labels[s]}</label>)}</fieldset>
-          <label>{t('有效期', 'Expires after')}<select value={days} onChange={e => setDays(Number(e.target.value))}>{[7, 30, 90, 365].map(d => <option value={d} key={d}>{d} {t('天', 'days')}</option>)}</select></label>
-          <p className="ai-muted">{t('附件上传还需“新增”权限，下载还需“读取”权限。外部服务的数据保留规则由该服务决定。', 'Attachment upload also requires Create; download requires Read. External services determine their own data retention.')}</p>
-          <button className="ai-primary" disabled={busy || !permissions.length || !name.trim() || !!credential}>{t('创建令牌', 'Create token')}</button>
-        </form>
-        {credential && <div className="ai-secret"><strong>{t('仅显示一次，请保存到工具的安全凭证设置中。', 'Shown once. Save in your tool’s secure credentials.')}</strong>
-          <div className="ai-copy"><code>{credential}</code><button disabled={busy} onClick={() => void copy(credential)}>{t('复制令牌', 'Copy token')}</button></div>
-          <button onClick={() => { setCredential(null); setNotice(t('令牌已隐藏', 'Token hidden')); }}>{t('已保存，隐藏令牌', 'Saved — hide token')}</button></div>}
-      </details>
       <section className="ai-card"><h2>{t('已连接的应用', 'Connected apps')}</h2>
         {!activeConnections.length && <p className="ai-muted">{t('还没有有效连接。', 'No active connections yet.')}</p>}
         {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3><p>{c.scopes.map(s => labels[s]).join(' · ')}</p>
           <p className="ai-muted">{t('到期：', 'Expires: ')}{new Date(c.expires_at).toLocaleDateString(zh ? 'zh-CN' : 'en-US')} · {t('最近访问：', 'Last access: ')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(zh ? 'zh-CN' : 'en-US') : t('尚未使用', 'Not used yet')}</p></div>
-          <button disabled={busy} onClick={() => void act(async () => { await request(`connections/${c.id}`, 'DELETE'); setCredential(null); await refresh(); setNotice(t('已撤销连接', 'Connection revoked')); })}>{t('撤销', 'Revoke')}</button></article>)}
+          <button disabled={busy} onClick={() => void act(async () => { await request(`connections/${c.id}`, 'DELETE'); await refresh(); setNotice(t('已撤销连接', 'Connection revoked')); })}>{t('撤销', 'Revoke')}</button></article>)}
       </section>
       <section className="ai-card"><h2>{t('最近操作', 'Recent operations')}</h2>{!operations.length && <p className="ai-muted">{t('暂无操作记录。', 'No operations yet.')}</p>}
         <ul className="ai-log">{operations.map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(zh ? 'zh-CN' : 'en-US')}</time></li>)}</ul>
