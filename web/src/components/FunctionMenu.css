@@ -8,7 +8,13 @@
 .header-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .header-actions .header-btn { width: 40px; height: 40px; }
 .header-brand .header-plan { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border: 0; border-radius: 8px; padding: 7px 9px; max-width: 100%; background: var(--synca-mint-light); color: var(--text-main); font: inherit; font-size: 12px; white-space: nowrap; }
-.header-brand .header-plan.is-unlimited { color: var(--synca-purple); background: color-mix(in srgb, var(--synca-purple) 12%, transparent); }
+.header-plan-label { display: inline-flex; align-items: center; gap: 4px; }
+.header-plan-label svg { flex-shrink: 0; }
+.header-brand .header-plan.is-unlimited { min-height: 44px; padding: 0; border-radius: 999px; color: var(--synca-purple); background: transparent; font-weight: 600; }
+.header-plan.is-unlimited .header-plan-label { padding: 5px 10px; border-radius: inherit; background: var(--synca-mint-light); line-height: 18px; }
+.header-plan.is-unlimited:hover .header-plan-label { background: color-mix(in srgb, var(--text-main) 9%, var(--card-bg-color)); }
+.header-brand .header-plan:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) { .header-brand .header-plan.is-unlimited { color: #bba2ff; } }
 .shell-form { display: grid; gap: 18px; margin: 20px 0; text-align: left; }
 .shell-form label { display: grid; gap: 8px; font-size: 14px; }
 .shell-form :is(input,textarea) { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-color); color: var(--text-main); font: inherit; }
