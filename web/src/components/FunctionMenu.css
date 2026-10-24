@@ -1,0 +1,21 @@
+.function-menu { position: relative; }
+.function-menu-panel { position: absolute; right: 0; top: calc(100% + 10px); width: 224px; padding: 6px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg-color); box-shadow: 0 12px 48px #0002; z-index: 50; }
+.function-menu-panel :is(button,a) { display: flex; align-items: center; gap: 12px; padding: 11px 12px; min-height: 44px; width: 100%; border: 0; border-radius: 8px; font: inherit; font-size: 14px; text-align: left; text-decoration: none; background: transparent; color: var(--text-main); cursor: pointer; }
+.function-menu-panel :is(button,a):is(:hover,:focus-visible) { background: var(--synca-mint-light); outline: 2px solid var(--synca-purple); outline-offset: -2px; }
+.app-container .header { flex-shrink: 0; min-height: 64px; height: auto; gap: 12px; padding: 10px 20px; background: var(--card-bg-color); }
+.header-brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.header-brand img { width: 30px; height: 30px; border-radius: 8px; }
+.header-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.header-actions .header-btn { width: 40px; height: 40px; }
+.header-brand .header-plan { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border: 0; border-radius: 8px; padding: 7px 9px; max-width: 100%; background: var(--synca-mint-light); color: var(--text-main); font: inherit; font-size: 12px; white-space: nowrap; }
+.header-brand .header-plan.is-unlimited { color: var(--synca-purple); background: color-mix(in srgb, var(--synca-purple) 12%, transparent); }
+.shell-form { display: grid; gap: 18px; margin: 20px 0; text-align: left; }
+.shell-form label { display: grid; gap: 8px; font-size: 14px; }
+.shell-form :is(input,textarea) { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-color); color: var(--text-main); font: inherit; }
+.shell-form textarea { min-height: 140px; resize: vertical; }
+.shell-form button { min-height: 44px; padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; font: inherit; background: var(--synca-purple); color: white; }
+.shell-form button:disabled { opacity: .5; cursor: wait; }
+.shell-form p { overflow-wrap: anywhere; }
+.shell-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.shell-links a { color: var(--synca-purple); }
+@media (max-width: 600px) { .app-container .header { padding: 8px 12px; gap: 4px 8px; } .header-brand { gap: 6px; } .header-actions { gap: 0; } .header-actions .header-btn { width: 36px; height: 44px; } .header-brand img { display: none; } }

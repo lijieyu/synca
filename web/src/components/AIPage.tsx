@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ArrowUpRight, Copy, Check, Sparkles, ShieldCheck, MessageSquare, Link2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,6 +42,10 @@ export function AIPage() {
   const [notice, setNotice] = useState('');
   const [loginVisible, setLoginVisible] = useState(Boolean(authorize || confirm));
   const endpoint = `${window.location.origin}/mcp`;
+  const connectionPrompt = t(
+    `请帮我连接 Synca，使用远程 MCP 服务 ${endpoint}（Streamable HTTP），通过 OAuth 登录授权。请使用你所在应用提供的 MCP 安装和连接能力；若已安装请直接连接，不要重复添加。打开官方 Synca 登录授权页，让我亲自登录并确认所需权限，不要让我把密码、验证码或访问令牌发到对话里。若你无法自动添加 MCP，请明确说明，并给出当前应用最短的添加步骤，不要假装已经安装。连接成功后，读取最近 5 条 Synca 记录验证连接，不要修改或删除内容。`,
+    `Please connect me to Synca using its remote MCP server ${endpoint} (Streamable HTTP) with OAuth authorization. Use this app's supported MCP installation and connection capabilities; reuse an existing connection instead of adding a duplicate. Open the official Synca sign-in and consent page so I can personally sign in and approve the required permissions. Never ask me to paste passwords, verification codes, or access tokens into chat. If you cannot add MCP servers automatically, say so and give the shortest setup steps for this app; do not claim it is installed. After connecting, read my 5 most recent Synca records to verify the connection without changing or deleting anything.`,
+  );
   const request = useCallback(async <T,>(path: string, method = 'GET', body?: unknown): Promise<T> => {
     const response = await fetch(`/api/ai/${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store' });
@@ -79,29 +84,31 @@ export function AIPage() {
   const copy = (value: string) => act(async () => { await navigator.clipboard.writeText(value); setNotice(t('已复制', 'Copied')); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
   return <main className="ai-page"><div className="ai-content">
-    <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link to="/">← Synca</Link><Link to="/ai">{t('连接 AI', 'Connect AI')}</Link></nav>
-    {!authorize && !confirm && <><header className="ai-hero"><span className="ai-eyebrow">SYNCA × AI</span>
+    <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link><Link className="ai-back" to="/">{t('打开 Synca', 'Open Synca')} <ArrowUpRight size={16} /></Link></nav>
+    {!authorize && !confirm && <><div className="ai-intro-grid"><header className="ai-hero"><span className="ai-eyebrow"><Sparkles size={15} /> SYNCA × AI</span>
       <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
       <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。手机、Mac 和 Web 自动同步。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca, synced across phone, Mac and web.')}</p>
-      <a className="ai-primary" href="#connect">{t('开始连接', 'Get connected')}</a>
+      <div className="ai-assurance"><ShieldCheck size={17} />{t('由你授权，随时断开', 'Your permission. Your control.')}</div>
     </header>
-    <section className="ai-examples" aria-label={t('使用示例', 'Examples')}>
-      {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}>{v}</p>)}
-    </section>
-    <section className="ai-card" id="connect"><h2>{t('连接你的 AI 应用', 'Connect your AI app')}</h2>
-      <ol><li>{t('在 AI 应用中添加远程 MCP 服务，填入下方地址。', 'Add a remote MCP server in your AI app using the address below.')}</li>
-        <li>{t('支持 OAuth 的应用会打开 Synca 授权页；手动配置时使用个人令牌。', 'OAuth-capable apps open a Synca consent page. For manual configuration, use a personal token.')}</li>
-        <li>{t('授权后，从“列出最近的 Synca 记录”开始。', 'After authorization, try “List my recent Synca records”.')}</li></ol>
-      <div className="ai-copy"><code>{endpoint}</code><button onClick={() => void copy(endpoint)} disabled={busy}>{t('复制地址', 'Copy URL')}</button></div>
-      <p className="ai-muted">{t('协议：Streamable HTTP。是否支持自定义 MCP，取决于 AI 产品及其手机端版本。连接服务不包含模型费用。', 'Transport: Streamable HTTP. Custom MCP support depends on your AI product and its mobile version. Model costs are not included.')}</p>
-      <details><summary>{t('手动配置说明', 'Manual configuration')}</summary><p>{t('服务器地址使用上方 URL，认证选择 Bearer Token，将下方生成的个人令牌填入应用的安全凭证字段。不要把令牌发到聊天里。', 'Use the URL above and Bearer Token authentication. Put the personal token below in your app’s secure credential field, never in chat.')}</p>
+    <section className="ai-card ai-connect" id="connect"><div className="ai-connect-icon"><Link2 size={24} /></div><span className="ai-step-label">{t('只需三步', 'THREE SIMPLE STEPS')}</span><h2>{t('连接你的 AI 应用', 'Connect your AI app')}</h2>
+      <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
+        <li>{t('跟随 AI 打开的 Synca 授权页，登录并确认权限。', 'Sign in and approve permissions on the Synca authorization page opened by your AI.')}</li>
+        <li>{t('回到对话，让 AI 查找或整理你的记录。', 'Return to the conversation to find and organize your records.')}</li></ol>
+      <button className="ai-primary" disabled={busy} onClick={() => void copy(connectionPrompt)}>{notice ? <Check size={18} /> : <Copy size={18} />}{t('复制指令给AI', 'Copy instructions for AI')}</button>
+      <span className="ai-inline-notice" role="status">{notice}</span>
+      <p className="ai-muted">{t('无需先在这里登录，也不用生成或复制密钥。若 AI 无法自动添加连接，它会引导你完成必要的设置；是否支持取决于应用和版本。', 'No sign-in here or API key is needed to start. If your AI cannot add the connection automatically, it will guide you through the required setup. Support depends on the app and version.')}</p>
+      <details><summary>{t('查看将复制的指令', 'Preview the instruction')}</summary><p className="ai-prompt">{connectionPrompt}</p></details>
+      <details><summary>{t('高级：手动配置', 'Advanced: manual setup')}</summary><div className="ai-copy"><code>{endpoint}</code><button onClick={() => void copy(endpoint)} disabled={busy}>{t('复制地址', 'Copy URL')}</button></div><p>{t('优先选择 OAuth 登录授权。仅当应用不支持 OAuth 时，服务器地址使用上方 URL，认证选择 Bearer Token，将下方生成的个人令牌填入应用的安全凭证字段。不要把令牌发到聊天里。', 'Choose OAuth sign-in first. Only if your app lacks OAuth support, use the URL above and Bearer Token authentication. Put the personal token below in your app’s secure credential field, never in chat.')}</p>
         <p>{t('可用操作：搜索、读取、新增、编辑、分类、恢复未处理、删除申请、附件传输与用量查询。大文件通过鉴权 HTTP 上传或下载，AI 应用需具备对应传输能力。', 'Tools cover search, read, create, edit, categories, completion, deletion requests, attachment transfer and usage. Large files use authenticated HTTP upload/download and require client-side transfer support.')}</p></details>
+    </section></div>
+    <section className="ai-examples" aria-label={t('使用示例', 'Examples')}>
+      {[t('“帮我整理本周的灵感”', '“Organize this week’s ideas”'), t('“找出关于新项目的记录”', '“Find my notes about the new project”'), t('“把这个结论保存到 Synca”', '“Save this conclusion to Synca”')].map(v => <p key={v}><MessageSquare size={18} aria-hidden="true" />{v}</p>)}
     </section>
     </>}
-    <div aria-live="polite" role="status" className="ai-notice">{notice}</div>
+    {(authorize || confirm || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
     {error && <div role="alert" className="ai-error">{t('操作未完成：', 'Could not complete: ')}{error}<button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button></div>}
     {loading && <p role="status">{t('正在加载连接信息…', 'Loading connections…')}</p>}
-    {!isAuthenticated && <section className="ai-card"><h2>{t('登录后授权或创建令牌', 'Sign in to authorize or create a token')}</h2>
+    {!isAuthenticated && <section className={`ai-card ${!authorize && !confirm ? 'ai-manage' : ''}`}><h2>{authorize || confirm ? t('登录 Synca 以继续', 'Sign in to Synca to continue') : t('管理已连接的 AI', 'Manage connected AI apps')}</h2>
       <p>{t('授权的 AI 服务将接收你允许访问的内容。你可以随时撤销后续访问，但无法收回对方已经读取的数据。', 'Authorized AI services receive the content you permit. You can revoke future access, but cannot recall data already read.')}</p>
       {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('登录 Synca', 'Sign in to Synca')}</button> : <div className="ai-login"><LoginView showAILink={false} /></div>}
     </section>}
@@ -126,7 +133,7 @@ export function AIPage() {
       })}>{approve ? t(`确认删除 ${confirmation.items?.length ?? 0} 条`, `Delete ${confirmation.items?.length ?? 0} records`) : t('取消', 'Cancel')}</button>)}</div>}
     </section>}
     {isAuthenticated && !authorize && !confirm && <>
-      <section className="ai-card"><h2>{t('个人访问令牌', 'Personal access token')}</h2>
+      <details className="ai-card"><summary>{t('高级：个人访问令牌（仅用于不支持 OAuth 的应用）', 'Advanced: personal tokens (apps without OAuth only)')}</summary>
         <p>{t('每个工具使用独立令牌。默认只读，按需开启写入；删除记录仍需在 Synca 网页确认。', 'Use a separate token for each tool. Read-only by default; enable writes as needed. Record deletion still requires confirmation on Synca’s website.')}</p>
         <form onSubmit={e => { e.preventDefault(); void act(async () => {
           const result = await request<{ token: string }>('connections', 'POST', { name, scopes: permissions, expiresInDays: days });
@@ -141,7 +148,7 @@ export function AIPage() {
         {credential && <div className="ai-secret"><strong>{t('仅显示一次，请保存到工具的安全凭证设置中。', 'Shown once. Save in your tool’s secure credentials.')}</strong>
           <div className="ai-copy"><code>{credential}</code><button disabled={busy} onClick={() => void copy(credential)}>{t('复制令牌', 'Copy token')}</button></div>
           <button onClick={() => { setCredential(null); setNotice(t('令牌已隐藏', 'Token hidden')); }}>{t('已保存，隐藏令牌', 'Saved — hide token')}</button></div>}
-      </section>
+      </details>
       <section className="ai-card"><h2>{t('已连接的应用', 'Connected apps')}</h2>
         {!activeConnections.length && <p className="ai-muted">{t('还没有有效连接。', 'No active connections yet.')}</p>}
         {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3><p>{c.scopes.map(s => labels[s]).join(' · ')}</p>

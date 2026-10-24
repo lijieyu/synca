@@ -376,6 +376,13 @@ class APIClient {
     return this.fetch('/api/admin/revenue/stats');
   }
 
+  async submitFeedback(content: string, email: string, images: File[]): Promise<{ ok: boolean }> {
+    const body = new FormData();
+    body.append('content', content); body.append('email', email); body.append('deviceModel', 'Web');
+    images.forEach(image => body.append('images', image));
+    return this.fetch('/feedback', { method: 'POST', body });
+  }
+
   async getAdminFeedback(): Promise<{ feedbacks: any[] }> {
     return this.fetch('/api/admin/feedback');
   }

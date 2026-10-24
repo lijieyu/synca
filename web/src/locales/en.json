@@ -179,5 +179,20 @@
   "access.download_to_purchase": "Download Synca to purchase in the app",
   "ai": {
     "connect": "Connect AI"
-  }
+  },
+  "navigation.account": "Account",
+  "navigation.more": "More options",
+  "navigation.layout": "Switch layout",
+  "navigation.close": "Close",
+  "navigation.feedback_sent": "Feedback sent. Thank you for your thoughts.",
+  "navigation.feedback_images": "Up to 3 images, 20 MB each.",
+  "navigation.feedback_failed": "Could not send. Your draft is preserved; please try again.",
+  "navigation.admin": "Admin dashboard",
+  "navigation.provider": "Signed in with Apple",
+  "navigation.about": "Capture a thought. Carry it across your devices.",
+  "navigation.privacy": "Privacy policy",
+  "navigation.support": "Support",
+  "navigation.web": "Web version",
+  "common.all": "All",
+  "navigation.sync": "Sync"
 }
