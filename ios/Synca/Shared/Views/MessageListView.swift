@@ -1378,6 +1378,7 @@ private struct TiledCategoryColumn: View {
                                 onImageTap: {},
                                 onImageLoaded: {}
                             )
+                            .id("\(message.id)-\(message.isCleared)")
                         }
 
                         if !pendingMessages.isEmpty {
@@ -1410,6 +1411,7 @@ private struct TiledCategoryColumn: View {
                                 onImageTap: {},
                                 onImageLoaded: {}
                             )
+                            .id("\(message.id)-\(message.isCleared)")
                         }
                     }
                     .padding(.horizontal, 14)
