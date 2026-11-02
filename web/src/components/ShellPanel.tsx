@@ -3,6 +3,7 @@ import { UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { api } from '../api/client';
+import { version } from '../../package.json';
 
 export function ShellPanel({ kind, email, onClose, onLogout }: {
   kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void;
@@ -29,9 +30,10 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
       </div>
     </div>}
     {kind === 'about' && <div className="about-panel">
-      <div className="about-identity"><img src="/logo.png" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')}</p></div></div>
+      <div className="about-identity"><img src="/logo.png" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
+      <p className="about-registration">浙ICP备2026013056号-3A</p>
     </div>}
     {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form className="shell-form" onSubmit={async e => {
       e.preventDefault(); if (busy) return; setError(''); setBusy(true);

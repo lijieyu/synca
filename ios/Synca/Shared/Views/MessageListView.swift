@@ -2828,6 +2828,14 @@ private struct AboutSyncaSheet: View {
                     .padding(18)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                    Text(verbatim: "浙ICP备2026013056号-3A")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity)
                 }
             }
             .scrollIndicators(.hidden)
@@ -2858,7 +2866,7 @@ private struct AboutSyncaSheet: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 460, idealWidth: 460, minHeight: 360, idealHeight: 380)
+        .frame(minWidth: 460, idealWidth: 460, minHeight: 400, idealHeight: 420)
         #endif
     }
 }
