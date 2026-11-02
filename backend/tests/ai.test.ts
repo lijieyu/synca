@@ -43,6 +43,57 @@ beforeEach(async () => {
     token = c.token; connectionId = c.id;
 });
 describe('AI authorization and content contract', () => {
+    const rpc = (method: string, params: unknown) => request(app).post('/mcp').set('Authorization', auth())
+        .set('Accept', 'application/json, text/event-stream').send({ jsonrpc: '2.0', id: 1, method, params });
+    it('advertises tool versions and keeps legacy and future calls usable without changing REST', async () => {
+        const list = await rpc('tools/list', {});
+        for (const tool of list.body.result.tools) {
+            expect(tool.inputSchema.required).toContain('toolVersion');
+            expect(tool.inputSchema.properties.toolVersion.description).toContain('1');
+        }
+        for (const args of [undefined, {}, { toolVersion: '0' }, { toolVersion: '999' }]) {
+            const response = await rpc('tools/call', { name: 'get_usage', ...(args === undefined ? {} : { arguments: args }) });
+            expect(response.body.result.isError).not.toBe(true);
+            const content = response.body.result.content;
+            expect(JSON.parse(content[0].text).access.isUnlimited).toBe(true);
+            expect(JSON.parse(content[1].text)).toMatchObject({ type: 'tool_definition_update', currentVersion: '1', refreshRecommended: true });
+        }
+        const current = await rpc('tools/call', { name: 'get_usage', arguments: { toolVersion: '1' } });
+        expect(current.body.result.content).toHaveLength(1);
+        expect((await call('get_usage')).status).toBe(200);
+    });
+    it('keeps legacy batched calls compatible with the installed transport', async () => {
+        const response = await request(app).post('/mcp').set('Authorization', auth())
+            .set('Accept', 'application/json, text/event-stream').send([
+                { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_usage' } },
+                { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'list_categories', arguments: { toolVersion: '1' } } },
+            ]);
+        expect(response.body).toHaveLength(2);
+        const legacy = response.body.find((r: { id: number }) => r.id === 1);
+        expect(legacy.result.isError).not.toBe(true);
+        expect(legacy.result.content).toHaveLength(2);
+        expect(response.body.find((r: { id: number }) => r.id === 2).result.content).toHaveLength(1);
+    });
+    it('rejects invalid version fields and preserves errors and write idempotency across refresh', async () => {
+        for (const toolVersion of [null, 1, [], '', 'abc', '1234567890']) {
+            const response = await rpc('tools/call', { name: 'get_usage', arguments: { toolVersion } });
+            expect(response.body.error || response.body.result?.isError).toBeTruthy();
+        }
+        for (const args of [null, [], 1]) {
+            const response = await rpc('tools/call', { name: 'get_usage', arguments: args });
+            expect(response.body.error || response.body.result?.isError).toBeTruthy();
+        }
+        const args = { textContent: 'version retry', idempotencyKey: randomUUID() };
+        const first = await rpc('tools/call', { name: 'create_record', arguments: args });
+        const retry = await rpc('tools/call', { name: 'create_record', arguments: { ...args, toolVersion: '1' } });
+        expect(first.body.result.isError).not.toBe(true);
+        expect(retry.body.result.content[0]).toEqual(first.body.result.content[0]);
+        expect((await call('search_records')).body.messages).toHaveLength(1);
+        const failure = await rpc('tools/call', { name: 'read_record', arguments: { id: randomUUID() } });
+        expect(failure.body.result.isError).toBe(true);
+        expect(failure.body.result.content).toHaveLength(2);
+        expect(JSON.parse(failure.body.result.content[0].text)).toHaveProperty('code');
+    });
     it('blocks free and expired accounts while preserving connections for renewal and revocation', async () => {
         await db.updateTable('users').set({ lifetime_purchased_at: null, subscription_expires_at: null }).where('id', '=', userId).execute();
         expect((await call('get_usage')).status).toBe(403);
