@@ -1,3 +1,4 @@
+import { normalizeToolVersion, versionedSchema, splitToolVersion, withVersionNotice } from './aiToolVersion.js';
 import { issueOAuthTokens, refreshOAuthTokens, OAUTH_GRANT_DAYS, OAUTH_REFRESH_IDLE_DAYS } from './aiOAuthTokens.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -141,26 +142,28 @@ export function createAIRouter(notify: (userId: string) => Promise<void>) {
         const server = new McpServer({ name: 'Synca', version: '1.0.5' });
         for (const [name, handler] of Object.entries(handlers)) {
             if (handler.scope && !actor.scopes.includes(handler.scope)) continue;
-            server.registerTool(name, { description: handler.description, inputSchema: handler.schema,
+            server.registerTool(name, { description: handler.description, inputSchema: versionedSchema(handler.schema),
                 annotations: { readOnlyHint: ['search_records', 'read_record', 'list_categories', 'get_usage', 'get_operation', 'attachment_transfer', 'read_attachment'].includes(name),
                     destructiveHint: name === 'manage_category' || name === 'update_records' || name === 'delete_records', openWorldHint: false } }, async (args: unknown) => {
+                const { toolVersion, businessArgs } = splitToolVersion(args);
+                const notice = (result: import('@modelcontextprotocol/sdk/types.js').CallToolResult) => withVersionNotice(result, toolVersion);
                 try {
                     // Re-authenticate each call, even when SDK dispatch behavior changes.
                     const current = await authenticate(req.header('Authorization'));
-                    const result = await execute(current, name, args);
+                    const result = await execute(current, name, businessArgs);
                     if (name === 'read_attachment') {
                         const { attachment } = result as { attachment: { uri: string; mimeType: string; data: string; image: boolean } };
-                        return { content: attachment.image ? [{ type: 'image' as const, mimeType: attachment.mimeType, data: attachment.data }] :
-                            [{ type: 'resource' as const, resource: { uri: attachment.uri, mimeType: attachment.mimeType, blob: attachment.data } }] };
+                        return notice({ content: attachment.image ? [{ type: 'image' as const, mimeType: attachment.mimeType, data: attachment.data }] :
+                            [{ type: 'resource' as const, resource: { uri: attachment.uri, mimeType: attachment.mimeType, blob: attachment.data } }] });
                     }
-                    return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
-                } catch (error) { return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify(safeError(error)) }] }; }
+                    return notice({ content: [{ type: 'text' as const, text: JSON.stringify(result) }] });
+                } catch (error) { return notice({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify(safeError(error)) }] }); }
             });
         }
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
         res.on('close', () => { void transport.close(); void server.close(); });
         await server.connect(transport);
-        await transport.handleRequest(req, res, req.body);
+        await transport.handleRequest(req, res, normalizeToolVersion(req.body));
     }));
     router.all('/mcp', (_req, res) => { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'method_not_allowed' }); });
     router.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
