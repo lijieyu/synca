@@ -1,5 +1,5 @@
 import { db } from './db.js';
-import { sql, type Transaction } from 'kysely';
+import { sql, type Transaction, type Selectable } from 'kysely';
 import type { Database } from './db_types.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs/promises';
@@ -23,7 +23,7 @@ function toUser(row: UsersTable): SyncaUser {
     };
 }
 
-function toMessage(row: MessagesTable, baseUrl?: string): SyncaMessage {
+function toMessage(row: Selectable<MessagesTable>, baseUrl?: string): SyncaMessage {
     const expired = Boolean(row.attachment_purged || (row.attachment_expires_at && row.attachment_expires_at <= new Date().toISOString()));
     return {
         attachmentExpiresAt: row.attachment_expires_at,
@@ -810,6 +810,26 @@ export async function createMessage(message: {
             recorded_at: message.now,
         }).execute();
         await message.beforeCommit?.(trx);
+    });
+}
+
+export async function setMessageCompletion(id: string, userId: string, completed: boolean, baseUrl?: string) {
+    return db.transaction().execute(async trx => {
+        const existing = await trx.selectFrom('messages').selectAll().where('id', '=', id)
+            .where('user_id', '=', userId).where('is_deleted', '=', 0).executeTakeFirst();
+        if (!existing) return undefined;
+        if (Boolean(existing.is_cleared) !== completed) {
+            const now = new Date(Math.max(Date.now(), Date.parse(existing.updated_at) + 1)).toISOString();
+            await trx.updateTable('messages').set({ is_cleared: completed ? 1 : 0, updated_at: now })
+                .where('id', '=', id).where('user_id', '=', userId).execute();
+        }
+        const row = await trx.selectFrom('messages')
+            .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
+            .selectAll('messages').select(['message_categories.name as category_name',
+                'message_categories.color as category_color', 'message_categories.is_default as category_is_default'])
+            .where('messages.id', '=', id).where('messages.user_id', '=', userId).executeTakeFirstOrThrow();
+        return { ...toMessage(row, baseUrl), categoryName: row.category_name ?? undefined,
+            categoryColor: row.category_color ?? undefined, categoryIsDefault: row.category_is_default === 1 };
     });
 }
 

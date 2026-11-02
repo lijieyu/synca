@@ -83,6 +83,7 @@ private struct StatusToastStyle: ViewModifier {
 }
 
 struct MessageListView: View {
+    @State private var categorySwipeIsHorizontal: Bool?
     private enum Timing {
         static let scrollCoalescingNanoseconds: UInt64 = 50_000_000
         static let errorDisplayNanoseconds: UInt64 = 6_000_000_000
@@ -349,6 +350,23 @@ struct MessageListView: View {
             } else {
                 VStack(spacing: 0) {
                     messageList
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        #if os(iOS)
+                        .simultaneousGesture(DragGesture(minimumDistance: 20)
+                            .onChanged { value in
+                                if categorySwipeIsHorizontal == nil {
+                                    categorySwipeIsHorizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                                }
+                            }
+                            .onEnded { value in
+                                defer { categorySwipeIsHorizontal = nil }
+                                guard categorySwipeIsHorizontal == true else { return }
+                                switchCategory(horizontal: value.translation.width, vertical: value.translation.height)
+                            })
+                        .accessibilityAction(named: Text("message_list.next_category")) { switchCategory(horizontal: -80, vertical: 0) }
+                        .accessibilityAction(named: Text("message_list.previous_category")) { switchCategory(horizontal: 80, vertical: 0) }
+                        #endif
                     Divider()
                     inputBar
                 }
@@ -440,45 +458,67 @@ struct MessageListView: View {
         return String(localized: "message_list.clear_completed_all_messages", bundle: .main)
     }
 
+    private func switchCategory(horizontal: Double, vertical: Double) {
+        let order = [syncManager.allCategoryPseudoId] + syncManager.categories.map(\.id)
+        guard let target = CategorySwipeNavigation.target(order: order,
+            selected: syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId,
+            horizontal: horizontal, vertical: vertical) else { return }
+        syncManager.selectCategory(target)
+        #if os(iOS)
+        UISelectionFeedbackGenerator().selectionChanged()
+        let title = syncManager.categories.first(where: { $0.id == target })?.name ?? String(localized: "common.all")
+        UIAccessibility.post(notification: .announcement, argument: title)
+        #endif
+    }
+
     @ViewBuilder
     private var categoryToolbar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                categoryChip(
-                    title: String(localized: "common.all", bundle: .main),
-                    color: .secondary.opacity(0.16),
-                    isSelected: syncManager.selectedCategoryId == syncManager.allCategoryPseudoId,
-                    badgeCount: allTodoCount
-                ) {
-                    syncManager.selectCategory(syncManager.allCategoryPseudoId)
-                }
-
-                ForEach(syncManager.categories) { category in
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
                     categoryChip(
-                        title: category.isDefault ? String(localized: "message_category.default_badge", bundle: .main) : category.name,
-                        color: backgroundColor(for: category.color),
-                        isSelected: syncManager.selectedCategoryId == category.id,
-                        badgeCount: todoCount(for: category.id)
+                        title: String(localized: "common.all", bundle: .main),
+                        color: .secondary.opacity(0.16),
+                        isSelected: syncManager.selectedCategoryId == syncManager.allCategoryPseudoId,
+                        badgeCount: allTodoCount
                     ) {
-                        syncManager.selectCategory(category.id)
+                        syncManager.selectCategory(syncManager.allCategoryPseudoId)
                     }
-                }
+                    .id(syncManager.allCategoryPseudoId)
 
-                Button {
-                    showCreateCategory = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(width: 30, height: 30)
-                        .background(Color.secondary.opacity(0.12))
-                        .clipShape(Circle())
+                    ForEach(syncManager.categories) { category in
+                        categoryChip(
+                            title: category.isDefault ? String(localized: "message_category.default_badge", bundle: .main) : category.name,
+                            color: backgroundColor(for: category.color),
+                            isSelected: syncManager.selectedCategoryId == category.id,
+                            badgeCount: todoCount(for: category.id)
+                        ) {
+                            syncManager.selectCategory(category.id)
+                        }
+                        .id(category.id)
+                    }
+
+                    Button {
+                        showCreateCategory = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(width: 30, height: 30)
+                            .background(Color.secondary.opacity(0.12))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.top, 7)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 7)
+            .padding(.vertical, 10)
+            .onChange(of: syncManager.selectedCategoryId) { selected in
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(selected ?? syncManager.allCategoryPseudoId, anchor: .center)
+                }
+            }
         }
-        .padding(.vertical, 10)
     }
 
     private func categoryChip(title: String, color: Color, isSelected: Bool, badgeCount: Int = 0, action: @escaping () -> Void) -> some View {
@@ -1098,7 +1138,7 @@ struct MessageListView: View {
         }
         #endif
     }
-    
+
     #if os(macOS)
     private func handlePasteShortcut() {
         let pb = NSPasteboard.general
@@ -1154,6 +1194,7 @@ struct MessageListView: View {
         MessageBubbleView(
             message: message,
             categories: syncManager.categories,
+            isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
             onClear: {
                 Task { await syncManager.clearMessage(message.id) }
             },
@@ -1326,7 +1367,8 @@ private struct TiledCategoryColumn: View {
                             MessageBubbleView(
                                 message: message,
                                 categories: syncManager.categories,
-                                onClear: {},
+                                isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
+                                onClear: { Task { await syncManager.clearMessage(message.id) } },
                                 onDelete: {
                                     Task { await syncManager.deleteMessage(message.id) }
                                 },
@@ -1355,6 +1397,7 @@ private struct TiledCategoryColumn: View {
                             MessageBubbleView(
                                 message: message,
                                 categories: syncManager.categories,
+                                isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
                                 onClear: {
                                     Task { await syncManager.clearMessage(message.id) }
                                 },

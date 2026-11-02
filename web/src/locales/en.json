@@ -165,6 +165,7 @@
   "storage.shared_image": "Shared image",
   "storage.action_failed": "Unable to complete this action. Please try again.",
   "storage.message_category": "Message category",
+  "storage.mark_incomplete": "Mark incomplete",
   "storage.completed": "Completed",
   "storage.mark_complete": "Mark complete",
   "storage.text_send_failed": "Message not sent. Please try again.",

@@ -262,3 +262,12 @@
 "message_list.connect_ai" = "Connect AI";
 
 "access.unlock_benefit_ai" = "Connect AI to find, organize and save records in conversation";
+
+"message_bubble.mark_incomplete" = "Mark incomplete";
+"message_bubble.mark_complete" = "Mark complete";
+
+"message_list.previous_category" = "Previous category";
+"message_list.next_category" = "Next category";
+
+"message_bubble.completed" = "Completed";
+"message_bubble.restored" = "Marked incomplete";

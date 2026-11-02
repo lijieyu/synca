@@ -165,6 +165,7 @@
   "storage.shared_image": "共享图片",
   "storage.action_failed": "操作未完成，请重试。",
   "storage.message_category": "消息分类",
+  "storage.mark_incomplete": "取消完成",
   "storage.completed": "已完成",
   "storage.mark_complete": "标记完成",
   "storage.text_send_failed": "消息发送失败，请重试。",

@@ -390,6 +390,10 @@ final class APIClient: ObservableObject {
     private var uploadRequests: [UUID: Task<(Data, URLResponse), Error>] = [:]
     func cancelUploads() { uploadRequests.values.forEach { $0.cancel() } }
 
+    func setMessageCompletion(id: String, isCleared: Bool) async throws -> SyncaMessage {
+        try await patch("/messages/\(id)/completion", body: ["isCleared": isCleared])
+    }
+
     func clearMessage(id: String) async throws {
         let _: OkResponse = try await patch("/messages/\(id)/clear")
     }

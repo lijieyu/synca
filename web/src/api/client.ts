@@ -329,6 +329,12 @@ class APIClient {
     window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
   }
 
+  async setMessageCompletion(id: string, isCleared: boolean): Promise<SyncaMessage> {
+    return this.fetch<SyncaMessage>(`/messages/${id}/completion`, {
+      method: 'PATCH', body: JSON.stringify({ isCleared }),
+    });
+  }
+
   async clearMessage(id: string): Promise<void> {
     await this.fetch(`/messages/${id}/clear`, { method: 'PATCH' });
   }
