@@ -23,7 +23,16 @@ export class AIError extends Error { constructor(public status: number, public c
 export function requireScope(actor: Actor, scope: Scope) {
     if (!actor.scopes.includes(scope)) throw new AIError(403, `scope_required:${scope}`);
 }
+// Check current purchase fields on every access; do not cache eligibility in tokens.
+export async function assertAIAccess(userId: string, executor: typeof db | Transaction<Database> = db) {
+    const user = await executor.selectFrom('users').select(['lifetime_purchased_at', 'subscription_expires_at'])
+        .where('id', '=', userId).executeTakeFirst();
+    if (!user || !(user.lifetime_purchased_at || (user.subscription_expires_at && user.subscription_expires_at > new Date().toISOString()))) {
+        throw new AIError(403, 'ai_subscription_required');
+    }
+}
 export async function connection(userId: string, name: string, permissions: Scope[], days: number, clientId: string | null = null) {
+    await assertAIAccess(userId);
     const token = `synca_ai_${secret()}`;
     const id = randomUUID();
     await db.insertInto('ai_connections').values({ id, user_id: userId, name, scopes: JSON.stringify(permissions),
@@ -38,6 +47,7 @@ export async function authenticate(header?: string): Promise<Actor> {
         .selectAll('ai_connections').where('token_hash', '=', hash(header.slice(7)))
         .where('revoked_at', 'is', null).where('expires_at', '>', now).executeTakeFirst();
     if (!row || (row.access_expires_at && row.access_expires_at <= now)) throw new AIError(401, 'invalid_token');
+    await assertAIAccess(row.user_id);
     await db.updateTable('ai_connections').set({ last_used_at: now }).where('id', '=', row.id).execute();
     return { id: row.id, userId: row.user_id, name: row.name, scopes: scopeSchema.parse(JSON.parse(row.scopes)) };
 }
@@ -47,6 +57,7 @@ export async function assertActive(actor: Actor, trx: Transaction<Database>) {
         .select('ai_connections.id').where('ai_connections.id', '=', actor.id).where('user_id', '=', actor.userId)
         .where('revoked_at', 'is', null).where('expires_at', '>', new Date().toISOString()).executeTakeFirst();
     if (!row) throw new AIError(401, 'invalid_token');
+    await assertAIAccess(actor.userId, trx);
 }
 export const colors = z.enum(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
 export const versionedId = z.object({ id: z.string().uuid(), expectedUpdatedAt: z.string().datetime() });

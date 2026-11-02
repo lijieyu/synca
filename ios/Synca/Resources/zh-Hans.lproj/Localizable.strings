@@ -260,3 +260,5 @@
 "common.retry" = "重试";
 
 "message_list.connect_ai" = "连接 AI";
+
+"access.unlock_benefit_ai" = "连接 AI，在对话中查找、整理和保存记录";

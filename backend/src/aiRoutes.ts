@@ -10,7 +10,7 @@ import { db } from './db.js';
 import { getUserIdFromToken } from './auth.js';
 import { buildAccessStatus } from './access.js';
 import { getUnclearedCount, listMessageCategories, MessageWriteError } from './store.js';
-import { AIError, authenticate, connection, scopeSchema, scopes, requireScope, publicOrigin, hash, secret,
+import { AIError, assertAIAccess, authenticate, connection, scopeSchema, scopes, requireScope, publicOrigin, hash, secret,
     attachmentSchema, createAttachment, searchSchema, searchMessages, readMessage, createSchema, createText, mutationSchema, updateMessages,
     categorySchema, changeCategory, deleteSchema, prepareDelete, executeDeleteSchema, executeDelete, type Actor, type Scope } from './aiCore.js';
 
@@ -32,7 +32,7 @@ const session: RequestHandler = wrap(async (req, res, next) => {
     res.locals.userId = id; next();
 });
 function safeError(error: unknown) {
-    if (error instanceof AIError) return { status: error.status, code: error.code };
+    if (error instanceof AIError) return { status: error.status, code: error.code, ...(error.code === 'ai_subscription_required' ? { message: 'AI connections require an active Synca subscription or lifetime purchase. Upgrade or renew in Synca; existing connections can resume afterward.' } : {}) };
     if (error instanceof z.ZodError) return { status: 400, code: 'invalid_arguments', details: error.issues.map(i => ({ path: i.path, message: i.message })) };
     if (error instanceof MessageWriteError) return { status: error.code === 'unauthorized' ? 401 : 403, code: error.code };
     if ((error as { code?: string })?.code === 'SQLITE_CONSTRAINT_UNIQUE') return { status: 409, code: 'name_or_request_conflict' };
@@ -166,7 +166,7 @@ export function createAIRouter(notify: (userId: string) => Promise<void>) {
     router.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
         const info = safeError(error);
         if (info.status === 401) res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${publicOrigin()}/.well-known/oauth-protected-resource/mcp"`);
-        if (!res.headersSent) res.status(info.status).json({ error: info.code, ...('details' in info ? { details: info.details } : {}) });
+        if (!res.headersSent) res.status(info.status).json({ error: info.code, ...('message' in info ? { message: info.message } : {}), ...('details' in info ? { details: info.details } : {}) });
     });
     return router;
 }
@@ -217,7 +217,7 @@ function installOAuth(router: express.Router) {
             .select(['metadata', 'scopes', 'redirect_uri']).where('ai_oauth_requests.id', '=', req.params.id)
             .where('expires_at', '>', new Date().toISOString()).where('connection_id', 'is', null).executeTakeFirst();
         if (!row) throw new AIError(410, 'authorization_expired');
-        res.json({ clientName: JSON.parse(row.metadata).client_name, scopes: JSON.parse(row.scopes), redirectUri: row.redirect_uri,
+        res.json({ aiEnabled: (await buildAccessStatus(res.locals.userId)).isUnlimited, clientName: JSON.parse(row.metadata).client_name, scopes: JSON.parse(row.scopes), redirectUri: row.redirect_uri,
             authorizationDays: OAUTH_GRANT_DAYS, autoRefresh: JSON.parse(row.metadata).grant_types.includes('refresh_token'), refreshIdleDays: OAUTH_REFRESH_IDLE_DAYS });
     }));
     router.post('/api/ai/authorization/:id', session, wrap(async (req, res) => {
@@ -233,6 +233,7 @@ function installOAuth(router: express.Router) {
                 await trx.deleteFrom('ai_oauth_requests').where('id', '=', row.id).execute();
                 redirect.searchParams.set('error', 'access_denied'); return redirect.toString();
             }
+            await assertAIAccess(res.locals.userId, trx);
             const active = await trx.selectFrom('ai_connections').select(eb => eb.fn.countAll<number>().as('n')).where('user_id', '=', res.locals.userId)
                 .where('revoked_at', 'is', null).where('expires_at', '>', new Date().toISOString()).executeTakeFirstOrThrow();
             if (Number(active.n) >= 30) throw new AIError(409, 'connection_limit_reached');
