@@ -205,7 +205,7 @@ export const MessageListView: React.FC = () => {
         setSelectedCategoryId(
           storedSelected === ALL_CATEGORY_ID || categoriesRes.categories.some((category) => category.id === storedSelected)
             ? storedSelected
-            : (defaultCategory?.id ?? ALL_CATEGORY_ID)
+            : ALL_CATEGORY_ID
         );
         setDefaultSendCategoryId(
           storedDefaultSend && categoriesRes.categories.some((category) => category.id === storedDefaultSend)
@@ -248,6 +248,8 @@ export const MessageListView: React.FC = () => {
   }, [email]);
 
   useEffect(() => {
+    // Do not overwrite the saved selection before this account's categories load.
+    if (!didRestorePreferencesRef.current) return;
     localStorage.setItem(categoryScopeStorageKey(email), selectedCategoryId);
   }, [email, selectedCategoryId]);
 
