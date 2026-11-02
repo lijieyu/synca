@@ -4,16 +4,17 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginView } from './LoginView';
+import { PlanDialog } from './PlanDialog';
 import { Modal } from './Modal';
 import './AIPage.css';
 
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
 type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
 type Operation = { id: string; kind: string; status: string; created_at: string; connectionName?: string };
-type Authorization = { authorizationDays: number; autoRefresh: boolean; refreshIdleDays: number; clientName: string; scopes: Scope[]; redirectUri: string };
+type Authorization = { aiEnabled: boolean; authorizationDays: number; autoRefresh: boolean; refreshIdleDays: number; clientName: string; scopes: Scope[]; redirectUri: string };
 
 export function AIPage() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, accessStatus, refreshAccessStatus } = useAuth();
   const { i18n } = useTranslation();
   const zh = i18n.language.startsWith('zh');
   const t = (cn: string, en: string) => zh ? cn : en;
@@ -30,6 +31,7 @@ export function AIPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
+  const [planVisible, setPlanVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -83,13 +85,14 @@ export function AIPage() {
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible}><div className="ai-content">
+  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible}><div className="ai-content">
     <nav className="ai-nav" aria-label={t('导航', 'Navigation')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link></nav>
     {!authorize && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('随手记下，\n让 AI 接着处理。', 'Capture a thought.\nLet AI take it further.')}</h1>
       <p>{t('在支持 MCP 的 AI 应用中，查找、整理你的记录，并把讨论结果保存回 Synca。', 'Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca.')}</p>
     </header>
     <section className="ai-card ai-connect" id="connect"><h2>{t('只需三步，连接你的AI', 'Connect your AI in three steps')}</h2>
+      <p className="ai-muted">{t('连接 AI 为付费权益，有效订阅和无限版均包含，免费版暂不支持。', 'AI connections are included with an active subscription or lifetime access. The free plan is not currently supported.')}</p>
       <ol><li>{t('复制下面的指令，发给你正在使用的 AI。', 'Copy the instruction below and send it to your AI.')}</li>
         <li>{t('跟随 AI 指导，在当前软件内完成配置与授权。', 'Follow your AI’s guidance to configure and authorize Synca in your current app.')}</li>
         <li>{t('回到对话，让 AI 查找或整理你的记录。', 'Return to the conversation to find and organize your records.')}</li></ol>
@@ -102,7 +105,12 @@ export function AIPage() {
     </section>
     </>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
-    {error && <div role="alert" className="ai-error">{t('操作未完成：', 'Could not complete: ')}{error}<button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button></div>}
+    {error && <div role="alert" className="ai-error">{t('操作未完成：', 'Could not complete: ')}{error === 'ai_subscription_required' ? t('连接 AI 需要有效订阅或无限版，请升级或续费后重试。', 'AI connections require an active subscription or lifetime access. Upgrade or renew and try again.') : error}<button onClick={() => window.location.reload()}>{t('重新加载', 'Reload')}</button></div>}
+    {isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('升级以连接 AI', 'Upgrade to connect AI')}</h2><p>{t('有效订阅和无限版均可使用 AI 查找、整理和保存记录。套餐到期后暂停访问，已有连接保留；续费后可恢复。', 'Active subscriptions and lifetime access include AI search, organization and saving. Access pauses when your plan expires; existing connections are retained and can resume after renewal.')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('查看升级权益', 'View upgrade benefits')}</button> <button disabled={busy} onClick={() => void act(async () => {
+        await refreshAccessStatus();
+        if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
+        setNotice(t('已更新套餐状态', 'Plan status updated'));
+      })}>{t('已升级，刷新状态', 'Upgraded? Refresh status')}</button></section>}
     {loading && <p role="status">{t('正在加载连接信息…', 'Loading connections…')}</p>}
     {!isAuthenticated && <section className={`ai-card ${!authorize ? 'ai-manage' : ''}`}><h2>{authorize ? t('登录 Synca 以继续', 'Sign in to Synca to continue') : t('管理已连接的 AI', 'Manage connected AI apps')}</h2>
       <p>{t('授权的 AI 服务将接收你允许访问的内容。你可以随时撤销后续访问，但无法收回对方已经读取的数据。', 'Authorized AI services receive the content you permit. You can revoke future access, but cannot recall data already read.')}</p>
@@ -114,7 +122,7 @@ export function AIPage() {
       <ul>{authorization.scopes.map(s => <li key={s}>{labels[s]}</li>)}</ul>
       <p>{t(`授权最长 ${authorization.authorizationDays} 天，可随时撤销。外部 AI 将接收获准访问的数据。`, `Authorization lasts up to ${authorization.authorizationDays} days and can be revoked at any time. The external AI receives permitted data.`)}</p>
       <p>{authorization.autoRefresh ? t(`支持自动续期；连续 ${authorization.refreshIdleDays} 天未刷新或授权满一年后，需要重新授权。`, `Automatic refresh is supported. Reauthorize after ${authorization.refreshIdleDays} days without refreshing or after one year.`) : t('当前应用未申请自动续期，访问令牌 30 天后到期。请使用支持自动续期的配置重新连接。', 'This app did not request automatic refresh. Access expires in 30 days; reconnect with a refresh-enabled configuration.')}</p>
-      <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} className={approve ? 'ai-primary' : ''} disabled={busy} onClick={() => void act(async () => {
+      <div className="ai-actions">{[true, false].map(approve => <button key={String(approve)} className={approve ? 'ai-primary' : ''} disabled={busy || (approve && !authorization.aiEnabled)} onClick={() => void act(async () => {
         const result = await request<{ redirectUrl: string }>(`authorization/${encodeURIComponent(authorize!)}`, 'POST', { approve });
         window.location.assign(result.redirectUrl);
       })}>{approve ? t('允许连接', 'Allow connection') : t('拒绝', 'Deny')}</button>)}</div>
@@ -131,6 +139,7 @@ export function AIPage() {
       </section>
     </>}
     <footer className="ai-muted">Synca · <Link to="/">{t('返回记录', 'Back to records')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('隐私政策', 'Privacy policy')}</a></footer>
+    {planVisible && <PlanDialog onClose={() => setPlanVisible(false)} />}
     {previewVisible && <Modal title={t('将复制的指令', 'Instruction preview')} message="" confirmText={t('关闭', 'Close')} onConfirm={() => setPreviewVisible(false)} onCancel={() => setPreviewVisible(false)} hideCancel neutral className="ai-prompt-modal">
       <div className="ai-prompt-scroll"><p>{connectionPrompt}</p></div>
     </Modal>}

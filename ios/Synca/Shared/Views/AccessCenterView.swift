@@ -154,6 +154,7 @@ struct AccessCenterView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
+                    benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
                     benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
                     benefitRow(systemImage: "doc", text: "storage.paid_files")
                     benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
@@ -852,6 +853,7 @@ struct AccessCenterView: View {
     private var currentPlanBenefits: some View {
         VStack(alignment: .leading, spacing: 10) {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
+            benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
             benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
             benefitRow(systemImage: "doc", text: "storage.paid_files")
             benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")

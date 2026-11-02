@@ -25,7 +25,7 @@ export function PlanDialog({ onClose }: { onClose: () => void }) {
     return `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(value / divisor)} ${unit}`;
   };
   const benefits = <ul>
-    {['access.unlock_benefit_unlimited', 'access.purchase_shared_account', 'storage.paid_files', 'storage.paid_capacity'].map(key => <li key={key}>{t(key)}</li>)}
+    {['access.unlock_benefit_unlimited', 'access.unlock_benefit_ai', 'access.purchase_shared_account', 'storage.paid_files', 'storage.paid_capacity'].map(key => <li key={key}>{t(key)}</li>)}
   </ul>;
   const legal = <div className="plan-legal-links">
     <a href={`https://synca.haerth.cn/${isChinese ? 'zh-hans' : 'en'}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('access.privacy_policy_link_title')}</a>

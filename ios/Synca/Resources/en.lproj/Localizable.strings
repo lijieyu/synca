@@ -260,3 +260,5 @@
 "common.retry" = "Retry";
 
 "message_list.connect_ai" = "Connect AI";
+
+"access.unlock_benefit_ai" = "Connect AI to find, organize and save records in conversation";

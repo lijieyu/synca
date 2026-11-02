@@ -38,10 +38,25 @@ beforeEach(async () => {
     userId = randomUUID(); session = randomUUID();
     await createUser({ id: userId, appleUserId: userId, nickname: 'AI test', now: new Date().toISOString() });
     await createSession(session, userId);
+    await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', userId).execute();
     const c = await connection(userId, 'test AI', ['read', 'create', 'update', 'delete', 'attachments'], 30);
     token = c.token; connectionId = c.id;
 });
 describe('AI authorization and content contract', () => {
+    it('blocks free and expired accounts while preserving connections for renewal and revocation', async () => {
+        await db.updateTable('users').set({ lifetime_purchased_at: null, subscription_expires_at: null }).where('id', '=', userId).execute();
+        expect((await call('get_usage')).status).toBe(403);
+        expect((await call('get_usage')).body.error).toBe('ai_subscription_required');
+        expect((await request(app).post('/mcp').set('Authorization', auth()).send({})).status).toBe(403);
+        expect((await request(app).post('/messages/file').set('Authorization', auth())).status).toBe(403);
+        expect((await request(app).post('/api/ai/connections').set('Authorization', `Bearer ${session}`).send({ name: 'new', scopes: ['read'] })).status).toBe(403);
+        expect((await request(app).get('/api/ai/connections').set('Authorization', `Bearer ${session}`)).status).toBe(200);
+        await db.updateTable('users').set({ subscription_expires_at: new Date(Date.now() + 60000).toISOString() }).where('id', '=', userId).execute();
+        expect((await call('get_usage')).status).toBe(200);
+        await db.updateTable('users').set({ subscription_expires_at: new Date(Date.now() - 1).toISOString() }).where('id', '=', userId).execute();
+        expect((await call('get_usage')).status).toBe(403);
+        expect((await request(app).delete(`/api/ai/connections/${connectionId}`).set('Authorization', `Bearer ${session}`)).status).toBe(200);
+    });
     it('hashes tokens, isolates sessions, defaults web token to explicit permissions, and revokes immediately', async () => {
         const row = await db.selectFrom('ai_connections').selectAll().where('id', '=', connectionId).executeTakeFirstOrThrow();
         expect(row.token_hash).not.toBe(token);
@@ -80,7 +95,7 @@ describe('AI authorization and content contract', () => {
             expect(JSON.parse((deleted.content as { text: string }[])[0].text).deletedCount).toBe(1);
         } finally { await client.close(); await new Promise<void>(resolve => server.close(() => resolve())); }
     });
-    it('retries text creation without duplication, rejects key reuse and retains existing client limits', async () => {
+    it('retries text creation without duplication, rejects key reuse and retains text limits and allows paid usage beyond the free quota', async () => {
         const args = { textContent: 'once', idempotencyKey: randomUUID() };
         const a = await call('create_record', args); const b = await call('create_record', args);
         expect(a.body.id).toBe(b.body.id);
@@ -88,12 +103,13 @@ describe('AI authorization and content contract', () => {
         expect((await call('search_records')).body.messages).toHaveLength(1);
         expect((await call('create_record', { ...args, idempotencyKey: randomUUID(), textContent: 'x'.repeat(2001) })).status).toBe(400);
         for (let n = 1; n < 20; n++) expect((await call('create_record', { textContent: 'quota', idempotencyKey: randomUUID() })).status).toBe(200);
-        expect((await call('create_record', { textContent: 'over quota', idempotencyKey: randomUUID() })).body.error).toBe('daily_limit_reached');
+        expect((await call('create_record', { textContent: 'over quota', idempotencyKey: randomUUID() })).status).toBe(200);
     });
     it('prevents cross-account reads, writes, category assignment and confirmations', async () => {
         const m = await record();
         const otherId = randomUUID();
         await createUser({ id: otherId, appleUserId: otherId, nickname: 'Other', now: new Date().toISOString() });
+        await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', otherId).execute();
         const other = await connection(otherId, 'other', ['read', 'update', 'delete'], 30);
         expect((await call('search_records', {}, other.token)).body.messages).toHaveLength(0);
         expect((await call('read_record', { id: m.id }, other.token)).status).toBe(404);
@@ -111,10 +127,11 @@ describe('AI authorization and content contract', () => {
         expect(usage.body.unclearedCount).toBe(1);
         const otherId = randomUUID();
         await createUser({ id: otherId, appleUserId: otherId, nickname: 'Other', now: new Date().toISOString() });
+        await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', otherId).execute();
         const other = await connection(otherId, 'Other', ['read', 'delete', 'update'], 30);
         const otherUsage = await call('get_usage', {}, other.token);
         expect(otherUsage.body.unclearedCount).toBe(0);
-        expect(otherUsage.body.access.isUnlimited).toBe(false);
+        expect(otherUsage.body.access.isUnlimited).toBe(true);
         const ownCategories = (await call('list_categories')).body;
         const foreignCategories = (await call('list_categories', {}, other.token)).body;
         expect(foreignCategories.some((c: { id: string }) => ownCategories.some((own: { id: string }) => own.id === c.id))).toBe(false);
@@ -184,6 +201,7 @@ describe('AI authorization and content contract', () => {
         expect((await call('delete_records', args, reader.token)).status).toBe(403);
         const otherId = randomUUID();
         await createUser({ id: otherId, appleUserId: otherId, nickname: 'Other', now: new Date().toISOString() });
+        await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', otherId).execute();
         const other = await connection(otherId, 'other', ['delete'], 30);
         expect((await call('delete_records', args, other.token)).status).toBe(404);
         expect((await call('read_record', { id: m.id })).status).toBe(200);
@@ -235,6 +253,7 @@ describe('AI authorization and content contract', () => {
         const read = await call('read_attachment', { recordId: image.body.id });
         expect(read.body.attachment.data).toBe(args.base64);
         const file = { kind: 'file', fileName: 'notes.md', mimeType: 'text/markdown', idempotencyKey: randomUUID(), base64: Buffer.from('Test note').toString('base64') };
+        await db.updateTable('users').set({ lifetime_purchased_at: null }).where('id', '=', userId).execute();
         expect((await call('create_attachment', file)).status).toBe(403);
         await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', userId).execute();
         const created = await call('create_attachment', file);
@@ -255,7 +274,7 @@ describe('AI authorization and content contract', () => {
         expect((await request(app).get(new URL(transfer.body.url).pathname).set('Authorization', auth())).status).toBe(200);
         const foreignId = randomUUID();
         await createUser({ id: foreignId, appleUserId: foreignId, nickname: 'Admin', now: new Date().toISOString() });
-        await db.updateTable('users').set({ is_admin: 1 }).where('id', '=', foreignId).execute();
+        await db.updateTable('users').set({ is_admin: 1, lifetime_purchased_at: new Date().toISOString() }).where('id', '=', foreignId).execute();
         const admin = await connection(foreignId, 'admin AI', ['read', 'attachments'], 30);
         expect((await request(app).get(new URL(transfer.body.url).pathname).set('Authorization', `Bearer ${admin.token}`)).status).toBe(403);
         await db.updateTable('messages').set({ attachment_expires_at: '2000-01-01T00:00:00.000Z' }).where('id', '=', uploaded.body.id).execute();
@@ -263,6 +282,23 @@ describe('AI authorization and content contract', () => {
     });
 });
 describe('MCP OAuth consent and PKCE', () => {
+    it('shows eligibility and blocks free OAuth approval without preventing denial', async () => {
+        const redirect = 'https://client.example/callback';
+        const registration = await request(app).post('/oauth/register').send({ redirect_uris: [redirect] });
+        const start = await request(app).get('/oauth/authorize').query({ client_id: registration.body.client_id, redirect_uri: redirect,
+            response_type: 'code', code_challenge_method: 'S256', code_challenge: createHash('sha256').update('z'.repeat(43)).digest('base64url'), scope: 'read' });
+        const id = new URL(start.headers.location, 'https://synca.haerth.cn').searchParams.get('authorize');
+        const endpoint = `/api/ai/authorization/${id}`;
+        expect((await request(app).get(endpoint).set('Authorization', `Bearer ${session}`)).body.aiEnabled).toBe(true);
+        await db.updateTable('users').set({ lifetime_purchased_at: null }).where('id', '=', userId).execute();
+        expect((await request(app).get(endpoint).set('Authorization', `Bearer ${session}`)).body.aiEnabled).toBe(false);
+        const denied = await request(app).post(endpoint).set('Authorization', `Bearer ${session}`).send({ approve: true });
+        expect(denied.status).toBe(403);
+        expect(denied.body.error).toBe('ai_subscription_required');
+        expect((await db.selectFrom('ai_oauth_requests').select('connection_id').where('id', '=', id!).executeTakeFirstOrThrow()).connection_id).toBeNull();
+        const cancel = await request(app).post(endpoint).set('Authorization', `Bearer ${session}`).send({ approve: false });
+        expect(new URL(cancel.body.redirectUrl).searchParams.get('error')).toBe('access_denied');
+    });
     it('advertises resource metadata, rejects cross-origin calls and wrong redirects', async () => {
         const metadata = await request(app).get('/.well-known/oauth-protected-resource/mcp');
         expect(metadata.body.resource).toBe('https://synca.haerth.cn/mcp');

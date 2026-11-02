@@ -73,6 +73,7 @@
   "access.free_keep_access": "查看、同步、清理和删除已有内容始终可用",
   "access.free_reset_hint": "免费额度会在每天自动重置",
   "access.unlock_title": "升级无限版",
+  "access.unlock_benefit_ai": "连接 AI，在对话中查找、整理和保存记录",
   "access.unlock_benefit_unlimited": "不限新增消息数量",
   "access.unlock_benefit_cross_device": "iPhone 和 Mac 跨设备持续可用",
   "access.unlock_benefit_capture_anytime": "灵感来了随时记录，不再受限",
