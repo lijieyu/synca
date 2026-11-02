@@ -318,6 +318,19 @@ struct MessageSyncState {
         return formatter.string(from: date.addingTimeInterval(-1))
     }
 
+    static func acceptingMutation(_ response: SyncaMessage, over current: SyncaMessage) -> Bool {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func date(_ value: String) -> Date? {
+            if let date = formatter.date(from: value) { return date }
+            let fallback = ISO8601DateFormatter()
+            return fallback.date(from: value)
+        }
+        guard response.id == current.id, !current.isDeleted,
+              let incomingDate = date(response.updatedAt), let currentDate = date(current.updatedAt) else { return false }
+        return incomingDate >= currentDate
+    }
+
     static func merging(_ incoming: [SyncaMessage], into current: [SyncaMessage]) -> [SyncaMessage] {
         var byID: [String: SyncaMessage] = [:]
         for message in current { byID[message.id] = message }
@@ -408,5 +421,18 @@ struct AttachmentOrigin {
             && url.scheme?.lowercased() == baseURL.scheme?.lowercased()
             && url.host?.lowercased() == baseURL.host?.lowercased()
             && port(url) == port(baseURL) && url.user == nil && url.password == nil
+    }
+}
+
+// Shared, deterministic navigation policy: no wraparound and vertical scrolling wins.
+enum CategorySwipeNavigation {
+    static let minimumDistance: Double = 56
+    static let horizontalDominance: Double = 1.5
+    static func target(order: [String], selected: String, horizontal: Double, vertical: Double) -> String? {
+        guard abs(horizontal) >= minimumDistance,
+              abs(horizontal) > abs(vertical) * horizontalDominance,
+              let index = order.firstIndex(of: selected) else { return nil }
+        let next = index + (horizontal < 0 ? 1 : -1)
+        return order.indices.contains(next) ? order[next] : nil
     }
 }

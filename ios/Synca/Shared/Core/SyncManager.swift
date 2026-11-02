@@ -522,20 +522,27 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Clear
 
+    @Published private(set) var completionUpdates: Set<String> = []
+
     func clearMessage(_ id: String) async {
+        guard !completionUpdates.contains(id), let current = messages.first(where: { $0.id == id }) else { return }
+        completionUpdates.insert(id)
+        defer { completionUpdates.remove(id) }
         let operationGeneration = syncState.generation
         do {
-            try await api.clearMessage(id: id)
+            let updated = try await api.setMessageCompletion(id: id, isCleared: !current.isCleared)
             guard operationGeneration == syncState.generation else { return }
-            if let index = messages.firstIndex(where: { $0.id == id }) {
-                var updated = messages[index]
-                updated.isCleared = true
-                updated.updatedAt = Date().ISO8601Format()
+            if let index = messages.firstIndex(where: { $0.id == id }),
+               MessageSyncState.acceptingMutation(updated, over: messages[index]) {
                 messages[index] = updated
                 objectWillChange.send()
                 persistMessages()
             }
             unclearedCount = messages.filter { !$0.isCleared }.count
+            #if canImport(UIKit)
+            UISelectionFeedbackGenerator().selectionChanged()
+            UIAccessibility.post(notification: .announcement, argument: String(localized: updated.isCleared ? "message_bubble.completed" : "message_bubble.restored"))
+            #endif
         } catch {
             guard operationGeneration == syncState.generation else { return }
             handleError(error, contextKey: "sync.error_context.clear")

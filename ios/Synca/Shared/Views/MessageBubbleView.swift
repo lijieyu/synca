@@ -9,6 +9,7 @@ import AppKit
 struct MessageBubbleView: View {
     let message: SyncaMessage
     let categories: [SyncaMessageCategory]
+    var isUpdatingCompletion: Bool = false
     let onClear: () -> Void
     let onDelete: () -> Void
     let onCategoryChange: ((String) -> Void)?
@@ -123,11 +124,7 @@ struct MessageBubbleView: View {
                         copyTextButton
                     }
                     
-                    if !message.isCleared {
-                        clearButton
-                    } else {
-                        checkFillIcon
-                    }
+                    clearButton
                 }
             }
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
@@ -462,17 +459,14 @@ struct MessageBubbleView: View {
         Button {
             onClear()
         } label: {
-            Image(systemName: "checkmark.circle")
+            Image(systemName: message.isCleared ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.system(size: 16))
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-    }
-
-    private var checkFillIcon: some View {
-        Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 16))
-            .foregroundStyle(Color.secondary.opacity(0.85))
+        .disabled(isUpdatingCompletion)
+        .accessibilityLabel(Text(message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"))
+        .help(Text(message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"))
     }
 
     private var systemImageNameForFile: String {

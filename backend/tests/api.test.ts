@@ -312,6 +312,25 @@ describe('Synca API', () => {
             expect(listRes.body.messages[0].isCleared).toBe(true);
         });
 
+        it('sets completion explicitly, retries safely and refuses foreign or deleted records', async () => {
+            const { authHeader } = await createTestUser();
+            const other = await createTestUser();
+            const made = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'reversible' });
+            const endpoint = `/messages/${made.body.id}/completion`;
+            const set = (isCleared: unknown, auth = authHeader) => request(app).patch(endpoint).set('Authorization', auth).send({ isCleared });
+            expect((await set(true)).body.isCleared).toBe(true);
+            const restored = await set(false);
+            expect(restored.status).toBe(200);
+            expect(restored.body.isCleared).toBe(false);
+            expect((await set(false)).body.updatedAt).toBe(restored.body.updatedAt);
+            expect((await set(true, other.authHeader)).status).toBe(404);
+            expect((await set('false')).status).toBe(400);
+            const list = await request(app).get('/messages').set('Authorization', authHeader);
+            expect(list.body.messages[0].isCleared).toBe(false);
+            await request(app).delete(`/messages/${made.body.id}`).set('Authorization', authHeader);
+            expect((await set(false)).status).toBe(404);
+        });
+
         it('should clear all messages', async () => {
             const { authHeader } = await createTestUser();
 

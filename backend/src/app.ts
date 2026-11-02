@@ -15,7 +15,7 @@ import { assertCanCreateMessage, buildAccessStatus, buildLifetimeUpgradeOffer, D
 import { appleMsToIso, isSupportedProduct, verifySignedTransactionInfo } from './iap.js';
 import { renderLegalPage } from './legalPages.js';
 import {
-    listMessages, getMessage, createMessage, clearMessage, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
+    listMessages, getMessage, createMessage, clearMessage, setMessageCompletion, deleteMessage, clearAllMessages, deleteCompletedMessages, getUnclearedCount,
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
     canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
     updateMessageCategoryAssignment, reorderMessageCategories, deleteAccount,
@@ -634,6 +634,17 @@ app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) 
     } as any);
 
     res.status(201).json({ ok: true });
+});
+
+// Explicit target state makes retries safe; the legacy clear endpoint remains unchanged.
+app.patch('/messages/:id/completion', auth, async (req, res) => {
+    const parsed = z.object({ isCleared: z.boolean() }).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_payload' });
+    const userId = getUserId(req);
+    const message = await setMessageCompletion(req.params.id, userId, parsed.data.isCleared, getBaseUrl(req));
+    if (!message) return res.status(404).json({ error: 'message_not_found' });
+    notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
+    res.json(message);
 });
 
 // Clear single message

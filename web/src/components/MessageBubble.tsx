@@ -96,10 +96,10 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
   };
 
   const handleClear = async () => {
-    if (message.isCleared || isProcessing) return;
+    if (isProcessing) return;
     setIsProcessing(true);
     try {
-      await api.clearMessage(message.id);
+      await api.setMessageCompletion(message.id, !message.isCleared);
       onUpdate();
     } catch (e) {
       reportError(e);
@@ -312,9 +312,9 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
             </button>
             <button 
               className={`action-btn ${message.isCleared ? 'cleared-icon' : ''}`} 
-              aria-label={t(message.isCleared ? 'storage.completed' : 'storage.mark_complete')}
+              aria-label={t(message.isCleared ? 'storage.mark_incomplete' : 'storage.mark_complete')}
               onClick={handleClear} 
-              disabled={message.isCleared || isProcessing}
+              disabled={isProcessing}
             >
               {message.isCleared ? (
                 <CheckCircleFill size={18} color="var(--cleared-icon-color)" />

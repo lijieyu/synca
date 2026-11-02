@@ -8,6 +8,13 @@ struct MessageListIndexTests {
     }
 
     static func main() async throws {
+        let order = ["all", "one", "two"]
+        precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: -80, vertical: 10) == "two")
+        precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: 80, vertical: 10) == "all")
+        precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: 80, vertical: 100) == nil)
+        precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: 20, vertical: 0) == nil)
+        precondition(CategorySwipeNavigation.target(order: order, selected: "all", horizontal: 80, vertical: 0) == nil)
+        precondition(CategorySwipeNavigation.target(order: order, selected: "two", horizontal: -80, vertical: 0) == nil)
         let empty = MessageListIndex(messages: [])
         precondition(empty.ordered.isEmpty && empty.byCategory.isEmpty && empty.todoCount == 0)
 
@@ -64,6 +71,10 @@ struct MessageListIndexTests {
         precondition(hostile.deletingLastPathComponent().path == saveDirectory.path)
         print("PASS: timestamp variants, authenticated media origin restrictions, safe filenames, duplicate save preservation")
 
+        let newer = message("mutation", category: "two", date: "2026-11-02T00:00:02.000Z")
+        let delayed = message("mutation", category: "one", cleared: true, date: "2026-11-02T00:00:01Z")
+        precondition(!MessageSyncState.acceptingMutation(delayed, over: newer))
+        precondition(MessageSyncState.acceptingMutation(newer, over: delayed))
         var state = MessageSyncState()
         let initial = state.ticket
         precondition(state.accepts(initial))

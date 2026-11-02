@@ -262,3 +262,12 @@
 "message_list.connect_ai" = "连接 AI";
 
 "access.unlock_benefit_ai" = "连接 AI，在对话中查找、整理和保存记录";
+
+"message_bubble.mark_incomplete" = "取消完成";
+"message_bubble.mark_complete" = "标记完成";
+
+"message_list.previous_category" = "上一个分类";
+"message_list.next_category" = "下一个分类";
+
+"message_bubble.completed" = "已完成";
+"message_bubble.restored" = "已取消完成";
