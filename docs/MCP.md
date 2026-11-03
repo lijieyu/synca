@@ -107,7 +107,7 @@ MCP 测试覆盖官方 SDK 的实际 HTTP 握手/发现/工具调用、读写权
 
 每个 MCP 工具统一增加必填字符串 `toolVersion`（1～9 位数字），AI 应原样填写工具定义中注明的版本。旧调用缺少字段时，在 SDK 校验前补保留值 `0`；省略 arguments 的无参调用继续可用。显式 null、数字、数组及非法字符串不修正。业务 schema 不得使用同名字段。
 
-版本一致时返回原结果；未知、旧版或未来版本执行兼容业务后，在 content 最后追加独立 text，text 内为 JSON 更新提示（type=tool_definition_update）。保留全部原内容、附件块和 isError；提示不代表业务失败，禁止因此重试已成功的写入。版本字段在调用业务前移除，不进入幂等指纹、删除快照或业务数据；REST `/api/ai/tools/:name` 契约不变，Synca 使用的重试键仍是 `idempotencyKey`。
+版本一致时返回原结果；未知、旧版或未来版本执行兼容业务后，在 content 最后追加独立 text，text 内为 JSON 更新提示（type=tool_definition_update、blocking=false、refreshRecommended=true）。保留全部原内容、附件块和 isError；提示不代表业务失败，也不要求刷新后才能继续。AI 应继续用现有工具完成当前任务，无需等待刷新、要求用户重新连接或回复“继续”；禁止因此重试已成功的写入，真实业务错误仍按原结果处理。任务完成后可简短建议刷新工具列表，同一对话不重复播报；刷新前沿用现有定义中的 toolVersion，不猜测或直接替换成提示中的版本号。版本字段在调用业务前移除，不进入幂等指纹、删除快照或业务数据；REST `/api/ai/tools/:name` 契约不变，Synca 使用的重试键仍是 `idempotencyKey`。
 
 这只是 AI 自报版本提醒，不用于鉴权、付费权益、删除确认或证明刷新完成。每次不匹配调用均返回提示，仅要求 AI 同一对话不重复播报，不保证客户端自动刷新。现有无状态 HTTP 服务不会在部署后向所有旧对话主动推送通知。
 

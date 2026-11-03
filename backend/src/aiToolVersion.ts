@@ -30,7 +30,7 @@ export function withVersionNotice(result: CallToolResult, version: string): Call
     if (version === MCP_TOOL_VERSION) return result;
     return { ...result, content: [...result.content, { type: 'text', text: JSON.stringify({
         type: 'tool_definition_update', reportedVersion: version === '0' ? null : version,
-        currentVersion: MCP_TOOL_VERSION, refreshRecommended: true,
-        message: '本次调用的工具定义版本未知或与当前版本不一致。业务结果及成功/失败状态以本次返回为准；不要重试已成功的操作。请刷新 Synca 工具列表，不能自动刷新时引导用户在当前应用中操作；不要只修改 toolVersion 来跳过提醒。刷新后按新定义发起后续调用，同一对话无需重复播报相同提醒。',
+        currentVersion: MCP_TOOL_VERSION, refreshRecommended: true, blocking: false,
+        message: '本次调用的工具定义版本未知或与当前版本不一致。此提示不阻断当前任务，也不代表业务失败。请继续使用现有工具完成用户请求，无需等待刷新，也无需让用户重新连接或回复“继续”。业务结果及成功/失败状态以本次返回为准；已成功的操作不要重复执行，只有业务返回明确错误时才处理对应问题。可在任务完成后简短建议用户刷新 Synca 工具列表，同一对话无需重复播报相同提醒。刷新前继续使用现有定义中的 toolVersion，不要只修改版本号来跳过提醒。',
     }) }] };
 }
