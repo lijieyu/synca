@@ -56,7 +56,7 @@ describe('AI authorization and content contract', () => {
             expect(response.body.result.isError).not.toBe(true);
             const content = response.body.result.content;
             expect(JSON.parse(content[0].text).access.isUnlimited).toBe(true);
-            expect(JSON.parse(content[1].text)).toMatchObject({ type: 'tool_definition_update', currentVersion: '1', refreshRecommended: true });
+            expect(JSON.parse(content[1].text)).toMatchObject({ type: 'tool_definition_update', currentVersion: '1', refreshRecommended: true, blocking: false });
         }
         const current = await rpc('tools/call', { name: 'get_usage', arguments: { toolVersion: '1' } });
         expect(current.body.result.content).toHaveLength(1);
@@ -84,14 +84,20 @@ describe('AI authorization and content contract', () => {
             expect(response.body.error || response.body.result?.isError).toBeTruthy();
         }
         const args = { textContent: 'version retry', idempotencyKey: randomUUID() };
+        // A notice from a preceding read must not prevent a legacy client from writing.
+        const read = await rpc('tools/call', { name: 'list_categories', arguments: {} });
+        expect(read.body.result.isError).not.toBe(true);
+        expect(JSON.parse(read.body.result.content[1].text).blocking).toBe(false);
         const first = await rpc('tools/call', { name: 'create_record', arguments: args });
         const retry = await rpc('tools/call', { name: 'create_record', arguments: { ...args, toolVersion: '1' } });
         expect(first.body.result.isError).not.toBe(true);
+        expect(JSON.parse(first.body.result.content[1].text).blocking).toBe(false);
         expect(retry.body.result.content[0]).toEqual(first.body.result.content[0]);
         expect((await call('search_records')).body.messages).toHaveLength(1);
         const failure = await rpc('tools/call', { name: 'read_record', arguments: { id: randomUUID() } });
         expect(failure.body.result.isError).toBe(true);
         expect(failure.body.result.content).toHaveLength(2);
+        expect(JSON.parse(failure.body.result.content[1].text).blocking).toBe(false);
         expect(JSON.parse(failure.body.result.content[0].text)).toHaveProperty('code');
     });
     it('blocks free and expired accounts while preserving connections for renewal and revocation', async () => {
