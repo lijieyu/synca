@@ -1,3 +1,5 @@
+// Also protect direct imports from CLI tools and other entry points.
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { Environment, JWSTransactionDecodedPayload, SignedDataVerifier } from '@apple/app-store-server-library';
