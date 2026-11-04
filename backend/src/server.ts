@@ -1,6 +1,7 @@
+// Load configuration before any dependency captures environment variables.
+import 'dotenv/config';
 import { cleanupAIState } from './aiCore.js';
 import { cleanupExpiredAttachments } from './storage.js';
-import 'dotenv/config';
 import app from './app.js';
 import { runMigrations } from './migrate.js';
 
