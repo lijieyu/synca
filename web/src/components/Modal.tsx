@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 interface Props {
@@ -17,11 +18,13 @@ interface Props {
   className?: string;
   secondaryAction?: React.ReactNode;
   neutral?: boolean;
+  closeLabel?: string;
+  closeDisabled?: boolean;
 }
 
 export const Modal: React.FC<Props> = ({
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false, className = '', secondaryAction, neutral = false
+  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false
 }) => {
   const titleID = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
@@ -53,7 +56,10 @@ export const Modal: React.FC<Props> = ({
   return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
       <div ref={dialogRef} tabIndex={-1} className={`modal-content ${contentSizeClass} ${className}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleID}>
-        <h3 id={titleID} className="modal-title">{title}</h3>
+        {closeLabel ? <div className="modal-header">
+          <h3 id={titleID} className="modal-title">{title}</h3>
+          <button type="button" className="modal-close" aria-label={closeLabel} disabled={closeDisabled} onClick={onCancel}><X size={20} aria-hidden="true" /></button>
+        </div> : <h3 id={titleID} className="modal-title">{title}</h3>}
         {message ? <p className="modal-message">{message}</p> : null}
         {children}
         <div className={`modal-actions ${leadingActionText && onLeadingAction ? 'modal-actions-with-leading' : ''}`}>
