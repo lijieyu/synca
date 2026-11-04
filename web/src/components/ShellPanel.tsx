@@ -18,7 +18,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
   const locale = i18n.language.startsWith('zh') ? 'zh-hans' : 'en';
   return <Modal title={t(kind === 'account' ? 'navigation.account' : kind === 'feedback' ? 'message_list.feedback' : 'message_list.about')}
     className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind !== 'feedback' ? 'compact' : undefined}
-    closeLabel={kind === 'feedback' ? t('navigation.close') : undefined} closeDisabled={busy}
+    closeLabel={t('navigation.close')} closeDisabled={busy}
     neutral secondaryAction={kind === 'account' ? <button className="modal-btn modal-btn-destructive" onClick={onLogout}>{t('message_list.logout')}</button> : undefined}
     message="" confirmText={t('navigation.close')} hideCancel onConfirm={() => { if (!busy) onClose(); }} onCancel={() => { if (!busy) onClose(); }}>
     {kind === 'account' && <div className="account-panel">

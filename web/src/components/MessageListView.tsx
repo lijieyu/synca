@@ -644,6 +644,7 @@ export const MessageListView: React.FC = () => {
       {showCategoryModal && (
         <Modal
           title={t('message_list.manage_categories', 'Manage Categories')}
+          closeLabel={t('navigation.close')}
           message=""
           confirmText={t('common.save', 'Save')}
           cancelText={t('common.cancel', 'Cancel')}
