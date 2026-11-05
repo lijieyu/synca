@@ -273,7 +273,7 @@
 "message_bubble.restored" = "Marked incomplete";
 
 // Text editing and photo saving
-"message_edit.title" = "Edit text";
+"message_edit.title" = "Edit";
 "message_edit.content" = "Text";
 "message_edit.saving" = "Saving…";
 "message_edit.saved" = "Text saved";
