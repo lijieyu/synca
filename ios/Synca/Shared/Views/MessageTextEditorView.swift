@@ -29,12 +29,18 @@ struct MessageTextEditorView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
+                #if os(macOS)
+                MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true)
+                    .accessibilityLabel(Text("message_edit.content"))
+                    .frame(minHeight: 180)
+                #else
                 TextEditor(text: $draft)
                     .font(.body)
                     .focused($isFocused)
                     .accessibilityLabel(Text("message_edit.content"))
                     .disabled(isSaving)
                     .frame(minHeight: 180)
+                #endif
                 Text("\(draft.utf16.count) / \(Self.textLimit)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(draft.utf16.count > Self.textLimit ? Color.red : Color.secondary)
@@ -62,6 +68,9 @@ struct MessageTextEditorView: View {
                         else { Text("common.save") }
                     }
                     .disabled(!canSave)
+                    #if os(macOS)
+                    .buttonStyle(.borderedProminent)
+                    #endif
                     .keyboardShortcut("s", modifiers: .command)
                 }
             }
@@ -70,6 +79,7 @@ struct MessageTextEditorView: View {
                 Button("message_edit.keep", role: .cancel) { }
             }
         }
+        .tint(.syncaPurple)
         .interactiveDismissDisabled(hasChanges || isSaving)
         #if os(macOS)
         .frame(minWidth: 420, idealWidth: 520, minHeight: 340, idealHeight: 420)

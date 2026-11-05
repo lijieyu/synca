@@ -273,7 +273,7 @@
 "message_bubble.restored" = "已取消完成";
 
 // Text editing and photo saving
-"message_edit.title" = "编辑文本";
+"message_edit.title" = "编辑";
 "message_edit.content" = "文本内容";
 "message_edit.saving" = "正在保存…";
 "message_edit.saved" = "文本已保存";

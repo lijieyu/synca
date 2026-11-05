@@ -79,7 +79,7 @@ struct FeedbackComposerView: View {
     private var feedbackTextEditor: some View {
         ZStack(alignment: .topLeading) {
             #if os(macOS)
-            MacFeedbackTextEditor(text: $content)
+            MacPlainTextEditor(text: $content)
                 .frame(height: 180)
             #else
             TextEditor(text: $content)
@@ -322,8 +322,10 @@ struct FeedbackComposerView: View {
 
 
 #if os(macOS)
-private struct MacFeedbackTextEditor: NSViewRepresentable {
+struct MacPlainTextEditor: NSViewRepresentable {
     @Binding var text: String
+    var isEditable = true
+    var focusesOnAppear = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -372,6 +374,12 @@ private struct MacFeedbackTextEditor: NSViewRepresentable {
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.autoresizingMask = [NSView.AutoresizingMask.width]
         textView.string = text
+        textView.isEditable = isEditable
+        if focusesOnAppear {
+            DispatchQueue.main.async {
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
 
         scrollView.documentView = textView
         context.coordinator.updateLayout(for: textView, in: scrollView)
@@ -380,6 +388,7 @@ private struct MacFeedbackTextEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        textView.isEditable = isEditable
         if !textView.hasMarkedText(), textView.string != text {
             textView.string = text
             textView.typingAttributes = [

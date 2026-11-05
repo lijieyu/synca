@@ -122,19 +122,6 @@ struct MessageBubbleView: View {
                         downloadFileButton
                     }
                     if message.type == .text {
-                        if message.canEditText, let onEdit {
-                            Button(action: onEdit) {
-                                Image(systemName: "pencil").font(.system(size: 14, weight: .medium))
-                                    #if os(iOS)
-                                    .frame(minWidth: 44, minHeight: 44)
-                                    #else
-                                    .frame(minWidth: 28, minHeight: 28)
-                                    #endif
-                                    .contentShape(Rectangle())
-                            }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text("message_edit.title"))
-                        }
                         copyTextButton
                     }
                     
