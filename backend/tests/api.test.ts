@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import app from '../src/app.js';
 import { runMigrations } from '../src/migrate.js';
@@ -48,6 +48,95 @@ describe('Synca API', () => {
 
     beforeEach(async () => {
         await resetDb();
+    });
+
+    describe('PATCH /messages/:id/text', () => {
+        const edit = (id: string, auth: string, textContent: string, expectedUpdatedAt: string) =>
+            request(app).patch(`/messages/${id}/text`).set('Authorization', auth).send({ textContent, expectedUpdatedAt });
+
+        it('updates pure text, preserves metadata, syncs and rejects stale edits', async () => {
+            const { authHeader } = await createTestUser();
+            const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'original' });
+            expect(created.status).toBe(201);
+            const completed = await request(app).patch(`/messages/${created.body.id}/completion`).set('Authorization', authHeader).send({ isCleared: true });
+            const updated = await edit(created.body.id, authHeader, ' updated\ntext ', completed.body.updatedAt);
+            expect(updated.status).toBe(200);
+            expect(updated.body).toMatchObject({ textContent: ' updated\ntext ', isCleared: true, categoryId: created.body.categoryId, createdAt: created.body.createdAt });
+            expect(updated.body.updatedAt > completed.body.updatedAt).toBe(true);
+            const synced = await request(app).get('/messages').query({ since: completed.body.updatedAt }).set('Authorization', authHeader);
+            expect(synced.body.messages).toContainEqual(expect.objectContaining({ id: created.body.id, textContent: ' updated\ntext ' }));
+            const stale = await edit(created.body.id, authHeader, 'stale overwrite', completed.body.updatedAt);
+            expect(stale.status).toBe(409);
+            expect(stale.body.error).toBe('message_edit_conflict');
+        });
+
+        it('keeps edit revisions monotonic through category and legacy completion changes with a frozen clock', async () => {
+            vi.useFakeTimers({ toFake: ['Date'] });
+            vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
+            try {
+                const { authHeader } = await createTestUser();
+                const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'original' });
+                const { id, updatedAt } = created.body;
+                const edited = await edit(id, authHeader, 'saved edit', updatedAt);
+                expect(edited.status).toBe(200);
+                const category = await request(app).post('/message-categories').set('Authorization', authHeader).send({ name: 'Work', color: 'sky' });
+                expect(category.status).toBe(201);
+                const moved = await request(app).patch(`/messages/${id}/category`).set('Authorization', authHeader).send({ categoryId: category.body.id });
+                expect(moved.status).toBe(200);
+                expect(moved.body.updatedAt > edited.body.updatedAt).toBe(true);
+                expect((await edit(id, authHeader, 'stale overwrite', updatedAt)).status).toBe(409);
+                await request(app).patch(`/messages/${id}/clear`).set('Authorization', authHeader);
+                const cleared = await db.selectFrom('messages').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+                expect(cleared.updated_at > moved.body.updatedAt).toBe(true);
+                await request(app).delete(`/message-categories/${category.body.id}`).set('Authorization', authHeader);
+                const recategorized = await db.selectFrom('messages').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+                expect(recategorized.updated_at > cleared.updated_at).toBe(true);
+                const restored = await request(app).patch(`/messages/${id}/completion`).set('Authorization', authHeader).send({ isCleared: false });
+                await request(app).post('/messages/clear-all').set('Authorization', authHeader);
+                const bulkCleared = await db.selectFrom('messages').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+                expect(bulkCleared.updated_at > restored.body.updatedAt).toBe(true);
+            } finally { vi.useRealTimers(); }
+        });
+
+        it('accepts only one of two competing drafts with the same timestamp', async () => {
+            const { authHeader } = await createTestUser();
+            const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'original' });
+            const { id, updatedAt } = created.body;
+            const results = await Promise.all([edit(id, authHeader, 'first', updatedAt), edit(id, authHeader, 'second', updatedAt)]);
+            expect(results.map(result => result.status).sort()).toEqual([200, 409]);
+            const winner = results.find(result => result.status === 200)!;
+            const stored = await db.selectFrom('messages').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+            expect(stored.text_content).toBe(winner.body.textContent);
+        });
+
+        it('requires auth, ownership, live records and a pure text type', async () => {
+            const { authHeader } = await createTestUser();
+            const other = await createTestUser();
+            const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'private' });
+            const { id, updatedAt } = created.body;
+            expect((await request(app).patch(`/messages/${id}/text`).send({ textContent: 'bad', expectedUpdatedAt: updatedAt })).status).toBe(401);
+            expect((await edit(id, other.authHeader, 'bad', updatedAt)).status).toBe(404);
+            for (const type of ['image', 'file'] as const) {
+                await db.updateTable('messages').set({ type }).where('id', '=', id).execute();
+                expect((await edit(id, authHeader, 'bad', updatedAt)).status).toBe(422);
+            }
+            await db.updateTable('messages').set({ type: 'text', image_path: 'legacy.png' }).where('id', '=', id).execute();
+            expect((await edit(id, authHeader, 'bad', updatedAt)).status).toBe(422);
+            await db.updateTable('messages').set({ image_path: null, is_deleted: 1 }).where('id', '=', id).execute();
+            expect((await edit(id, authHeader, 'bad', updatedAt)).status).toBe(404);
+        });
+
+        it('rejects empty, oversized, malformed and extra fields; accepts the exact UTF-16 limit', async () => {
+            const { authHeader } = await createTestUser();
+            const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'original' });
+            const { id, updatedAt } = created.body;
+            for (const text of ['', ' \n\t ', 'x'.repeat(2001), '😀'.repeat(1001)]) {
+                expect((await edit(id, authHeader, text, updatedAt)).status).toBe(400);
+            }
+            expect((await edit(id, authHeader, 'ok', 'invalid')).status).toBe(400);
+            expect((await request(app).patch(`/messages/${id}/text`).set('Authorization', authHeader).send({ textContent: 'ok', expectedUpdatedAt: updatedAt, categoryId: null })).status).toBe(400);
+            expect((await edit(id, authHeader, '😀'.repeat(1000), updatedAt)).status).toBe(200);
+        });
     });
 
     describe('GET /health', () => {

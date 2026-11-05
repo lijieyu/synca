@@ -197,5 +197,16 @@
   "navigation.support": "Support",
   "navigation.web": "Web version",
   "common.all": "All",
-  "navigation.sync": "Sync"
+  "navigation.sync": "Sync",
+  "message_edit.title": "Edit text",
+  "message_edit.content": "Text",
+  "message_edit.saving": "Saving…",
+  "message_edit.saved": "Text saved",
+  "message_edit.failed": "Couldn’t save. Your changes are still here. Check your connection and try again.",
+  "message_edit.conflict": "This record changed on another device. Your draft is kept here. Copy your changes, cancel, then reopen the latest record.",
+  "message_edit.unavailable": "This record was deleted or can no longer be edited. Your draft is kept here so you can copy it.",
+  "message_edit.discard_title": "Discard changes?",
+  "message_edit.discard": "Discard changes",
+  "message_edit.keep": "Keep editing",
+  "message_edit.session_expired": "Your session expired. Your draft is kept here. Copy your changes before closing this editor to sign in again."
 }

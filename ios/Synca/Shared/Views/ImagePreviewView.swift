@@ -1,7 +1,6 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
-import Photos
 #elseif os(macOS)
 import AppKit
 #endif
@@ -21,6 +20,7 @@ struct ImagePreviewView: View {
     @State private var loadID = UUID()
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
+    @State private var photoSaveError: String?
     #if os(macOS)
     @State private var keyMonitor: Any?
     #endif
@@ -76,6 +76,11 @@ struct ImagePreviewView: View {
         .overlay(alignment: .top) {
             SyncStatusToastView(status: syncManager.syncStatus, topInset: 20)
         }
+        .alert("image_preview.save_failed", isPresented: Binding(
+            get: { photoSaveError != nil }, set: { if !$0 { photoSaveError = nil } }
+        )) {
+            Button("common.ok", role: .cancel) { photoSaveError = nil }
+        } message: { Text(photoSaveError ?? "") }
         .onAppear {
             #if os(macOS)
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -429,13 +434,13 @@ struct ImagePreviewView: View {
     }
 
     private func saveImage(from url: URL) async {
+        guard saveStatus != .saving else { return }
         saveStatus = .saving
         do {
             let localURL = try await downloadImageFile(from: url)
             #if os(iOS)
-            try await PHPhotoLibrary.shared().performChanges {
-                PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: localURL)
-            }
+            try await PhotoLibrarySaver.saveImage(at: localURL)
+            PhotoLibrarySaver.announce(success: true)
             saveStatus = .success
             #elseif os(macOS)
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ??
@@ -459,6 +464,9 @@ struct ImagePreviewView: View {
             }
             #else
             saveStatus = .error
+            photoSaveError = (error as? PhotoLibrarySaver.SaveError)?.localizedDescription
+                ?? String(localized: "photo_save.failed", bundle: .main)
+            PhotoLibrarySaver.announce(success: false)
             #endif
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saveStatus = .none }

@@ -271,3 +271,17 @@
 
 "message_bubble.completed" = "Completed";
 "message_bubble.restored" = "Marked incomplete";
+
+// Text editing and photo saving
+"message_edit.title" = "Edit text";
+"message_edit.content" = "Text";
+"message_edit.saving" = "Saving…";
+"message_edit.saved" = "Text saved";
+"message_edit.failed" = "Couldn’t save. Your changes are still here. Check your connection and try again.";
+"message_edit.conflict" = "This record changed on another device. Your draft is kept here. Copy your changes, cancel, then reopen the latest record.";
+"message_edit.unavailable" = "This record was deleted or can no longer be edited. Your draft is kept here so you can copy it.";
+"message_edit.discard_title" = "Discard changes?";
+"message_edit.discard" = "Discard changes";
+"message_edit.keep" = "Keep editing";
+"photo_save.permission_denied" = "Allow Synca to add photos in Settings to save this image.";
+"photo_save.failed" = "Couldn’t save this image to Photos. Please try again.";

@@ -109,6 +109,10 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
         case file
     }
 
+    var canEditText: Bool {
+        type == .text && !isDeleted && imagePath == nil && imageUrl == nil && filePath == nil && fileUrl == nil
+    }
+
     var displayDate: String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

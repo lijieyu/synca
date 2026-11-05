@@ -1,3 +1,4 @@
+import { nextMessageTimestamp } from './messageRevision.js';
 import { db } from './db.js';
 import { sql, type Transaction, type Selectable } from 'kysely';
 import type { Database } from './db_types.js';
@@ -610,7 +611,7 @@ export async function deleteMessageCategory(input: {
         await trx.updateTable('messages')
             .set({
                 category_id: defaultCategory.id,
-                updated_at: input.now,
+                updated_at: nextMessageTimestamp(input.now),
             })
             .where('user_id', '=', input.userId)
             .where('category_id', '=', input.id)
@@ -654,7 +655,7 @@ export async function updateMessageCategoryAssignment(input: {
     const result = await db.updateTable('messages')
         .set({
             category_id: resolvedCategoryId,
-            updated_at: input.now,
+            updated_at: nextMessageTimestamp(input.now),
         })
         .where('id', '=', input.id)
         .where('user_id', '=', input.userId)
@@ -813,6 +814,33 @@ export async function createMessage(message: {
     });
 }
 
+/** A conditional write fences stale drafts and never converts attachment records to text. */
+export async function updateMessageText(input: {
+    id: string; userId: string; textContent: string; expectedUpdatedAt: string; baseUrl?: string;
+}): Promise<{ message: SyncaMessage } | { error: 'message_not_found' | 'message_not_text' | 'message_edit_conflict' }> {
+    return db.transaction().execute(async trx => {
+        const existing = await trx.selectFrom('messages').selectAll()
+            .where('id', '=', input.id).where('user_id', '=', input.userId)
+            .where('is_deleted', '=', 0).executeTakeFirst();
+        if (!existing) return { error: 'message_not_found' as const };
+        if (existing.type !== 'text' || existing.image_path || existing.file_path) return { error: 'message_not_text' as const };
+        if (existing.updated_at !== input.expectedUpdatedAt) return { error: 'message_edit_conflict' as const };
+        const now = new Date(Math.max(Date.now(), Date.parse(existing.updated_at) + 1)).toISOString();
+        const updated = await trx.updateTable('messages').set({ text_content: input.textContent, updated_at: nextMessageTimestamp(now) })
+            .where('id', '=', input.id).where('user_id', '=', input.userId).where('is_deleted', '=', 0)
+            .where('type', '=', 'text').where('image_path', 'is', null).where('file_path', 'is', null)
+            .where('updated_at', '=', input.expectedUpdatedAt).executeTakeFirst();
+        if (updated.numUpdatedRows === 0n) return { error: 'message_edit_conflict' as const };
+        const row = await trx.selectFrom('messages')
+            .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
+            .selectAll('messages').select(['message_categories.name as category_name',
+                'message_categories.color as category_color', 'message_categories.is_default as category_is_default'])
+            .where('messages.id', '=', input.id).where('messages.user_id', '=', input.userId).executeTakeFirstOrThrow();
+        return { message: { ...toMessage(row, input.baseUrl), categoryName: row.category_name ?? undefined,
+            categoryColor: row.category_color ?? undefined, categoryIsDefault: row.category_is_default === 1 } };
+    });
+}
+
 export async function setMessageCompletion(id: string, userId: string, completed: boolean, baseUrl?: string) {
     return db.transaction().execute(async trx => {
         const existing = await trx.selectFrom('messages').selectAll().where('id', '=', id)
@@ -820,7 +848,7 @@ export async function setMessageCompletion(id: string, userId: string, completed
         if (!existing) return undefined;
         if (Boolean(existing.is_cleared) !== completed) {
             const now = new Date(Math.max(Date.now(), Date.parse(existing.updated_at) + 1)).toISOString();
-            await trx.updateTable('messages').set({ is_cleared: completed ? 1 : 0, updated_at: now })
+            await trx.updateTable('messages').set({ is_cleared: completed ? 1 : 0, updated_at: nextMessageTimestamp(now) })
                 .where('id', '=', id).where('user_id', '=', userId).execute();
         }
         const row = await trx.selectFrom('messages')
@@ -836,7 +864,7 @@ export async function setMessageCompletion(id: string, userId: string, completed
 export async function clearMessage(id: string, userId: string): Promise<boolean> {
     const now = new Date().toISOString();
     const result = await db.updateTable('messages')
-        .set({ is_cleared: 1, updated_at: now })
+        .set({ is_cleared: 1, updated_at: nextMessageTimestamp(now) })
         .where('id', '=', id)
         .where('user_id', '=', userId)
         .where('is_cleared', '=', 0)
@@ -854,7 +882,7 @@ export async function purgeMessageMedia(message: Pick<MessagesTable, 'id' | 'ima
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     }
     await db.updateTable('messages').set({
-        attachment_purged: 1, updated_at: sql<string>`MAX(updated_at, ${now})`,
+        attachment_purged: 1, updated_at: nextMessageTimestamp(now),
         ...(message.is_deleted ? { image_path: null, file_path: null } : {}),
     }).where('id', '=', message.id).execute();
 }
@@ -866,7 +894,7 @@ export async function deleteMessage(id: string, userId: string, uploadsDir: stri
     if (!message) return false;
 
     await db.updateTable('messages').set({
-        is_deleted: 1, updated_at: now, text_content: null,
+        is_deleted: 1, updated_at: nextMessageTimestamp(now), text_content: null,
         attachment_expires_at: now,
         file_name: null, file_size: null, file_mime_type: null,
     }).where('id', '=', id).where('user_id', '=', userId).execute();
@@ -878,7 +906,7 @@ export async function deleteMessage(id: string, userId: string, uploadsDir: stri
 export async function clearAllMessages(userId: string, categoryId?: string | null): Promise<number> {
     const now = new Date().toISOString();
     let query = db.updateTable('messages')
-        .set({ is_cleared: 1, updated_at: now })
+        .set({ is_cleared: 1, updated_at: nextMessageTimestamp(now) })
         .where('user_id', '=', userId)
         .where('is_cleared', '=', 0);
 
@@ -901,7 +929,7 @@ export async function deleteCompletedMessages(userId: string, uploadsDir: string
     // Bound each statement to avoid SQLite's parameter limit with large histories.
     for (let offset = 0; offset < messages.length; offset += 200) {
         await db.updateTable('messages').set({
-            is_deleted: 1, updated_at: now, text_content: null,
+            is_deleted: 1, updated_at: nextMessageTimestamp(now), text_content: null,
             attachment_expires_at: now,
             attachment_purged: sql<number>`CASE WHEN image_path IS NULL AND file_path IS NULL THEN 1 ELSE attachment_purged END`,
             file_name: null, file_size: null, file_mime_type: null,

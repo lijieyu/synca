@@ -20,11 +20,13 @@ interface Props {
   neutral?: boolean;
   closeLabel?: string;
   closeDisabled?: boolean;
+  confirmDisabled?: boolean;
+  cancelDisabled?: boolean;
 }
 
 export const Modal: React.FC<Props> = ({
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false
+  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, hideCancel = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false, confirmDisabled = false, cancelDisabled = false
 }) => {
   const titleID = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
@@ -34,13 +36,17 @@ export const Modal: React.FC<Props> = ({
 
   React.useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
+    const initialFocus = dialogRef.current?.querySelector<HTMLElement>('[data-initial-focus]');
+    if (initialFocus) initialFocus.focus(); else dialogRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if ([...document.querySelectorAll('[role=dialog]')].at(-1) !== dialogRef.current) return;
       if (event.key === 'Tab') {
         const items = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]') ?? [])].filter(item => item.getClientRects().length > 0);
         const first = items[0], last = items[items.length - 1];
-        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last?.focus(); }
+        if (!dialogRef.current?.contains(document.activeElement)) {
+          event.preventDefault(); (event.shiftKey ? last : first)?.focus();
+        }
+        else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
       if (event.key === 'Escape') {
@@ -50,7 +56,7 @@ export const Modal: React.FC<Props> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => { window.removeEventListener('keydown', handleKeyDown); previous?.focus(); };
+    return () => { window.removeEventListener('keydown', handleKeyDown); if (previous?.isConnected) previous.focus(); };
   }, []);
 
   return createPortal(
@@ -68,10 +74,11 @@ export const Modal: React.FC<Props> = ({
           )}
           <div className="modal-primary-actions">
             {secondaryAction}
-            {!hideCancel && <button className="modal-btn modal-btn-cancel" onClick={onCancel}>{cancelText}</button>}
+            {!hideCancel && <button className="modal-btn modal-btn-cancel" disabled={cancelDisabled} onClick={onCancel}>{cancelText}</button>}
             <button
               className={`modal-btn ${destructive ? 'modal-btn-destructive' : neutral ? 'modal-btn-cancel' : 'modal-btn-confirm'}`}
               onClick={onConfirm}
+              disabled={confirmDisabled}
             >
               {confirmText}
             </button>

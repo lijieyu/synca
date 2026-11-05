@@ -4,6 +4,7 @@ import { PlanDialog } from './PlanDialog';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
+import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
 import { ChevronDown, ChevronUp, Grid2x2, Infinity as InfinityIcon, Lightbulb, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
@@ -78,6 +79,7 @@ interface CategoryColumnProps {
   onRefresh: () => Promise<void>;
   onClearCompleted: () => Promise<void>;
   onSent: () => Promise<void>;
+  onEdit: (message: SyncaMessage) => void;
 }
 
 const CategoryColumn: React.FC<CategoryColumnProps> = ({
@@ -88,6 +90,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
   onRefresh,
   onClearCompleted,
   onSent,
+  onEdit,
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -130,7 +133,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
         {!isLoading && messages.length === 0 && <EmptyMessageState />}
 
         {completed.map((message) => (
-          <MessageBubble key={message.id} message={message} categories={categories} onUpdate={() => void onRefresh()} />
+          <MessageBubble key={message.id} message={message} categories={categories} onEdit={onEdit} onUpdate={() => void onRefresh()} />
         ))}
 
         {pending.length > 0 && (
@@ -140,7 +143,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
         )}
 
         {pending.map((message) => (
-          <MessageBubble key={message.id} message={message} categories={categories} onUpdate={() => void onRefresh()} />
+          <MessageBubble key={message.id} message={message} categories={categories} onEdit={onEdit} onUpdate={() => void onRefresh()} />
         ))}
       </div>
 
@@ -152,6 +155,7 @@ const CategoryColumn: React.FC<CategoryColumnProps> = ({
 };
 
 export const MessageListView: React.FC = () => {
+  const [editingMessage, setEditingMessage] = useState<SyncaMessage | null>(null);
   const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
   const [showPlan, setShowPlan] = useState(false);
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
@@ -519,6 +523,7 @@ export const MessageListView: React.FC = () => {
               messages={messages.filter((message) => message.categoryId === category.id)}
               categories={categories}
               isLoading={isLoading}
+              onEdit={message => setEditingMessage({ ...message })}
               onRefresh={handleRefresh}
               onClearCompleted={() => handleScopedClear(category.id)}
               onSent={async () => { await fetchData(false); }}
@@ -537,7 +542,7 @@ export const MessageListView: React.FC = () => {
             {filteredMessages.length > 0 && (
               <>
                 {completed.map((message) => (
-                  <MessageBubble key={message.id} message={message} categories={categories} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
                 ))}
 
                 {pending.length > 0 && (
@@ -549,7 +554,7 @@ export const MessageListView: React.FC = () => {
                 )}
 
                 {pending.map((message) => (
-                  <MessageBubble key={message.id} message={message} categories={categories} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
                 ))}
               </>
             )}
@@ -558,6 +563,15 @@ export const MessageListView: React.FC = () => {
           <InputBar categoryId={activeSendCategoryId} onSent={() => void fetchData(true)} />
         </>
       )}
+
+      {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
+        onCancel={() => setEditingMessage(null)} onSaved={updated => {
+          setEditingMessage(null);
+          ++fetchRevision.current;
+          setMessages(current => sortMessages(current.map(item => item.id === updated.id && Date.parse(updated.updatedAt) >= Date.parse(item.updatedAt) ? updated : item)));
+          setToastMsg(t('message_edit.saved')); setShowToast(true);
+          void fetchData(false);
+        }} />}
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 

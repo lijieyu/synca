@@ -197,5 +197,16 @@
   "navigation.support": "支持",
   "navigation.web": "网页版",
   "common.all": "全部",
-  "navigation.sync": "同步"
+  "navigation.sync": "同步",
+  "message_edit.title": "编辑文本",
+  "message_edit.content": "文本内容",
+  "message_edit.saving": "正在保存…",
+  "message_edit.saved": "文本已保存",
+  "message_edit.failed": "保存失败，修改内容已保留。请检查网络后重试。",
+  "message_edit.conflict": "此记录已在其他设备上修改，草稿已保留。请复制修改内容，取消编辑后重新打开最新记录。",
+  "message_edit.unavailable": "此记录已删除或无法继续编辑，草稿已保留，你可以复制其中的内容。",
+  "message_edit.discard_title": "放弃修改？",
+  "message_edit.discard": "放弃修改",
+  "message_edit.keep": "继续编辑",
+  "message_edit.session_expired": "登录已过期，草稿已保留。请先复制修改内容，再关闭编辑窗口并重新登录。"
 }

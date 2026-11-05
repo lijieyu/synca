@@ -390,6 +390,14 @@ final class APIClient: ObservableObject {
     private var uploadRequests: [UUID: Task<(Data, URLResponse), Error>] = [:]
     func cancelUploads() { uploadRequests.values.forEach { $0.cancel() } }
 
+    func updateMessageText(id: String, textContent: String, expectedUpdatedAt: String) async throws -> SyncaMessage {
+        do {
+            return try await patch("/messages/\(id)/text", body: ["textContent": textContent, "expectedUpdatedAt": expectedUpdatedAt])
+        } catch APIError.httpError(404, _) {
+            throw APIError.textEditUnavailable
+        }
+    }
+
     func setMessageCompletion(id: String, isCleared: Bool) async throws -> SyncaMessage {
         try await patch("/messages/\(id)/completion", body: ["isCleared": isCleared])
     }
@@ -578,6 +586,8 @@ final class APIClient: ObservableObject {
             if error.error == "storage_limit_reached" { return .storageFull }
             if error.error == "file_upload_requires_paid" { return .fileRequiresPaid }
             if error.error == "attachment_expired" { return .attachmentExpired }
+            if error.error == "message_edit_conflict" { return .textEditConflict }
+            if error.error == "message_not_text" { return .textEditUnavailable }
         }
 
         if statusCode == 413 {
@@ -643,6 +653,7 @@ private extension APIClient {
 }
 
 enum APIError: LocalizedError {
+    case textEditConflict, textEditUnavailable
     case invalidResponse
     case unauthorized
     case dailyLimitReached(AccessStatus?)
@@ -656,6 +667,8 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .textEditConflict: return String(localized: "message_edit.conflict", bundle: .main)
+        case .textEditUnavailable: return String(localized: "message_edit.unavailable", bundle: .main)
         case .storageFull: return String(localized: "storage.full", bundle: .main)
         case .fileRequiresPaid: return String(localized: "storage.paid_required", bundle: .main)
         case .attachmentExpired: return String(localized: "storage.expired", bundle: .main)

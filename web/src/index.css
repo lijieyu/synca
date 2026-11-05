@@ -1386,3 +1386,12 @@ button.attachment-placeholder { cursor: pointer; }
 .copy-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (pointer: coarse) { .message-header .action-btn { min-width: 44px; min-height: 44px; } }
 @media (prefers-color-scheme: dark) { .message-copy.is-copied { color: #75d58a; } }
+
+.message-text-editor { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; }
+.message-editor-label { display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 8px; }
+.message-editor-input { box-sizing: border-box; display: block; width: 100%; min-height: 220px; max-height: 50dvh; resize: vertical; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background: var(--panel-bg-color); color: var(--text-main); font: inherit; line-height: 1.6; }
+.message-editor-input:focus-visible { outline: 2px solid var(--accent-color, #007aff); outline-offset: 2px; }
+.message-editor-count { text-align: right; margin: 8px 0 0; color: var(--text-secondary); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.message-editor-count.over-limit, .message-editor-error { color: var(--danger-color, #d93025); }
+.message-editor-error { font-size: 0.875rem; line-height: 1.5; margin-top: 12px; }
+.modal-btn:disabled { opacity: 0.5; cursor: default; }
