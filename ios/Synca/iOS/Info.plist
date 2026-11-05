@@ -40,6 +40,8 @@
 	<string>Synca needs access to your camera to take photos</string>
 	<key>NSCameraUsageDescription#zh-Hans</key>
 	<string>Synca 需要使用相机来拍照发送</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Synca needs permission to save images to your photo library</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Synca needs access to your photo library to send images</string>
 	<key>NSPhotoLibraryUsageDescription#zh-Hans</key>

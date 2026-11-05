@@ -19,7 +19,7 @@ import {
     upsertDevicePushToken, listActiveDevicePushTokens, upsertIapTransaction, createFeedback, getUser, assignLifetimeUpgradeCode,
     canUserAccessMedia, listMessageCategories, createMessageCategory, updateMessageCategory, deleteMessageCategory,
     updateMessageCategoryAssignment, reorderMessageCategories, deleteAccount,
-    MessageWriteError,
+    MessageWriteError, updateMessageText,
 } from './store.js';
 import { apnsProvider } from './apns.js';
 
@@ -634,6 +634,24 @@ app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) 
     } as any);
 
     res.status(201).json({ ok: true });
+});
+
+app.patch('/messages/:id/text', auth, async (req, res, next) => {
+    const parsed = z.object({
+        textContent: z.string().min(1).max(2000).refine(value => value.length <= 2000 && value.trim().length > 0),
+        expectedUpdatedAt: z.iso.datetime({ offset: true }),
+    }).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_payload' });
+    const userId = getUserId(req);
+    try {
+        const result = await updateMessageText({ ...parsed.data, id: req.params.id, userId, baseUrl: getBaseUrl(req) });
+        if ('error' in result) {
+            return res.status(result.error === 'message_not_found' ? 404 : result.error === 'message_not_text' ? 422 : 409)
+                .json({ error: result.error });
+        }
+        notifyOtherDevices(userId, req.header('Authorization')).catch(() => {});
+        res.json(result.message);
+    } catch (error) { next(error); }
 });
 
 // Explicit target state makes retries safe; the legacy clear endpoint remains unchanged.

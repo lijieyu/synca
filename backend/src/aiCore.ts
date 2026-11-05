@@ -1,3 +1,4 @@
+import { nextMessageTimestamp } from './messageRevision.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
@@ -198,7 +199,7 @@ export async function changeCategory(actor: Actor, args: z.infer<typeof category
             if (row.updated_at !== args.expectedUpdatedAt) throw new AIError(409, 'version_conflict');
             if (args.action === 'delete') {
                 const fallback = await trx.selectFrom('message_categories').select('id').where('user_id', '=', actor.userId).where('is_default', '=', 1).executeTakeFirstOrThrow();
-                await trx.updateTable('messages').set({ category_id: fallback.id, updated_at: now }).where('user_id', '=', actor.userId).where('category_id', '=', args.id).execute();
+                await trx.updateTable('messages').set({ category_id: fallback.id, updated_at: nextMessageTimestamp(now) }).where('user_id', '=', actor.userId).where('category_id', '=', args.id).execute();
                 await trx.deleteFrom('message_categories').where('id', '=', args.id).where('user_id', '=', actor.userId).execute();
                 result = { deleted: true, movedToCategoryId: fallback.id };
             } else {
@@ -258,7 +259,7 @@ export async function executeDelete(actor: Actor, args: z.infer<typeof executeDe
         for (const item of items) {
             const now = new Date(Math.max(Date.now(), Date.parse(item.updatedAt) + 1)).toISOString();
             const result = await trx.updateTable('messages').set({ is_deleted: 1, text_content: null, file_name: null,
-                file_size: null, file_mime_type: null, attachment_expires_at: now, updated_at: now })
+                file_size: null, file_mime_type: null, attachment_expires_at: now, updated_at: nextMessageTimestamp(now) })
                 .where('id', '=', item.id).where('user_id', '=', userId).where('is_deleted', '=', 0).where('updated_at', '=', item.updatedAt).executeTakeFirst();
             if (result.numUpdatedRows !== 1n) throw new AIError(409, 'version_conflict_prepare_again');
         }

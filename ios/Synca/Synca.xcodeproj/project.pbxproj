@@ -74,6 +74,12 @@
 		EEAC4334DBE983A5898B4C12 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 70DE0078AC87764CD2422D4D /* Localizable.strings */; };
 		F6186FF5CBB3460BE1C2460D /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4DC5D5E94792579FCAC8891 /* LoginView.swift */; };
 		FA4BD0B10B94F90D70F4F844 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56C5DCEF981E4EB4CB624A02 /* APIClient.swift */; };
+		09621C97EC03D697DB2AFB49 /* MessageTextEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */; };
+		9A4A9BFAAABC0C1C692A6CA2 /* MessageTextEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */; };
+		C1105A4EC87B2C1831162292 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */; };
+		DC34A8637557420804DA6F7A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */; };
+		E4DB4941B4F445A95C2CA2E6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */; };
+		E99771777BDBD8CA06BE6858 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -119,6 +125,10 @@
 		F738F8804D71775824642ECA /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 		FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
 		FE91EACEF15DCF4C5F20B2F2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTextEditorView.swift; sourceTree = "<group>"; };
+		91C44B445EF87AE66D7D2FD0 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibrarySaver.swift; sourceTree = "<group>"; };
+		D5BA31D5837D80AC7F1FBA60 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -137,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				522C09F13322D85989CF219D /* Assets.xcassets */,
+				81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */,
 				70DE0078AC87764CD2422D4D /* Localizable.strings */,
 			);
 			path = Resources;
@@ -186,6 +197,7 @@
 				6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */,
 				FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */,
 				AD1E757E6D45FD90B41342C3 /* MessageListView.swift */,
+				529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */,
 				EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */,
 			);
 			path = Views;
@@ -221,6 +233,7 @@
 				1C014E56D2EA5861FAF53A61 /* ImageCacheManager.swift */,
 				51089FFA181C08EC6703E065 /* KeychainHelper.swift */,
 				2785A785C0B3EEDDE7B108AB /* Notifications.swift */,
+				B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */,
 				7E303199D1B3CC0E8B523373 /* PurchaseManager.swift */,
 				297BDECDF8299BE751AA053B /* PushTokenManager.swift */,
 				8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */,
@@ -334,6 +347,7 @@
 			files = (
 				12D9E3A6641B9E11DEB2372D /* Assets.xcassets in Resources */,
 				1757B485F5383E25C955DFD5 /* Localizable.strings in Resources */,
+				DC34A8637557420804DA6F7A /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,6 +357,7 @@
 			files = (
 				A278AF3AA74A013ED137040B /* Assets.xcassets in Resources */,
 				EEAC4334DBE983A5898B4C12 /* Localizable.strings in Resources */,
+				E4DB4941B4F445A95C2CA2E6 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,6 +390,8 @@
 				852E10EA78CA4E0D820B8F20 /* MacWindowBehavior.swift in Sources */,
 				BEBB2397B1310C7B7D5E071B /* MessageBubbleView.swift in Sources */,
 				A65B9A694FE63B8BA0E32C34 /* MessageListView.swift in Sources */,
+				09621C97EC03D697DB2AFB49 /* MessageTextEditorView.swift in Sources */,
+				C1105A4EC87B2C1831162292 /* PhotoLibrarySaver.swift in Sources */,
 				CBD5C9622AC62390AFE66033 /* Notifications.swift in Sources */,
 				4EC8950E05CA871DBE19B428 /* PasteAwareTextView.swift in Sources */,
 				94F924536B60922391D26FAB /* PurchaseManager.swift in Sources */,
@@ -413,6 +430,8 @@
 				46C8499654425F9E7267E2E8 /* MacSelectableText.swift in Sources */,
 				9D5981AE189D76966823DB05 /* MessageBubbleView.swift in Sources */,
 				781D48CC7F1CDA86997E446D /* MessageListView.swift in Sources */,
+				9A4A9BFAAABC0C1C692A6CA2 /* MessageTextEditorView.swift in Sources */,
+				E99771777BDBD8CA06BE6858 /* PhotoLibrarySaver.swift in Sources */,
 				0FF0EEC3F397F13776D60ED8 /* Notifications.swift in Sources */,
 				3BE8982BCCF0EFE143E0852B /* PasteAwareTextView.swift in Sources */,
 				2EA095980C98A6B796E4E809 /* PurchaseManager.swift in Sources */,
@@ -438,6 +457,15 @@
 			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
+		81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D5BA31D5837D80AC7F1FBA60 /* en */,
+				91C44B445EF87AE66D7D2FD0 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -457,7 +485,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -481,7 +509,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -510,7 +538,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -575,7 +603,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
@@ -644,7 +672,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
@@ -677,7 +705,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -701,7 +729,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
 				SDKROOT = iphoneos;
@@ -730,7 +758,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca;
 				PRODUCT_MODULE_NAME = Synca;
 				PRODUCT_NAME = Synca;
@@ -801,7 +829,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

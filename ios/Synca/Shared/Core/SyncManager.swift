@@ -563,12 +563,25 @@ final class SyncManager: ObservableObject {
         }
     }
 
+    func updateMessageText(_ original: SyncaMessage, textContent: String) async throws {
+        let operationGeneration = syncState.generation
+        guard original.canEditText else { throw APIError.textEditUnavailable }
+        let updated = try await api.updateMessageText(id: original.id, textContent: textContent, expectedUpdatedAt: original.updatedAt)
+        guard operationGeneration == syncState.generation else { throw CancellationError() }
+        if let index = messages.firstIndex(where: { $0.id == original.id }),
+           MessageSyncState.acceptingMutation(updated, over: messages[index]) {
+            messages[index] = updated
+            persistMessages()
+        }
+    }
+
     func updateMessageCategory(_ messageId: String, categoryId: String?) async {
         let operationGeneration = syncState.generation
         do {
             let updated = try await api.updateMessageCategoryAssignment(messageId: messageId, categoryId: categoryId)
             guard operationGeneration == syncState.generation else { return }
-            if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            if let index = messages.firstIndex(where: { $0.id == messageId }),
+               MessageSyncState.acceptingMutation(updated, over: messages[index]) {
                 messages[index] = updated
                 persistMessages()
             }

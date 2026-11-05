@@ -1,7 +1,6 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
-import Photos
 #elseif os(macOS)
 import AppKit
 #endif
@@ -10,6 +9,7 @@ struct MessageBubbleView: View {
     let message: SyncaMessage
     let categories: [SyncaMessageCategory]
     var isUpdatingCompletion: Bool = false
+    var onEdit: (() -> Void)? = nil
     let onClear: () -> Void
     let onDelete: () -> Void
     let onCategoryChange: ((String) -> Void)?
@@ -19,6 +19,7 @@ struct MessageBubbleView: View {
     @State private var copied = false
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
+    @State private var photoSaveError: String?
     @State private var loadID = UUID() // #1: 重显失败图片的关键
 
     private var messageText: String {
@@ -121,6 +122,19 @@ struct MessageBubbleView: View {
                         downloadFileButton
                     }
                     if message.type == .text {
+                        if message.canEditText, let onEdit {
+                            Button(action: onEdit) {
+                                Image(systemName: "pencil").font(.system(size: 14, weight: .medium))
+                                    #if os(iOS)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    #else
+                                    .frame(minWidth: 28, minHeight: 28)
+                                    #endif
+                                    .contentShape(Rectangle())
+                            }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Text("message_edit.title"))
+                        }
                         copyTextButton
                     }
                     
@@ -145,6 +159,11 @@ struct MessageBubbleView: View {
         )
         .opacity(message.isCleared ? 0.95 : 1.0)
         .contextMenu { messageContextMenu }
+        .alert("image_preview.save_failed", isPresented: Binding(
+            get: { photoSaveError != nil }, set: { if !$0 { photoSaveError = nil } }
+        )) {
+            Button("common.ok", role: .cancel) { photoSaveError = nil }
+        } message: { Text(photoSaveError ?? "") }
         .alert(Text("message_bubble.delete_confirm_title", bundle: .main), isPresented: $showDeleteConfirm) {
             Button("common.cancel", role: .cancel) {}
             Button("common.delete", role: .destructive) {
@@ -233,6 +252,9 @@ struct MessageBubbleView: View {
     @ViewBuilder
     private var messageContextMenu: some View {
         if message.type == .text {
+            if message.canEditText, let onEdit {
+                Button(action: onEdit) { Label("message_edit.title", systemImage: "pencil") }
+            }
             Button {
                 copyText(messageText)
             } label: {
@@ -542,13 +564,13 @@ struct MessageBubbleView: View {
     }
 
     private func saveImage(from url: URL) async {
+        guard saveStatus != .saving else { return }
         saveStatus = .saving
         do {
             let localURL = try await downloadToLocalFile(url: url, suggestedFileName: url.lastPathComponent)
             #if os(iOS)
-            try await PHPhotoLibrary.shared().performChanges {
-                PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: localURL)
-            }
+            try await PhotoLibrarySaver.saveImage(at: localURL)
+            PhotoLibrarySaver.announce(success: true)
             withAnimation { saveStatus = .success }
             #elseif os(macOS)
             let defaultURL = SettingsManager.shared.macOSDefaultSavePath ??
@@ -576,6 +598,9 @@ struct MessageBubbleView: View {
             }
             #else
             saveStatus = .error
+            photoSaveError = (error as? PhotoLibrarySaver.SaveError)?.localizedDescription
+                ?? String(localized: "photo_save.failed", bundle: .main)
+            PhotoLibrarySaver.announce(success: false)
             #endif
         }
         

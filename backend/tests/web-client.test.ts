@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, DailyLimitError } from '../../web/src/api/client';
+import { api, DailyLimitError, MessageEditError, SessionExpiredError } from '../../web/src/api/client';
 
 describe('Web API session and upload contracts', () => {
   let values: Map<string, string>;
@@ -14,6 +14,37 @@ describe('Web API session and upload contracts', () => {
     vi.stubGlobal('window', { location: { reload } });
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the editor mounted on session expiry and reloads only after draft dismissal', async () => {
+    const expired = vi.fn();
+    const release = api.retainEditingDraft(expired);
+    try {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
+      await expect(api.listMessages()).rejects.toBeInstanceOf(SessionExpiredError);
+      expect(expired).toHaveBeenCalledOnce();
+      expect(reload).not.toHaveBeenCalled();
+      expect(values.has('authToken')).toBe(false);
+    } finally { release(); }
+    await Promise.resolve();
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('sends the original edit timestamp and unchanged Unicode text', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ id: 'record', textContent: ' 😀\n ' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    await api.updateMessageText('record', ' 😀\n ', '2026-11-06T00:00:00.001Z');
+    const [url, options] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/messages/record/text');
+    expect(options.method).toBe('PATCH');
+    expect(JSON.parse(options.body as string)).toEqual({ textContent: ' 😀\n ', expectedUpdatedAt: '2026-11-06T00:00:00.001Z' });
+  });
+
+  it('exposes edit conflicts without clearing the authenticated session', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'message_edit_conflict' }), { status: 409 })));
+    await expect(api.updateMessageText('record', 'draft', '2026-11-06T00:00:00Z')).rejects.toBeInstanceOf(MessageEditError);
+    expect(values.get('authToken')).toBe('old-account');
+    expect(reload).not.toHaveBeenCalled();
+  });
 
   it('does not sign out a new account on an old 401 response', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => {

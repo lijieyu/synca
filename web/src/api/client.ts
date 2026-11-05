@@ -1,3 +1,10 @@
+export class SessionExpiredError extends Error {}
+
+export class MessageEditError extends Error {
+  readonly code: 'message_edit_conflict' | 'message_not_found' | 'message_not_text';
+  constructor(code: MessageEditError['code']) { super(code); this.code = code; }
+}
+
 const BASE_URL = '';
 const ATTACHMENT_CACHE_NAME = 'synca-attachment-cache-v1';
 
@@ -95,6 +102,25 @@ class APIClient {
   constructor() {
     if (typeof window !== 'undefined' && 'caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
+  private readonly editingDrafts = new Set<() => void>();
+  private pendingSessionReload = false;
+
+  /** Let users copy or dismiss an open draft before returning them to sign-in. */
+  retainEditingDraft(onSessionExpired: () => void): () => void {
+    this.editingDrafts.add(onSessionExpired);
+    return () => {
+      this.editingDrafts.delete(onSessionExpired);
+      if (this.pendingSessionReload && this.editingDrafts.size === 0) {
+        queueMicrotask(() => {
+          if (this.pendingSessionReload && this.editingDrafts.size === 0) {
+            this.pendingSessionReload = false;
+            window.location.reload();
+          }
+        });
+      }
+    };
+  }
+
   private readonly imageCache = new Map<string, { blob: Blob; expiresAt: number }>();
   private imageCacheToken: string | null = null;
   private readonly attachmentRequests = new Set<AbortController>();
@@ -140,8 +166,12 @@ class APIClient {
 
     if (response.status === 401) {
       localStorage.removeItem('authToken');
-      window.location.reload();
-      throw new Error('Unauthorized');
+      this.resetSession();
+      if (this.editingDrafts.size > 0) {
+        this.pendingSessionReload = true;
+        this.editingDrafts.forEach(onExpired => onExpired());
+      } else window.location.reload();
+      throw new SessionExpiredError('Unauthorized');
     }
 
     if (!response.ok) {
@@ -149,12 +179,13 @@ class APIClient {
       if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
       try {
         const errorJson = JSON.parse(errorText);
+        if (['message_edit_conflict', 'message_not_found', 'message_not_text'].includes(errorJson.error)) throw new MessageEditError(errorJson.error);
         if (['file_upload_requires_paid', 'storage_limit_reached', 'attachment_expired', 'file_too_large'].includes(errorJson.error)) throw new StorageError(errorJson.error);
         if (response.status === 403 && errorJson.error === 'daily_limit_reached') {
           throw new DailyLimitError();
         }
       } catch (e) {
-        if (e instanceof DailyLimitError || e instanceof StorageError) throw e;
+        if (e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
       }
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
@@ -327,6 +358,12 @@ class APIClient {
     anchor.remove();
     // Give the browser time to start consuming a large download before releasing its object URL.
     window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+  }
+
+  async updateMessageText(id: string, textContent: string, expectedUpdatedAt: string): Promise<SyncaMessage> {
+    return this.fetch<SyncaMessage>(`/messages/${id}/text`, {
+      method: 'PATCH', body: JSON.stringify({ textContent, expectedUpdatedAt }),
+    });
   }
 
   async setMessageCompletion(id: string, isCleared: boolean): Promise<SyncaMessage> {

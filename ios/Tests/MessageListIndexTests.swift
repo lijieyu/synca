@@ -8,6 +8,20 @@ struct MessageListIndexTests {
     }
 
     static func main() async throws {
+        var editable = message("edit", category: "one", cleared: true)
+        precondition(editable.canEditText)
+        editable.imagePath = "legacy.png"
+        precondition(!editable.canEditText)
+        editable.imagePath = nil
+        editable.fileUrl = "https://synca.example/api/media/file"
+        precondition(!editable.canEditText)
+        editable.fileUrl = nil
+        editable.isDeleted = true
+        precondition(!editable.canEditText)
+        let image = SyncaMessage(id: "image", userId: "test", type: .image, isCleared: false, isDeleted: false,
+                                 createdAt: "2026-11-06T00:00:00Z", updatedAt: "2026-11-06T00:00:00Z")
+        precondition(!image.canEditText)
+        print("PASS: pure text editing allows completed text but rejects attachments and deleted records")
         let order = ["all", "one", "two"]
         precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: -80, vertical: 10) == "two")
         precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: 80, vertical: 10) == "all")

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
-import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Toast } from './Toast';
@@ -11,6 +11,7 @@ interface Props {
   message: SyncaMessage;
   categories: MessageCategory[];
   onUpdate: () => void;
+  onEdit: (message: SyncaMessage) => void;
 }
 
 const CheckCircleFill = ({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) => (
@@ -27,8 +28,9 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
   </svg>
 );
 
-export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }) => {
+export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, onEdit }) => {
   const [actionError, setActionError] = useState('');
+  const canEditText = message.type === 'text' && !message.isDeleted && !message.imagePath && !message.imageUrl && !message.filePath && !message.fileUrl;
   const [copied, setCopied] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   useEffect(() => {
@@ -296,6 +298,8 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate }
           </div>
           
           <div className="actions">
+            {canEditText && <button className="action-btn" onClick={() => onEdit(message)} disabled={isProcessing}
+              title={t('message_edit.title')} aria-label={t('message_edit.title')}><Pencil size={16} aria-hidden="true" /></button>}
             {!expired && message.type === 'file' && (
               <button className="action-btn" onClick={handleFileDownload} disabled={isProcessing} title={t('common.save', 'Save')}>
                 {fileAction === 'download' ? <span className="action-spinner" aria-hidden="true" /> : <Download size={16} />}

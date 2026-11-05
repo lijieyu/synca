@@ -109,6 +109,7 @@ struct MessageListView: View {
     @State private var showDeleteAccountSuccess = false
     @State private var deleteAccountErrorMessage: String?
     @State private var inputHeight: CGFloat = 40
+    @State private var editingMessage: SyncaMessage?
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
     @State private var shouldScrollToBottomAfterSend = false
     @State private var postSendScrollWindowID = UUID()
@@ -239,6 +240,9 @@ struct MessageListView: View {
             AccessCenterView()
                 .environmentObject(accessManager)
                 .environmentObject(purchaseManager)
+        }
+        .sheet(item: $editingMessage) { message in
+            MessageTextEditorView(message: message)
         }
         .sheet(isPresented: $showFeedbackComposer) {
             FeedbackComposerView()
@@ -1195,6 +1199,7 @@ struct MessageListView: View {
             message: message,
             categories: syncManager.categories,
             isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
+            onEdit: { editingMessage = message },
             onClear: {
                 Task { await syncManager.clearMessage(message.id) }
             },
@@ -1232,7 +1237,7 @@ struct MessageListView: View {
             ScrollView(.horizontal, showsIndicators: true) {
                 HStack(alignment: .top, spacing: spacing) {
                     ForEach(syncManager.categories) { category in
-                        TiledCategoryColumn(category: category)
+                        TiledCategoryColumn(category: category, onEdit: { editingMessage = $0 })
                             .environmentObject(syncManager)
                             .id(category.id)
                             .frame(width: sharedWidth)
@@ -1268,6 +1273,7 @@ private struct TiledCategoryColumn: View {
 
     @EnvironmentObject var syncManager: SyncManager
     let category: SyncaMessageCategory
+    let onEdit: (SyncaMessage) -> Void
 
     @State private var inputText = ""
     @State private var inputHeight: CGFloat = 34
@@ -1368,6 +1374,7 @@ private struct TiledCategoryColumn: View {
                                 message: message,
                                 categories: syncManager.categories,
                                 isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
+                                onEdit: { onEdit(message) },
                                 onClear: { Task { await syncManager.clearMessage(message.id) } },
                                 onDelete: {
                                     Task { await syncManager.deleteMessage(message.id) }
@@ -1399,6 +1406,7 @@ private struct TiledCategoryColumn: View {
                                 message: message,
                                 categories: syncManager.categories,
                                 isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
+                                onEdit: { onEdit(message) },
                                 onClear: {
                                     Task { await syncManager.clearMessage(message.id) }
                                 },
