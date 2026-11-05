@@ -2532,11 +2532,15 @@ private struct MessageCategoryManagerSheet: View {
 
                 Divider()
 
-                HStack {
-                    Button("common.cancel") { dismiss() }
+                HStack(spacing: 8) {
                     Spacer()
+                    Button("common.cancel", role: .cancel) { dismiss() }
+                        .buttonStyle(.bordered)
+                        .foregroundStyle(.primary)
+                        .keyboardShortcut(.cancelAction)
                     Button("common.save") { saveDraftRows() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(MacPrimaryActionButtonStyle())
+                        .tint(.syncaPurple)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)
