@@ -59,7 +59,11 @@ struct MessageTextEditorView: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("common.cancel") { cancel() }.disabled(isSaving)
+                    Button("common.cancel", role: .cancel) { cancel() }.disabled(isSaving)
+                        #if os(macOS)
+                        .buttonStyle(.bordered)
+                        .foregroundStyle(.primary)
+                        #endif
                         .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -68,8 +72,9 @@ struct MessageTextEditorView: View {
                         else { Text("common.save") }
                     }
                     .disabled(!canSave)
+                    .tint(.syncaPurple)
                     #if os(macOS)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(MacPrimaryActionButtonStyle())
                     #endif
                     .keyboardShortcut("s", modifiers: .command)
                 }
@@ -79,7 +84,6 @@ struct MessageTextEditorView: View {
                 Button("message_edit.keep", role: .cancel) { }
             }
         }
-        .tint(.syncaPurple)
         .interactiveDismissDisabled(hasChanges || isSaving)
         #if os(macOS)
         .frame(minWidth: 420, idealWidth: 520, minHeight: 340, idealHeight: 420)
@@ -122,3 +126,22 @@ struct MessageTextEditorView: View {
         #endif
     }
 }
+
+#if os(macOS)
+/// Keep the primary action identifiable when macOS renders an inactive sheet.
+struct MacPrimaryActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(isEnabled ? Color.white : Color.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background(
+                isEnabled ? Color.syncaPurple : Color.primary.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            )
+            .opacity(configuration.isPressed && isEnabled ? 0.8 : 1)
+    }
+}
+#endif
