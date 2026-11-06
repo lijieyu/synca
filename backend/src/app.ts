@@ -21,18 +21,20 @@ import {
     updateMessageCategoryAssignment, reorderMessageCategories, deleteAccount,
     MessageWriteError, updateMessageText,
 } from './store.js';
+import { requestContext, operationalErrors } from './observability.js';
 import { apnsProvider } from './apns.js';
 
 const app = express();
 
 app.set('trust proxy', 1);
+app.use(requestContext);
 
 // CORS
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'MCP-Protocol-Version', 'Mcp-Session-Id'],
-    exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
+    exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id', 'X-Request-ID'],
 }));
 
 app.use(['/mcp', '/api/ai', '/oauth'], aiRateLimit);
@@ -978,5 +980,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     }
     next(err);
 });
+
+app.use(operationalErrors);
 
 export default app;

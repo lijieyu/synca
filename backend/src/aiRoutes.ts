@@ -1,6 +1,7 @@
 import { normalizeToolVersion, versionedSchema, splitToolVersion, withVersionNotice } from './aiToolVersion.js';
 import { issueOAuthTokens, refreshOAuthTokens, OAUTH_GRANT_DAYS, OAUTH_REFRESH_IDLE_DAYS } from './aiOAuthTokens.js';
 import fs from 'node:fs/promises';
+import { logEvent, errorFields } from './observability.js';
 import path from 'node:path';
 import express, { type RequestHandler } from 'express';
 import { randomUUID, createHash, timingSafeEqual } from 'node:crypto';
@@ -32,12 +33,12 @@ const session: RequestHandler = wrap(async (req, res, next) => {
     if (!id) throw new AIError(401, 'unauthorized');
     res.locals.userId = id; next();
 });
-function safeError(error: unknown) {
+function safeError(error: unknown, context: Record<string, unknown> = {}) {
     if (error instanceof AIError) return { status: error.status, code: error.code, ...(error.code === 'ai_subscription_required' ? { message: 'AI connections require an active Synca subscription or lifetime purchase. Upgrade or renew in Synca; existing connections can resume afterward.' } : {}) };
     if (error instanceof z.ZodError) return { status: 400, code: 'invalid_arguments', details: error.issues.map(i => ({ path: i.path, message: i.message })) };
     if (error instanceof MessageWriteError) return { status: error.code === 'unauthorized' ? 401 : 403, code: error.code };
     if ((error as { code?: string })?.code === 'SQLITE_CONSTRAINT_UNIQUE') return { status: 409, code: 'name_or_request_conflict' };
-    console.error('[ai] operation failed', error instanceof Error ? error.message : 'unknown');
+    logEvent('error', 'ai.operation_failed', { ...context, ...errorFields(error) });
     return { status: 500, code: 'internal_error' };
 }
 export function createAIRouter(notify: (userId: string) => Promise<void>) {
@@ -157,7 +158,7 @@ export function createAIRouter(notify: (userId: string) => Promise<void>) {
                             [{ type: 'resource' as const, resource: { uri: attachment.uri, mimeType: attachment.mimeType, blob: attachment.data } }] });
                     }
                     return notice({ content: [{ type: 'text' as const, text: JSON.stringify(result) }] });
-                } catch (error) { return notice({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify(safeError(error)) }] }); }
+                } catch (error) { return notice({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify(safeError(error, { requestId: res.locals.requestId, transport: 'mcp', tool: name })) }] }); }
             });
         }
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -167,7 +168,7 @@ export function createAIRouter(notify: (userId: string) => Promise<void>) {
     }));
     router.all('/mcp', (_req, res) => { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'method_not_allowed' }); });
     router.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-        const info = safeError(error);
+        const info = safeError(error, { requestId: res.locals.requestId });
         if (info.status === 401) res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${publicOrigin()}/.well-known/oauth-protected-resource/mcp"`);
         if (!res.headersSent) res.status(info.status).json({ error: info.code, ...('message' in info ? { message: info.message } : {}), ...('details' in info ? { details: info.details } : {}) });
     });
@@ -182,8 +183,10 @@ function installOAuth(router: express.Router) {
         registration_endpoint: `${publicOrigin()}/oauth/register`, response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
         token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'], code_challenge_methods_supported: ['S256'], scopes_supported: scopes }));
     const redirectSchema = z.string().url().max(2048).refine(value => {
-        const u = new URL(value);
-        return !u.hash && !u.username && !u.password && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname)));
+        try {
+            const u = new URL(value);
+            return !u.hash && !u.username && !u.password && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', '[::1]', 'localhost'].includes(u.hostname)));
+        } catch { return false; }
     }, 'HTTPS or loopback redirect required');
     router.post('/oauth/register', wrap(async (req, res) => {
         const meta = z.object({ client_name: z.string().trim().min(1).max(80).default('AI client'),
