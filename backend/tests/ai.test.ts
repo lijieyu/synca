@@ -45,6 +45,11 @@ beforeEach(async () => {
 describe('AI authorization and content contract', () => {
     const rpc = (method: string, params: unknown) => request(app).post('/mcp').set('Authorization', auth())
         .set('Accept', 'application/json, text/event-stream').send({ jsonrpc: '2.0', id: 1, method, params });
+    it('returns a parameter error for malformed OAuth redirects rather than throwing Invalid URL', async () => {
+        const response = await request(app).post('/oauth/register').send({ redirect_uris: ['not-a-url'] });
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe('invalid_arguments');
+    });
     it('advertises tool versions and keeps legacy and future calls usable without changing REST', async () => {
         const list = await rpc('tools/list', {});
         for (const tool of list.body.result.tools) {
