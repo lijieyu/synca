@@ -1,3 +1,4 @@
+import { saveDownload } from '../utils/downloads';
 export class SessionExpiredError extends Error {}
 
 export class MessageEditError extends Error {
@@ -349,15 +350,7 @@ class APIClient {
 
   async downloadProtectedFile(url: string, fileName?: string | null, expiresAt?: string | null): Promise<void> {
     const blob = await this.getProtectedFileBlob(url, { expiresAt });
-    const objectUrl = window.URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = fileName || 'attachment';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    // Give the browser time to start consuming a large download before releasing its object URL.
-    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+    await saveDownload(blob, fileName || 'attachment');
   }
 
   async updateMessageText(id: string, textContent: string, expectedUpdatedAt: string): Promise<SyncaMessage> {

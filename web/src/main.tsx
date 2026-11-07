@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import './i18n';
 import './index.css';
+import './calm.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

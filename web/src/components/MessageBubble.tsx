@@ -44,7 +44,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
   const [fileAction, setFileAction] = useState<'open' | 'download' | null>(null);
   const [isImageOpening, setIsImageOpening] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const reportError = (error: unknown) => {
     if (error instanceof DOMException && error.name === 'AbortError') return;
     const expired = error instanceof StorageError && error.code === 'attachment_expired';
@@ -94,7 +94,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
 
   const formatTime = (isoString: string) => {
     const d = new Date(isoString);
-    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleClear = async () => {
@@ -245,7 +245,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
           <button className="file-card" onClick={handleFileOpen} disabled={isProcessing}>
             <div className="file-card-icon">{fileIcon}</div>
             <div className="file-card-meta">
-              <div className="file-card-name">{message.fileName ?? 'Attachment'}</div>
+              <div className="file-card-name">{message.fileName ?? t('storage.shared_file')}</div>
               <div className="file-card-detail">
                 {fileExtension && <span>{fileExtension}</span>}
                 {message.fileSize != null && <span>{formatFileSize(message.fileSize)}</span>}
