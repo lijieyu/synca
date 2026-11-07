@@ -58,6 +58,7 @@ targets:
         APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
         CFBundleLocalizations:
           - zh-Hans
+          - zh-Hant
           - en
         CFBundleDisplayName: Synca
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -117,6 +118,7 @@ targets:
         APNSUploadEnvironment: $(APNS_UPLOAD_ENV)
         CFBundleLocalizations:
           - zh-Hans
+          - zh-Hant
           - en
         CFBundleDisplayName: Synca
         CFBundleShortVersionString: $(MARKETING_VERSION)

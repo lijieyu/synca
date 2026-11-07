@@ -1,4 +1,63 @@
 import Foundation
+import SwiftUI
+
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system, simplifiedChinese = "zh-Hans", traditionalChinese = "zh-Hant", english = "en"
+    var id: String { rawValue }
+    var labelKey: String {
+        switch self {
+        case .system: return "settings.follow_system"
+        case .simplifiedChinese: return "settings.language_simplified"
+        case .traditionalChinese: return "settings.language_traditional"
+        case .english: return "settings.language_english"
+        }
+    }
+}
+
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+    var colorScheme: ColorScheme? {
+        switch self { case .system: return nil; case .light: return .light; case .dark: return .dark }
+    }
+    var labelKey: String { "settings.appearance_\(rawValue)" }
+}
+
+/// One source for Foundation/AppKit strings as well as SwiftUI's locale environment.
+/// Reading the preference here also supports errors produced outside the main actor.
+enum AppLocalization {
+    static let languageKey = "appLanguage"
+    static var identifier: String {
+        let selection = AppLanguage(rawValue: UserDefaults.standard.string(forKey: languageKey) ?? "") ?? .system
+        if selection != .system { return selection.rawValue }
+        return Bundle.preferredLocalizations(from: ["zh-Hans", "zh-Hant", "en"], forPreferences: Locale.preferredLanguages).first ?? "en"
+    }
+    static var locale: Locale { Locale(identifier: identifier) }
+    static var bundle: Bundle {
+        guard let path = Bundle.main.path(forResource: identifier, ofType: "lproj"), let bundle = Bundle(path: path) else { return .main }
+        return bundle
+    }
+    static func string(_ key: String) -> String { bundle.localizedString(forKey: key, value: nil, table: nil) }
+}
+
+extension String {
+    init(syncaLocalized key: String.LocalizationValue, bundle: Bundle = .main) {
+        self.init(localized: key, bundle: bundle == .main ? AppLocalization.bundle : bundle, locale: AppLocalization.locale)
+    }
+}
+
+private struct AppPreferencesModifier: ViewModifier {
+    @ObservedObject private var settings = SettingsManager.shared
+    func body(content: Content) -> some View {
+        content.environment(\.locale, settings.locale)
+            .preferredColorScheme(settings.appAppearance.colorScheme)
+    }
+}
+
+extension View {
+    /// Presentations need their own observing boundary; AppKit can otherwise snapshot the parent environment.
+    func syncaPreferences() -> some View { modifier(AppPreferencesModifier()) }
+}
 
 @MainActor
 final class SettingsManager: ObservableObject {
@@ -10,8 +69,21 @@ final class SettingsManager: ObservableObject {
 
     @Published var macOSDefaultSavePath: URL?
     @Published var messageListLayoutMode: MessageListLayoutMode
+    @Published var appLanguage: AppLanguage {
+        didSet { UserDefaults.standard.set(appLanguage.rawValue, forKey: AppLocalization.languageKey) }
+    }
+    @Published var appAppearance: AppAppearance {
+        didSet { UserDefaults.standard.set(appAppearance.rawValue, forKey: "appAppearance") }
+    }
+    @Published var asksForDownloadLocation: Bool {
+        didSet { UserDefaults.standard.set(asksForDownloadLocation, forKey: "asksForDownloadLocation") }
+    }
+    var locale: Locale { AppLocalization.locale }
 
     private init() {
+        appLanguage = AppLanguage(rawValue: UserDefaults.standard.string(forKey: AppLocalization.languageKey) ?? "") ?? .system
+        appAppearance = AppAppearance(rawValue: UserDefaults.standard.string(forKey: "appAppearance") ?? "") ?? .system
+        asksForDownloadLocation = UserDefaults.standard.bool(forKey: "asksForDownloadLocation")
         messageListLayoutMode = MessageListLayoutMode(rawValue: UserDefaults.standard.string(forKey: messageListLayoutModeKey) ?? "") ?? .single
         macOSDefaultSavePath = resolveStoredSavePath()
             ?? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first

@@ -15,13 +15,13 @@ enum PhotoLibrarySaver {
     enum SaveError: LocalizedError {
         case permissionDenied
         nonisolated var errorDescription: String? {
-            String(localized: "photo_save.permission_denied", bundle: .main)
+            String(syncaLocalized: "photo_save.permission_denied", bundle: .main)
         }
     }
 
     @MainActor static func announce(success: Bool) {
         UINotificationFeedbackGenerator().notificationOccurred(success ? .success : .error)
-        UIAccessibility.post(notification: .announcement, argument: String(localized: success ? "image_preview.save_success" : "image_preview.save_failed", bundle: .main))
+        UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: success ? "image_preview.save_success" : "image_preview.save_failed", bundle: .main))
     }
 }
 #endif

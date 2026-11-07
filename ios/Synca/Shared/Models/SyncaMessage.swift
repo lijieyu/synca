@@ -131,28 +131,28 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
         
         // Time format
         let timeFormatter = DateFormatter()
-        timeFormatter.locale = .current
+        timeFormatter.locale = AppLocalization.locale
         timeFormatter.setLocalizedDateFormatFromTemplate("Hm")
         let timeString = timeFormatter.string(from: date)
 
         if calendar.isDateInToday(date) {
             return timeString
         } else if calendar.isDateInYesterday(date) {
-            return String(format: String(localized: "message.date.yesterday", bundle: .main), timeString)
+            return String(format: String(syncaLocalized: "message.date.yesterday", bundle: .main), timeString)
         } else if let days = calendar.dateComponents([.day], from: date, to: now).day, days < 7 {
             // Within a week, show weekday
             let f = DateFormatter()
-            f.locale = .current
+            f.locale = AppLocalization.locale
             f.setLocalizedDateFormatFromTemplate("EEEE")
             return "\(f.string(from: date)) \(timeString)"
         } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
             let f = DateFormatter()
-            f.locale = .current
+            f.locale = AppLocalization.locale
             f.setLocalizedDateFormatFromTemplate("Md")
             return "\(f.string(from: date)) \(timeString)"
         } else {
             let f = DateFormatter()
-            f.locale = .current
+            f.locale = AppLocalization.locale
             f.setLocalizedDateFormatFromTemplate("yMd")
             return "\(f.string(from: date)) \(timeString)"
         }

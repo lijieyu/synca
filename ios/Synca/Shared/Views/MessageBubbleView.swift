@@ -27,7 +27,7 @@ struct MessageBubbleView: View {
     }
 
     private var fileName: String {
-        message.fileName ?? "Attachment"
+        message.fileName ?? String(syncaLocalized: "message_file.attachment")
     }
 
     private var fileSizeText: String {
@@ -90,7 +90,7 @@ struct MessageBubbleView: View {
             }
 
             if message.type != .text, !message.isAttachmentExpired, let expiry = message.attachmentExpiryDate {
-                Text("\(String(localized: "storage.expires")): \(expiry.formatted(date: .abbreviated, time: .shortened))")
+                Text("\(String(syncaLocalized: "storage.expires")): \(expiry.formatted(.dateTime.year().month().day().hour().minute().locale(AppLocalization.locale)))")
                     .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             // Metadata row
@@ -108,7 +108,7 @@ struct MessageBubbleView: View {
                 if let categoryName = message.categoryName, let categoryId = message.categoryId {
                     Text("·")
                         .font(.caption2)
-                    categoryMenu(name: categoryName, categoryId: categoryId)
+                    categoryMenu(name: message.categoryIsDefault == true ? String(syncaLocalized: "message_category.default_badge") : categoryName, categoryId: categoryId)
                 }
 
                 Spacer()
@@ -131,20 +131,8 @@ struct MessageBubbleView: View {
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(message.isCleared
-                      ? Color.primary.opacity(0.05)
-                      : cardBackground)
-                .shadow(color: .black.opacity(message.isCleared ? 0.02 : 0.04), radius: 2, y: 1)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(message.isCleared 
-                        ? Color.secondary.opacity(0.22)
-                        : Color.syncaCardBorder, lineWidth: 0.5)
-        )
-        .opacity(message.isCleared ? 0.95 : 1.0)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { Divider().opacity(0.6) }
         .contextMenu { messageContextMenu }
         .alert("image_preview.save_failed", isPresented: Binding(
             get: { photoSaveError != nil }, set: { if !$0 { photoSaveError = nil } }
@@ -157,8 +145,8 @@ struct MessageBubbleView: View {
                 onDelete()
             }
         } message: {
-            let suffix = message.type == .image ? String(localized: "message_bubble.delete_image_suffix", bundle: .main) : ""
-            Text(String(localized: "message_bubble.delete_confirm_message", bundle: .main).replacingOccurrences(of: "%@", with: suffix))
+            let suffix = message.type == .image ? String(syncaLocalized: "message_bubble.delete_image_suffix", bundle: .main) : ""
+            Text(String(syncaLocalized: "message_bubble.delete_confirm_message", bundle: .main).replacingOccurrences(of: "%@", with: suffix))
         }
     }
 
@@ -513,7 +501,7 @@ struct MessageBubbleView: View {
         }
 
         let operationID = SyncManager.shared.beginProgressFeedback(
-            String(localized: "message_bubble.copying_image", bundle: .main)
+            String(syncaLocalized: "message_bubble.copying_image", bundle: .main)
         )
         Task {
             do {
@@ -524,7 +512,7 @@ struct MessageBubbleView: View {
                 finishCopyingImage(data, operationID: operationID)
             } catch {
                 SyncManager.shared.showErrorFeedback(
-                    String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                    String(syncaLocalized: "message_bubble.copy_image_failed", bundle: .main),
                     for: operationID
                 )
                 print("Copy image failed: \(error)")
@@ -535,7 +523,7 @@ struct MessageBubbleView: View {
     private func finishCopyingImage(_ data: Data, operationID: UUID?) {
         guard ImageClipboard.write(data) else {
             SyncManager.shared.showErrorFeedback(
-                String(localized: "message_bubble.copy_image_failed", bundle: .main),
+                String(syncaLocalized: "message_bubble.copy_image_failed", bundle: .main),
                 for: operationID
             )
             print("Copy image failed: unsupported image data")
@@ -543,7 +531,7 @@ struct MessageBubbleView: View {
         }
 
         SyncManager.shared.showSuccessFeedback(
-            String(localized: "message_bubble.image_copied", bundle: .main),
+            String(syncaLocalized: "message_bubble.image_copied", bundle: .main),
             for: operationID
         )
         withAnimation { copied = true }
@@ -551,6 +539,9 @@ struct MessageBubbleView: View {
     }
 
     private func saveImage(from url: URL) async {
+        #if os(macOS)
+        if SettingsManager.shared.asksForDownloadLocation { await saveImageAs(from: url); return }
+        #endif
         guard saveStatus != .saving else { return }
         saveStatus = .saving
         do {
@@ -586,7 +577,7 @@ struct MessageBubbleView: View {
             #else
             saveStatus = .error
             photoSaveError = (error as? PhotoLibrarySaver.SaveError)?.localizedDescription
-                ?? String(localized: "photo_save.failed", bundle: .main)
+                ?? String(syncaLocalized: "photo_save.failed", bundle: .main)
             PhotoLibrarySaver.announce(success: false)
             #endif
         }
@@ -597,6 +588,9 @@ struct MessageBubbleView: View {
     }
 
     private func saveFile(from url: URL, suggestedFileName: String) async {
+        #if os(macOS)
+        if SettingsManager.shared.asksForDownloadLocation { await saveFileAs(from: url, suggestedFileName: suggestedFileName); return }
+        #endif
         saveStatus = .saving
         do {
             let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
@@ -668,33 +662,33 @@ struct MessageBubbleView: View {
     @MainActor
     private func showMacSaveFailedAlert(error: Error, messageKey: String) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "message_bubble.save_failed_title", bundle: .main)
-        alert.informativeText = NSLocalizedString(messageKey, bundle: .main, comment: "")
+        alert.messageText = String(syncaLocalized: "message_bubble.save_failed_title", bundle: .main)
+        alert.informativeText = AppLocalization.string(messageKey)
             .replacingOccurrences(of: "%@", with: error.localizedDescription)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: String(localized: "common.ok", bundle: .main))
+        alert.addButton(withTitle: String(syncaLocalized: "common.ok", bundle: .main))
         alert.runModal()
     }
 
     @MainActor
     private func requestMacSaveFolderAuthorization(retry: @escaping () -> Void) {
         let defaultFolder = SettingsManager.shared.macOSDefaultSavePath?.lastPathComponent
-            ?? String(localized: "message_bubble.save_default_folder", bundle: .main)
+            ?? String(syncaLocalized: "message_bubble.save_default_folder", bundle: .main)
         let alert = NSAlert()
-        alert.messageText = String(localized: "message_bubble.save_authorization_title", bundle: .main)
-        alert.informativeText = String(localized: "message_bubble.save_authorization_message", bundle: .main)
+        alert.messageText = String(syncaLocalized: "message_bubble.save_authorization_title", bundle: .main)
+        alert.informativeText = String(syncaLocalized: "message_bubble.save_authorization_message", bundle: .main)
             .replacingOccurrences(of: "%@", with: defaultFolder)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: String(localized: "message_bubble.save_authorize_button", bundle: .main))
-        alert.addButton(withTitle: String(localized: "common.cancel", bundle: .main))
+        alert.addButton(withTitle: String(syncaLocalized: "message_bubble.save_authorize_button", bundle: .main))
+        alert.addButton(withTitle: String(syncaLocalized: "common.cancel", bundle: .main))
 
         guard alert.runModal() == .alertFirstButtonReturn else {
             return
         }
 
         let openPanel = NSOpenPanel()
-        openPanel.message = String(localized: "message_bubble.save_authorization_panel_message", bundle: .main)
-        openPanel.prompt = String(localized: "message_bubble.save_authorization_panel_prompt", bundle: .main)
+        openPanel.message = String(syncaLocalized: "message_bubble.save_authorization_panel_message", bundle: .main)
+        openPanel.prompt = String(syncaLocalized: "message_bubble.save_authorization_panel_prompt", bundle: .main)
         openPanel.canChooseFiles = false
         openPanel.canChooseDirectories = true
         openPanel.canCreateDirectories = true
@@ -764,13 +758,15 @@ struct MessageBubbleView: View {
     }
 
     private func saveImageAs(from url: URL) async {
+        guard saveStatus != .saving else { return }
+        saveStatus = .saving
         do {
             let localURL = try await downloadToLocalFile(url: url, suggestedFileName: url.lastPathComponent)
             await MainActor.run {
                 let panel = NSSavePanel()
                 panel.nameFieldStringValue = url.lastPathComponent
-                panel.title = String(localized: "message_bubble.save_as", bundle: .main)
-                panel.prompt = String(localized: "common.save", bundle: .main)
+                panel.title = String(syncaLocalized: "message_bubble.save_as", bundle: .main)
+                panel.prompt = String(syncaLocalized: "common.save", bundle: .main)
                 panel.canCreateDirectories = true
                 if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
                     panel.directoryURL = defaultDirectory
@@ -801,13 +797,15 @@ struct MessageBubbleView: View {
     }
 
     private func saveFileAs(from url: URL, suggestedFileName: String) async {
+        guard saveStatus != .saving else { return }
+        saveStatus = .saving
         do {
             let localURL = try await downloadToLocalFile(url: url, suggestedFileName: suggestedFileName)
             await MainActor.run {
                 let panel = NSSavePanel()
                 panel.nameFieldStringValue = suggestedFileName
-                panel.title = String(localized: "message_bubble.save_as", bundle: .main)
-                panel.prompt = String(localized: "common.save", bundle: .main)
+                panel.title = String(syncaLocalized: "message_bubble.save_as", bundle: .main)
+                panel.prompt = String(syncaLocalized: "common.save", bundle: .main)
                 panel.canCreateDirectories = true
                 if let defaultDirectory = SettingsManager.shared.macOSDefaultSavePath {
                     panel.directoryURL = defaultDirectory

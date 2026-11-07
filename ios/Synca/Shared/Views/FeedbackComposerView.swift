@@ -42,7 +42,7 @@ struct FeedbackComposerView: View {
             #else
             NavigationStack {
                 feedbackContent
-                    .navigationTitle(String(localized: "feedback.title", bundle: .main))
+                    .navigationTitle(String(syncaLocalized: "feedback.title", bundle: .main))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { cancelButton }
@@ -135,7 +135,7 @@ struct FeedbackComposerView: View {
             ) {
                 HStack(spacing: 10) {
                     Image(systemName: "photo.badge.plus")
-                    Text(currentAttachments.isEmpty ? String(localized: "feedback.add_images", bundle: .main) : String(localized: "feedback.add_more_images", bundle: .main))
+                    Text(currentAttachments.isEmpty ? String(syncaLocalized: "feedback.add_images", bundle: .main) : String(syncaLocalized: "feedback.add_more_images", bundle: .main))
                 }
                 .font(.body.weight(.medium))
                 .foregroundStyle(currentRemainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
@@ -163,7 +163,7 @@ struct FeedbackComposerView: View {
                 }
             }
 
-            Text(String(format: String(localized: "feedback.images_limit", bundle: .main), attachments.count, 3))
+            Text(String(format: String(syncaLocalized: "feedback.images_limit", bundle: .main), attachments.count, 3))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -205,7 +205,7 @@ struct FeedbackComposerView: View {
     private var emailField: some View {
         Group {
             #if os(iOS)
-            TextField(String(localized: "feedback.email_placeholder", bundle: .main), text: $email)
+            TextField(String(syncaLocalized: "feedback.email_placeholder", bundle: .main), text: $email)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.emailAddress)
                 .autocorrectionDisabled()
@@ -296,17 +296,17 @@ struct FeedbackComposerView: View {
         errorMessage = nil
 
         guard !trimmedContent.isEmpty else {
-            errorMessage = String(localized: "feedback.error_content_required", bundle: .main)
+            errorMessage = String(syncaLocalized: "feedback.error_content_required", bundle: .main)
             return
         }
 
         guard trimmedContent.count <= 2000 else {
-            errorMessage = String(format: String(localized: "feedback.error_content_too_long", bundle: .main), 2000)
+            errorMessage = String(format: String(syncaLocalized: "feedback.error_content_too_long", bundle: .main), 2000)
             return
         }
 
         guard isValidEmail(trimmedEmail) else {
-            errorMessage = String(localized: "feedback.error_email_required", bundle: .main)
+            errorMessage = String(syncaLocalized: "feedback.error_email_required", bundle: .main)
             return
         }
 
@@ -325,7 +325,7 @@ struct FeedbackComposerView: View {
             NotificationCenter.default.post(name: .syncaFeedbackSubmitted, object: nil)
             dismiss()
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? String(localized: "feedback.submit_failed", bundle: .main)
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? String(syncaLocalized: "feedback.submit_failed", bundle: .main)
         }
     }
 

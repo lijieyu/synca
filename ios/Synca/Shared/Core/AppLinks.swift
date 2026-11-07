@@ -6,7 +6,7 @@ enum AppLinks {
 
     static var aiConnectionURL: URL {
         var components = URLComponents(url: baseURL.appendingPathComponent("ai"), resolvingAgainstBaseURL: false)!
-        let language = Locale.preferredLanguages.first?.lowercased().hasPrefix("zh") == true ? "zh" : "en"
+        let language = AppLocalization.identifier
         components.queryItems = [URLQueryItem(name: "lng", value: language)]
         return components.url!
     }
@@ -24,7 +24,7 @@ enum AppLinks {
     }
 
     private static func localizedURL(pathEN: String, pathZH: String) -> URL {
-        let languageCode = Locale.preferredLanguages.first?.lowercased() ?? ""
+        let languageCode = AppLocalization.identifier.lowercased()
         let path = languageCode.hasPrefix("zh") ? pathZH : pathEN
         return baseURL.appendingPathComponent(String(path.dropFirst()))
     }
