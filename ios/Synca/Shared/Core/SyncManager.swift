@@ -612,26 +612,30 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func updateCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async {
+    @discardableResult
+    func updateCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async -> Bool {
         let operationGeneration = syncState.generation
         do {
             let updated = try await api.updateMessageCategory(id: id, name: name, color: color)
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             if let index = categories.firstIndex(where: { $0.id == id }) {
                 categories[index] = updated
                 persistCategories()
             }
+            return true
         } catch {
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             handleError(error, contextKey: "sync.error_context.send")
+            return false
         }
     }
 
-    func reorderCategories(ids: [String]) async {
+    @discardableResult
+    func reorderCategories(ids: [String]) async -> Bool {
         let operationGeneration = syncState.generation
         do {
             try await api.reorderMessageCategories(categoryIds: ids)
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             let orderById = Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($0.element, ($0.offset + 1) * 1000) })
             for index in categories.indices {
                 if let sortOrder = orderById[categories[index].id] {
@@ -645,17 +649,20 @@ final class SyncManager: ObservableObject {
             }
             persistCategories()
             normalizeCategorySelections()
+            return true
         } catch {
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             handleError(error, contextKey: "sync.error_context.send")
+            return false
         }
     }
 
-    func deleteCategory(id: String) async {
+    @discardableResult
+    func deleteCategory(id: String) async -> Bool {
         let operationGeneration = syncState.generation
         do {
             try await api.deleteMessageCategory(id: id)
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             categories.removeAll { $0.id == id }
             if let defaultCategory {
                 for index in messages.indices where messages[index].categoryId == id {
@@ -668,9 +675,11 @@ final class SyncManager: ObservableObject {
             persistCategories()
             normalizeCategorySelections()
             persistMessages()
+            return true
         } catch {
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation else { return false }
             handleError(error, contextKey: "sync.error_context.delete")
+            return false
         }
     }
 

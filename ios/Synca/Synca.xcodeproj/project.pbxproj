@@ -30,6 +30,7 @@
 		469BCD5C3A88D031D09DC9B5 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC41A2920E4F23AD06E4ED3 /* Colors.swift */; };
 		46C8499654425F9E7267E2E8 /* MacSelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */; };
 		4C15C5535484F9E97B8C3F91 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343DDA8855897A304AD57A8E /* SettingsManager.swift */; };
+		C10B81D5B20397C6072C61C6 /* EmbeddedAISession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */; };
 		4EC8950E05CA871DBE19B428 /* PasteAwareTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */; };
 		581766CDB40726133E251876 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5529D0F531D1905D77573C52 /* CachedAsyncImage.swift */; };
 		5AC7FC9A70BA564222DE8E74 /* FeedbackComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */; };
@@ -37,6 +38,7 @@
 		65D5A623B8F6815BF0D62997 /* ImagePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F9D56D31EE3F71693E82FB /* ImagePreviewView.swift */; };
 		6AE2C2896ABABD6C23A05D34 /* MacAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69CDF4F4158B8DC08EEB02F /* MacAppDelegate.swift */; };
 		6E1A36B7C3885524FF136B44 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343DDA8855897A304AD57A8E /* SettingsManager.swift */; };
+		C4393D82FD4E5C987A62CF95 /* EmbeddedAISession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */; };
 		7226861FFA06046C52089877 /* AccessStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FF1234287F38B3116511492 /* AccessStatus.swift */; };
 		781D48CC7F1CDA86997E446D /* MessageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1E757E6D45FD90B41342C3 /* MessageListView.swift */; };
 		7DF776164B048BEC8671A8D5 /* MacSelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */; };
@@ -83,7 +85,11 @@
 		A70000000000000000000001 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
 		A70000000000000000000002 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
 		327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */; };
+		7B65706CEA0F08B118AE81A0 /* AIConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41D507A6341146B3525EAAA /* AIConnectionView.swift */; };
+		1B9E8569C64B852288CD04DA /* AccountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */; };
 		45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */; };
+		92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41D507A6341146B3525EAAA /* AIConnectionView.swift */; };
+		81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +104,7 @@
 		2E6DFB39806FCF535EC272BB /* AppleSignInButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInButton.swift; sourceTree = "<group>"; };
 		34076DDAB8A2E0C4E48AF5BA /* MacInputTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacInputTextView.swift; sourceTree = "<group>"; };
 		343DDA8855897A304AD57A8E /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
+		A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddedAISession.swift; sourceTree = "<group>"; };
 		4A86D4E2B4975D74C1016386 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4DC41A2920E4F23AD06E4ED3 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		4FF1234287F38B3116511492 /* AccessStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessStatus.swift; sourceTree = "<group>"; };
@@ -135,6 +142,8 @@
 		D5BA31D5837D80AC7F1FBA60 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A70000000000000000000003 /* MacPlainTextScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlainTextScrollView.swift; sourceTree = "<group>"; };
 		B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
+		A41D507A6341146B3525EAAA /* AIConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConnectionView.swift; sourceTree = "<group>"; };
+		B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSheet.swift; sourceTree = "<group>"; };
 		72BE306B18C6241912B55FAF /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		CA2341AA42B6FC31B54360F1 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -196,6 +205,8 @@
 			isa = PBXGroup;
 			children = (
 				B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */,
+				A41D507A6341146B3525EAAA /* AIConnectionView.swift */,
+				B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */,
 				0D2726295D2A4F43DCB7E7E5 /* AccessCenterView.swift */,
 				2E6DFB39806FCF535EC272BB /* AppleSignInButton.swift */,
 				5529D0F531D1905D77573C52 /* CachedAsyncImage.swift */,
@@ -248,6 +259,7 @@
 				297BDECDF8299BE751AA053B /* PushTokenManager.swift */,
 				8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */,
 				343DDA8855897A304AD57A8E /* SettingsManager.swift */,
+				A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */,
 				7CA8F92004259A6E22176A45 /* SyncDebugLogger.swift */,
 				CF22CD531D738808F3F6842B /* SyncManager.swift */,
 			);
@@ -380,6 +392,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */,
+				7B65706CEA0F08B118AE81A0 /* AIConnectionView.swift in Sources */,
+				1B9E8569C64B852288CD04DA /* AccountSheet.swift in Sources */,
 				FA4BD0B10B94F90D70F4F844 /* APIClient.swift in Sources */,
 				DE6343EE825B832C1DFD5848 /* AccessCenterView.swift in Sources */,
 				65622D9D20FB2E2576E38C41 /* AccessManager.swift in Sources */,
@@ -411,6 +425,7 @@
 				02132BF3E09B519CC7E95D37 /* PushTokenManager.swift in Sources */,
 				8C0C58D9B5A443199CE8FE0F /* SaveFailurePresentation.swift in Sources */,
 				6E1A36B7C3885524FF136B44 /* SettingsManager.swift in Sources */,
+				C4393D82FD4E5C987A62CF95 /* EmbeddedAISession.swift in Sources */,
 				30B06B0E77D483682C3E4824 /* SyncDebugLogger.swift in Sources */,
 				CF5703DAD26C41CF5518B6A3 /* SyncManager.swift in Sources */,
 				D66EF16019B62463726A3438 /* SyncaApp.swift in Sources */,
@@ -423,6 +438,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */,
+				92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */,
+				81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */,
 				1F55C1860A50C27B34C64B73 /* APIClient.swift in Sources */,
 				926EDBDEEFC38564DC35E513 /* AccessCenterView.swift in Sources */,
 				D32FA024B382AA7FE4EA9FE0 /* AccessManager.swift in Sources */,
@@ -453,6 +470,7 @@
 				C3A76E9824A504BBCB960BD6 /* PushTokenManager.swift in Sources */,
 				E89B61340C40415EB5D673BA /* SaveFailurePresentation.swift in Sources */,
 				4C15C5535484F9E97B8C3F91 /* SettingsManager.swift in Sources */,
+				C10B81D5B20397C6072C61C6 /* EmbeddedAISession.swift in Sources */,
 				354FE5D9DB2C6854EB4A8DF6 /* SyncDebugLogger.swift in Sources */,
 				25B2C81D280D21FFB0A39AC0 /* SyncManager.swift in Sources */,
 				D65FBF54CD73B1D744C6C6B7 /* SyncaApp.swift in Sources */,

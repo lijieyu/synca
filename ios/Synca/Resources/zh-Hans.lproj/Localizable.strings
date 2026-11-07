@@ -325,3 +325,21 @@
 "access.duration.year" = "%d年";
 "access.duration.years" = "%d年";
 "message_list.send_to" = "发送到";
+
+"ai_browser.back" = "返回";
+
+"ai_browser.load_failed" = "无法加载页面，请检查网络后重试。";
+
+"common.close" = "关闭";
+
+"message_category.edit_title" = "编辑分类";
+
+"feedback.discard_title" = "放弃此次反馈？";
+
+"feedback.discard" = "放弃";
+
+"feedback.keep_editing" = "继续编辑";
+
+"message_category.save_failed_title" = "无法保存分类";
+
+"message_category.save_failed_message" = "部分更改可能已保存。请检查网络后重试；未保存的内容仍保留。";
