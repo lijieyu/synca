@@ -25,7 +25,7 @@ export function PlanContent() {
     return `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(value / divisor)} ${unit}`;
   };
   const benefits = <ul>
-    {['access.unlock_benefit_unlimited', 'access.unlock_benefit_ai', 'access.purchase_shared_account', 'storage.paid_files', 'storage.paid_capacity'].map(key => <li key={key}>{t(key)}</li>)}
+    {['access.unlock_benefit_unlimited', 'storage.paid_files', 'storage.paid_capacity', 'access.unlock_benefit_ai'].map(key => <li key={key}>{t(key)}</li>)}
   </ul>;
   const legal = <div className="plan-legal-links">
     <a href={`https://synca.haerth.cn/${isChinese ? 'zh-hans' : 'en'}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('access.privacy_policy_link_title')}</a>
@@ -46,7 +46,7 @@ export function PlanContent() {
             {!lifetime && <div className="plan-upgrade"><h4>{t('access.lifetime_upgrade_title')}</h4><p>{t('access.option_lifetime_subtitle')}</p>{download}</div>}
           </> : <>
             <p>{t('access.current_free_summary', { used: status.todayUsed, limit: status.todayLimit ?? 20 })}</p>
-            <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_benefits')}</li></ul>
+            <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_types')}</li><li>{t('storage.free_benefits')}</li></ul>
           </>}
         </section>
         {!paid && <section className="storage-plan-paid">
@@ -56,6 +56,7 @@ export function PlanContent() {
           </div>)}</div>
           {download}{legal}
         </section>}
+        <div className="plan-notes"><p>{t('storage.retention_notice')}</p><p>{t('access.purchase_shared_account')}</p><p>{t('storage.lifetime_notice')}</p></div>
         {storage && <div><label htmlFor="storage-usage">{t('storage.used')}</label>
           <p className="plan-usage">{bytes(storage.usedBytes)} / {bytes(storage.limitBytes)}</p>
           <progress id="storage-usage" value={Math.min(storage.usedBytes, storage.limitBytes)} max={Math.max(1, storage.limitBytes)} />

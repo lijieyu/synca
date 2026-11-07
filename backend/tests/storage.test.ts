@@ -38,6 +38,8 @@ describe('Attachment storage contract', () => {
             const res = await request(app).get('/me/access-status').set('Authorization', user.auth);
             expect(res.body.accessStatus.storage).toEqual({ ...storagePolicy(paid), usedBytes: 0 });
         }
+        expect(storagePolicy(false).retentionDays).toBe(3);
+        expect(storagePolicy(true).retentionDays).toBe(30);
         expect(IMAGE_LIMIT).toBe(50 * 1024 * 1024);
         expect(FILE_LIMIT).toBe(200 * 1024 * 1024);
     });
@@ -226,7 +228,7 @@ describe('Attachment storage contract', () => {
             .set('X-Upload-Size', '4').attach('file', Buffer.from('test'), 'test.pdf');
         remember(res.body);
         expect(res.status).toBe(201);
-        expect(Date.parse(res.body.attachmentExpiresAt) - Date.parse(res.body.createdAt)).toBeGreaterThanOrEqual(7 * 86400000 - 1000);
+        expect(Date.parse(res.body.attachmentExpiresAt) - Date.parse(res.body.createdAt)).toBeGreaterThanOrEqual(30 * 86400000 - 1000);
         const url = `/api/media/${res.body.filePath}`;
         expect((await request(app).get(url).set('Authorization', user.auth)).status).toBe(200);
         await db.updateTable('messages').set({ attachment_expires_at: new Date(Date.now() - 1000).toISOString() }).where('id', '=', res.body.id).execute();

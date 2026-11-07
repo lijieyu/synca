@@ -149,7 +149,9 @@ struct AccessCenterView: View {
                     .foregroundStyle(.primary)
 
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
-                benefitRow(systemImage: "photo", text: "storage.free_benefits")
+                benefitRow(systemImage: "photo", text: "storage.free_types")
+                benefitRow(systemImage: "externaldrive", text: "storage.free_benefits")
+                Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary)
                 storageUsage(status)
             }
         }
@@ -167,11 +169,11 @@ struct AccessCenterView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
-                    benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
-                    benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
                     benefitRow(systemImage: "doc", text: "storage.paid_files")
                     benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+                    benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
                 }
+                planNotes
 
                 VStack(spacing: 10) {
                     subscriptionPurchaseButton(.monthly)
@@ -273,7 +275,7 @@ struct AccessCenterView: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 adaptiveRow {
-                    Text(product?.displayName ?? fallbackProductName(for: productID))
+                    Text(fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
                         .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
@@ -635,9 +637,9 @@ struct AccessCenterView: View {
     private func currentSubscriptionName(_ status: AccessStatus) -> String {
         switch status.storeProductId {
         case SyncaProductID.monthly.rawValue:
-            return purchaseManager.monthlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_monthly", bundle: .main)
+            return String(syncaLocalized: "access.purchased_monthly", bundle: .main)
         case SyncaProductID.yearly.rawValue:
-            return purchaseManager.yearlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_yearly", bundle: .main)
+            return String(syncaLocalized: "access.purchased_yearly", bundle: .main)
         default:
             return String(syncaLocalized: "access.status_unlimited", bundle: .main)
         }
@@ -655,7 +657,7 @@ struct AccessCenterView: View {
     }
 
     private var currentLifetimeName: String {
-        purchaseManager.lifetimeProduct?.displayName ?? String(syncaLocalized: "access.purchased_lifetime", bundle: .main)
+        String(syncaLocalized: "access.purchased_lifetime", bundle: .main)
     }
 
     private func fallbackProductName(for productID: SyncaProductID) -> String {
@@ -843,13 +845,24 @@ struct AccessCenterView: View {
         return formatter.date(from: isoString) ?? fallbackFormatter.date(from: isoString)
     }
 
+    private var planNotes: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("storage.retention_notice")
+            Text("access.purchase_shared_account")
+            Text("storage.lifetime_notice")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
     private var currentPlanBenefits: some View {
         VStack(alignment: .leading, spacing: 10) {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
-            benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
-            benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
             benefitRow(systemImage: "doc", text: "storage.paid_files")
             benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+            benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
+            planNotes
         }
     }
 

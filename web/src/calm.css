@@ -116,3 +116,6 @@
 .account-entry:hover, .account-entry[aria-expanded=true] { background:var(--card-bg-color); }
 .category-editor-modal .modal-leading-action { color:var(--text-secondary); font-weight:500; }
 .category-editor-modal .modal-leading-action:hover { color:var(--text-main); filter:none; }
+
+.plan-notes { color:var(--text-secondary); font-size:12px; line-height:1.6; }
+.plan-notes p + p { margin-top:6px; }
