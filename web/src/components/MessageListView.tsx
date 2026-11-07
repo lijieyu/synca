@@ -460,6 +460,7 @@ export const MessageListView: React.FC = () => {
 
       {showCreateCategoryModal && (
         <Modal
+          className="category-editor-modal"
           title={t(editingCategory ? 'message_category.edit_title' : 'message_category.new_section')}
           message=""
           confirmText={t(editingCategory ? 'common.save' : 'message_category.add_action')}

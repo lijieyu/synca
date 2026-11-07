@@ -391,7 +391,7 @@ struct MessageListView: View {
                 .padding(.horizontal, 28).padding(.vertical, 18)
                 .background(MacWindowDragArea())
                 .frame(maxWidth: 816)
-                Divider().frame(maxWidth: 760)
+                desktopContentDivider
                 singleMessageContent
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -448,10 +448,23 @@ struct MessageListView: View {
                 .accessibilityAction(named: Text("message_list.next_category")) { switchCategory(horizontal: -80, vertical: 0) }
                 .accessibilityAction(named: Text("message_list.previous_category")) { switchCategory(horizontal: 80, vertical: 0) }
                 #endif
+            #if os(iOS)
             Divider().frame(maxWidth: 760)
+            #endif
             inputBar.frame(maxWidth: 800)
         }
     }
+
+    #if os(macOS)
+    // Match the list and composer's 760-point content width and 20-point gutters.
+    // The gutters must remain outside the width limit when the window narrows.
+    private var desktopContentDivider: some View {
+        Divider()
+            .frame(maxWidth: 760)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity)
+    }
+    #endif
 
     private var selectedCategoryTitle: String {
         guard let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) else {
@@ -485,7 +498,11 @@ struct MessageListView: View {
             Button { showManagementMenu.toggle() } label: {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
-                        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(Color.syncaPurple)
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18, weight: .regular))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 34, height: 34)
+                            .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
                                 .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
@@ -499,6 +516,11 @@ struct MessageListView: View {
                     if let status = accessManager.status { DailyQuotaView(status: status) }
                 }
                 .padding(12).background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain).fixedSize(horizontal: false, vertical: true)
