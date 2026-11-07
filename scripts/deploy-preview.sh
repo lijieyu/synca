@@ -6,7 +6,7 @@ preview_host='root@123.56.247.129'
 release_id="$(date -u +%Y%m%dT%H%M%SZ)-$(git -C "$project_root" rev-parse --short HEAD)-preview"
 release_path="/opt/synca-preview/releases/$release_id"
 npm --prefix "$project_root/backend" run build
-npm --prefix "$project_root/web" run build
+VITE_PREVIEW_PRICING=true npm --prefix "$project_root/web" run build
 artifact="$(mktemp -d)"
 trap 'rm -rf "$artifact"' EXIT
 mkdir -p "$artifact/backend"

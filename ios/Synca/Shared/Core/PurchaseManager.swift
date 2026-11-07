@@ -73,7 +73,7 @@ final class PurchaseManager: ObservableObject {
         defer { isLoadingProducts = false }
 
         do {
-            let products = try await Product.products(for: Array(SyncaProductID.allIDs))
+            let products = try await Product.products(for: [SyncaProductID.lifetime.rawValue])
             productsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
             #if DEBUG
             for product in products.sorted(by: { $0.id < $1.id }) {
@@ -89,6 +89,7 @@ final class PurchaseManager: ObservableObject {
 
     @discardableResult
     func purchase(_ productID: SyncaProductID) async -> Bool {
+        guard productID == .lifetime else { return false }
         do {
             try await loadProductsIfNeeded()
             guard let product = productsByID[productID.rawValue] else {

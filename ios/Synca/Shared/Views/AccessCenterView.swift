@@ -176,8 +176,6 @@ struct AccessCenterView: View {
                 planNotes
 
                 VStack(spacing: 10) {
-                    subscriptionPurchaseButton(.monthly)
-                    subscriptionPurchaseButton(.yearly)
                     lifetimePurchaseButton()
                 }
 
@@ -218,7 +216,6 @@ struct AccessCenterView: View {
                 storageUsage(status)
                 legalLinksSection
 
-                lifetimeUpgradeSection(status)
             }
         }
     }
@@ -850,6 +847,7 @@ struct AccessCenterView: View {
             Text("storage.retention_notice")
             Text("access.purchase_shared_account")
             Text("storage.lifetime_notice")
+            Text("access.ai_service_notice")
         }
         .font(.caption)
         .foregroundStyle(.secondary)

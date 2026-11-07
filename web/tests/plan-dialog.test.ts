@@ -21,7 +21,9 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 it('shows free quota, native purchase options and product download link', () => {
   const html = render();
-  for (const text of ['Synca Pro', '今日 3/20', 'Pro（月付）', 'Pro（年付）', 'Pro（终身）', '同一账号，iPhone、Mac 和 Web 共享 Pro 权益。']) expect(html).toContain(text);
+  for (const text of ['Synca Pro', '今日 3/20', 'Pro 买断', '同一账号，iPhone、Mac 和 Web 共享 Pro 权益。']) expect(html).toContain(text);
+  expect(html).not.toContain('Pro（月付）');
+  expect(html).not.toContain('Pro（年付）');
   expect(html).toContain('id6761647007');
   expect(html).toContain('下载 Synca，在 App 内购买');
   expect(html).not.toContain('附件到期自动删除');
@@ -38,13 +40,13 @@ it('shows lifetime purchase date without selling another upgrade', () => {
   expect(html).not.toContain('免费版');
   expect(html).not.toContain('下次续费');
 });
-it('shows yearly renewal and lifetime upgrade entry', () => {
+it('recognizes historical entitlement without upselling', () => {
   Object.assign(state.status!, { isUnlimited: true, unlimitedSource: 'subscription', storeProductId: 'org.haerth.synca.unlimited.yearly', subscriptionExpiresAt: '2027-04-11T12:00:00Z' });
   const html = render();
   expect(html).toContain('Pro（年付）');
   expect(html).toContain('下次续费');
-  expect(html).toContain('升级终身版');
-  expect(html).toContain('id6761647007');
+  expect(html).not.toContain('升级终身版');
+  expect(html).not.toContain('id6761647007');
 });
 it('uses English copy without changing the verified product destination', () => {
   state.language = 'en';
@@ -65,4 +67,17 @@ it('renders Traditional Chinese Pro benefits and retention notes', () => {
   const html = render();
   for (const key of ['storage.free_types', 'storage.free_benefits', 'storage.paid_capacity', 'storage.retention_notice', 'storage.lifetime_notice']) expect(html).toContain(hant[key as keyof typeof hant]);
   expect(html).not.toContain('無限版');
+});
+
+it('shows proposed mainland price in preview without a real purchase link', () => {
+  vi.stubEnv('VITE_PREVIEW_PRICING', 'true');
+  try {
+    for (const language of ['zh', 'zh-Hant', 'en']) {
+      state.language = language;
+      const html = render();
+      expect(html).toContain('18');
+      expect(html).not.toContain('id6761647007');
+      expect(html).toContain(i18n.getFixedT(language)('access.preview_price_notice'));
+    }
+  } finally { vi.unstubAllEnvs(); }
 });

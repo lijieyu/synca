@@ -31,7 +31,8 @@ export function PlanContent() {
     <a href={`https://synca.haerth.cn/${isChinese ? 'zh-hans' : 'en'}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('access.privacy_policy_link_title')}</a>
     <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">{t('access.terms_link_title')}</a>
   </div>;
-  const download = <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
+  const previewPricing = import.meta.env.VITE_PREVIEW_PRICING === 'true';
+  const download = previewPricing ? <p role="status">{t('access.preview_price_notice')}</p> : <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
   return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
@@ -43,7 +44,6 @@ export function PlanContent() {
               {!lifetime && status.subscriptionExpiresAt && date(status.subscriptionExpiresAt) && <><dt>{t('access.subscription_expires_label')}</dt><dd>{date(status.subscriptionExpiresAt)}</dd></>}
             </dl>
             {benefits}{legal}
-            {!lifetime && <div className="plan-upgrade"><h4>{t('access.lifetime_upgrade_title')}</h4><p>{t('access.option_lifetime_subtitle')}</p>{download}</div>}
           </> : <>
             <p>{t('access.current_free_summary', { used: status.todayUsed, limit: status.todayLimit ?? 20 })}</p>
             <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_types')}</li><li>{t('storage.free_benefits')}</li></ul>
@@ -51,12 +51,14 @@ export function PlanContent() {
         </section>
         {!paid && <section className="storage-plan-paid">
           <h4>{t('access.unlock_title')}</h4>{benefits}
-          <div className="plan-options">{['monthly', 'yearly', 'lifetime'].map(plan => <div key={plan}>
-            <strong>{t(`access.option_${plan}_title`)}</strong><p>{t(`access.option_${plan}_subtitle`)}</p>
-          </div>)}</div>
+          <div className="plan-options"><div>
+            <strong>{t('access.option_lifetime_title')}</strong>
+            <p>{t('access.option_lifetime_subtitle')}</p>
+            {previewPricing && <strong>{t('access.preview_lifetime_price')}</strong>}
+          </div></div>
           {download}{legal}
         </section>}
-        <div className="plan-notes"><p>{t('storage.retention_notice')}</p><p>{t('access.purchase_shared_account')}</p><p>{t('storage.lifetime_notice')}</p></div>
+        <div className="plan-notes"><p>{t('storage.retention_notice')}</p><p>{t('access.purchase_shared_account')}</p><p>{t('storage.lifetime_notice')}</p><p>{t('access.ai_service_notice')}</p></div>
         {storage && <div><label htmlFor="storage-usage">{t('storage.used')}</label>
           <p className="plan-usage">{bytes(storage.usedBytes)} / {bytes(storage.limitBytes)}</p>
           <progress id="storage-usage" value={Math.min(storage.usedBytes, storage.limitBytes)} max={Math.max(1, storage.limitBytes)} />

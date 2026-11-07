@@ -117,8 +117,8 @@
 "access.intro_payg_then_template" = "Intro offer for %@, then %@ / %@.";
 "access.intro_payupfront_then_template" = "Intro price for %@, then %@ / %@.";
 "access.subscription_renews_template" = "%@ / %@. Auto-renews until canceled.";
-"access.option_lifetime_title" = "Pro (Lifetime)";
-"access.option_lifetime_subtitle" = "One-time purchase. Permanent access.";
+"access.option_lifetime_title" = "Pro Lifetime";
+"access.option_lifetime_subtitle" = "One purchase for iPhone, Mac and Web. No subscription.";
 "access.purchase_setup_pending" = "App Store purchase setup is the next step.";
 "access.buy_for_price" = "Buy for %@";
 "access.restore_purchases" = "Restore Purchases";
@@ -136,7 +136,7 @@
 "access.restore_failed" = "Unable to restore purchases right now.";
 "access.purchased_monthly" = "Pro (Monthly)";
 "access.purchased_yearly" = "Pro (Yearly)";
-"access.purchased_lifetime" = "Pro (Lifetime)";
+"access.purchased_lifetime" = "Pro Lifetime";
 "access.unlimited_title" = "Pro benefits";
 "access.unlimited_description" = "You have unlimited capture access across all your devices.";
 "access.subscription_billing_label" = "Billing";
@@ -346,4 +346,10 @@
 
 "storage.free_types" = "Text and images supported";
 
-"storage.lifetime_notice" = "Lifetime refers to Pro access, not permanent attachment storage.";
+"storage.lifetime_notice" = "Lifetime unlocks Pro access. Attachments are still kept for 30 days.";
+
+"access.preview_lifetime_price" = "CNY 18 · One-time purchase";
+
+"access.preview_price_notice" = "Preview only: proposed mainland China price of CNY 18. Not yet effective; purchasing is unavailable here.";
+
+"access.ai_service_notice" = "Third-party AI service subscriptions are not included.";

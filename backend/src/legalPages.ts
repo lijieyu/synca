@@ -145,7 +145,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: 'Access Model',
                     paragraphs: [
                         'Synca offers a free plan that allows up to 20 new entries per day.',
-                        'Synca also offers optional paid access through monthly and annual subscriptions, as well as a lifetime purchase. The pricing, billing period, renewal terms, and product details shown in the app or on the App Store at the time of purchase will control.',
+                        'Synca Pro is available as a one-time lifetime purchase, with no subscription renewal. The price and product details displayed at checkout apply. Lifetime access does not mean permanent attachment storage; Pro attachments are kept for 30 days.',
                     ],
                 },
                 {
@@ -349,7 +349,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: '访问规则',
                     paragraphs: [
                         'Synca 免费版用户每日最多可新增 20 条内容。',
-                        'Synca 也已提供可选付费访问，包括月付订阅、年付订阅和买断版本。具体价格、计费周期、续费规则以及产品细节以应用内或 App Store 购买页面展示内容为准。',
+                        'Synca Pro 提供一次性买断，无需订阅续费。具体价格与产品细节以购买页面展示内容为准。买断指 Pro 权益，不代表附件永久保存；Pro 附件保留 30 天。',
                     ],
                 },
                 {
