@@ -68,10 +68,18 @@ struct AccountSheet: View {
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top, spacing: 14) {
+                        #if os(macOS)
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 24, weight: .regular))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 48, height: 48)
+                            .accessibilityHidden(true)
+                        #else
                         Image(systemName: "person.crop.circle.fill")
                             .font(.system(size: 30))
                             .foregroundStyle(Color.accentColor)
                             .frame(width: 36, height: 36)
+                        #endif
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("account.provider.apple", bundle: .main)

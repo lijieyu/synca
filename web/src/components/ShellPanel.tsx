@@ -1,5 +1,6 @@
+import { PersonIcon } from './PersonIcon';
 import { useState } from 'react';
-import { UserRound } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import { PlanContent } from './PlanDialog';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +38,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     onConfirm={() => { if (kind === 'feedback' && !sent) document.querySelector<HTMLFormElement>('#feedback-form')?.requestSubmit(); else close(); }} onCancel={close}>
     {kind === 'account' && <div className="account-panel">
       <div className="account-identity">
-        <span className="account-avatar" aria-hidden="true"><UserRound size={26} strokeWidth={1.6} /></span>
+        <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
           <p className="account-email">{email || t('navigation.account')}</p>
           <p className="account-provider">{t('navigation.provider')}</p>
