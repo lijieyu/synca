@@ -45,7 +45,6 @@ export function PlanContent() {
             </dl>
             {benefits}{legal}
           </> : <>
-            <p>{t('access.current_free_summary', { used: status.todayUsed, limit: status.todayLimit ?? 20 })}</p>
             <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_types')}</li><li>{t('storage.free_benefits')}</li></ul>
           </>}
         </section>
@@ -67,5 +66,5 @@ export function PlanContent() {
 
 export function PlanDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  return <Modal title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel neutral><PlanContent /></Modal>;
+  return <Modal title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel hideActions neutral><PlanContent /></Modal>;
 }

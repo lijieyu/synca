@@ -148,10 +148,6 @@ struct AccessCenterView: View {
                     planBadge("access.free_title", pro: false)
                 }
 
-                Text(String(format: String(syncaLocalized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
                 benefitRow(systemImage: "photo", text: "storage.free_types")
                 benefitRow(systemImage: "externaldrive", text: "storage.free_benefits")

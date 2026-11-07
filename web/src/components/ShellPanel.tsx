@@ -29,6 +29,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     catch { setError(t('navigation.feedback_failed')); } finally { setBusy(false); }
   };
   return <><Modal title={t(kind === 'account' ? 'preferences.account_plan' : kind === 'feedback' ? 'message_list.feedback' : 'message_list.about')}
+    hideActions={kind === 'account'}
     scrollBody={kind === 'account' || kind === 'feedback'}
     className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind === 'about' ? 'compact' : 'large'}
     closeLabel={t('navigation.close')} closeDisabled={busy}

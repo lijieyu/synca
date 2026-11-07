@@ -22,7 +22,7 @@
   "message_list.clear_all_confirm_message": "将删除所有已完成的待办",
   "message_list.logout_confirm_title": "确认退出",
   "message_list.logout_confirm_message": "退出后需要重新登录",
-  "message_list.logout": "退出",
+  "message_list.logout": "退出登录",
   "message_list.about": "关于 Synca",
   "message_list.feedback": "提交反馈",
   "message_list.sign_out": "退出登录",
