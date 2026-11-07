@@ -41,7 +41,6 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
         <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
           <p className="account-email">{email || t('navigation.account')}</p>
-          <p className="account-provider">{t('navigation.provider')}</p>
         </div>
       </div>
       <PlanContent />

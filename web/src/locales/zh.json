@@ -332,5 +332,5 @@
   "access.preview_lifetime_price": "¥18",
   "access.preview_price_notice": "预发价格，暂不开放购买。",
   "access.ai_service_notice": "连接 AI 不包含第三方 AI 服务的订阅费用。",
-  "access.buyout_label": "买断"
+  "access.buyout_label": "一次性买断"
 }

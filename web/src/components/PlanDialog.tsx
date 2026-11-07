@@ -32,7 +32,7 @@ export function PlanContent() {
     <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">{t('access.terms_link_title')}</a>
   </div>;
   const previewPricing = import.meta.env.VITE_PREVIEW_PRICING === 'true';
-  const download = previewPricing ? <p className="plan-preview-notice" role="status">{t('access.preview_price_notice')}</p> : <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
+  const download = previewPricing ? null : <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
   return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
@@ -57,7 +57,6 @@ export function PlanContent() {
           </div>
           {download}{legal}
         </section>}
-        <div className="plan-notes"><p>{t('storage.retention_notice')}</p><p>{t('access.purchase_shared_account')}</p><p>{t('storage.lifetime_notice')}</p><p>{t('access.ai_service_notice')}</p></div>
         {storage && <div><label htmlFor="storage-usage">{t('storage.used')}</label>
           <p className="plan-usage">{bytes(storage.usedBytes)} / {bytes(storage.limitBytes)}</p>
           <progress id="storage-usage" value={Math.min(storage.usedBytes, storage.limitBytes)} max={Math.max(1, storage.limitBytes)} />

@@ -152,7 +152,7 @@ struct AccessCenterView: View {
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
                 benefitRow(systemImage: "photo", text: "storage.free_types")
                 benefitRow(systemImage: "externaldrive", text: "storage.free_benefits")
-                Text("storage.retention_notice").font(.caption).foregroundStyle(.secondary)
+
                 storageUsage(status)
             }
         }
@@ -174,7 +174,7 @@ struct AccessCenterView: View {
                     benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
                     benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
                 }
-                planNotes
+
 
                 VStack(spacing: 10) {
                     lifetimePurchaseButton()
@@ -833,25 +833,13 @@ struct AccessCenterView: View {
         return formatter.date(from: isoString) ?? fallbackFormatter.date(from: isoString)
     }
 
-    private var planNotes: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("storage.retention_notice")
-            Text("access.purchase_shared_account")
-            Text("storage.lifetime_notice")
-            Text("access.ai_service_notice")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
     private var currentPlanBenefits: some View {
         VStack(alignment: .leading, spacing: 10) {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
             benefitRow(systemImage: "doc", text: "storage.paid_files")
             benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
             benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
-            planNotes
+
         }
     }
 

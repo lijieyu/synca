@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 it('shows free quota, native purchase options and product download link', () => {
   const html = render();
-  for (const text of ['Synca Pro', '今日 3/20', '买断', '同一账号，iPhone、Mac 和 Web 共享 Pro 权益。']) expect(html).toContain(text);
+  for (const text of ['Synca Pro', '今日 3/20', '一次性买断']) expect(html).toContain(text);
   expect(html).not.toContain('Pro（月付）');
   expect(html).not.toContain('Pro（年付）');
   expect(html).toContain('id6761647007');
@@ -52,7 +52,7 @@ it('uses English copy without changing the verified product destination', () => 
   state.language = 'en';
   const html = render();
   expect(html).toContain('https://apps.apple.com/cn/app/synca-灵感记录-即刻同步/id6761647007');
-  expect(html).toContain(en['access.purchase_shared_account']);
+  expect(html).toContain(en['access.buyout_label']);
   expect(html).not.toContain('access.current_plan_title');
 });
 it('does not mislabel unknown account as free or offer a purchase', () => {
@@ -65,7 +65,7 @@ it('does not mislabel unknown account as free or offer a purchase', () => {
 it('renders Traditional Chinese Pro benefits and retention notes', () => {
   state.language = 'zh-Hant';
   const html = render();
-  for (const key of ['storage.free_types', 'storage.free_benefits', 'storage.paid_capacity', 'storage.retention_notice', 'storage.lifetime_notice']) expect(html).toContain(hant[key as keyof typeof hant]);
+  for (const key of ['storage.free_types', 'storage.free_benefits', 'storage.paid_capacity']) expect(html).toContain(hant[key as keyof typeof hant]);
   expect(html).not.toContain('無限版');
 });
 
@@ -77,7 +77,8 @@ it('shows proposed mainland price in preview without a real purchase link', () =
       const html = render();
       expect(html).toContain('18');
       expect(html).not.toContain('id6761647007');
-      expect(html).toContain(i18n.getFixedT(language)('access.preview_price_notice'));
+      expect(html).toContain(i18n.getFixedT(language)('access.buyout_label'));
+      for (const key of ['access.preview_price_notice', 'storage.retention_notice', 'access.purchase_shared_account', 'storage.lifetime_notice', 'access.ai_service_notice']) expect(html).not.toContain(i18n.getFixedT(language)(key));
     }
   } finally { vi.unstubAllEnvs(); }
 });

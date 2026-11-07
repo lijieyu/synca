@@ -82,8 +82,6 @@ struct AccountSheet: View {
                         #endif
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("account.provider.apple", bundle: .main)
-                                .font(.subheadline.weight(.semibold))
 
                             if isPrivateRelayEmail {
                                 Label {
@@ -94,11 +92,6 @@ struct AccountSheet: View {
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
 
-                                Text("account.email_hidden_message", bundle: .main)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.leading)
-                                    .fixedSize(horizontal: false, vertical: true)
                             } else {
                                 Text(resolvedAccountEmail)
                                     .font(.subheadline)
