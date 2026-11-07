@@ -113,31 +113,12 @@ struct AccountSheet: View {
                 AccessCenterView(embedded: true)
                     .fixedSize(horizontal: false, vertical: true)
 
-                VStack(spacing: 16) {
-                    Button(role: .destructive) {
-                        runAfterDismiss(onRequestDeleteAccount)
-                    } label: {
-                        accountActionRow(
-                            title: String(syncaLocalized: "account.delete_action", bundle: .main),
-                            systemImage: "person.crop.circle.badge.xmark",
-                            tint: .red
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        runAfterDismiss(onRequestLogout)
-                    } label: {
-                        accountActionRow(
-                            title: String(syncaLocalized: "message_list.sign_out", bundle: .main),
-                            systemImage: "rectangle.portrait.and.arrow.right",
-                            tint: .primary
-                        )
-                    }
-                    .buttonStyle(.plain)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 20) { accountActions }
+                    VStack(alignment: .trailing, spacing: 12) { accountActions }
                 }
                 .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .padding(.horizontal, 20)
@@ -145,6 +126,31 @@ struct AccountSheet: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+    }
+
+    @ViewBuilder
+    private var accountActions: some View {
+        Button(role: .destructive) {
+            runAfterDismiss(onRequestDeleteAccount)
+        } label: {
+            accountActionRow(
+                title: String(syncaLocalized: "account.delete_action", bundle: .main),
+                systemImage: "person.crop.circle.badge.xmark",
+                tint: .red
+            )
+        }
+        .buttonStyle(.plain)
+
+        Button {
+            runAfterDismiss(onRequestLogout)
+        } label: {
+            accountActionRow(
+                title: String(syncaLocalized: "message_list.sign_out", bundle: .main),
+                systemImage: "rectangle.portrait.and.arrow.right",
+                tint: .primary
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -158,8 +164,6 @@ struct AccountSheet: View {
             Text(title)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(tint)
-
-            Spacer(minLength: 0)
 
         }
         .frame(minHeight: 44)

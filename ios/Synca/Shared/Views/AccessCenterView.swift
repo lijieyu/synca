@@ -142,8 +142,11 @@ struct AccessCenterView: View {
     private func currentFreeCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
-                Text("access.free_title").font(.title3.weight(.semibold))
+                HStack {
+                    Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    planBadge("access.free_title", pro: false)
+                }
 
                 Text(String(format: String(syncaLocalized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
                     .font(.subheadline.weight(.semibold))
@@ -165,7 +168,7 @@ struct AccessCenterView: View {
                     Text("access.unlock_title", bundle: .main)
                         .font(.headline)
                     if !dynamicTypeSize.isAccessibilitySize { Spacer() }
-                    restoreInlineButton
+                    planBadge("access.status_unlimited_badge", pro: true)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -180,6 +183,7 @@ struct AccessCenterView: View {
                     lifetimePurchaseButton()
                 }
 
+                restoreInlineButton.frame(maxWidth: .infinity, alignment: .trailing)
                 legalLinksSection
             }
         }
@@ -603,11 +607,21 @@ struct AccessCenterView: View {
         .buttonStyle(.plain)
     }
 
+    private func planBadge(_ title: LocalizedStringKey, pro: Bool) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(pro ? Color.accentColor : Color.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background((pro ? Color.accentColor : Color.secondary).opacity(0.12), in: Capsule())
+    }
+
     private var legalLinksSection: some View {
         adaptiveRow {
             legalLinkButton(titleKey: "access.privacy_policy_link_title", url: AppLinks.privacyPolicyURL)
             legalLinkButton(titleKey: "access.terms_link_title", url: AppLinks.termsOfUseURL)
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.top, 2)
     }
 

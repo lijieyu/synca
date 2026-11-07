@@ -36,7 +36,7 @@ export function PlanContent() {
   return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
-          <div className="plan-card-header"><h4>{t('access.current_plan_title')}</h4><span className="plan-badge">{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
+          <div className="plan-card-header"><h4>{t('access.current_plan_title')}</h4><span className={`plan-badge${paid ? " plan-badge-pro" : ""}`}>{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
           {paid ? <>
             <h4>{t(planName)}</h4>
             <dl className="plan-dates">
@@ -50,7 +50,7 @@ export function PlanContent() {
           </>}
         </section>
         {!paid && <section className="storage-plan-paid">
-          <h4>{t('access.unlock_title')}</h4>{benefits}
+          <div className="plan-card-header"><h4>{t('access.unlock_title')}</h4><span className="plan-badge plan-badge-pro">Pro</span></div>{benefits}
           <div className="plan-price-line">
             {previewPricing && <strong className="plan-price">{t('access.preview_lifetime_price')}</strong>}
             <span className="plan-purchase-kind">{t('access.buyout_label')}</span>

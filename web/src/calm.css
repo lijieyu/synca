@@ -95,7 +95,7 @@
 .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) minmax(100px,160px) 38px 34px; }
 .category-manager-heading { padding-left:10px; }
 .account-panel .storage-plans { margin-top:16px; }
-.account-danger-actions { display:flex; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border-color); margin-top:24px; padding-top:20px; }
+.account-danger-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border-color); margin-top:24px; padding-top:20px; }
 .feedback-modal .modal-primary-actions { display:flex; flex-wrap:nowrap; }
 .feedback-modal .modal-primary-actions .modal-btn { min-width:0; }
 @media(max-width:480px) { .category-color-field { grid-column:auto; } .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) 90px 32px 28px; gap:6px; } }
