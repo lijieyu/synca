@@ -329,7 +329,8 @@
   "storage.free_types": "Text and images supported",
   "storage.lifetime_notice": "Lifetime unlocks Pro access. Attachments are still kept for 30 days.",
   "access.status_unlimited_badge": "Pro",
-  "access.preview_lifetime_price": "CNY 18 · One-time purchase",
-  "access.preview_price_notice": "Preview only: proposed mainland China price of CNY 18. Not yet effective; purchasing is unavailable here.",
-  "access.ai_service_notice": "Third-party AI service subscriptions are not included."
+  "access.preview_lifetime_price": "CNY 18",
+  "access.preview_price_notice": "Preview price. Purchasing is not available yet.",
+  "access.ai_service_notice": "Third-party AI service subscriptions are not included.",
+  "access.buyout_label": "Lifetime"
 }

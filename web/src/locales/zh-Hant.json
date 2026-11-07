@@ -329,7 +329,8 @@
   "storage.free_types": "支援文字和圖片",
   "storage.lifetime_notice": "買斷解鎖 Pro 權益，附件仍保留 30 天。",
   "access.status_unlimited_badge": "Pro",
-  "access.preview_lifetime_price": "人民幣 ¥18 · 一次性購買",
-  "access.preview_price_notice": "預發驗收：擬定中國大陸售價為人民幣 ¥18，尚未生效，此處不提供購買。",
-  "access.ai_service_notice": "連接 AI 不包含第三方 AI 服務的訂閱費用。"
+  "access.preview_lifetime_price": "人民幣 ¥18",
+  "access.preview_price_notice": "預發價格，暫不開放購買。",
+  "access.ai_service_notice": "連接 AI 不包含第三方 AI 服務的訂閱費用。",
+  "access.buyout_label": "買斷"
 }

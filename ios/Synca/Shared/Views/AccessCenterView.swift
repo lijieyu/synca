@@ -12,6 +12,7 @@ struct AccessCenterView: View {
     @State private var contentHeight: CGFloat = 0
     @ScaledMetric(relativeTo: .subheadline) private var purchaseTitleSize = 15
     @ScaledMetric(relativeTo: .headline) private var purchasePriceSize = 18
+    @ScaledMetric(relativeTo: .title) private var lifetimePriceSize = 28
     @ScaledMetric(relativeTo: .caption) private var purchaseSubtitleSize = 12
     @ScaledMetric(relativeTo: .headline) private var offerCodeSize = 18
 
@@ -318,29 +319,19 @@ struct AccessCenterView: View {
                 _ = await purchaseManager.purchase(.lifetime)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                adaptiveRow {
-                    Text(currentLifetimeName)
-                        .font(planOptionTitleFont)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if currentProductID == SyncaProductID.lifetime.rawValue {
+                    ProgressView().controlSize(.small)
+                } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
+                    Text(price)
+                        .font(.system(size: lifetimePriceSize, weight: .bold))
                         .fixedSize(horizontal: false, vertical: true)
-                        .minimumScaleFactor(0.92)
-                        .allowsTightening(true)
-                        .layoutPriority(1)
-                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
-                    if currentProductID == SyncaProductID.lifetime.rawValue {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
-                        Text(price)
-                            .font(planOptionPriceFont)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .minimumScaleFactor(0.8)
-                    }
+                } else {
+                    Text("access.purchase_unavailable_short")
+                        .font(.subheadline)
                 }
-                Text("access.option_lifetime_subtitle", bundle: .main)
-                    .font(planOptionSubtitleFont)
-                    .foregroundStyle(.white)
+                Text("access.buyout_label")
+                    .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

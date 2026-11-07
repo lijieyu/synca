@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 it('shows free quota, native purchase options and product download link', () => {
   const html = render();
-  for (const text of ['Synca Pro', '今日 3/20', 'Pro 买断', '同一账号，iPhone、Mac 和 Web 共享 Pro 权益。']) expect(html).toContain(text);
+  for (const text of ['Synca Pro', '今日 3/20', '买断', '同一账号，iPhone、Mac 和 Web 共享 Pro 权益。']) expect(html).toContain(text);
   expect(html).not.toContain('Pro（月付）');
   expect(html).not.toContain('Pro（年付）');
   expect(html).toContain('id6761647007');

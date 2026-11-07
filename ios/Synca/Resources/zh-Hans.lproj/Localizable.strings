@@ -348,8 +348,10 @@
 
 "storage.lifetime_notice" = "买断解锁 Pro 权益，附件仍按 30 天保留。";
 
-"access.preview_lifetime_price" = "¥18 · 一次性购买";
+"access.preview_lifetime_price" = "¥18";
 
-"access.preview_price_notice" = "预发验收：拟定中国大陆售价 ¥18，尚未生效，此处不提供购买。";
+"access.preview_price_notice" = "预发价格，暂不开放购买。";
 
 "access.ai_service_notice" = "连接 AI 不包含第三方 AI 服务的订阅费用。";
+
+"access.buyout_label" = "买断";
