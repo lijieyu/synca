@@ -94,7 +94,7 @@
 .calm-sidebar .category-todo-badge { min-width:24px; height:22px; padding:2px 7px; line-height:18px; background:color-mix(in srgb, var(--category-accent) 24%, var(--panel-bg-color)); color:var(--text-main); font-weight:650; }
 .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) minmax(100px,160px) 38px 34px; }
 .category-manager-heading { padding-left:10px; }
-.account-panel .storage-plans { margin-top:24px; }
+.account-panel .storage-plans { margin-top:16px; }
 .account-danger-actions { display:flex; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border-color); margin-top:24px; padding-top:20px; }
 .feedback-modal .modal-primary-actions { display:flex; flex-wrap:nowrap; }
 .feedback-modal .modal-primary-actions .modal-btn { min-width:0; }

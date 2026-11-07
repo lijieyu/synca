@@ -67,7 +67,7 @@ struct AccountSheet: View {
         ScrollView {
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 16) {
-                    HStack(alignment: .top, spacing: 14) {
+                    HStack(alignment: .center, spacing: 14) {
                         #if os(macOS)
                         Image(systemName: "person.fill")
                             .font(.system(size: 24, weight: .regular))
@@ -94,8 +94,8 @@ struct AccountSheet: View {
 
                             } else {
                                 Text(resolvedAccountEmail)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
                                     .textSelection(.enabled)
                                     .multilineTextAlignment(.leading)
                             }
@@ -105,9 +105,10 @@ struct AccountSheet: View {
                     }
 
                 }
-                .padding(18)
+                .padding(.vertical, 12)
+                .padding(.bottom, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(alignment: .bottom) { Divider() }
 
                 AccessCenterView(embedded: true)
                     .fixedSize(horizontal: false, vertical: true)

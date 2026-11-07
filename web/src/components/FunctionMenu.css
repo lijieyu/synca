@@ -29,7 +29,7 @@
 /* Account: compact identity panel with separate session and dismissal actions. */
 .modal-content.account-modal { width: min(420px, calc(100vw - 32px)); padding: 24px; border-radius: 20px; min-height: 0; max-height: calc(100dvh - 32px); overflow-y: auto; text-align: left; }
 .account-modal .modal-title { margin: 0; font-size: 17px; }
-.account-identity { display: flex; align-items: center; gap: 14px; padding: 12px 0; }
+.account-identity { display: flex; align-items: center; gap: 14px; padding: 12px 0 16px; border-bottom: 1px solid var(--border-color); }
 .account-avatar { display: grid; place-items: center; flex: 0 0 52px; height: 52px; color: var(--text-secondary); }
 .account-details { min-width: 0; }
 .account-email { font-size: 16px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
