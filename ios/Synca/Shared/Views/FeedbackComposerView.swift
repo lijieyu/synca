@@ -24,56 +24,72 @@ struct FeedbackComposerView: View {
     @State private var didAttemptEmailSeed = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    feedbackSectionTitle("feedback.content_title")
-                    feedbackTextEditor
-
-                    feedbackSectionTitle("feedback.images_title")
-                    imageAttachmentSection
-
-                    feedbackSectionTitle("feedback.email_title")
-                    emailField
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
+        Group {
+            #if os(macOS)
+            VStack(spacing: 0) {
+                MacSheetHeader(title: "feedback.title")
+                Divider()
+                feedbackContent
+                Divider()
+                HStack(spacing: 8) {
+                    Spacer()
+                    cancelButton
+                    submitButton
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
             }
-            .navigationTitle(String(localized: "feedback.title", bundle: .main))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+            #else
+            NavigationStack {
+                feedbackContent
+                    .navigationTitle(String(localized: "feedback.title", bundle: .main))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { cancelButton }
+                        ToolbarItem(placement: .confirmationAction) { submitButton }
+                    }
+            }
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("common.cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task { await submitFeedback() }
-                    } label: {
-                        if isSubmitting {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Text("feedback.submit", bundle: .main)
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(!canSubmit)
-                }
-            }
-            .task {
-                await seedEmailIfNeeded()
-            }
         }
+        .task { await seedEmailIfNeeded() }
         .frame(minWidth: 420, idealWidth: 480, minHeight: 520, idealHeight: 620)
+    }
+
+    private var feedbackContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                feedbackSectionTitle("feedback.content_title")
+                feedbackTextEditor
+                feedbackSectionTitle("feedback.images_title")
+                imageAttachmentSection
+                feedbackSectionTitle("feedback.email_title")
+                emailField
+                if let errorMessage {
+                    Text(errorMessage).font(.footnote).foregroundStyle(.red)
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private var cancelButton: some View {
+        Button("common.cancel") { dismiss() }
+            #if os(macOS)
+            .buttonStyle(.bordered)
+            .foregroundStyle(.primary)
+            .keyboardShortcut(.cancelAction)
+            #endif
+    }
+
+    private var submitButton: some View {
+        Button { Task { await submitFeedback() } } label: {
+            if isSubmitting { ProgressView().controlSize(.small) }
+            else { Text("feedback.submit", bundle: .main).fontWeight(.semibold) }
+        }
+        .disabled(!canSubmit)
+        #if os(macOS)
+        .buttonStyle(MacPrimaryActionButtonStyle())
+        #endif
     }
 
     private var feedbackTextEditor: some View {
@@ -326,18 +342,20 @@ struct MacPlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable = true
     var focusesOnAppear = false
+    var horizontalTextInset: CGFloat = 12
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
+        let scrollView = MacPlainTextScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
 
         let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
         textContainer.widthTracksTextView = true
@@ -366,7 +384,7 @@ struct MacPlainTextEditor: NSViewRepresentable {
             NSAttributedString.Key.font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
             NSAttributedString.Key.foregroundColor: NSColor.textColor,
         ]
-        textView.textContainerInset = NSSize(width: 12, height: 16)
+        textView.textContainerInset = NSSize(width: horizontalTextInset, height: 16)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isHorizontallyResizable = false
         textView.isVerticallyResizable = true
@@ -382,7 +400,7 @@ struct MacPlainTextEditor: NSViewRepresentable {
         }
 
         scrollView.documentView = textView
-        context.coordinator.updateLayout(for: textView, in: scrollView)
+        scrollView.updateTextLayout()
         return scrollView
     }
 
@@ -396,7 +414,7 @@ struct MacPlainTextEditor: NSViewRepresentable {
                 NSAttributedString.Key.foregroundColor: NSColor.textColor,
             ]
         }
-        context.coordinator.updateLayout(for: textView, in: scrollView)
+        (scrollView as? MacPlainTextScrollView)?.updateTextLayout()
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -410,20 +428,8 @@ struct MacPlainTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
             if let scrollView = textView.enclosingScrollView {
-                updateLayout(for: textView, in: scrollView)
+                (scrollView as? MacPlainTextScrollView)?.updateTextLayout()
             }
-        }
-
-        @MainActor
-        func updateLayout(for textView: NSTextView, in scrollView: NSScrollView) {
-            let contentWidth = max(0, scrollView.contentSize.width)
-            textView.textContainer?.containerSize = NSSize(width: contentWidth, height: CGFloat.greatestFiniteMagnitude)
-
-            guard let layoutManager = textView.layoutManager, let textContainer = textView.textContainer else { return }
-            layoutManager.ensureLayout(for: textContainer)
-            let usedHeight = max(layoutManager.usedRect(for: textContainer).height, 0)
-            let targetHeight = max(scrollView.contentSize.height, ceil(usedHeight + textView.textContainerInset.height * 2))
-            textView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: targetHeight)
         }
     }
 }

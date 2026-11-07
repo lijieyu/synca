@@ -80,6 +80,8 @@
 		DC34A8637557420804DA6F7A /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */; };
 		E4DB4941B4F445A95C2CA2E6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */; };
 		E99771777BDBD8CA06BE6858 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */; };
+		A70000000000000000000001 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
+		A70000000000000000000002 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -129,6 +131,7 @@
 		91C44B445EF87AE66D7D2FD0 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibrarySaver.swift; sourceTree = "<group>"; };
 		D5BA31D5837D80AC7F1FBA60 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		A70000000000000000000003 /* MacPlainTextScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlainTextScrollView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -194,6 +197,7 @@
 				21F9D56D31EE3F71693E82FB /* ImagePreviewView.swift */,
 				E4DC5D5E94792579FCAC8891 /* LoginView.swift */,
 				34076DDAB8A2E0C4E48AF5BA /* MacInputTextView.swift */,
+				A70000000000000000000003 /* MacPlainTextScrollView.swift */,
 				6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */,
 				FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */,
 				AD1E757E6D45FD90B41342C3 /* MessageListView.swift */,
@@ -386,6 +390,7 @@
 				F6186FF5CBB3460BE1C2460D /* LoginView.swift in Sources */,
 				6AE2C2896ABABD6C23A05D34 /* MacAppDelegate.swift in Sources */,
 				986CFF299F982421B31AF45B /* MacInputTextView.swift in Sources */,
+				A70000000000000000000001 /* MacPlainTextScrollView.swift in Sources */,
 				7DF776164B048BEC8671A8D5 /* MacSelectableText.swift in Sources */,
 				852E10EA78CA4E0D820B8F20 /* MacWindowBehavior.swift in Sources */,
 				BEBB2397B1310C7B7D5E071B /* MessageBubbleView.swift in Sources */,
@@ -427,6 +432,7 @@
 				84F000F149841846A00CB756 /* KeychainHelper.swift in Sources */,
 				85E3CAEAB9F4878F6509F666 /* LoginView.swift in Sources */,
 				32A639FB12443EE04FD53093 /* MacInputTextView.swift in Sources */,
+				A70000000000000000000002 /* MacPlainTextScrollView.swift in Sources */,
 				46C8499654425F9E7267E2E8 /* MacSelectableText.swift in Sources */,
 				9D5981AE189D76966823DB05 /* MessageBubbleView.swift in Sources */,
 				781D48CC7F1CDA86997E446D /* MessageListView.swift in Sources */,

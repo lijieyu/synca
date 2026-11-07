@@ -2180,16 +2180,7 @@ private struct NewMessageCategorySheet: View {
         }
         #else
         VStack(spacing: 0) {
-            HStack {
-                Text("message_category.new_section", bundle: .main)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-            }
-            .padding(.horizontal, 22)
-            .padding(.top, 20)
-            .padding(.bottom, 14)
+            MacSheetHeader(title: "message_category.new_section")
 
             Divider()
 
@@ -2236,7 +2227,7 @@ private struct NewMessageCategorySheet: View {
                     }
                 }
             }
-            .padding(22)
+            .padding(20)
 
             Divider()
 
@@ -2252,14 +2243,18 @@ private struct NewMessageCategorySheet: View {
 
                 Spacer()
 
-                Button("common.cancel") { dismiss() }
+                Button("common.cancel", role: .cancel) { dismiss() }
+                    .buttonStyle(.bordered)
+                    .foregroundStyle(.primary)
+                    .keyboardShortcut(.cancelAction)
 
                 Button("message_category.add_action") {
                     createCategory()
                 }
                 .disabled(!canCreate)
+                .buttonStyle(MacPrimaryActionButtonStyle())
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
         .alert("message_category.duplicate_title", isPresented: $showDuplicateNameAlert) {
@@ -2490,62 +2485,61 @@ private struct MessageCategoryManagerSheet: View {
     }
     #else
     private var macOSBody: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(draftRows.indices, id: \.self) { index in
-                            CategoryDraftListRow(
-                                row: $draftRows[index],
-                                canMoveUp: index > 0,
-                                canMoveDown: index < draftRows.count - 1,
-                                onMoveUp: { moveDraftRow(from: index, to: index - 1) },
-                                onMoveDown: { moveDraftRow(from: index, to: index + 1) },
-                                onDelete: { pendingDeleteRow = draftRows[index] },
-                                focusedRowId: $focusedRowId
-                            )
-                        }
-
-                        Button {
-                            addDraftRow()
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "plus")
-                                Text("message_category.add_action", bundle: .main)
-                            }
-                            .font(.callout.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .foregroundStyle(.primary)
-                            .background(Color.syncaCardBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color.syncaCardBorder, style: StrokeStyle(lineWidth: 1, dash: [6, 5]))
-                            )
-                        }
-                        .buttonStyle(.plain)
+        VStack(spacing: 0) {
+            MacSheetHeader(title: "message_category.section_title")
+            Divider()
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(draftRows.indices, id: \.self) { index in
+                        CategoryDraftListRow(
+                            row: $draftRows[index],
+                            canMoveUp: index > 0,
+                            canMoveDown: index < draftRows.count - 1,
+                            onMoveUp: { moveDraftRow(from: index, to: index - 1) },
+                            onMoveDown: { moveDraftRow(from: index, to: index + 1) },
+                            onDelete: { pendingDeleteRow = draftRows[index] },
+                            focusedRowId: $focusedRowId
+                        )
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                }
-                .background(Color.syncaPageBackground.opacity(0.55))
 
-                Divider()
-
-                HStack(spacing: 8) {
-                    Spacer()
-                    Button("common.cancel", role: .cancel) { dismiss() }
-                        .buttonStyle(.bordered)
+                    Button {
+                        addDraftRow()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                            Text("message_category.add_action", bundle: .main)
+                        }
+                        .font(.callout.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                         .foregroundStyle(.primary)
-                        .keyboardShortcut(.cancelAction)
-                    Button("common.save") { saveDraftRows() }
-                        .buttonStyle(MacPrimaryActionButtonStyle())
-                        .tint(.syncaPurple)
+                        .background(Color.syncaCardBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.syncaCardBorder, style: StrokeStyle(lineWidth: 1, dash: [6, 5]))
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 14)
+                .padding(.vertical, 12)
             }
-            .navigationTitle("message_category.section_title")
+            .background(Color.syncaPageBackground.opacity(0.55))
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Spacer()
+                Button("common.cancel", role: .cancel) { dismiss() }
+                    .buttonStyle(.bordered)
+                    .foregroundStyle(.primary)
+                    .keyboardShortcut(.cancelAction)
+                Button("common.save") { saveDraftRows() }
+                    .buttonStyle(MacPrimaryActionButtonStyle())
+                    .tint(.syncaPurple)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
         }
     }
     #endif
@@ -2659,9 +2653,14 @@ private struct CategoryDraftListRow: View {
         }
         #else
         .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
-            colorPickerContent
-                .padding(8)
-                .frame(width: 180)
+            VStack(spacing: 0) {
+                MacSheetHeader(title: "message_category.color_label")
+                Divider()
+                colorPickerContent
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+            }
+            .frame(width: 220)
         }
         #endif
     }
@@ -2837,94 +2836,115 @@ private struct AboutSyncaSheet: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            MacSheetHeader(title: "message_list.about")
+            Divider()
+            sheetContent
+            Divider()
+            HStack {
+                Spacer()
+                closeButton
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
+        .frame(minWidth: 460, idealWidth: 460, minHeight: 400, idealHeight: 420)
+
+        #else
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    VStack(spacing: 14) {
-                        Image("LoginLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 76, height: 76)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
+            sheetContent
+                .navigationTitle(Text("message_list.about"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { closeButton }
+                }
+        }
+        #endif
+    }
 
-                        VStack(spacing: 6) {
-                            Text("Synca")
-                                .font(.title2.weight(.semibold))
+    private var closeButton: some View {
+        Button("message_list.got_it") { dismiss() }
+            #if os(macOS)
+            .buttonStyle(.bordered)
+            .foregroundStyle(.primary)
+            .keyboardShortcut(.cancelAction)
+            #endif
+    }
 
-                            Text(String(localized: "app.slogan", bundle: .main))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
+    private var sheetContent: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 14) {
+                    Image("LoginLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 76, height: 76)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
 
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(versionText)
+                    VStack(spacing: 6) {
+                        Text("Synca")
+                            .font(.title2.weight(.semibold))
+
+                        Text(String(localized: "app.slogan", bundle: .main))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-
-                        Divider()
-
-                        Link(destination: websiteURL) {
-                            HStack(alignment: .center, spacing: 12) {
-                                Text(String(format: String(localized: "message_list.about_website_format", bundle: .main), websiteURL.absoluteString))
-                                    .font(.body)
-                                    .foregroundStyle(systemLinkColor)
-                                    .multilineTextAlignment(.leading)
-
-                                Spacer(minLength: 0)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint(Text("message_list.about_website_hint"))
+                            .multilineTextAlignment(.center)
                     }
-                    .padding(18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
 
-                    Text(verbatim: "浙ICP备2026013056号-3A")
-                        .font(.footnote)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(versionText)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .scrollIndicators(.hidden)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 24)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.accentColor.opacity(0.10),
-                        sheetBackgroundColor
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .navigationTitle(Text("message_list.about"))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("message_list.got_it") {
-                        dismiss()
+
+                    Divider()
+
+                    Link(destination: websiteURL) {
+                        HStack(alignment: .center, spacing: 12) {
+                            Text(String(format: String(localized: "message_list.about_website_format", bundle: .main), websiteURL.absoluteString))
+                                .font(.body)
+                                .foregroundStyle(systemLinkColor)
+                                .multilineTextAlignment(.leading)
+
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("message_list.about_website_hint"))
                 }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                Text(verbatim: "浙ICP备2026013056号-3A")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity)
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 460, idealWidth: 460, minHeight: 400, idealHeight: 420)
-        #endif
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.accentColor.opacity(0.10),
+                    sheetBackgroundColor
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 }
 
@@ -2958,94 +2978,115 @@ private struct AccountSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 30))
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 36, height: 36)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("account.provider.apple", bundle: .main)
-                                    .font(.subheadline.weight(.semibold))
-
-                                if isPrivateRelayEmail {
-                                    Label {
-                                        Text("account.email_hidden_title", bundle: .main)
-                                    } icon: {
-                                        Image(systemName: "eye.slash.fill")
-                                    }
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-
-                                    Text("account.email_hidden_message", bundle: .main)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.leading)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                } else {
-                                    Text(resolvedAccountEmail)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .textSelection(.enabled)
-                                        .multilineTextAlignment(.leading)
-                                }
-                            }
-
-                            Spacer(minLength: 0)
-                        }
-
-                        Divider()
-
-                        Button {
-                            runAfterDismiss(onRequestSignOut)
-                        } label: {
-                            accountActionRow(
-                                title: String(localized: "message_list.sign_out", bundle: .main),
-                                systemImage: "rectangle.portrait.and.arrow.right",
-                                tint: .primary
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button(role: .destructive) {
-                            runAfterDismiss(onRequestDeleteAccount)
-                        } label: {
-                            accountActionRow(
-                                title: String(localized: "account.delete_action", bundle: .main),
-                                systemImage: "person.crop.circle.badge.xmark",
-                                tint: .red
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            .navigationTitle(Text("account.section_title"))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("message_list.got_it") {
-                        dismiss()
-                    }
-                }
-            }
-        }
         #if os(macOS)
+        VStack(spacing: 0) {
+            MacSheetHeader(title: "account.section_title")
+            Divider()
+            sheetContent
+            Divider()
+            HStack {
+                Spacer()
+                closeButton
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
         .frame(minWidth: 460, idealWidth: 460, minHeight: 280, idealHeight: 320)
+
+        #else
+        NavigationStack {
+            sheetContent
+                .navigationTitle(Text("account.section_title"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { closeButton }
+                }
+        }
         #endif
+    }
+
+    private var closeButton: some View {
+        Button("message_list.got_it") { dismiss() }
+            #if os(macOS)
+            .buttonStyle(.bordered)
+            .foregroundStyle(.primary)
+            .keyboardShortcut(.cancelAction)
+            #endif
+    }
+
+    private var sheetContent: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 36, height: 36)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("account.provider.apple", bundle: .main)
+                                .font(.subheadline.weight(.semibold))
+
+                            if isPrivateRelayEmail {
+                                Label {
+                                    Text("account.email_hidden_title", bundle: .main)
+                                } icon: {
+                                    Image(systemName: "eye.slash.fill")
+                                }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                                Text("account.email_hidden_message", bundle: .main)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            } else {
+                                Text(resolvedAccountEmail)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+
+                    Divider()
+
+                    Button {
+                        runAfterDismiss(onRequestSignOut)
+                    } label: {
+                        accountActionRow(
+                            title: String(localized: "message_list.sign_out", bundle: .main),
+                            systemImage: "rectangle.portrait.and.arrow.right",
+                            tint: .primary
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(role: .destructive) {
+                        runAfterDismiss(onRequestDeleteAccount)
+                    } label: {
+                        accountActionRow(
+                            title: String(localized: "account.delete_action", bundle: .main),
+                            systemImage: "person.crop.circle.badge.xmark",
+                            tint: .red
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .scrollIndicators(.hidden)
     }
 
     @ViewBuilder
