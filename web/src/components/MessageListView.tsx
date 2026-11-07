@@ -347,7 +347,7 @@ export const MessageListView: React.FC = () => {
       {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
       <aside className="calm-sidebar">
-        <div className="sidebar-brand"><img src="/logo.png" alt="" /><span>Synca</span></div>
+        <div className="sidebar-brand"><img src="/logo.png?v=a1" alt="" /><span>Synca</span></div>
 
         <div className="category-toolbar">
           <div className="category-switcher">

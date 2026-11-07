@@ -82,7 +82,7 @@ export function AIPage() {
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
   return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible}><div className="ai-content">
-    <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png" alt="" />Synca</Link></nav>
+    <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a1" alt="" />Synca</Link></nav>
     {!authorize && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('ai_page.text_021')}</h1>
       <p>{t('ai_page.text_022')}</p>
