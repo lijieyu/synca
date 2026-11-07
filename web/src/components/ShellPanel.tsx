@@ -5,8 +5,8 @@ import { Modal } from './Modal';
 import { api } from '../api/client';
 import { version } from '../../package.json';
 
-export function ShellPanel({ kind, email, onClose, onLogout }: {
-  kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void;
+export function ShellPanel({ kind, email, onClose, onLogout, onPlan }: {
+  kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void; onPlan: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState('');
@@ -29,6 +29,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
           <p className="account-provider">{t('navigation.provider')}</p>
         </div>
       </div>
+      <button className="account-plan-link" onClick={onPlan}>{t('preferences.account_plan')} →</button>
     </div>}
     {kind === 'about' && <div className="about-panel">
       <div className="about-identity"><img src="/logo.png" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>

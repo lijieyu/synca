@@ -1,3 +1,4 @@
+import { SettingsPanel } from './SettingsPanel';
 import { FunctionMenu } from './FunctionMenu';
 import { ShellPanel } from './ShellPanel';
 import { PlanDialog } from './PlanDialog';
@@ -7,7 +8,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Grid2x2, Infinity as InfinityIcon, Lightbulb, Plus, RefreshCcw, Rows3, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lightbulb, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -45,18 +46,12 @@ const sortMessages = (items: SyncaMessage[]) =>
 
 const categoryScopeStorageKey = (email: string | null) => `synca.selectedCategory.${email ?? 'guest'}`;
 const defaultSendCategoryStorageKey = (email: string | null) => `synca.defaultSendCategory.${email ?? 'guest'}`;
-const layoutGlobalStorageKey = 'synca.messageLayout';
-const layoutStorageKey = (email: string | null) => `synca.messageLayout.${email ?? 'guest'}`;
-const readStoredLayoutMode = (email: string | null): 'single' | 'tiled' => {
-  const storedLayout = localStorage.getItem(layoutStorageKey(email)) ?? localStorage.getItem(layoutGlobalStorageKey);
-  return storedLayout === 'tiled' ? 'tiled' : 'single';
-};
-
 const formatTodoBadgeCount = (count: number) => (count > 99 ? '99+' : String(count));
 
 const CategoryTodoBadge: React.FC<{ count: number }> = ({ count }) => {
+  const { t } = useTranslation();
   if (count <= 0) return null;
-  return <span className="category-todo-badge" aria-label={`${count} todos`}>{formatTodoBadgeCount(count)}</span>;
+  return <span className="category-todo-badge" aria-label={t('preferences.pending_count', { count })}>{formatTodoBadgeCount(count)}</span>;
 };
 
 const EmptyMessageState: React.FC = () => {
@@ -71,89 +66,6 @@ const EmptyMessageState: React.FC = () => {
   );
 };
 
-interface CategoryColumnProps {
-  category: MessageCategory;
-  messages: SyncaMessage[];
-  categories: MessageCategory[];
-  isLoading: boolean;
-  onRefresh: () => Promise<void>;
-  onClearCompleted: () => Promise<void>;
-  onSent: () => Promise<void>;
-  onEdit: (message: SyncaMessage) => void;
-}
-
-const CategoryColumn: React.FC<CategoryColumnProps> = ({
-  category,
-  messages,
-  categories,
-  isLoading,
-  onRefresh,
-  onClearCompleted,
-  onSent,
-  onEdit,
-}) => {
-  const listRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
-
-  useEffect(() => {
-    if (!listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages.length]);
-
-  const completed = messages.filter((message) => message.isCleared);
-  const pending = messages.filter((message) => !message.isCleared);
-
-  return (
-    <section className="category-column">
-      <div className="category-column-header">
-        <div className="category-column-title-row">
-          <span className={`category-chip has-badge color-${category.color}`}>
-            {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
-            <CategoryTodoBadge count={pending.length} />
-          </span>
-          <div className="category-column-actions">
-            <button className="header-btn" onClick={() => void onRefresh()} title={t('navigation.sync')} aria-label={t('navigation.sync')}>
-              <RefreshCcw size={16} />
-            </button>
-            <button
-              className="header-btn"
-              onClick={() => void onClearCompleted()}
-              disabled={completed.length === 0}
-              title={t('message_list.clear_all_confirm_title', 'Clear')}
-              style={{ opacity: completed.length === 0 ? 0.35 : 1 }}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="category-column-list" ref={listRef}>
-        {isLoading && messages.length === 0 && <p className="category-column-empty-hint">{t('message_list.loading', 'Loading...')}</p>}
-        {!isLoading && messages.length === 0 && <EmptyMessageState />}
-
-        {completed.map((message) => (
-          <MessageBubble key={message.id} message={message} categories={categories} onEdit={onEdit} onUpdate={() => void onRefresh()} />
-        ))}
-
-        {pending.length > 0 && (
-          <div className="column-section-label">
-            <span>{t('message_list.todo_section', 'Inbox')}</span>
-          </div>
-        )}
-
-        {pending.map((message) => (
-          <MessageBubble key={message.id} message={message} categories={categories} onEdit={onEdit} onUpdate={() => void onRefresh()} />
-        ))}
-      </div>
-
-      <div className="category-column-input">
-        <InputBar categoryId={category.id} onSent={() => void onSent()} />
-      </div>
-    </section>
-  );
-};
-
 export const MessageListView: React.FC = () => {
   const [editingMessage, setEditingMessage] = useState<SyncaMessage | null>(null);
   const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
@@ -162,7 +74,7 @@ export const MessageListView: React.FC = () => {
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(ALL_CATEGORY_ID);
-  const [layoutMode, setLayoutMode] = useState<'single' | 'tiled'>(() => readStoredLayoutMode(null));
+  const [showSettings, setShowSettings] = useState(false);
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -205,7 +117,6 @@ export const MessageListView: React.FC = () => {
       const storedDefaultSend = localStorage.getItem(defaultSendCategoryStorageKey(email));
 
       if (!didRestorePreferencesRef.current) {
-        setLayoutMode(readStoredLayoutMode(email));
         setSelectedCategoryId(
           storedSelected === ALL_CATEGORY_ID || categoriesRes.categories.some((category) => category.id === storedSelected)
             ? storedSelected
@@ -258,11 +169,6 @@ export const MessageListView: React.FC = () => {
   }, [email, selectedCategoryId]);
 
   useEffect(() => {
-    localStorage.setItem(layoutStorageKey(email), layoutMode);
-    localStorage.setItem(layoutGlobalStorageKey, layoutMode);
-  }, [email, layoutMode]);
-
-  useEffect(() => {
     if (defaultSendCategoryId) {
       localStorage.setItem(defaultSendCategoryStorageKey(email), defaultSendCategoryId);
     }
@@ -292,12 +198,6 @@ export const MessageListView: React.FC = () => {
   }, [messages]);
   const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
   const visibleSingleModeCategories = useMemo(() => categories, [categories]);
-  const tiledCategories = useMemo(() => categories, [categories]);
-  const tiledColumnWidth = useMemo(() => {
-    const count = Math.max(tiledCategories.length, 1);
-    return `max(420px, calc((100vw - 32px - ${(count - 1) * 16}px) / ${count}))`;
-  }, [tiledCategories.length]);
-
   const handleRefresh = async () => {
     if (!await fetchData(false)) return;
     setToastMsg(t('message_list.sync_success', 'Synced'));
@@ -437,59 +337,14 @@ export const MessageListView: React.FC = () => {
   const completed = filteredMessages.filter((message) => message.isCleared);
   const pending = filteredMessages.filter((message) => !message.isCleared);
 
-  const getPlanInfo = () => {
-    if (!plan || !accessStatus) return null;
-
-    let label = plan;
-    let isUnlimited = false;
-
-    if (plan === 'unlimited') {
-      label = t('access.status_unlimited_compact');
-      isUnlimited = true;
-    } else if (plan === 'free') {
-      label = t('access.status_free_compact', { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 });
-    }
-
-    return (
-      <button type="button" onClick={() => setShowPlan(true)} aria-label={`${label} · ${t('storage.title')}`} className={`header-plan ${isUnlimited ? 'is-unlimited' : ''}`}>
-        <span className="header-plan-label">{label}{isUnlimited && <InfinityIcon size={16} strokeWidth={2.5} aria-hidden="true" />}</span>
-      </button>
-    );
-  };
-
   return (
-    <div className={`app-container ${layoutMode === 'tiled' ? 'tiled-layout' : ''}`}>
-      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
+    <div className="app-container calm-shell">
+      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onPlan={() => { setPanel(null); setShowPlan(true); }} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showPlan && <PlanDialog onClose={() => setShowPlan(false)} />}
-      <div className="header">
-        <div className="header-brand">
-          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
-          <h1 className="header-title">{t('app.name', 'Synca')}</h1>
-          {getPlanInfo()}
-        </div>
-        <div className="header-actions">
-          <button className="header-btn" onClick={() => setLayoutMode(layoutMode === 'single' ? 'tiled' : 'single')} aria-label={t('navigation.layout')} title={t('navigation.layout')}>
-            {layoutMode === 'single' ? <Grid2x2 size={18} /> : <Rows3 size={18} />}
-          </button>
-          <button className="header-btn" onClick={() => void handleRefresh()} title={t('navigation.sync')} aria-label={t('navigation.sync')}>
-            <RefreshCcw size={18} />
-          </button>
-          <button
-            className="header-btn"
-            onClick={() => setShowClearModal(true)}
-            disabled={layoutMode === 'single' ? completed.length === 0 : messages.filter((message) => message.isCleared).length === 0}
-            title={t('message_list.clear_all_confirm_title', 'Clear')}
-            style={{ opacity: layoutMode === 'single' ? (completed.length === 0 ? 0.3 : 1) : (messages.filter((message) => message.isCleared).length === 0 ? 0.3 : 1) }}
-          >
-            <Trash2 size={18} />
-          </button>
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+      <aside className="calm-sidebar">
+        <div className="sidebar-brand"><img src="/logo.png" alt="" /><span>Synca</span></div>
 
-          <FunctionMenu onAccount={() => setPanel('account')} onCategories={openCategoryManager} onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} />
-
-        </div>
-      </div>
-
-      {layoutMode === 'single' && (
         <div className="category-toolbar">
           <div className="category-switcher">
             <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
@@ -507,31 +362,25 @@ export const MessageListView: React.FC = () => {
               </button>
             ))}
             <button className="category-add-btn" onClick={() => setShowCreateCategoryModal(true)} title={t('message_category.new_section', 'New Category')}>
-              <Plus size={15} />
+              <Plus size={15} /><span>{t('message_category.add_action')}</span>
             </button>
           </div>
 
         </div>
-      )}
-
-      {layoutMode === 'tiled' ? (
-        <div className="category-board" style={{ ['--category-column-width' as string]: tiledColumnWidth }}>
-          {tiledCategories.map((category) => (
-            <CategoryColumn
-              key={category.id}
-              category={category}
-              messages={messages.filter((message) => message.categoryId === category.id)}
-              categories={categories}
-              isLoading={isLoading}
-              onEdit={message => setEditingMessage({ ...message })}
-              onRefresh={handleRefresh}
-              onClearCompleted={() => handleScopedClear(category.id)}
-              onSent={async () => { await fetchData(false); }}
-            />
-          ))}
-        </div>
-      ) : (
-        <>
+      <FunctionMenu email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.status_unlimited' : 'access.free_title')}
+        usage={plan === 'free' && accessStatus ? { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 } : null}
+        onAccount={() => setPanel('account')} onSettings={() => setShowSettings(true)} onCategories={openCategoryManager}
+        onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} onLogout={() => setShowLogoutModal(true)} />
+      </aside>
+      <main className="calm-main">
+        <header className="header">
+          <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
+          <p>{t('preferences.pending_count', { count: pending.length })}</p></div>
+          <div className="header-actions">
+            <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RefreshCcw size={18} /></button>
+            <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_all_confirm_title')} title={t('message_list.clear_all_confirm_title')}><Trash2 size={18} /></button>
+          </div>
+        </header>
           <div className="message-list" ref={listRef}>
             {isLoading && messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}>{t('message_list.loading', 'Loading...')}</p>}
 
@@ -561,8 +410,7 @@ export const MessageListView: React.FC = () => {
           </div>
 
           <InputBar categoryId={activeSendCategoryId} onSent={() => void fetchData(true)} />
-        </>
-      )}
+      </main>
 
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
         onCancel={() => setEditingMessage(null)} onSaved={updated => {
@@ -590,14 +438,14 @@ export const MessageListView: React.FC = () => {
       {showClearModal && (
         <Modal
           title={t('message_list.clear_all_confirm_title', 'Confirm Delete')}
-          message={layoutMode === 'single'
+          message={!selectedScopeIsAll
             ? t('message_list.clear_current_category_confirm', 'This will delete completed items in the current category')
             : t('message_list.clear_all_categories_confirm', 'This will delete completed items in all categories')}
           confirmText={t('common.delete', 'Delete')}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={async () => {
             setShowClearModal(false);
-            await handleScopedClear(layoutMode === 'single' && !selectedScopeIsAll ? selectedCategoryId : null);
+            await handleScopedClear(!selectedScopeIsAll ? selectedCategoryId : null);
           }}
           onCancel={() => setShowClearModal(false)}
           destructive
@@ -635,8 +483,8 @@ export const MessageListView: React.FC = () => {
                   type="button"
                   className={`category-swatch color-${color} ${newCategoryColor === color ? 'active' : ''}`}
                   onClick={() => setNewCategoryColor(color)}
-                  aria-checked={newCategoryColor === color}
-                  title={COLOR_LABELS[color]}
+                  role="radio" aria-checked={newCategoryColor === color}
+                  title={t(`preferences.colors.${color}`, COLOR_LABELS[color])}
                 />
               ))}
             </div>
@@ -693,7 +541,7 @@ export const MessageListView: React.FC = () => {
                       aria-label={t('message_category.color_label', 'Color')}
                     >
                       {CATEGORY_COLORS.map((color) => (
-                        <option key={color} value={color}>{COLOR_LABELS[color]}</option>
+                        <option key={color} value={color}>{t(`preferences.colors.${color}`, COLOR_LABELS[color])}</option>
                       ))}
                     </select>
                   </label>

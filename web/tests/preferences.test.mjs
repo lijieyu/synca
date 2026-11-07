@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const source = readFileSync(new URL('../src/preferences.ts', import.meta.url), 'utf8');
+const compiled = ts.transpile(source, {module: ts.ModuleKind.ESNext});
+const { resolveLanguage } = await import(`data:text/javascript,${encodeURIComponent(compiled)}`);
+assert.equal(resolveLanguage('system', ['zh-TW']), 'zh-Hant');
+assert.equal(resolveLanguage('system', ['zh-HK']), 'zh-Hant');
+assert.equal(resolveLanguage('system', ['zh-CN']), 'zh-Hans');
+assert.equal(resolveLanguage('system', ['fr-FR']), 'en');
+assert.equal(resolveLanguage('en', ['zh-TW']), 'en');
+console.log('Language preference routing passed');
