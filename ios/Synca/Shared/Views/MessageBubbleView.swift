@@ -122,9 +122,24 @@ struct MessageBubbleView: View {
                         downloadFileButton
                     }
                     if message.type == .text {
+                        #if os(macOS)
+                        if message.canEditText, let onEdit {
+                            Button(action: onEdit) { Image("EditOutline").resizable().frame(width: 16, height: 16) }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(Text("message_edit.title"))
+                                .help(Text("message_edit.title"))
+                        }
+                        #endif
                         copyTextButton
                     }
-                    
+                    #if os(macOS)
+                    Button { showDeleteConfirm = true } label: {
+                        Image(systemName: "trash").font(.system(size: 16))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("common.delete"))
+                    .help(Text("common.delete"))
+                    #endif
                     clearButton
                 }
             }
@@ -177,6 +192,8 @@ struct MessageBubbleView: View {
                 categoryBadge(name: name, hasMenu: true)
             }
             .menuStyle(.borderlessButton)
+            .tint(message.isCleared ? Color.secondary : Color.primary)
+            .foregroundStyle(message.isCleared ? Color.secondary : Color.primary)
             .fixedSize()
         } else {
             categoryBadge(name: name, hasMenu: false)
@@ -384,15 +401,29 @@ struct MessageBubbleView: View {
 
     // MARK: - Buttons
     
+    @ViewBuilder
+    private var copyActionIcon: some View {
+        #if os(macOS)
+        if copied {
+            Image(systemName: "checkmark").font(.system(size: 14, weight: .medium))
+        } else {
+            Image("CopyOutline").resizable().frame(width: 16, height: 16)
+        }
+        #else
+        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+            .font(.system(size: 14, weight: .medium))
+        #endif
+    }
+
     private var copyTextButton: some View {
         Button {
             copyText(messageText)
             withAnimation { copied = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
-            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 14, weight: .medium))
+            copyActionIcon
                 .foregroundStyle(copied ? .green : .secondary)
+                .accessibilityLabel(Text(copied ? "message_bubble.copied" : "common.copy"))
         }
         .buttonStyle(.plain)
     }
@@ -403,9 +434,9 @@ struct MessageBubbleView: View {
                 self.copyImage(from: url)
             }
         } label: {
-            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 14, weight: .medium))
+            copyActionIcon
                 .foregroundStyle(copied ? .green : .secondary)
+                .accessibilityLabel(Text(copied ? "message_bubble.copied" : "common.copy"))
         }
         .buttonStyle(.plain)
     }

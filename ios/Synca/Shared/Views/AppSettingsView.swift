@@ -20,15 +20,9 @@ struct AppSettingsView: View {
             MacSheetHeader(title: "settings.title")
             Divider()
             settingsForm
-            Divider()
-            HStack {
-                Spacer()
-                Button("common.done") { dismiss() }
-                    .buttonStyle(MacPrimaryActionButtonStyle())
-                    .keyboardShortcut(.defaultAction)
-            }.padding(20)
+
         }
-        .frame(width: 470, height: 430)
+        .frame(width: 470, height: 350)
         #else
         NavigationStack {
             settingsForm
@@ -72,9 +66,6 @@ struct AppSettingsView: View {
                 Toggle("settings.ask_download_location", isOn: $settings.asksForDownloadLocation)
             } header: { Text("settings.files") }
             #endif
-            Section {
-                Text("settings.device_local_note").font(.footnote).foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
     }

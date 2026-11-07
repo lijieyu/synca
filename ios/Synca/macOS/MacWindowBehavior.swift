@@ -18,14 +18,22 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.setFrameAutosaveName(autosaveName)
         window.isReleasedWhenClosed = false
-        window.titlebarAppearsTransparent = false
-        installToolbarIfNeeded(on: window)
-        window.toolbarStyle = .unified
+        window.titlebarAppearsTransparent = isAuthenticated
+        if isAuthenticated {
+            window.styleMask.insert(.fullSizeContentView)
+            window.toolbar = nil
+        } else {
+            window.styleMask.remove(.fullSizeContentView)
+            installToolbarIfNeeded(on: window)
+            window.toolbarStyle = .unified
+        }
 
         if isAuthenticated {
             window.titleVisibility = .hidden
             window.title = ""
             removeTitlebarAccessories(from: window)
+            window.titlebarAppearsTransparent = true
+            window.titlebarSeparatorStyle = .none
         } else {
             window.titleVisibility = .visible
             window.title = "Synca"
@@ -160,7 +168,7 @@ private struct MacTitlebarIdentityView: View {
 
             if let status = accessManager.status {
                 Button {
-                    accessManager.showAccessCenter = true
+                    NotificationCenter.default.post(name: .syncaRequestAccount, object: nil)
                 } label: {
                     HeaderAccessBadge(status: status)
                 }
@@ -281,6 +289,19 @@ struct MacWindowAccessor: NSViewRepresentable {
             if let window = nsView.window {
                 MacWindowBehaviorController.shared.configure(window: window, isAuthenticated: isAuthenticated)
             }
+        }
+    }
+}
+
+/// Only the blank header background initiates a window drag; SwiftUI buttons stay interactive.
+struct MacWindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragAreaView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragAreaView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
         }
     }
 }

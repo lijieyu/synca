@@ -2,6 +2,7 @@ import SwiftUI
 import StoreKit
 
 struct AccessCenterView: View {
+    var embedded = false
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
@@ -23,19 +24,7 @@ struct AccessCenterView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            contentContainer
-            #if os(iOS)
-            .navigationTitle(String(syncaLocalized: "access.center_title", bundle: .main))
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("common.ok") {
-                        dismiss()
-                    }
-                }
-            }
+        presentationContent
             .task {
                 await accessManager.refresh()
                 guard !Task.isCancelled else { return }
@@ -46,13 +35,6 @@ struct AccessCenterView: View {
                 purchaseManager.clearToast()
                 accessManager.clearUpgradeHighlight()
             }
-        }
-        #if os(macOS)
-        .frame(width: Layout.macWidth, height: preferredMacHeight)
-        #else
-        .presentationDetents(sheetDetents)
-        .modifier(AccessSheetBackground())
-        #endif
         .onPreferenceChange(AccessContentHeightKey.self) { height in
             if abs(contentHeight - height) > 1 { contentHeight = height }
         }
@@ -71,6 +53,35 @@ struct AccessCenterView: View {
     }
 
     @ViewBuilder
+    private var presentationContent: some View {
+        if embedded {
+            contentContainer
+        } else {
+            #if os(macOS)
+            VStack(spacing: 0) {
+                MacSheetHeader(title: "access.center_title")
+                Divider()
+                contentContainer
+            }
+            .frame(width: Layout.macWidth, height: preferredMacHeight + Layout.navigationHeight)
+            #else
+            NavigationStack {
+                contentContainer
+                    .navigationTitle(String(syncaLocalized: "access.center_title", bundle: .main))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("common.close") { dismiss() }
+                        }
+                    }
+            }
+            .presentationDetents(sheetDetents)
+            .modifier(AccessSheetBackground())
+            #endif
+        }
+    }
+
+    @ViewBuilder
     private func content(for status: AccessStatus) -> some View {
         if status.unlimitedSource == "lifetime" {
             lifetimeCurrentCard(status)
@@ -85,19 +96,10 @@ struct AccessCenterView: View {
     @ViewBuilder
     private var contentContainer: some View {
         if let status = accessManager.status {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Layout.sectionSpacing) {
-                    #if os(macOS)
-                    Text("access.center_title").font(.title3.weight(.semibold))
-                    #endif
-                    content(for: status)
-                }
-                .padding(Layout.pagePadding)
-                .background {
-                    GeometryReader { geometry in
-                        Color.clear.preference(key: AccessContentHeightKey.self, value: geometry.size.height)
-                    }
-                }
+            if embedded {
+                planContent(status)
+            } else {
+                ScrollView { planContent(status).padding(Layout.pagePadding) }
             }
 
         } else if accessManager.isLoading {
@@ -122,6 +124,17 @@ struct AccessCenterView: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, minHeight: 260)
             .padding(20)
+        }
+    }
+
+    private func planContent(_ status: AccessStatus) -> some View {
+        VStack(alignment: .leading, spacing: Layout.sectionSpacing) {
+            content(for: status)
+        }
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(key: AccessContentHeightKey.self, value: geometry.size.height)
+            }
         }
     }
 

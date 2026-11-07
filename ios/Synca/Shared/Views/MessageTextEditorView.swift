@@ -29,7 +29,8 @@ struct MessageTextEditorView: View {
     var body: some View {
         #if os(macOS)
         VStack(spacing: 0) {
-            MacSheetHeader(title: "message_edit.title")
+            MacSheetHeader(title: "message_edit.title", onClose: cancel)
+                .disabled(isSaving)
             Divider()
             editorContent.padding(20)
             Divider()
@@ -165,15 +166,34 @@ private struct TextEditDiscardConfirmation: ViewModifier {
 #if os(macOS)
 /// Explicit content-aligned sheet titles avoid the navigation toolbar's leading reserved space.
 struct MacSheetHeader: View {
+    @Environment(\.dismiss) private var dismiss
     let title: LocalizedStringKey
+    var onClose: (() -> Void)? = nil
+
     var body: some View {
-        Text(title)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
-            .accessibilityAddTraits(.isHeader)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 0)
+            Button {
+                if let onClose { onClose() } else { dismiss() }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("common.close"))
+            .help(Text("common.close"))
+            .keyboardShortcut(.cancelAction)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
     }
 }
 

@@ -325,3 +325,21 @@
 "access.duration.year" = "%d year";
 "access.duration.years" = "%d years";
 "message_list.send_to" = "Send to";
+
+"ai_browser.back" = "Back";
+
+"ai_browser.load_failed" = "Unable to load this page. Check your connection and try again.";
+
+"common.close" = "Close";
+
+"message_category.edit_title" = "Edit Category";
+
+"feedback.discard_title" = "Discard feedback?";
+
+"feedback.discard" = "Discard";
+
+"feedback.keep_editing" = "Keep Editing";
+
+"message_category.save_failed_title" = "Unable to Save Categories";
+
+"message_category.save_failed_message" = "Some changes may have been saved. Check your connection and retry; your remaining edits are preserved.";

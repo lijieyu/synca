@@ -325,3 +325,21 @@
 "access.duration.year" = "%d年";
 "access.duration.years" = "%d年";
 "message_list.send_to" = "傳送至";
+
+"ai_browser.back" = "返回";
+
+"ai_browser.load_failed" = "無法載入頁面，請檢查網路後重試。";
+
+"common.close" = "關閉";
+
+"message_category.edit_title" = "編輯分類";
+
+"feedback.discard_title" = "放棄此次回饋？";
+
+"feedback.discard" = "放棄";
+
+"feedback.keep_editing" = "繼續編輯";
+
+"message_category.save_failed_title" = "無法儲存分類";
+
+"message_category.save_failed_message" = "部分變更可能已儲存。請檢查網路後重試；尚未儲存的內容仍保留。";

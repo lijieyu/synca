@@ -17,6 +17,8 @@ struct FeedbackComposerView: View {
 
     @State private var content = ""
     @State private var email = ""
+    @State private var initialEmail = ""
+    @State private var showDiscardConfirmation = false
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var attachments: [FeedbackAttachment] = []
     @State private var isSubmitting = false
@@ -27,9 +29,10 @@ struct FeedbackComposerView: View {
         Group {
             #if os(macOS)
             VStack(spacing: 0) {
-                MacSheetHeader(title: "feedback.title")
+                MacSheetHeader(title: "feedback.title", onClose: cancel)
+                    .disabled(isSubmitting)
                 Divider()
-                feedbackContent
+                feedbackContent.disabled(isSubmitting)
                 Divider()
                 HStack(spacing: 8) {
                     Spacer()
@@ -42,6 +45,7 @@ struct FeedbackComposerView: View {
             #else
             NavigationStack {
                 feedbackContent
+                    .disabled(isSubmitting)
                     .navigationTitle(String(syncaLocalized: "feedback.title", bundle: .main))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -52,28 +56,43 @@ struct FeedbackComposerView: View {
             #endif
         }
         .task { await seedEmailIfNeeded() }
-        .frame(minWidth: 420, idealWidth: 480, minHeight: 520, idealHeight: 620)
+        .interactiveDismissDisabled(hasChanges || isSubmitting)
+        .confirmationDialog("feedback.discard_title", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("feedback.discard", role: .destructive) { dismiss() }
+            Button("feedback.keep_editing", role: .cancel) { }
+        }
+        #if os(macOS)
+        .frame(minWidth: 420, idealWidth: 480, minHeight: 570, idealHeight: 600)
+        #endif
     }
 
     private var feedbackContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                feedbackSectionTitle("feedback.content_title")
-                feedbackTextEditor
-                feedbackSectionTitle("feedback.images_title")
-                imageAttachmentSection
-                feedbackSectionTitle("feedback.email_title")
-                emailField
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    feedbackSectionTitle("feedback.content_title")
+                    feedbackTextEditor
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    feedbackSectionTitle("feedback.images_title")
+                    imageAttachmentSection
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    feedbackSectionTitle("feedback.email_title")
+                    emailField
+                }
                 if let errorMessage {
                     Text(errorMessage).font(.footnote).foregroundStyle(.red)
                 }
             }
             .padding(20)
         }
+        .scrollIndicators(.hidden)
     }
 
     private var cancelButton: some View {
-        Button("common.cancel") { dismiss() }
+        Button("common.cancel", action: cancel)
+            .disabled(isSubmitting)
             #if os(macOS)
             .buttonStyle(.bordered)
             .foregroundStyle(.primary)
@@ -96,7 +115,7 @@ struct FeedbackComposerView: View {
         ZStack(alignment: .topLeading) {
             #if os(macOS)
             MacPlainTextEditor(text: $content)
-                .frame(height: 180)
+                .frame(height: 150)
             #else
             TextEditor(text: $content)
                 .frame(minHeight: 180)
@@ -224,6 +243,15 @@ struct FeedbackComposerView: View {
         )
     }
 
+    private var hasChanges: Bool {
+        !content.isEmpty || email != initialEmail || !attachments.isEmpty || !photoItems.isEmpty
+    }
+
+    private func cancel() {
+        guard !isSubmitting else { return }
+        if hasChanges { showDiscardConfirmation = true } else { dismiss() }
+    }
+
     private var canSubmit: Bool {
         !trimmedContent.isEmpty && isValidEmail(trimmedEmail) && !isSubmitting
     }
@@ -260,6 +288,7 @@ struct FeedbackComposerView: View {
 
         if email.isEmpty, let storedEmail = api.currentUserEmail, !storedEmail.isEmpty {
             email = storedEmail
+            initialEmail = storedEmail
             return
         }
 
@@ -273,6 +302,7 @@ struct FeedbackComposerView: View {
 
         if email.isEmpty, let storedEmail = api.currentUserEmail, !storedEmail.isEmpty {
             email = storedEmail
+            initialEmail = storedEmail
         }
     }
 
@@ -293,6 +323,7 @@ struct FeedbackComposerView: View {
     }
 
     private func submitFeedback() async {
+        guard !isSubmitting else { return }
         errorMessage = nil
 
         guard !trimmedContent.isEmpty else {
