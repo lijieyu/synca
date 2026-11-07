@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
+import http from 'node:http';
+import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -150,6 +152,26 @@ describe('Attachment storage contract', () => {
         expect(result.body.error).toBe('invalid_payload');
         await expect.poll(async () => (await sql`SELECT * FROM upload_reservations`.execute(db)).rows.length).toBe(0);
         expect(await storageUsage(user.id)).toBe(0);
+    });
+    it('releases a disconnected multipart upload and allows a retry with the same ID', async () => {
+        const user = await account(true), id = randomUUID();
+        const server = app.listen(0, '127.0.0.1');
+        await once(server, 'listening');
+        const port = (server.address() as import('node:net').AddressInfo).port;
+        const client = http.request({ host: '127.0.0.1', port, path: '/messages/file', method: 'POST',
+            headers: { Authorization: user.auth, 'X-Upload-ID': id, 'X-Upload-Size': '4096',
+                'Content-Type': 'multipart/form-data; boundary=interrupted', 'Content-Length': '5000' } });
+        client.on('error', () => {});
+        try {
+            client.write('--interrupted\r\nContent-Disposition: form-data; name="file"; filename="test.pdf"\r\nContent-Type: application/pdf\r\n\r\npartial');
+            await expect.poll(async () => (await sql`SELECT filename FROM upload_reservations WHERE id=${id}`.execute(db)).rows.length).toBe(1);
+            client.destroy();
+            await expect.poll(async () => (await sql`SELECT id FROM upload_reservations WHERE id=${id}`.execute(db)).rows.length).toBe(0);
+            const retry = await request(app).post('/messages/file').set('Authorization', user.auth)
+                .set('X-Upload-ID', id).set('X-Upload-Size', '4').attach('file', Buffer.from('test'), 'test.pdf');
+            expect(retry.status).toBe(201); remember(retry.body);
+            expect((await db.selectFrom('messages').select('id').where('id', '=', id).execute())).toHaveLength(1);
+        } finally { client.destroy(); await new Promise<void>(resolve => server.close(() => resolve())); }
     });
     it('does not let a delayed cleanup remove a fresh retry using the same upload ID', async () => {
         const user = await account(), id = randomUUID(), filename = `storage-test-${randomUUID()}.png`;
