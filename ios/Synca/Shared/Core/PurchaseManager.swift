@@ -82,7 +82,7 @@ final class PurchaseManager: ObservableObject {
             #endif
             await refreshIntroEligibility(for: products)
         } catch {
-            showToast(String(localized: "access.purchase_fetch_failed", bundle: .main), tone: .error)
+            showToast(String(syncaLocalized: "access.purchase_fetch_failed", bundle: .main), tone: .error)
             print("[purchase] loadProducts failed: \(error)")
         }
     }
@@ -92,7 +92,7 @@ final class PurchaseManager: ObservableObject {
         do {
             try await loadProductsIfNeeded()
             guard let product = productsByID[productID.rawValue] else {
-                showToast(String(localized: "access.purchase_unavailable", bundle: .main), tone: .error)
+                showToast(String(syncaLocalized: "access.purchase_unavailable", bundle: .main), tone: .error)
                 return false
             }
 
@@ -109,19 +109,19 @@ final class PurchaseManager: ObservableObject {
                 await transaction.finish()
                 return true
             case .pending:
-                showToast(String(localized: "access.purchase_pending", bundle: .main), tone: .neutral)
+                showToast(String(syncaLocalized: "access.purchase_pending", bundle: .main), tone: .neutral)
                 return false
             case .userCancelled:
                 return false
             @unknown default:
-                showToast(String(localized: "access.purchase_failed", bundle: .main), tone: .error)
+                showToast(String(syncaLocalized: "access.purchase_failed", bundle: .main), tone: .error)
                 return false
             }
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return false
             }
-            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.purchase_failed", bundle: .main), tone: .error)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(syncaLocalized: "access.purchase_failed", bundle: .main), tone: .error)
             print("[purchase] purchase failed: \(error)")
             return false
         }
@@ -136,15 +136,15 @@ final class PurchaseManager: ObservableObject {
             let outcome = try await syncLatestTransactions()
             switch outcome {
             case .restoredPurchases:
-                showToast(String(localized: "access.restore_success", bundle: .main), tone: .neutral)
+                showToast(String(syncaLocalized: "access.restore_success", bundle: .main), tone: .neutral)
             case .noPurchasesFound:
-                showToast(String(localized: "access.restore_no_purchases", bundle: .main), tone: .neutral)
+                showToast(String(syncaLocalized: "access.restore_no_purchases", bundle: .main), tone: .neutral)
             }
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return
             }
-            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.restore_failed", bundle: .main), tone: .error)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(syncaLocalized: "access.restore_failed", bundle: .main), tone: .error)
             print("[purchase] restore failed: \(error)")
         }
     }
@@ -158,13 +158,13 @@ final class PurchaseManager: ObservableObject {
             let response = try await APIClient.shared.requestLifetimeUpgradeOfferCode(kind: offer.kind)
             copyOfferCodeToPasteboard(response.code)
             try await presentOfferCodeRedeemSheet()
-            showToast(String(localized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
+            showToast(String(syncaLocalized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
             return true
         } catch {
             guard !isUserCancelledPurchase(error) else {
                 return false
             }
-            showToast((error as? LocalizedError)?.errorDescription ?? String(localized: "access.offer_unavailable", bundle: .main), tone: .error)
+            showToast((error as? LocalizedError)?.errorDescription ?? String(syncaLocalized: "access.offer_unavailable", bundle: .main), tone: .error)
             print("[purchase] redeem offer failed: \(error)")
             return false
         }
@@ -176,7 +176,7 @@ final class PurchaseManager: ObservableObject {
 
     func copyLifetimeOfferCode(_ code: String) {
         copyOfferCodeToPasteboard(code)
-        showToast(String(localized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
+        showToast(String(syncaLocalized: "access.lifetime_offer_copied", bundle: .main), tone: .neutral)
     }
 
     func syncLatestTransactions() async throws -> RestoreOutcome {
@@ -322,13 +322,13 @@ enum PurchaseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAccountToken:
-            return String(localized: "access.purchase_account_missing", bundle: .main)
+            return String(syncaLocalized: "access.purchase_account_missing", bundle: .main)
         case .productsUnavailable:
-            return String(localized: "access.purchase_unavailable", bundle: .main)
+            return String(syncaLocalized: "access.purchase_unavailable", bundle: .main)
         case .unverifiedTransaction:
-            return String(localized: "access.purchase_verification_failed", bundle: .main)
+            return String(syncaLocalized: "access.purchase_verification_failed", bundle: .main)
         case .missingRedeemContext:
-            return String(localized: "access.offer_unavailable", bundle: .main)
+            return String(syncaLocalized: "access.offer_unavailable", bundle: .main)
         }
     }
 }

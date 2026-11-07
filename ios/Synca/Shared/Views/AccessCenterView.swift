@@ -26,7 +26,7 @@ struct AccessCenterView: View {
         NavigationStack {
             contentContainer
             #if os(iOS)
-            .navigationTitle(String(localized: "access.center_title", bundle: .main))
+            .navigationTitle(String(syncaLocalized: "access.center_title", bundle: .main))
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
@@ -131,7 +131,7 @@ struct AccessCenterView: View {
                 Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
                 Text("access.free_title").font(.title3.weight(.semibold))
 
-                Text(String(format: String(localized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
+                Text(String(format: String(syncaLocalized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
 
@@ -448,7 +448,7 @@ struct AccessCenterView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "doc.on.doc")
-                        Text(String(localized: "access.copy_offer_code", bundle: .main))
+                        Text(String(syncaLocalized: "access.copy_offer_code", bundle: .main))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(.footnote.weight(.semibold))
@@ -458,7 +458,7 @@ struct AccessCenterView: View {
                     .background(Color.white, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "access.copy_offer_code", bundle: .main))
+                .accessibilityLabel(String(syncaLocalized: "access.copy_offer_code", bundle: .main))
             }
             .padding(.vertical, 2)
         }
@@ -622,11 +622,11 @@ struct AccessCenterView: View {
     private func currentSubscriptionName(_ status: AccessStatus) -> String {
         switch status.storeProductId {
         case SyncaProductID.monthly.rawValue:
-            return purchaseManager.monthlyProduct?.displayName ?? String(localized: "access.purchased_monthly", bundle: .main)
+            return purchaseManager.monthlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_monthly", bundle: .main)
         case SyncaProductID.yearly.rawValue:
-            return purchaseManager.yearlyProduct?.displayName ?? String(localized: "access.purchased_yearly", bundle: .main)
+            return purchaseManager.yearlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_yearly", bundle: .main)
         default:
-            return String(localized: "access.status_unlimited", bundle: .main)
+            return String(syncaLocalized: "access.status_unlimited", bundle: .main)
         }
     }
 
@@ -642,15 +642,15 @@ struct AccessCenterView: View {
     }
 
     private var currentLifetimeName: String {
-        purchaseManager.lifetimeProduct?.displayName ?? String(localized: "access.purchased_lifetime", bundle: .main)
+        purchaseManager.lifetimeProduct?.displayName ?? String(syncaLocalized: "access.purchased_lifetime", bundle: .main)
     }
 
     private func fallbackProductName(for productID: SyncaProductID) -> String {
         switch productID {
         case .monthly:
-            return String(localized: "access.option_monthly_title", bundle: .main)
+            return String(syncaLocalized: "access.option_monthly_title", bundle: .main)
         case .yearly:
-            return String(localized: "access.option_yearly_title", bundle: .main)
+            return String(syncaLocalized: "access.option_yearly_title", bundle: .main)
         case .lifetime:
             return currentLifetimeName
         }
@@ -659,20 +659,20 @@ struct AccessCenterView: View {
     private func productSubtitle(for productID: SyncaProductID) -> String {
         switch productID {
         case .monthly:
-            return String(localized: "access.option_monthly_subtitle", bundle: .main)
+            return String(syncaLocalized: "access.option_monthly_subtitle", bundle: .main)
         case .yearly:
-            return String(localized: "access.option_yearly_subtitle", bundle: .main)
+            return String(syncaLocalized: "access.option_yearly_subtitle", bundle: .main)
         case .lifetime:
-            return String(localized: "access.option_lifetime_subtitle", bundle: .main)
+            return String(syncaLocalized: "access.option_lifetime_subtitle", bundle: .main)
         }
     }
 
     private func subscriptionComplianceDetail(for productID: SyncaProductID) -> String {
         let product = product(for: productID)
-        let price = product?.displayPrice ?? String(localized: "access.purchase_unavailable_short", bundle: .main)
+        let price = product?.displayPrice ?? String(syncaLocalized: "access.purchase_unavailable_short", bundle: .main)
         let period = localizedBillingPeriod(for: productID, product: product)
         return String(
-            format: String(localized: "access.subscription_info_format", bundle: .main),
+            format: String(syncaLocalized: "access.subscription_info_format", bundle: .main),
             period,
             price
         )
@@ -685,11 +685,11 @@ struct AccessCenterView: View {
 
         switch productID {
         case .monthly:
-            return String(localized: "access.billing_period_monthly", bundle: .main)
+            return String(syncaLocalized: "access.billing_period_monthly", bundle: .main)
         case .yearly:
-            return String(localized: "access.billing_period_yearly", bundle: .main)
+            return String(syncaLocalized: "access.billing_period_yearly", bundle: .main)
         case .lifetime:
-            return String(localized: "access.option_lifetime_title", bundle: .main)
+            return String(syncaLocalized: "access.option_lifetime_title", bundle: .main)
         }
     }
 
@@ -716,21 +716,21 @@ struct AccessCenterView: View {
         switch offer.paymentMode {
         case .freeTrial:
             return String(
-                format: String(localized: "access.intro_free_trial_then_template", bundle: .main),
+                format: String(syncaLocalized: "access.intro_free_trial_then_template", bundle: .main),
                 duration,
                 product.displayPrice,
                 renewalUnit
             )
         case .payAsYouGo:
             return String(
-                format: String(localized: "access.intro_payg_then_template", bundle: .main),
+                format: String(syncaLocalized: "access.intro_payg_then_template", bundle: .main),
                 duration,
                 product.displayPrice,
                 renewalUnit
             )
         case .payUpFront:
             return String(
-                format: String(localized: "access.intro_payupfront_then_template", bundle: .main),
+                format: String(syncaLocalized: "access.intro_payupfront_then_template", bundle: .main),
                 duration,
                 product.displayPrice,
                 renewalUnit
@@ -741,53 +741,33 @@ struct AccessCenterView: View {
     }
 
     private func subscriptionRenewalDisclosure(for productID: SyncaProductID, product: Product?) -> String {
-        let price = product?.displayPrice ?? String(localized: "access.purchase_unavailable_short", bundle: .main)
+        let price = product?.displayPrice ?? String(syncaLocalized: "access.purchase_unavailable_short", bundle: .main)
         let renewalUnit = renewalUnitLabel(for: productID)
         return String(
-            format: String(localized: "access.subscription_renews_template", bundle: .main),
+            format: String(syncaLocalized: "access.subscription_renews_template", bundle: .main),
             price,
             renewalUnit
         )
     }
 
     private func renewalUnitLabel(for productID: SyncaProductID) -> String {
-        if Locale.current.language.languageCode?.identifier == "zh" {
-            switch productID {
-            case .monthly:
-                return "月"
-            case .yearly:
-                return "年"
-            case .lifetime:
-                return ""
-            }
-        }
-
         switch productID {
-        case .monthly:
-            return "month"
-        case .yearly:
-            return "year"
-        case .lifetime:
-            return ""
+        case .monthly: return String(syncaLocalized: "access.period.month")
+        case .yearly: return String(syncaLocalized: "access.period.year")
+        case .lifetime: return ""
         }
     }
 
     private func localizedSubscriptionPeriod(_ period: Product.SubscriptionPeriod) -> String {
-        let value = period.value
-        let isChinese = Locale.current.language.languageCode?.identifier == "zh"
-
+        let key: String
         switch period.unit {
-        case .day:
-            return isChinese ? "\(value)天" : "\(value) \(value == 1 ? "day" : "days")"
-        case .week:
-            return isChinese ? "\(value)周" : "\(value) \(value == 1 ? "week" : "weeks")"
-        case .month:
-            return isChinese ? "\(value)个月" : "\(value) \(value == 1 ? "month" : "months")"
-        case .year:
-            return isChinese ? "\(value)年" : "\(value) \(value == 1 ? "year" : "years")"
-        @unknown default:
-            return "\(value)"
+        case .day: key = period.value == 1 ? "access.duration.day" : "access.duration.days"
+        case .week: key = period.value == 1 ? "access.duration.week" : "access.duration.weeks"
+        case .month: key = period.value == 1 ? "access.duration.month" : "access.duration.months"
+        case .year: key = period.value == 1 ? "access.duration.year" : "access.duration.years"
+        @unknown default: return "\(period.value)"
         }
+        return String(format: AppLocalization.string(key), locale: AppLocalization.locale, period.value)
     }
 
     #if os(macOS)
@@ -816,7 +796,7 @@ struct AccessCenterView: View {
         guard let date else { return isoString }
 
         let output = DateFormatter()
-        output.locale = .current
+        output.locale = AppLocalization.locale
         output.setLocalizedDateFormatFromTemplate(includeTime ? "yMMMdjm" : "yMMMd")
         return output.string(from: date)
     }
@@ -937,18 +917,18 @@ struct HeaderAccessBadge: View {
 
     private var labelText: String {
         if status.isUnlimited {
-            return String(localized: "access.status_unlimited_badge", bundle: .main)
+            return String(syncaLocalized: "access.status_unlimited_badge", bundle: .main)
         }
         return freeInlineLabel
     }
 
     private var helpText: String {
-        if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
-        return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+        if status.isUnlimited { return String(syncaLocalized: "access.status_unlimited", bundle: .main) }
+        return String(format: String(syncaLocalized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 
     private var freeInlineLabel: String {
-        "\(String(localized: "access.free_title", bundle: .main)) \(status.todayUsed)/\(status.todayLimit ?? 20)"
+        String(syncaLocalized: "access.free_title", bundle: .main)
     }
 }
 
@@ -993,7 +973,7 @@ struct AccessStatusPill: View {
 
     private var labelText: String {
         if status.isUnlimited {
-            return String(localized: "access.status_unlimited_badge", bundle: .main)
+            return String(syncaLocalized: "access.status_unlimited_badge", bundle: .main)
         }
         return freeInlineLabel
     }
@@ -1003,12 +983,12 @@ struct AccessStatusPill: View {
     }
 
     private var helpText: String {
-        if status.isUnlimited { return String(localized: "access.status_unlimited", bundle: .main) }
-        return String(format: String(localized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
+        if status.isUnlimited { return String(syncaLocalized: "access.status_unlimited", bundle: .main) }
+        return String(format: String(syncaLocalized: "access.status_free", bundle: .main), status.todayUsed, status.todayLimit ?? 20)
     }
 
     private var freeInlineLabel: String {
-        "\(String(localized: "access.free_title", bundle: .main)) \(status.todayUsed)/\(status.todayLimit ?? 20)"
+        "\(String(syncaLocalized: "access.free_title", bundle: .main)) \(status.todayUsed)/\(status.todayLimit ?? 20)"
     }
 }
 

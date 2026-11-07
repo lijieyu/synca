@@ -15,6 +15,7 @@ for attempt in {1..50}; do
 done
 if [[ -n "$fixture_pid" ]] && ! kill -0 "$fixture_pid" 2>/dev/null; then cat "$test_directory/server.log"; exit 1; fi
 xcrun swiftc -swift-version 6 -module-cache-path "$test_directory/module-cache" \
+  "$project_root/ios/Synca/Shared/Core/SettingsManager.swift" \
   "$project_root/ios/Synca/Shared/Models/AccessStatus.swift" \
   "$project_root/ios/Synca/Shared/Models/SyncaMessage.swift" \
   "$project_root/ios/Synca/Shared/Core/APIClient.swift" \

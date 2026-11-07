@@ -127,13 +127,13 @@ struct MessageTextEditorView: View {
         defer { isSaving = false }
         do {
             try await SyncManager.shared.updateMessageText(message, textContent: draft)
-            announce(String(localized: "message_edit.saved"), success: true)
+            announce(String(syncaLocalized: "message_edit.saved"), success: true)
             dismiss()
         } catch {
             let message: String
             switch error {
             case APIError.textEditConflict, APIError.textEditUnavailable: message = error.localizedDescription
-            default: message = String(localized: "message_edit.failed")
+            default: message = String(syncaLocalized: "message_edit.failed")
             }
             errorMessage = message
             announce(message, success: false)

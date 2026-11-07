@@ -25,8 +25,7 @@ final class MacWindowBehaviorController: NSObject, NSWindowDelegate {
         if isAuthenticated {
             window.titleVisibility = .hidden
             window.title = ""
-            installTitlebarAccessoryIfNeeded(on: window)
-            installControlsAccessoryIfNeeded(on: window)
+            removeTitlebarAccessories(from: window)
         } else {
             window.titleVisibility = .visible
             window.title = "Synca"

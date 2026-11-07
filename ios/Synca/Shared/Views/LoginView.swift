@@ -80,7 +80,7 @@ struct LoginView: View {
         .alert(Text("login.failed", bundle: .main), isPresented: $showError) {
             Button("common.ok") {}
         } message: {
-            Text(authService.errorMessage ?? String(localized: "login.failed_message"))
+            Text(authService.errorMessage ?? String(syncaLocalized: "login.failed_message"))
         }
     }
 

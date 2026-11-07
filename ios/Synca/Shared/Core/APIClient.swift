@@ -667,26 +667,26 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .textEditConflict: return String(localized: "message_edit.conflict", bundle: .main)
-        case .textEditUnavailable: return String(localized: "message_edit.unavailable", bundle: .main)
-        case .storageFull: return String(localized: "storage.full", bundle: .main)
-        case .fileRequiresPaid: return String(localized: "storage.paid_required", bundle: .main)
-        case .attachmentExpired: return String(localized: "storage.expired", bundle: .main)
-        case .imageTooLarge: return String(localized: "storage.image_too_large", bundle: .main)
-        case .invalidResponse: return String(localized: "api.invalid_response", bundle: .main)
-        case .unauthorized: return String(localized: "api.unauthorized", bundle: .main)
-        case .dailyLimitReached: return String(localized: "access.limit_reached_title", bundle: .main)
+        case .textEditConflict: return String(syncaLocalized: "message_edit.conflict", bundle: .main)
+        case .textEditUnavailable: return String(syncaLocalized: "message_edit.unavailable", bundle: .main)
+        case .storageFull: return String(syncaLocalized: "storage.full", bundle: .main)
+        case .fileRequiresPaid: return String(syncaLocalized: "storage.paid_required", bundle: .main)
+        case .attachmentExpired: return String(syncaLocalized: "storage.expired", bundle: .main)
+        case .imageTooLarge: return String(syncaLocalized: "storage.image_too_large", bundle: .main)
+        case .invalidResponse: return String(syncaLocalized: "api.invalid_response", bundle: .main)
+        case .unauthorized: return String(syncaLocalized: "api.unauthorized", bundle: .main)
+        case .dailyLimitReached: return String(syncaLocalized: "access.limit_reached_title", bundle: .main)
         case .messageTooLong(let limit):
-            return String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)
+            return String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), limit)
         case .feedbackTooLong(let limit):
-            return String(format: String(localized: "feedback.error_content_too_long", bundle: .main), limit)
+            return String(format: String(syncaLocalized: "feedback.error_content_too_long", bundle: .main), limit)
         case .fileTooLarge:
-            return String(localized: "message_file.error_too_large", bundle: .main)
+            return String(syncaLocalized: "message_file.error_too_large", bundle: .main)
         case .unsupportedFileType:
-            return String(localized: "message_file.error_unsupported", bundle: .main)
+            return String(syncaLocalized: "message_file.error_unsupported", bundle: .main)
         case .offerUnavailable:
-            return String(localized: "access.offer_unavailable", bundle: .main)
-        case .httpError(let code, let message): return String(format: String(localized: "api.http_error", bundle: .main), code, message ?? "")
+            return String(syncaLocalized: "access.offer_unavailable", bundle: .main)
+        case .httpError(let code, let message): return String(format: String(syncaLocalized: "api.http_error", bundle: .main), code, message ?? "")
         }
     }
 }

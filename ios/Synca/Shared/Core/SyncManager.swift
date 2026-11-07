@@ -341,7 +341,7 @@ final class SyncManager: ObservableObject {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return .failed }
         guard trimmedText.count <= 2000 else {
-            updateStatus(.error(String(format: String(localized: "message_list.error_too_long", bundle: .main), 2000)))
+            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), 2000)))
             return .failed
         }
         let sendGeneration = beginSending()
@@ -366,7 +366,7 @@ final class SyncManager: ObservableObject {
             return .blocked
         } catch APIError.messageTooLong(let limit) {
             guard operationGeneration == syncState.generation else { return .failed }
-            updateStatus(.error(String(format: String(localized: "message_list.error_too_long", bundle: .main), limit)))
+            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), limit)))
             return .failed
         } catch {
             guard operationGeneration == syncState.generation else { return .failed }
@@ -407,12 +407,12 @@ final class SyncManager: ObservableObject {
         guard !isSending else { return }
         let operationGeneration = syncState.generation
         guard file.fileSize <= PendingFileUpload.maxFileSize else {
-            errorMessage = String(localized: "message_file.error_too_large", bundle: .main)
+            errorMessage = String(syncaLocalized: "message_file.error_too_large", bundle: .main)
             return
         }
 
         guard PendingFileUpload.supportedExtensions.contains(URL(fileURLWithPath: file.fileName).pathExtension.lowercased()) else {
-            errorMessage = String(localized: "message_file.error_unsupported", bundle: .main)
+            errorMessage = String(syncaLocalized: "message_file.error_unsupported", bundle: .main)
             return
         }
 
@@ -510,12 +510,12 @@ final class SyncManager: ObservableObject {
         if sentCount > 0 { lastRefreshDate = Date() }
         if let firstError {
             let key = sentCount == 0 ? "sync.images_send_failed" : "sync.batch_send_partial_failure"
-            let format = String(localized: String.LocalizationValue(key), bundle: .main)
+            let format = String(syncaLocalized: String.LocalizationValue(key), bundle: .main)
             errorMessage = sentCount == 0
                 ? String(format: format, firstError.localizedDescription)
                 : String(format: format, sentCount, imageDatas.count - sentCount, firstError.localizedDescription)
         } else if wasBlocked && sentCount > 0 {
-            errorMessage = String(format: String(localized: "sync.images_send_limit", bundle: .main), sentCount, imageDatas.count - sentCount)
+            errorMessage = String(format: String(syncaLocalized: "sync.images_send_limit", bundle: .main), sentCount, imageDatas.count - sentCount)
         }
         if sentCount > 0 { await AccessManager.shared.refresh() }
     }
@@ -541,7 +541,7 @@ final class SyncManager: ObservableObject {
             unclearedCount = messages.filter { !$0.isCleared }.count
             #if canImport(UIKit)
             UISelectionFeedbackGenerator().selectionChanged()
-            UIAccessibility.post(notification: .announcement, argument: String(localized: updated.isCleared ? "message_bubble.completed" : "message_bubble.restored"))
+            UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: updated.isCleared ? "message_bubble.completed" : "message_bubble.restored"))
             #endif
         } catch {
             guard operationGeneration == syncState.generation else { return }
@@ -764,7 +764,7 @@ final class SyncManager: ObservableObject {
     }
 
     private func handleError(_ error: Error, contextKey: String, silent: Bool = false) {
-        let context = String(localized: String.LocalizationValue(contextKey), bundle: .main)
+        let context = String(syncaLocalized: String.LocalizationValue(contextKey), bundle: .main)
         if isCancellationError(error) {
             print("[SyncManager] CANCELLED in \(context): \(error)")
             Task { @MainActor in
@@ -787,7 +787,7 @@ final class SyncManager: ObservableObject {
         let domain = nsError.domain
         
         let fullErrorMsg = String(
-            format: String(localized: "sync.error_format", bundle: .main),
+            format: String(syncaLocalized: "sync.error_format", bundle: .main),
             context,
             errorDescription,
             errorCode,
@@ -829,6 +829,7 @@ final class SyncManager: ObservableObject {
     }
 
     func setDefaultSendCategoryId(_ categoryId: String?) {
+        objectWillChange.send()
         SettingsManager.shared.setDefaultSendCategoryId(categoryId, for: api.currentUserId)
     }
 

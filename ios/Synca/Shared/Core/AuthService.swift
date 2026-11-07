@@ -117,7 +117,7 @@ enum AuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingCredentials: return String(localized: "auth.missing_credentials", bundle: .main)
+        case .missingCredentials: return String(syncaLocalized: "auth.missing_credentials", bundle: .main)
         }
     }
 }

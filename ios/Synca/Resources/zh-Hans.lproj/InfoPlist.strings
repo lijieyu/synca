@@ -1,1 +1,3 @@
 "NSPhotoLibraryAddUsageDescription" = "Synca 需要你的允许，将图片保存到相册。";
+"NSPhotoLibraryUsageDescription" = "Synca 需要访问相册来发送图片。";
+"NSCameraUsageDescription" = "Synca 需要使用相机来拍照发送。";

@@ -82,6 +82,8 @@
 		E99771777BDBD8CA06BE6858 /* PhotoLibrarySaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */; };
 		A70000000000000000000001 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
 		A70000000000000000000002 /* MacPlainTextScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A70000000000000000000003 /* MacPlainTextScrollView.swift */; };
+		327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */; };
+		45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -132,6 +134,9 @@
 		B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibrarySaver.swift; sourceTree = "<group>"; };
 		D5BA31D5837D80AC7F1FBA60 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A70000000000000000000003 /* MacPlainTextScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlainTextScrollView.swift; sourceTree = "<group>"; };
+		B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
+		72BE306B18C6241912B55FAF /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		CA2341AA42B6FC31B54360F1 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -190,6 +195,7 @@
 		B2689032700D5FABB662DAE0 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */,
 				0D2726295D2A4F43DCB7E7E5 /* AccessCenterView.swift */,
 				2E6DFB39806FCF535EC272BB /* AppleSignInButton.swift */,
 				5529D0F531D1905D77573C52 /* CachedAsyncImage.swift */,
@@ -329,6 +335,7 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				"zh-Hant",
 				Base,
 				en,
 				"zh-Hans",
@@ -372,6 +379,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */,
 				FA4BD0B10B94F90D70F4F844 /* APIClient.swift in Sources */,
 				DE6343EE825B832C1DFD5848 /* AccessCenterView.swift in Sources */,
 				65622D9D20FB2E2576E38C41 /* AccessManager.swift in Sources */,
@@ -414,6 +422,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */,
 				1F55C1860A50C27B34C64B73 /* APIClient.swift in Sources */,
 				926EDBDEEFC38564DC35E513 /* AccessCenterView.swift in Sources */,
 				D32FA024B382AA7FE4EA9FE0 /* AccessManager.swift in Sources */,
@@ -457,6 +466,7 @@
 		70DE0078AC87764CD2422D4D /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				72BE306B18C6241912B55FAF /* zh-Hant */,
 				FE91EACEF15DCF4C5F20B2F2 /* en */,
 				891CF9713534ED8E2977AA0E /* zh-Hans */,
 			);
@@ -466,6 +476,7 @@
 		81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				CA2341AA42B6FC31B54360F1 /* zh-Hant */,
 				D5BA31D5837D80AC7F1FBA60 /* en */,
 				91C44B445EF87AE66D7D2FD0 /* zh-Hans */,
 			);
