@@ -27,68 +27,92 @@ struct MessageTextEditorView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        VStack(spacing: 0) {
+            MacSheetHeader(title: "message_edit.title")
+            Divider()
+            editorContent.padding(20)
+            Divider()
+            HStack(spacing: 8) {
+                Spacer()
+                cancelButton
+                saveButton
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
+        .frame(minWidth: 420, idealWidth: 520, minHeight: 340, idealHeight: 420)
+        .modifier(discardConfirmation)
+        .interactiveDismissDisabled(hasChanges || isSaving)
+        #else
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                #if os(macOS)
-                MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true)
-                    .accessibilityLabel(Text("message_edit.content"))
-                    .frame(minHeight: 180)
-                #else
-                TextEditor(text: $draft)
-                    .font(.body)
-                    .focused($isFocused)
-                    .accessibilityLabel(Text("message_edit.content"))
-                    .disabled(isSaving)
-                    .frame(minHeight: 180)
-                #endif
-                Text("\(draft.utf16.count) / \(Self.textLimit)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(draft.utf16.count > Self.textLimit ? Color.red : Color.secondary)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.circle")
-                        .font(.callout).foregroundStyle(.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(errorMessage)
+            editorContent
+                .padding(16)
+                .navigationTitle(Text("message_edit.title"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { cancelButton }
+                    ToolbarItem(placement: .confirmationAction) { saveButton }
                 }
-            }
-            .padding(16)
-            .navigationTitle(Text("message_edit.title"))
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("common.cancel", role: .cancel) { cancel() }.disabled(isSaving)
-                        #if os(macOS)
-                        .buttonStyle(.bordered)
-                        .foregroundStyle(.primary)
-                        #endif
-                        .keyboardShortcut(.cancelAction)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button { Task { await save() } } label: {
-                        if isSaving { ProgressView().accessibilityLabel(Text("message_edit.saving")) }
-                        else { Text("common.save") }
-                    }
-                    .disabled(!canSave)
-                    .tint(.syncaPurple)
-                    #if os(macOS)
-                    .buttonStyle(MacPrimaryActionButtonStyle())
-                    #endif
-                    .keyboardShortcut("s", modifiers: .command)
-                }
-            }
-            .confirmationDialog("message_edit.discard_title", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
-                Button("message_edit.discard", role: .destructive) { dismiss() }
-                Button("message_edit.keep", role: .cancel) { }
-            }
+                .modifier(discardConfirmation)
         }
         .interactiveDismissDisabled(hasChanges || isSaving)
-        #if os(macOS)
-        .frame(minWidth: 420, idealWidth: 520, minHeight: 340, idealHeight: 420)
-        #endif
         .onAppear { isFocused = true }
+        #endif
+    }
+
+    private var editorContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            #if os(macOS)
+            MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true, horizontalTextInset: 0)
+                .accessibilityLabel(Text("message_edit.content"))
+                .frame(minHeight: 180)
+            #else
+            TextEditor(text: $draft)
+                .font(.body)
+                .focused($isFocused)
+                .accessibilityLabel(Text("message_edit.content"))
+                .disabled(isSaving)
+                .frame(minHeight: 180)
+            #endif
+            Text("\(draft.utf16.count) / \(Self.textLimit)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(draft.utf16.count > Self.textLimit ? Color.red : Color.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.circle")
+                    .font(.callout).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(errorMessage)
+            }
+        }
+    }
+
+    private var cancelButton: some View {
+        Button("common.cancel", role: .cancel) { cancel() }
+            .disabled(isSaving)
+            #if os(macOS)
+            .buttonStyle(.bordered)
+            .foregroundStyle(.primary)
+            #endif
+            .keyboardShortcut(.cancelAction)
+    }
+
+    private var saveButton: some View {
+        Button { Task { await save() } } label: {
+            if isSaving { ProgressView().accessibilityLabel(Text("message_edit.saving")) }
+            else { Text("common.save") }
+        }
+        .disabled(!canSave)
+        .tint(.syncaPurple)
+        #if os(macOS)
+        .buttonStyle(MacPrimaryActionButtonStyle())
+        #endif
+        .keyboardShortcut("s", modifiers: .command)
+    }
+
+    private var discardConfirmation: some ViewModifier {
+        TextEditDiscardConfirmation(isPresented: $showDiscardConfirmation, onDiscard: { dismiss() })
     }
 
     private func cancel() {
@@ -127,7 +151,32 @@ struct MessageTextEditorView: View {
     }
 }
 
+private struct TextEditDiscardConfirmation: ViewModifier {
+    @Binding var isPresented: Bool
+    let onDiscard: () -> Void
+    func body(content: Content) -> some View {
+        content.confirmationDialog("message_edit.discard_title", isPresented: $isPresented, titleVisibility: .visible) {
+            Button("message_edit.discard", role: .destructive, action: onDiscard)
+            Button("message_edit.keep", role: .cancel) { }
+        }
+    }
+}
+
 #if os(macOS)
+/// Explicit content-aligned sheet titles avoid the navigation toolbar's leading reserved space.
+struct MacSheetHeader: View {
+    let title: LocalizedStringKey
+    var body: some View {
+        Text(title)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+    }
+}
+
 /// Keep the primary action identifiable when macOS renders an inactive sheet.
 struct MacPrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
