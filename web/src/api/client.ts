@@ -423,6 +423,10 @@ class APIClient {
     return this.fetch('/api/admin/feedback');
   }
 
+  async deleteAccount(): Promise<{ ok: boolean }> {
+    return this.fetch('/me/account', { method: 'DELETE' });
+  }
+
   async getMyProfile(): Promise<ProfileResponse> {
     return this.fetch<ProfileResponse>('/me/access-status');
   }

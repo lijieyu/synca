@@ -1,7 +1,6 @@
 import { SettingsPanel } from './SettingsPanel';
 import { FunctionMenu } from './FunctionMenu';
 import { ShellPanel } from './ShellPanel';
-import { PlanDialog } from './PlanDialog';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
@@ -69,7 +68,6 @@ const EmptyMessageState: React.FC = () => {
 export const MessageListView: React.FC = () => {
   const [editingMessage, setEditingMessage] = useState<SyncaMessage | null>(null);
   const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
-  const [showPlan, setShowPlan] = useState(false);
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +84,9 @@ export const MessageListView: React.FC = () => {
   const [categoryManagerRows, setCategoryManagerRows] = useState<CategoryManagerDraftRow[]>([]);
   const [categoryManagerDeleteTarget, setCategoryManagerDeleteTarget] = useState<CategoryManagerDraftRow | null>(null);
   const [categoryManagerError, setCategoryManagerError] = useState<{ title: string; message: string } | null>(null);
+  const [editingCategory, setEditingCategory] = useState<MessageCategory | null>(null);
+  const [discardCategoryAction, setDiscardCategoryAction] = useState<(() => void) | null>(null);
+  const [categorySaving, setCategorySaving] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState<MessageCategoryColor>('sky');
   const listRef = useRef<HTMLDivElement>(null);
@@ -254,21 +255,25 @@ export const MessageListView: React.FC = () => {
 
   const handleCreateCategory = async () => {
     const trimmedName = newCategoryName.trim();
-    if (!trimmedName) return;
-    const duplicated = categories.some((category) => category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
+    if (!trimmedName || categorySaving) return;
+    const duplicated = categories.some((category) => category.id !== editingCategory?.id && category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
     if (duplicated) {
       setShowDuplicateCategoryModal(true);
       return;
     }
+    setCategorySaving(true);
     try {
-      await api.createMessageCategory(trimmedName, newCategoryColor);
+      if (editingCategory) await api.updateMessageCategory(editingCategory.id, { name: trimmedName, color: newCategoryColor });
+      else await api.createMessageCategory(trimmedName, newCategoryColor);
+      setEditingCategory(null);
       setNewCategoryName('');
       setNewCategoryColor('sky');
       setShowCreateCategoryModal(false);
       await fetchData(false);
     } catch (error) {
       console.error(error);
-    }
+      setCategoryManagerError({ title: t('common.error'), message: t('navigation.save_failed') });
+    } finally { setCategorySaving(false); }
   };
 
   const handleCategoryManagerSave = async () => {
@@ -339,8 +344,7 @@ export const MessageListView: React.FC = () => {
 
   return (
     <div className="app-container calm-shell">
-      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onPlan={() => { setPanel(null); setShowPlan(true); }} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
-      {showPlan && <PlanDialog onClose={() => setShowPlan(false)} />}
+      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
       <aside className="calm-sidebar">
         <div className="sidebar-brand"><img src="/logo.png" alt="" /><span>Synca</span></div>
@@ -356,12 +360,14 @@ export const MessageListView: React.FC = () => {
                 key={category.id}
                 className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
                 onClick={() => setSelectedCategoryId(category.id)}
+                onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
+                onKeyDown={e => { if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
                 {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
               </button>
             ))}
-            <button className="category-add-btn" onClick={() => setShowCreateCategoryModal(true)} title={t('message_category.new_section', 'New Category')}>
+            <button className="category-add-btn" onClick={() => { setEditingCategory(null); setNewCategoryName(''); setNewCategoryColor('sky'); setShowCreateCategoryModal(true); }} title={t('message_category.new_section')}>
               <Plus size={15} /><span>{t('message_category.add_action')}</span>
             </button>
           </div>
@@ -454,16 +460,17 @@ export const MessageListView: React.FC = () => {
 
       {showCreateCategoryModal && (
         <Modal
-          title={t('message_category.new_section', 'New Category')}
+          title={t(editingCategory ? 'message_category.edit_title' : 'message_category.new_section')}
           message=""
-          confirmText={t('message_category.add_action', 'Add Category')}
+          confirmText={t(editingCategory ? 'common.save' : 'message_category.add_action')}
+          confirmDisabled={categorySaving || !newCategoryName.trim()} closeDisabled={categorySaving} cancelDisabled={categorySaving}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCreateCategory()}
-          onCancel={() => setShowCreateCategoryModal(false)}
-          leadingActionText={t('message_list.manage_categories', 'Categories')}
+          onCancel={() => { if (categorySaving) return; const changed = editingCategory ? newCategoryName !== editingCategory.name || newCategoryColor !== editingCategory.color : !!newCategoryName.trim() || newCategoryColor !== 'sky'; if (changed) setDiscardCategoryAction(() => () => setShowCreateCategoryModal(false)); else setShowCreateCategoryModal(false); }}
+          leadingActionText={editingCategory ? undefined : t('message_list.manage_categories', 'Categories')}
           onLeadingAction={() => {
-            setShowCreateCategoryModal(false);
-            openCategoryManager();
+            const open = () => { setShowCreateCategoryModal(false); openCategoryManager(); };
+            if (newCategoryName.trim() || newCategoryColor !== 'sky') setDiscardCategoryAction(() => open); else open();
           }}
           size="compact"
         >
@@ -492,6 +499,8 @@ export const MessageListView: React.FC = () => {
         </Modal>
       )}
 
+      {discardCategoryAction && <Modal title={t('message_edit.discard_title')} message="" confirmText={t('message_edit.discard')} cancelText={t('common.cancel')} destructive onCancel={() => setDiscardCategoryAction(null)} onConfirm={() => { discardCategoryAction(); setDiscardCategoryAction(null); }} />}
+
       {showDuplicateCategoryModal && (
         <Modal
           title={t('message_category.duplicate_title', 'Category Already Exists')}
@@ -511,7 +520,7 @@ export const MessageListView: React.FC = () => {
           confirmText={t('common.save', 'Save')}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCategoryManagerSave()}
-          onCancel={() => setShowCategoryModal(false)}
+          onCancel={() => { if (JSON.stringify(categoryManagerRows) !== JSON.stringify(buildCategoryManagerRows())) setDiscardCategoryAction(() => () => setShowCategoryModal(false)); else setShowCategoryModal(false); }}
         >
           <div className="category-manager">
             <div className="category-manager-list">
@@ -524,7 +533,6 @@ export const MessageListView: React.FC = () => {
 
               {categoryManagerRows.map((row, index) => (
                 <section key={row.clientId} className="category-list-row">
-                  <span className={`category-row-accent color-${row.color}`} aria-hidden="true" />
                   <input
                     className="category-inline-input"
                     value={row.name}

@@ -308,5 +308,22 @@
       "ocean": "海洋藍"
     }
   },
-  "storage.shared_file": "附件"
+  "storage.shared_file": "附件",
+  "account.section_title": "帳號",
+  "account.provider.apple": "通過 Apple 登入",
+  "account.email_unavailable": "當前 Apple 帳號郵箱不可用",
+  "account.email_hidden_title": "郵箱已由 Apple 隱藏",
+  "account.email_hidden_message": "這個帳號正在使用“隱藏郵箱地址”，Synca 不會看到你的真實郵箱。",
+  "account.delete_action": "刪除帳號",
+  "account.delete_confirm_title": "刪除帳號",
+  "account.delete_confirm_message": "這將永久刪除你的 Synca 帳號，並從 Synca 服務器移除已同步的消息、檔案、分類、意見回饋和登入會話數據。此操作不可撤銷。",
+  "account.delete_success_title": "帳號已刪除",
+  "account.delete_success_message": "你的 Synca 帳號及相關數據已被刪除。",
+  "account.delete_failed_title": "無法刪除帳號",
+  "account.delete_failed_message": "請稍後再試。",
+  "account.today_records": "今日記錄",
+  "account.menu": "帳號菜單",
+  "account.and_plan": "帳號與套餐",
+  "message_category.edit_title": "編輯分類",
+  "navigation.save_failed": "儲存失敗，請重試。"
 }

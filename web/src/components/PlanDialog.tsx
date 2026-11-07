@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 
 export const SYNCA_APP_STORE_URL = 'https://apps.apple.com/cn/app/synca-灵感记录-即刻同步/id6761647007';
 
-export function PlanDialog({ onClose }: { onClose: () => void }) {
+export function PlanContent() {
   const { t, i18n } = useTranslation();
   const { accessStatus: status } = useAuth();
   const storage = status?.storage;
@@ -32,9 +32,7 @@ export function PlanDialog({ onClose }: { onClose: () => void }) {
     <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">{t('access.terms_link_title')}</a>
   </div>;
   const download = <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
-  return <Modal title={t('access.center_title')} message="" onCancel={onClose}
-    onConfirm={onClose} confirmText={t('common.ok')} hideCancel neutral>
-    <div className="storage-plans">
+  return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
           <div className="plan-card-header"><h4>{t('access.current_plan_title')}</h4><span className="plan-badge">{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
@@ -63,6 +61,10 @@ export function PlanDialog({ onClose }: { onClose: () => void }) {
           <progress id="storage-usage" value={Math.min(storage.usedBytes, storage.limitBytes)} max={Math.max(1, storage.limitBytes)} />
         </div>}
       </>}
-    </div>
-  </Modal>;
+    </div>;
+}
+
+export function PlanDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+  return <Modal title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel neutral><PlanContent /></Modal>;
 }
