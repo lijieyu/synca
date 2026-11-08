@@ -158,7 +158,7 @@
   "storage.expires": "Expires",
   "storage.title": "Plans & transfer storage",
   "storage.paid_title": "Unlock file transfers",
-  "storage.used": "Used",
+  "storage.used": "Attachment storage",
   "storage.free_title": "Free",
   "storage.choose_image": "Choose image",
   "storage.choose_file": "Choose file",
@@ -336,5 +336,9 @@
   "access.preview_lifetime_price": "CNY 18",
   "access.preview_price_notice": "Preview price. Purchasing is not available yet.",
   "access.ai_service_notice": "Third-party AI service subscriptions are not included.",
-  "access.buyout_label": "One-time purchase"
+  "access.buyout_label": "One-time purchase",
+  "message_category.my_categories": "My Categories",
+  "message_category.start_reordering": "Reorder",
+  "message_category.finish_reordering": "Done Reordering",
+  "message_category.more_actions": "More actions"
 }

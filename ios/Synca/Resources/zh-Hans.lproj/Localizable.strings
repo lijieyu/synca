@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "分类名称不能为空";
 "message_category.invalid_message" = "保存前请为每个分类填写名称。";
 "message_category.delete_confirm_title" = "删除分类？";
-"message_category.delete_confirm_message" = "保存后这个分类会被删除。";
+"message_category.delete_confirm_message" = "保存后删除此分类，分类中的记录将保留并移至默认分类。";
 "message_category.color.sky" = "天蓝";
 "message_category.color.mint" = "薄荷";
 "message_category.color.amber" = "琥珀";
@@ -253,7 +253,7 @@
 "storage.expires" = "到期时间";
 "storage.title" = "方案与中转空间";
 "storage.paid_title" = "解锁文件传输";
-"storage.used" = "已使用";
+"storage.used" = "附件空间";
 
 "access.status_load_failed" = "暂时无法加载权益";
 "access.status_load_failed_detail" = "请检查网络连接后重试。";
@@ -357,3 +357,8 @@
 "access.buyout_label" = "一次性买断";
 
 "message_list.completed_count" = "%d 条已完成";
+
+"message_category.my_categories" = "我的分类";
+"message_category.reorder" = "调整顺序";
+"message_category.finish_reordering" = "完成排序";
+"message_category.more" = "更多操作";

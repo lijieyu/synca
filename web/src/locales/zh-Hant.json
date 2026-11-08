@@ -158,7 +158,7 @@
   "storage.expires": "到期時間",
   "storage.title": "方案與中轉空間",
   "storage.paid_title": "解鎖檔案傳輸",
-  "storage.used": "已使用",
+  "storage.used": "附件空間",
   "storage.free_title": "免費版",
   "storage.choose_image": "選擇圖片",
   "storage.choose_file": "選擇檔案",
@@ -336,5 +336,9 @@
   "access.preview_lifetime_price": "人民幣 ¥18",
   "access.preview_price_notice": "預發價格，暫不開放購買。",
   "access.ai_service_notice": "連接 AI 不包含第三方 AI 服務的訂閱費用。",
-  "access.buyout_label": "一次性買斷"
+  "access.buyout_label": "一次性買斷",
+  "message_category.my_categories": "我的分類",
+  "message_category.start_reordering": "調整順序",
+  "message_category.finish_reordering": "完成排序",
+  "message_category.more_actions": "更多操作"
 }

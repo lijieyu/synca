@@ -158,7 +158,7 @@
   "storage.expires": "到期时间",
   "storage.title": "方案与中转空间",
   "storage.paid_title": "解锁文件传输",
-  "storage.used": "已使用",
+  "storage.used": "附件空间",
   "storage.free_title": "免费版",
   "storage.choose_image": "选择图片",
   "storage.choose_file": "选择文件",
@@ -336,5 +336,9 @@
   "access.preview_lifetime_price": "¥18",
   "access.preview_price_notice": "预发价格，暂不开放购买。",
   "access.ai_service_notice": "连接 AI 不包含第三方 AI 服务的订阅费用。",
-  "access.buyout_label": "一次性买断"
+  "access.buyout_label": "一次性买断",
+  "message_category.my_categories": "我的分类",
+  "message_category.start_reordering": "调整顺序",
+  "message_category.finish_reordering": "完成排序",
+  "message_category.more_actions": "更多操作"
 }

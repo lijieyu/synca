@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "Category Name Required";
 "message_category.invalid_message" = "Each category needs a name before saving.";
 "message_category.delete_confirm_title" = "Delete Category?";
-"message_category.delete_confirm_message" = "This category will be removed after you save.";
+"message_category.delete_confirm_message" = "After saving, this category will be deleted. Its records will be kept and moved to the default category.";
 "message_category.color.sky" = "Sky";
 "message_category.color.mint" = "Mint";
 "message_category.color.amber" = "Amber";
@@ -253,7 +253,7 @@
 "storage.expires" = "Expires";
 "storage.title" = "Plans & transfer storage";
 "storage.paid_title" = "Unlock file transfers";
-"storage.used" = "Used";
+"storage.used" = "Attachment storage";
 
 "access.status_load_failed" = "Unable to load your plan";
 "access.status_load_failed_detail" = "Check your connection and try again.";
@@ -357,3 +357,8 @@
 "access.buyout_label" = "One-time purchase";
 
 "message_list.completed_count" = "%d completed items";
+
+"message_category.my_categories" = "My Categories";
+"message_category.reorder" = "Reorder";
+"message_category.finish_reordering" = "Done Reordering";
+"message_category.more" = "More Actions";
