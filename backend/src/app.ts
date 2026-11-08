@@ -1,3 +1,4 @@
+import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
 import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension, isSupportedDocument } from './attachmentPolicy.js';
 import { createAIRouter, aiRateLimit } from './aiRoutes.js';
 import { authenticate as authenticateAI, requireScope as requireAIScope, AIError, assertActive, type Actor, publicOrigin } from './aiCore.js';
@@ -49,6 +50,11 @@ app.use(['/mcp', '/api/ai/tools/create_attachment'], async (req, res, next) => {
         } else next(error);
     }
 }, express.json({ limit: '8mb' }));
+// Text-only writes need room for 10000 complex emoji, including escaped JSON.
+// Keep the default 100 KB cap for all unrelated APIs and the existing attachment cap.
+const recordTextJson = express.json({ limit: '1mb' });
+app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_records'], recordTextJson);
+app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
 app.use(createAIRouter(notifyOtherDevices));
 
@@ -418,12 +424,12 @@ app.delete('/message-categories/:id', auth, async (req, res) => {
 // Send text message
 app.post('/messages', auth, async (req, res, next) => {
     try {
-    if (typeof req.body?.textContent === 'string' && req.body.textContent.length > 2000) {
+    if (typeof req.body?.textContent === 'string' && !isRecordTextWithinLimit(req.body.textContent)) {
         return res.status(400).json({ error: 'message_too_long' });
     }
 
     const parsed = z.object({
-        textContent: z.string().min(1).max(2000),
+        textContent: recordTextSchema,
         sourceDevice: z.string().max(50).optional(),
         categoryId: z.string().uuid().optional().nullable(),
     }).safeParse(req.body);
@@ -640,7 +646,7 @@ app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) 
 
 app.patch('/messages/:id/text', auth, async (req, res, next) => {
     const parsed = z.object({
-        textContent: z.string().min(1).max(2000).refine(value => value.length <= 2000 && value.trim().length > 0),
+        textContent: recordTextSchema.refine(value => value.trim().length > 0),
         expectedUpdatedAt: z.iso.datetime({ offset: true }),
     }).strict().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_payload' });

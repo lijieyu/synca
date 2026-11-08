@@ -4,10 +4,13 @@ import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Toast } from './Toast';
+import { CategoryAssignmentMenu } from './CategoryAssignmentMenu';
+import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
 import { copyProtectedImage } from '../utils/clipboard';
 
 interface Props {
+  showsSeparator?: boolean;
   message: SyncaMessage;
   categories: MessageCategory[];
   onUpdate: () => void;
@@ -28,7 +31,7 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
   </svg>
 );
 
-export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, onEdit }) => {
+export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, onEdit, showsSeparator = true }) => {
   const [actionError, setActionError] = useState('');
   const canEditText = message.type === 'text' && !message.isDeleted && !message.imagePath && !message.imageUrl && !message.filePath && !message.fileUrl;
   const [copied, setCopied] = useState(false);
@@ -220,11 +223,11 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
 
   return (
     <>
-      <div className={`message-bubble ${message.isCleared ? 'cleared' : ''}`}>
+      <div className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
         {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (
-          <div className="message-content">{linkify(message.textContent ?? '')}</div>
+          <ExpandableMessageText key={message.textContent} text={message.textContent ?? ''}>{linkify(message.textContent ?? '')}</ExpandableMessageText>
         )}
         
         {!expired && message.type === 'image' && message.imageUrl && (
@@ -263,36 +266,7 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
             {message.categoryName && (
               <>
                 <span>·</span>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', position: 'relative' }}>
-                  <span>{
-                    (() => {
-                      const cat = categories.find(c => c.id === message.categoryId);
-                      if (cat?.isDefault) return t('message_category.default_badge', '默认');
-                      return message.categoryName;
-                    })()
-                  }</span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  <select
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      opacity: 0,
-                      cursor: 'pointer',
-                      width: '100%',
-                      height: '100%'
-                    }}
-                    value={message.categoryId ?? ''}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                    disabled={isProcessing}
-                    aria-label={t('storage.message_category')}
-                  >
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.isDefault ? t('message_category.default_badge', '默认') : category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <CategoryAssignmentMenu categories={categories} categoryId={message.categoryId} disabled={isProcessing} onChange={handleCategoryChange} />
               </>
             )}
           </div>

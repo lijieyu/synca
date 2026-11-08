@@ -144,3 +144,30 @@
 .about-modal .about-description { margin:0 0 16px; }
 .about-modal .shell-links { justify-content:center; gap:20px; }
 .about-modal .about-registration { text-align:center; margin:8px 0 0; font-size:12px; }
+
+/* Approved compact identity: plan first, full-width email beneath. */
+.identity-line > svg { flex-shrink:0; color:var(--text-secondary); }
+.identity-plan { flex:1; min-width:0; font-size:11px; font-weight:400; color:var(--text-secondary); }
+.identity-email { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; margin-top:7px; }
+.about-modal .about-identity { flex-direction:row; gap:13px; padding:4px 0 14px; text-align:left; }
+.about-modal .about-identity img { width:48px; height:48px; border-radius:12px; flex-shrink:0; }
+.about-modal .about-identity h4 { font-size:26px; }
+.about-modal .about-identity p { font-size:12px; }
+.about-modal .about-description { font-size:13px; margin:0 0 48px; }
+.about-modal .shell-links { gap:12px; padding:0 18px 8px; flex-wrap:wrap; }
+.about-modal .shell-links a { color:var(--text-main); flex:1; justify-content:center; border:1px solid var(--border-color); border-radius:8px; text-decoration:none; padding:8px 12px; min-height:38px; }
+.about-modal .about-registration { margin:4px 0 4px; font-size:11px; }
+.message-content-collapsed { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6; overflow:hidden; }
+.message-expand { display:block; min-height:36px; padding:6px 0; border:0; background:transparent; color:var(--synca-purple); font:inherit; font-size:12px; cursor:pointer; }
+.message-input-limit { margin:0; padding:0 20px 8px; color:light-dark(#b42318,#ff8a80); font-size:12px; }
+.category-assignment { position:relative; min-width:0; }
+.category-assignment-trigger { display:flex; align-items:center; gap:4px; min-height:28px; padding:0; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+.category-assignment-trigger > span:not(.category-color-dot) { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.category-color-dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:var(--category-accent,var(--text-secondary)); }
+.category-assignment-menu { font-size:12px; position:fixed; width:min(220px,65vw); max-height:240px; overflow:auto; z-index:40; padding:5px; border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg-color); box-shadow:0 8px 24px #0002; }
+.category-assignment-menu button { display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:8px; border:0; border-radius:6px; background:transparent; color:var(--text-main); font:inherit; text-align:left; cursor:pointer; }
+.category-assignment-menu button > span:not(.category-color-dot) { flex:1; min-width:0; overflow-wrap:anywhere; }
+.category-assignment-menu button > svg { flex-shrink:0; color:var(--synca-purple); }
+.category-assignment-menu button:is(:hover,:focus-visible) { background:var(--selection-bg); }
+
+.calm-main .message-bubble.message-bubble-last { border-bottom:0; }

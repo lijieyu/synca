@@ -1,3 +1,4 @@
+import { BroomIcon } from './BroomIcon';
 import { SettingsPanel } from './SettingsPanel';
 import { FunctionMenu } from './FunctionMenu';
 import { ShellPanel } from './ShellPanel';
@@ -7,7 +8,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Lightbulb, MoreHorizontal, Pencil, Plus, RefreshCcw, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lightbulb, MoreHorizontal, Pencil, Plus, RefreshCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -410,7 +411,7 @@ export const MessageListView: React.FC = () => {
           </div>
 
         </div>
-      <FunctionMenu email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.status_unlimited' : 'access.free_title')}
+      <FunctionMenu email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.purchased_lifetime' : 'access.free_title')}
         usage={plan === 'free' && accessStatus ? { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 } : null}
         onAccount={() => setPanel('account')} onSettings={() => setShowSettings(true)} onCategories={openCategoryManager}
         onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} onLogout={() => setShowLogoutModal(true)} />
@@ -421,7 +422,7 @@ export const MessageListView: React.FC = () => {
           <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
           <div className="header-actions">
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RefreshCcw size={18} /></button>
-            <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_all_confirm_title')} title={t('message_list.clear_all_confirm_title')}><Trash2 size={18} /></button>
+            <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
         </header>
           <div className="message-list" ref={listRef}>
@@ -434,7 +435,7 @@ export const MessageListView: React.FC = () => {
             {filteredMessages.length > 0 && (
               <>
                 {completed.map((message) => (
-                  <MessageBubble key={message.id} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
                 ))}
 
                 {pending.length > 0 && (
@@ -446,7 +447,7 @@ export const MessageListView: React.FC = () => {
                 )}
 
                 {pending.map((message) => (
-                  <MessageBubble key={message.id} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
                 ))}
               </>
             )}

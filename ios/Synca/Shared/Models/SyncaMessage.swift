@@ -440,3 +440,9 @@ enum CategorySwipeNavigation {
         return order.indices.contains(next) ? order[next] : nil
     }
 }
+
+/// User-visible character limits count extended grapheme clusters, matching Swift text editing.
+enum MessageTextPolicy {
+    static let maximumCharacters = 10000
+    static func accepts(_ text: String) -> Bool { text.count <= maximumCharacters }
+}

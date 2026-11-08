@@ -390,7 +390,7 @@ struct MessageListView: View {
                 }
                 .padding(.horizontal, 28).padding(.vertical, 18)
                 .background(MacWindowDragArea())
-                .frame(maxWidth: 816)
+                .frame(maxWidth: .infinity)
                 desktopContentDivider
                 singleMessageContent
             }
@@ -456,12 +456,9 @@ struct MessageListView: View {
     }
 
     #if os(macOS)
-    // Match the list and composer's 760-point content width and 20-point gutters.
-    // The gutters must remain outside the width limit when the window narrows.
+    // The header spans the detail pane; records and composer keep their own width limits.
     private var desktopContentDivider: some View {
         Divider()
-            .frame(maxWidth: 760)
-            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
     }
     #endif
@@ -496,23 +493,22 @@ struct MessageListView: View {
             }
             Spacer(minLength: 12)
             Button { showManagementMenu.toggle() } label: {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 7) {
                         Image(systemName: "person.fill")
-                            .font(.system(size: 18, weight: .regular))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 34, height: 34)
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
-                                .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                            if let status = accessManager.status {
-                                Text(planName(status)).font(.caption).foregroundStyle(.secondary)
-                            }
+                            .font(.system(size: 16)).foregroundStyle(.secondary).accessibilityHidden(true)
+                        if let status = accessManager.status {
+                            Text(planName(status)).font(.subheadline.weight(.medium))
+                        } else {
+                            Text("account.section_title").font(.subheadline.weight(.medium))
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.secondary)
                     }
+                    Text(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+                        .help(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
                     if let status = accessManager.status { DailyQuotaView(status: status) }
                 }
                 .padding(12).background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 12))
@@ -849,7 +845,7 @@ struct MessageListView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(completed) { message in
-                            messageView(for: message)
+                            messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id))
                         }
 
                         if !uncompleted.isEmpty {
@@ -867,7 +863,7 @@ struct MessageListView: View {
                             .id("uncompleted_header")
 
                             ForEach(uncompleted) { message in
-                                messageView(for: message)
+                                messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id))
                             }
                         }
 
@@ -1027,9 +1023,11 @@ struct MessageListView: View {
         Button {
             self.showClearAllConfirm = true
         } label: {
-            Image(systemName: "trash")
+            Image("BroomOutline").resizable().frame(width: 18, height: 18)
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("message_list.clear_completed"))
         .disabled((isTiledLayout ? syncManager.messages : filteredMessages).allSatisfy { !$0.isCleared })
     }
 
@@ -1058,12 +1056,36 @@ struct MessageListView: View {
 
     // MARK: - Input Bar
 
+    private var composerControlSize: CGFloat {
+        #if os(iOS)
+        44
+        #else
+        30
+        #endif
+    }
+    private var composerControlSpacing: CGFloat {
+        #if os(iOS)
+        0
+        #else
+        12
+        #endif
+    }
+    private var composerHorizontalPadding: CGFloat {
+        #if os(iOS)
+        4
+        #else
+        16
+        #endif
+    }
+
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: 6) {
-        HStack(spacing: 12) {
+        HStack(spacing: composerControlSpacing) {
             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                 Image(systemName: "photo.badge.plus")
-                    .font(.system(size: 22))
+                    .font(.system(size: 20))
+                    .frame(width: composerControlSize, height: composerControlSize).contentShape(Rectangle())
+                    .accessibilityLabel(Text("message_list.add_photos"))
             }
             .buttonStyle(.plain)
             .disabled(syncManager.isSending)
@@ -1093,6 +1115,8 @@ struct MessageListView: View {
             } label: {
                 Image(systemName: "paperclip")
                     .font(.system(size: 20, weight: .medium))
+                    .frame(width: composerControlSize, height: composerControlSize).contentShape(Rectangle())
+                    .accessibilityLabel(Text("message_list.add_file"))
             }
             .buttonStyle(.plain)
             .disabled(syncManager.isSending)
@@ -1109,20 +1133,24 @@ struct MessageListView: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
+                    .frame(width: composerControlSize, height: composerControlSize).contentShape(Rectangle())
+                    .accessibilityLabel(Text("message_list.send"))
                     .foregroundStyle(self.canSend ? Color.accentColor : Color.gray.opacity(0.4))
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
         }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, composerHorizontalPadding)
         #if os(macOS)
         .padding(.vertical, 8)
         #else
-        .padding(.top, 10)
-        .padding(.bottom, 6)
+        .padding(.vertical, 4)
         #endif
         #if os(iOS)
+        .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.syncaCardBorder, lineWidth: 1).allowsHitTesting(false))
+        .padding(.horizontal, 12).padding(.vertical, 8)
         .background(.bar)
         #else
         .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 16))
@@ -1144,7 +1172,8 @@ struct MessageListView: View {
             }, onSubmit: {
                 self.submitText()
             })
-            .frame(height: max(44, min(inputHeight, 150)))
+            .frame(height: max(PasteAwareTextView.minimumHeight, min(inputHeight, PasteAwareTextView.maximumHeight)))
+            .clipped()
             .opacity(syncManager.isSending ? 0.5 : 1.0)
 
             if inputText.isEmpty {
@@ -1156,11 +1185,7 @@ struct MessageListView: View {
                     .allowsHitTesting(false)
             }
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+
         #else
         ZStack(alignment: .leading) {
             MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, focusRequest: composerFocusRequest, onPasteImage: { imageData in
@@ -1283,8 +1308,18 @@ struct MessageListView: View {
             #if os(macOS)
             proxy.scrollTo("bottom", anchor: .bottom)
             #else
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-                proxy.scrollTo("bottom", anchor: .bottom)
+            if shouldScrollToBottomAfterInitialLoad || reduceMotion {
+                // Initial layout can change as lazy rows and attachments resolve their height.
+                // Establish the final scroll geometry without animating intermediate offsets.
+                var transaction = Transaction(animation: nil)
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
             }
             #endif
         }
@@ -1384,10 +1419,11 @@ struct MessageListView: View {
     #endif
 
     @ViewBuilder
-    private func messageView(for message: SyncaMessage) -> some View {
+    private func messageView(for message: SyncaMessage, showsSeparator: Bool) -> some View {
         MessageBubbleView(
             message: message,
             categories: syncManager.categories,
+            showsSeparator: showsSeparator,
             isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
             onEdit: { editingMessage = message },
             onClear: {
@@ -1563,6 +1599,7 @@ private struct TiledCategoryColumn: View {
                             MessageBubbleView(
                                 message: message,
                                 categories: syncManager.categories,
+                                showsSeparator: message.id != (pendingMessages.last?.id ?? completedMessages.last?.id),
                                 isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
                                 onEdit: { onEdit(message) },
                                 onClear: { Task { await syncManager.clearMessage(message.id) } },
@@ -1595,6 +1632,7 @@ private struct TiledCategoryColumn: View {
                             MessageBubbleView(
                                 message: message,
                                 categories: syncManager.categories,
+                                showsSeparator: message.id != (pendingMessages.last?.id ?? completedMessages.last?.id),
                                 isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
                                 onEdit: { onEdit(message) },
                                 onClear: {
@@ -3058,54 +3096,49 @@ private struct AboutSyncaSheet: View {
             #endif
     }
 
+    private var linkMinimumHeight: CGFloat {
+        #if os(iOS)
+        44
+        #else
+        36
+        #endif
+    }
+
+    private func aboutLink(_ title: LocalizedStringKey, destination: URL) -> some View {
+        Link(destination: destination) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: linkMinimumHeight)
+                .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
+                    .allowsHitTesting(false))
+                .contentShape(RoundedRectangle(cornerRadius: 8))
+        }.buttonStyle(.plain)
+    }
+
     private var sheetContent: some View {
         ScrollView {
             VStack(spacing: 24) {
-                VStack(spacing: 14) {
-                    Image("LoginLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 76, height: 76)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
-
-                    VStack(spacing: 6) {
-                        Text("Synca")
-                            .font(.title2.weight(.semibold))
-
-                        Text(String(syncaLocalized: "app.slogan", bundle: .main))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
+                HStack(spacing: 14) {
+                    Image("LoginLogo").resizable().scaledToFit()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Synca").font(.title2.weight(.semibold))
+                        Text(versionText).font(.subheadline).foregroundStyle(.secondary)
                     }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 12)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(versionText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Divider()
-
-                    Link(destination: websiteURL) {
-                        HStack(alignment: .center, spacing: 12) {
-                            Text(String(format: String(syncaLocalized: "message_list.about_website_format", bundle: .main), websiteURL.absoluteString))
-                                .font(.body)
-                                .foregroundStyle(systemLinkColor)
-                                .multilineTextAlignment(.leading)
-
-                            Spacer(minLength: 0)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(Text("message_list.about_website_hint"))
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }.frame(maxWidth: .infinity).padding(.top, 0)
+                Text(String(syncaLocalized: "app.slogan", bundle: .main))
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                HStack(spacing: 12) {
+                    aboutLink("access.privacy_policy_link_title", destination: AppLinks.privacyPolicyURL)
+                    aboutLink("message_list.support", destination: AppLinks.supportURL)
+                }.padding(.top, 28)
 
                 Text(verbatim: "浙ICP备2026013056号-3A")
                     .font(.footnote)
@@ -3117,23 +3150,14 @@ private struct AboutSyncaSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
-            .padding(.bottom, 24)
+            .padding(.bottom, 12)
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: SheetContentHeightKey.self, value: proxy.size.height)
             })
         }
         .scrollIndicators(.hidden)
         .onPreferenceChange(SheetContentHeightKey.self) { contentHeight = $0 }
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.accentColor.opacity(0.10),
-                    sheetBackgroundColor
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .background(sheetBackgroundColor)
     }
 }
 

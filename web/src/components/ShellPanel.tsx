@@ -50,7 +50,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
       {error && <p role="alert">{error}</p>}
     </div>}
     {kind === 'about' && <div className="about-panel">
-      <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
+      <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={48} height={48} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
       <p className="about-registration">浙ICP备2026013056号-3A</p>

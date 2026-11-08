@@ -72,7 +72,7 @@
   "access.free_usage": "今日使用：%d/%d",
   "access.free_keep_access": "查看、同步、清理和刪除已有內容始終可用",
   "access.free_reset_hint": "免費額度會在每天自動重置",
-  "access.unlock_title": "升級 Pro",
+  "access.unlock_title": "Synca Pro",
   "access.unlock_benefit_ai": "連接 AI，查找、整理和儲存記錄",
   "access.unlock_benefit_unlimited": "不限新增記錄數量",
   "access.unlock_benefit_cross_device": "iPhone 和 Mac 跨設備持續可用",
@@ -84,7 +84,7 @@
   "access.option_monthly_subtitle": "按月自動續費，可隨時取消。",
   "access.option_yearly_title": "Pro（年付）",
   "access.option_yearly_subtitle": "按年自動續費，每年續費一次。",
-  "access.option_lifetime_title": "Pro 買斷",
+  "access.option_lifetime_title": "Synca Pro",
   "access.option_lifetime_subtitle": "一次購買，三端通用。無需訂閱。",
   "access.purchase_setup_pending": "App Store 購買通道是下一步接入內容。",
   "access.buy_for_price": "%@ 購買",
@@ -99,7 +99,7 @@
   "access.restore_failed": "暫時無法恢復購買。",
   "access.purchased_monthly": "Pro（月付）",
   "access.purchased_yearly": "Pro（年付）",
-  "access.purchased_lifetime": "Pro 買斷",
+  "access.purchased_lifetime": "Synca Pro",
   "access.unlimited_title": "Pro 權益",
   "access.unlimited_description": "你已解鎖不限量記錄權益，並可在所有設備上使用。",
   "access.purchase_date": "購買時間：%@",
@@ -340,5 +340,9 @@
   "message_category.my_categories": "我的分類",
   "message_category.start_reordering": "調整順序",
   "message_category.finish_reordering": "完成排序",
-  "message_category.more_actions": "更多操作"
+  "message_category.more_actions": "更多操作",
+  "message_bubble.expand": "展開全文",
+  "message_bubble.collapse": "收起",
+  "message_list.text_limit": "最多 10,000 字，請縮短內容後傳送。",
+  "message_list.clear_completed": "清除已完成"
 }

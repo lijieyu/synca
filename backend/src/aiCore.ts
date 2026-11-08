@@ -1,3 +1,4 @@
+import { trimmedRecordTextSchema } from './recordText.js';
 import { nextMessageTimestamp } from './messageRevision.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -64,7 +65,7 @@ export const colors = z.enum(['sky', 'mint', 'amber', 'coral', 'violet', 'slate'
 export const versionedId = z.object({ id: z.string().uuid(), expectedUpdatedAt: z.string().datetime() });
 export const mutationSchema = z.object({
     items: z.array(versionedId).min(1).max(100),
-    textContent: z.string().trim().min(1).max(2000).optional(),
+    textContent: trimmedRecordTextSchema.optional(),
     categoryId: z.string().uuid().optional(), isCleared: z.boolean().optional(),
 }).strict().refine(v => v.textContent !== undefined || v.categoryId !== undefined || v.isCleared !== undefined, 'No changes')
     .refine(v => v.textContent === undefined || v.items.length === 1, 'Text editing requires one record')
@@ -108,7 +109,7 @@ function operation(actor: Actor, kind: string, payload: unknown, result: unknown
     return { id: randomUUID(), user_id: actor.userId, connection_id: actor.id, kind, payload: JSON.stringify(payload),
         result: JSON.stringify(result), status: 'completed', created_at: new Date().toISOString(), expires_at: null, request_key: key };
 }
-export const createSchema = z.object({ textContent: z.string().trim().min(1).max(2000), categoryId: z.string().uuid().optional(),
+export const createSchema = z.object({ textContent: trimmedRecordTextSchema, categoryId: z.string().uuid().optional(),
     idempotencyKey: z.string().uuid() }).strict();
 export async function createText(actor: Actor, args: z.infer<typeof createSchema>) {
     requireScope(actor, 'create');

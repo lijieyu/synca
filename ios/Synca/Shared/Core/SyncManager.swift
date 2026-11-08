@@ -340,8 +340,8 @@ final class SyncManager: ObservableObject {
         let operationGeneration = syncState.generation
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return .failed }
-        guard trimmedText.count <= 2000 else {
-            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), 2000)))
+        guard MessageTextPolicy.accepts(trimmedText) else {
+            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), MessageTextPolicy.maximumCharacters)))
             return .failed
         }
         let sendGeneration = beginSending()

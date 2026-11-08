@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, MessageEditError, SessionExpiredError, type SyncaMessage } from '../api/client';
+import { MESSAGE_TEXT_LIMIT, messageTextLength } from '../utils/messageText';
 import { Modal } from './Modal';
 
 interface Props {
@@ -25,7 +26,8 @@ export const MessageTextEditor: React.FC<Props> = ({ message, onCancel, onSaved 
     if (!isSaving && (errorMessage || sessionExpired)) inputRef.current?.focus();
   }, [isSaving, errorMessage, sessionExpired]);
   const hasChanges = draft !== (message.textContent ?? '');
-  const canSave = hasChanges && !isSaving && !sessionExpired && Boolean(draft.trim()) && draft.length <= 2000;
+  const characterCount = messageTextLength(draft);
+  const canSave = hasChanges && !isSaving && !sessionExpired && Boolean(draft.trim()) && characterCount <= MESSAGE_TEXT_LIMIT;
   useEffect(() => {
     if (!hasChanges) return;
     const preserveDraft = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -59,13 +61,13 @@ export const MessageTextEditor: React.FC<Props> = ({ message, onCancel, onSaved 
       <label className="message-editor-label" htmlFor={inputId}>{t('message_edit.content')}</label>
       <textarea ref={inputRef} id={inputId} className="message-editor-input" value={draft} disabled={isSaving}
         onChange={event => setDraft(event.target.value)} data-initial-focus
-        aria-invalid={draft.length > 2000 || undefined} aria-describedby={`${inputId}-count`}
+        aria-invalid={characterCount > MESSAGE_TEXT_LIMIT || undefined} aria-describedby={`${inputId}-count`}
         onKeyDown={event => {
           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !event.nativeEvent.isComposing) {
             event.preventDefault(); void save();
           }
         }} />
-      <p id={`${inputId}-count`} className={`message-editor-count${draft.length > 2000 ? ' over-limit' : ''}`}>{draft.length} / 2000</p>
+      <p id={`${inputId}-count`} className={`message-editor-count${characterCount > MESSAGE_TEXT_LIMIT ? ' over-limit' : ''}`}>{characterCount} / {MESSAGE_TEXT_LIMIT}</p>
       {(sessionExpired || errorMessage) && <p className="message-editor-error" role="alert">{sessionExpired ? t('message_edit.session_expired') : errorMessage}</p>}
     </Modal>
     {confirmDiscard && <Modal title={t('message_edit.discard_title')} message=""

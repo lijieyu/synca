@@ -13,7 +13,7 @@ struct MessageTextEditorView: View {
     @State private var errorMessage: String?
     @State private var showDiscardConfirmation = false
     @FocusState private var isFocused: Bool
-    private static let textLimit = 2000
+    private static let textLimit = MessageTextPolicy.maximumCharacters
 
     init(message: SyncaMessage) {
         self.message = message
@@ -23,7 +23,7 @@ struct MessageTextEditorView: View {
     private var hasChanges: Bool { draft != (message.textContent ?? "") }
     private var canSave: Bool {
         hasChanges && !isSaving && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && draft.utf16.count <= Self.textLimit
+            && draft.count <= Self.textLimit
     }
 
     var body: some View {
@@ -76,9 +76,9 @@ struct MessageTextEditorView: View {
                 .disabled(isSaving)
                 .frame(minHeight: 180)
             #endif
-            Text("\(draft.utf16.count) / \(Self.textLimit)")
+            Text("\(draft.count) / \(Self.textLimit)")
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(draft.utf16.count > Self.textLimit ? Color.red : Color.secondary)
+                .foregroundStyle(draft.count > Self.textLimit ? Color.red : Color.secondary)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.circle")

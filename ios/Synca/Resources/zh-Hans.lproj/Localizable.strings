@@ -117,7 +117,7 @@
 "access.intro_payg_then_template" = "前 %@ 享受优惠，之后按 %@ / %@ 续费。";
 "access.intro_payupfront_then_template" = "优惠价覆盖 %@，之后按 %@ / %@ 续费。";
 "access.subscription_renews_template" = "%@ / %@，自动续费，直至取消。";
-"access.option_lifetime_title" = "Pro 买断";
+"access.option_lifetime_title" = "Synca Pro";
 "access.option_lifetime_subtitle" = "一次购买，三端通用。无需订阅。";
 "access.purchase_setup_pending" = "App Store 购买通道是下一步接入内容。";
 "access.buy_for_price" = "%@ 购买";
@@ -136,7 +136,7 @@
 "access.restore_failed" = "暂时无法恢复购买。";
 "access.purchased_monthly" = "Pro（月付）";
 "access.purchased_yearly" = "Pro（年付）";
-"access.purchased_lifetime" = "Pro 买断";
+"access.purchased_lifetime" = "Synca Pro";
 "access.unlimited_title" = "Pro 权益";
 "access.unlimited_description" = "你已解锁不限量记录权益，并可在所有设备上使用。";
 "access.subscription_billing_label" = "计费方式";
@@ -362,3 +362,17 @@
 "message_category.reorder" = "调整顺序";
 "message_category.finish_reordering" = "完成排序";
 "message_category.more" = "更多操作";
+
+"message_bubble.show_more" = "展开";
+
+"message_bubble.show_less" = "收起";
+
+"message_bubble.copied" = "已复制";
+
+"message_list.support" = "支持";
+
+"message_list.add_photos" = "添加照片";
+
+"message_list.add_file" = "添加文件";
+
+"message_list.send" = "发送";

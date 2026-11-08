@@ -237,6 +237,7 @@ final class APIClient: ObservableObject {
     }
 
     func sendTextMessage(text: String, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
+        guard MessageTextPolicy.accepts(text) else { throw APIError.messageTooLong(MessageTextPolicy.maximumCharacters) }
         var body: [String: Any] = ["textContent": text]
         if let sourceDevice { body["sourceDevice"] = sourceDevice }
         if let categoryId { body["categoryId"] = categoryId }
@@ -391,6 +392,7 @@ final class APIClient: ObservableObject {
     func cancelUploads() { uploadRequests.values.forEach { $0.cancel() } }
 
     func updateMessageText(id: String, textContent: String, expectedUpdatedAt: String) async throws -> SyncaMessage {
+        guard MessageTextPolicy.accepts(textContent) else { throw APIError.messageTooLong(MessageTextPolicy.maximumCharacters) }
         do {
             return try await patch("/messages/\(id)/text", body: ["textContent": textContent, "expectedUpdatedAt": expectedUpdatedAt])
         } catch APIError.httpError(404, _) {
@@ -598,7 +600,7 @@ final class APIClient: ObservableObject {
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
             switch serverError.error {
             case "message_too_long":
-                return .messageTooLong(2000)
+                return .messageTooLong(MessageTextPolicy.maximumCharacters)
             case "feedback_too_long":
                 return .feedbackTooLong(2000)
             case "file_too_large":
