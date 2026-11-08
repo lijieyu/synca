@@ -20,7 +20,7 @@
 .ai-page form { display: grid; gap: 18px; }
 .ai-page label:not(.ai-check) { display: grid; gap: 8px; }
 .ai-page input:not([type=checkbox]), .ai-page select { width: 100%; min-height: 44px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color, #aaa6); border-radius: 8px; padding: 10px; font: inherit; }
-.ai-page .ai-connection { display: flex; justify-content: space-between; align-items: start; gap: 20px; padding: 18px 0; }
+.ai-page .ai-connection { display: flex; flex-direction: column; align-items: stretch; gap: 20px; padding: 18px 0; }
 .ai-page .ai-connection + .ai-connection { border-top: 1px solid var(--ai-line); }
 .ai-page .ai-connection p { margin-bottom: 6px; }
 .ai-page .ai-log { list-style: none; padding: 0; }
@@ -80,3 +80,14 @@
 .ai-prompt-modal .ai-prompt-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 .ai-prompt-scroll p { font-size: 14px; line-height: 1.85; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ai-prompt-modal .modal-title, .ai-prompt-modal .modal-actions { flex-shrink: 0; }
+
+/* Keep connection metadata readable and secondary actions consistently trailing. */
+.ai-page .ai-connection > button { align-self: flex-end; }
+.ai-page .ai-section-actions { display: flex; justify-content: flex-end; }
+.ai-page .ai-log-limit { margin-bottom: 12px; }
+.ai-page footer { text-align: right; }
+.ai-page.ai-embedded .ai-content { max-width: 920px; padding-top: 20px; }
+.ai-page.ai-embedded .ai-intro-grid { padding-top: 12px; }
+.ai-page.ai-embedded h1 { font-size: 28px; margin: 12px 0 16px; letter-spacing: -.025em; }
+.ai-page.ai-embedded .ai-hero > p { font-size: 14px; line-height: 1.7; }
+.ai-page.ai-embedded .ai-connect h2 { font-size: 20px; }

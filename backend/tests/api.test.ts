@@ -50,6 +50,49 @@ describe('Synca API', () => {
         await resetDb();
     });
 
+    describe('record text character limits', () => {
+        it.each(['a', '中', '😀', '👨‍👩‍👧‍👦', 'e\u0301'])('accepts 10000 and rejects 10001 graphemes for %s on create and edit', async character => {
+            const { authHeader } = await createTestUser({ trialEndsAt: '2020-01-01T00:00:00.000Z' });
+            const textContent = character.repeat(10000);
+            const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent });
+            expect(created.status).toBe(201);
+            expect(created.body.textContent).toBe(textContent);
+            const tooLong = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: textContent + character });
+            expect(tooLong.status).toBe(400);
+            expect(tooLong.body.error).toBe('message_too_long');
+            const edited = await request(app).patch(`/messages/${created.body.id}/text`).set('Authorization', authHeader)
+                .send({ textContent, expectedUpdatedAt: created.body.updatedAt });
+            expect(edited.status).toBe(200);
+            expect(edited.body.textContent).toBe(textContent);
+            const rejected = await request(app).patch(`/messages/${created.body.id}/text`).set('Authorization', authHeader)
+                .send({ textContent: textContent + character, expectedUpdatedAt: edited.body.updatedAt });
+            expect(rejected.status).toBe(400);
+            expect(rejected.body.error).toBe('invalid_payload');
+        });
+        it('accepts escaped JSON for 10000 complex emoji', async () => {
+            const { authHeader } = await createTestUser();
+            const textContent = '👨‍👩‍👧‍👦'.repeat(10000);
+            const escapedJson = JSON.stringify({ textContent }).replace(/[\u0080-\uffff]/g,
+                character => '\\u' + character.charCodeAt(0).toString(16).padStart(4, '0'));
+            const response = await request(app).post('/messages').set('Authorization', authHeader)
+                .set('Content-Type', 'application/json').send(escapedJson);
+            expect(response.status).toBe(201);
+            expect(response.body.textContent).toBe(textContent);
+        });
+        it('retains bounded request bodies and the smaller cap for unrelated APIs', async () => {
+            const { authHeader } = await createTestUser();
+            expect((await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'x'.repeat(1024 * 1024) })).status).toBe(413);
+            expect((await request(app).post('/unknown').send({ content: 'x'.repeat(110000) })).status).toBe(413);
+        });
+        it('keeps feedback at 2000 characters', async () => {
+            const { authHeader } = await createTestUser();
+            const response = await request(app).post('/feedback').set('Authorization', authHeader)
+                .field('content', '中'.repeat(2001)).field('email', 'test@example.com');
+            expect(response.status).toBe(400);
+            expect(response.body.error).toBe('feedback_too_long');
+        });
+    });
+
     describe('PATCH /messages/:id/text', () => {
         const edit = (id: string, auth: string, textContent: string, expectedUpdatedAt: string) =>
             request(app).patch(`/messages/${id}/text`).set('Authorization', auth).send({ textContent, expectedUpdatedAt });
@@ -130,7 +173,7 @@ describe('Synca API', () => {
             const { authHeader } = await createTestUser();
             const created = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'original' });
             const { id, updatedAt } = created.body;
-            for (const text of ['', ' \n\t ', 'x'.repeat(2001), '😀'.repeat(1001)]) {
+            for (const text of ['', ' \n\t ', 'x'.repeat(10001), '😀'.repeat(10001)]) {
                 expect((await edit(id, authHeader, text, updatedAt)).status).toBe(400);
             }
             expect((await edit(id, authHeader, 'ok', 'invalid')).status).toBe(400);

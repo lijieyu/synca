@@ -5,6 +5,8 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct PasteAwareTextView: UIViewRepresentable {
+    static let minimumHeight: CGFloat = 44
+    static let maximumHeight: CGFloat = 150
     @Binding var text: String
     @Binding var height: CGFloat
     let isSending: Bool
@@ -25,7 +27,10 @@ struct PasteAwareTextView: UIViewRepresentable {
         textView.font = .preferredFont(forTextStyle: .body)
         textView.textContainerInset = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
         textView.textContainer.lineFragmentPadding = 0
-        textView.isScrollEnabled = false // Important for self-sizing
+        textView.isScrollEnabled = false
+        textView.clipsToBounds = true
+        textView.adjustsFontForContentSizeCategory = true
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -55,11 +60,18 @@ struct PasteAwareTextView: UIViewRepresentable {
         }
     }
 
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0 else { return nil }
+        let measured = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: min(Self.maximumHeight, max(Self.minimumHeight, ceil(measured.height))))
+    }
+
     private func updateHeight(_ textView: UITextView) {
-        let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude))
-        if height != size.height {
-            height = size.height
-        }
+        guard textView.bounds.width > 0 else { return }
+        let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+        let cappedHeight = min(Self.maximumHeight, max(Self.minimumHeight, ceil(size.height)))
+        textView.isScrollEnabled = size.height > Self.maximumHeight
+        if height != cappedHeight { height = cappedHeight }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -79,9 +91,13 @@ struct PasteAwareTextView: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             text = textView.text
-            let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude))
-            if height != size.height {
-                height = size.height
+            guard textView.bounds.width > 0 else { return }
+            let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+            let cappedHeight = min(PasteAwareTextView.maximumHeight, max(PasteAwareTextView.minimumHeight, ceil(size.height)))
+            textView.isScrollEnabled = size.height > PasteAwareTextView.maximumHeight
+            if height != cappedHeight { height = cappedHeight }
+            if textView.isScrollEnabled {
+                textView.scrollRangeToVisible(textView.selectedRange)
             }
         }
 

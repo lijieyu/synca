@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api, DailyLimitError, StorageError } from '../api/client';
 import { ImagePlus, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { MESSAGE_TEXT_LIMIT, messageTextLength } from '../utils/messageText';
 import { Toast } from './Toast';
 import { PlanDialog } from './PlanDialog';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface Props {
   onSent: () => void;
   categoryId?: string | null;
+  focusRequest?: number;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -19,13 +21,15 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0 }) => {
   const { accessStatus } = useAuth();
   const uploadController = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [retryAttachment, setRetryAttachment] = useState<{ file: File; image: boolean; categoryId?: string | null } | null>(null);
   useEffect(() => () => uploadController.current?.abort(), []);
   const [text, setText] = useState('');
+  const characterCount = messageTextLength(text);
+  const overLimit = characterCount > MESSAGE_TEXT_LIMIT;
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -45,6 +49,10 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
     }
   }, [isSending]);
 
+  useEffect(() => {
+    if (focusRequest > 0) textareaRef.current?.focus({ preventScroll: true });
+  }, [focusRequest]);
+
   const autoGrow = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -54,7 +62,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
 
   const handleSendText = async () => {
     const trimmed = text.trim();
-    if (!trimmed || isSending) return;
+    if (!trimmed || isSending || overLimit) return;
     
     setIsSending(true);
     try {
@@ -229,6 +237,8 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
             onPaste={handlePaste}
             disabled={isSending}
             aria-label={t('message_list.input_placeholder', 'Capture your thoughts...')}
+            aria-invalid={overLimit || undefined}
+            aria-describedby={overLimit ? "message-input-limit" : undefined}
             rows={1}
           />
 
@@ -236,12 +246,14 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
             className="send-btn"
             aria-label={t('common.send')}
             onClick={handleSendText}
-            disabled={!text.trim() || isSending}
+            disabled={!text.trim() || isSending || overLimit}
           >
-            <SendIcon size={30} color={text.trim() && !isSending ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
+            <SendIcon size={30} color={text.trim() && !isSending && !overLimit ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
           </button>
         </div>
       </div>
+
+      {overLimit && <p id="message-input-limit" className="message-input-limit" role="status">{t('message_list.text_limit')} ({characterCount} / {MESSAGE_TEXT_LIMIT})</p>}
 
       {(progress !== null || (retryAttachment && !isSending)) && <div className="transfer-status" aria-live="polite">
         {progress !== null && <div className="transfer-progress">

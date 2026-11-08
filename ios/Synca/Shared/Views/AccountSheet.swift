@@ -5,6 +5,10 @@ import AppKit
 
 struct AccountSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var accessManager: AccessManager
+
+    @State private var contentHeight: CGFloat = 400
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let accountEmail: String?
     let onRequestDeleteAccount: () -> Void
@@ -40,7 +44,7 @@ struct AccountSheet: View {
             sheetContent
 
         }
-        .frame(width: 480, height: min(760, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
+        .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80), height: min(contentHeight + 57, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
 
         #else
         NavigationStack {
@@ -51,6 +55,7 @@ struct AccountSheet: View {
                     ToolbarItem(placement: .confirmationAction) { closeButton }
                 }
         }
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
         #endif
     }
 
@@ -104,6 +109,21 @@ struct AccountSheet: View {
                         Spacer(minLength: 0)
                     }
 
+                    #if os(macOS)
+                    if let storage = accessManager.status?.storage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("storage.used")
+                                Spacer(minLength: 8)
+                                Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+                                    .monospacedDigit()
+                            }
+                            .font(.caption).foregroundStyle(.secondary)
+                            ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                                .accessibilityHidden(true)
+                        }.accessibilityElement(children: .combine)
+                    }
+                    #endif
                 }
                 .padding(.vertical, 12)
                 .padding(.bottom, 4)
@@ -117,15 +137,17 @@ struct AccountSheet: View {
                     HStack(spacing: 20) { accountActions }
                     VStack(alignment: .trailing, spacing: 12) { accountActions }
                 }
-                .padding(18)
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
-            .padding(.bottom, 24)
+            .padding(.bottom, 16)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: SheetContentHeightKey.self, value: proxy.size.height)
+            })
         }
         .scrollIndicators(.hidden)
+        .onPreferenceChange(SheetContentHeightKey.self) { contentHeight = $0 }
     }
 
     @ViewBuilder
@@ -133,40 +155,22 @@ struct AccountSheet: View {
         Button(role: .destructive) {
             runAfterDismiss(onRequestDeleteAccount)
         } label: {
-            accountActionRow(
-                title: String(syncaLocalized: "account.delete_action", bundle: .main),
-                systemImage: "person.crop.circle.badge.xmark",
-                tint: .red
-            )
+            Text("account.delete_action").foregroundStyle(.red).frame(minHeight: 44)
         }
         .buttonStyle(.plain)
 
         Button {
             runAfterDismiss(onRequestLogout)
         } label: {
-            accountActionRow(
-                title: String(syncaLocalized: "message_list.sign_out", bundle: .main),
-                systemImage: "rectangle.portrait.and.arrow.right",
-                tint: .primary
-            )
+            Text("message_list.sign_out").frame(minHeight: 44)
         }
         .buttonStyle(.plain)
     }
+}
 
-    @ViewBuilder
-    private func accountActionRow(title: String, systemImage: String, tint: Color) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 24)
-
-            Text(title)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(tint)
-
-        }
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
+struct SheetContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

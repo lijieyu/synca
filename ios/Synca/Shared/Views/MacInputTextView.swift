@@ -8,6 +8,7 @@ struct MacInputTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
     let isSending: Bool
+    var focusRequest: Int = 0
     let onPasteImage: (Data) -> Void
     let onPasteFile: (PendingFileUpload) -> Void
     var onSubmit: (() -> Void)? = nil
@@ -51,7 +52,7 @@ struct MacInputTextView: NSViewRepresentable {
         textView.textColor = .textColor
         textView.insertionPointColor = .textColor
         textView.typingAttributes = Self.textAttributes
-        // Vertical inset is set in recalculateHeight so min-height fields center the line optically.
+        // Vertical inset is derived from the configured font in recalculateHeight.
         textView.textContainerInset = NSSize(width: 0, height: 5)
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
@@ -78,14 +79,28 @@ struct MacInputTextView: NSViewRepresentable {
         textView.onPasteFile = onPasteFile
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
+        if context.coordinator.lastFocusRequest != focusRequest {
+            context.coordinator.lastFocusRequest = focusRequest
+            if focusRequest > 0, !isSending {
+                DispatchQueue.main.async { [weak textView] in
+                    guard let textView, let window = textView.window,
+                          window.attachedSheet == nil else { return }
+                    let selection = textView.selectedRanges
+                    window.makeFirstResponder(textView)
+                    textView.selectedRanges = selection
+                }
+            }
+        }
         container.layoutTextView()
         // Do not overwrite the text view while IME composition is active (e.g. Chinese input).
         if !textView.hasMarkedText(), textView.string != text {
             // Use replaceCharacters instead of string= to preserve typingAttributes
             let fullRange = NSRange(location: 0, length: textView.string.utf16.count)
             textView.textStorage?.replaceCharacters(in: fullRange, with: text)
+            Self.applyPlainTextStyle(to: textView)
         }
-        Self.applyPlainTextStyle(to: textView)
+        // AppKit owns the attributes of active IME text and font fallback runs.
+        // Restyling every SwiftUI update invalidates layout during composition.
         // Defer binding updates to the next run loop so AppKit sizing doesn't mutate SwiftUI state during view updates.
         DispatchQueue.main.async {
             context.coordinator.recalculateHeight(for: textView)
@@ -108,6 +123,7 @@ struct MacInputTextView: NSViewRepresentable {
         let onPasteImage: (Data) -> Void
         let onPasteFile: (PendingFileUpload) -> Void
         var onSubmit: (() -> Void)?
+        var lastFocusRequest = 0
 
         init(text: Binding<String>, height: Binding<CGFloat>, onPasteImage: @escaping (Data) -> Void, onPasteFile: @escaping (PendingFileUpload) -> Void, onSubmit: (() -> Void)?) {
             _text = text
@@ -129,31 +145,15 @@ struct MacInputTextView: NSViewRepresentable {
             lm.ensureLayout(for: tc)
             let font = textView.font ?? MacInputTextView.textFont
             let lineH = lm.defaultLineHeight(for: font)
-            // Empty (or not yet laid out) usedRect is often 0; using line height keeps padding + caret position stable after clear/send.
-            var usedHeight = lm.usedRect(for: tc).height
-            if textView.string.isEmpty {
-                usedHeight = lineH
-            }
-
+            // Include the extra empty line after Return so its caret is not clipped.
+            let usedHeight = textView.string.isEmpty ? lineH : max(
+                lm.usedRect(for: tc).maxY, lm.extraLineFragmentRect.maxY)
             let minFieldH: CGFloat = 34
             let maxFieldH: CGFloat = 104
-            let minSidePad: CGFloat = 4
-
-            let naturalH = usedHeight + 2 * minSidePad
-            let fieldH: CGFloat
-            if naturalH <= maxFieldH {
-                fieldH = max(minFieldH, ceil(naturalH))
-            } else {
-                fieldH = maxFieldH
-            }
-
-            // Split extra height equally above/below the laid-out text so single-line fields don’t look top-heavy.
-            let verticalPad: CGFloat
-            if fieldH >= usedHeight {
-                verticalPad = max(minSidePad, (fieldH - usedHeight) / 2)
-            } else {
-                verticalPad = minSidePad
-            }
+            // Derive the inset from the configured font, never from the current glyphs.
+            // Re-centering each marked/committed run moves the entire line while typing.
+            let verticalPad = max(4, (minFieldH - lm.defaultLineHeight(for: MacInputTextView.textFont)) / 2)
+            let fieldH = min(maxFieldH, max(minFieldH, ceil(usedHeight + 2 * verticalPad)))
 
             textView.textContainerInset = NSSize(width: 0, height: verticalPad)
             lm.ensureLayout(for: tc)
@@ -238,6 +238,11 @@ final class PasteAwareMacTextView: NSTextView {
     }
 
     override func keyDown(with event: NSEvent) {
+        // Candidate confirmation belongs to the input method, not the send shortcut.
+        if hasMarkedText() {
+            super.keyDown(with: event)
+            return
+        }
         // Plain Return / keypad Enter = send; any modifier (Shift, Command, Option, Control) = newline.
         if event.keyCode == 36 || event.keyCode == 76 {
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)

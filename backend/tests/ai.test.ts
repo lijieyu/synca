@@ -42,6 +42,24 @@ beforeEach(async () => {
     const c = await connection(userId, 'test AI', ['read', 'create', 'update', 'delete', 'attachments'], 30);
     token = c.token; connectionId = c.id;
 });
+describe('AI record text limits', () => {
+    it.each(['a', '中', '😀', '👨‍👩‍👧‍👦', 'e\u0301'])('accepts 10000 and rejects 10001 graphemes for %s', async character => {
+        const textContent = character.repeat(10000);
+        const created = await record(textContent);
+        expect(created.textContent).toBe(textContent);
+        const rejectedCreate = await call('create_record', { textContent: textContent + character, idempotencyKey: randomUUID() });
+        expect(rejectedCreate.status).toBe(400);
+        expect(rejectedCreate.body.error).toBe('invalid_arguments');
+        const updated = await call('update_records', { items: [{ id: created.id, expectedUpdatedAt: created.updatedAt }], textContent });
+        expect(updated.status).toBe(200);
+        const current = (await call('read_record', { id: created.id })).body;
+        expect(current.textContent).toBe(textContent);
+        const rejectedEdit = await call('update_records', { items: [{ id: current.id, expectedUpdatedAt: current.updatedAt }], textContent: textContent + character });
+        expect(rejectedEdit.status).toBe(400);
+        expect(rejectedEdit.body.error).toBe('invalid_arguments');
+    });
+});
+
 describe('AI authorization and content contract', () => {
     const rpc = (method: string, params: unknown) => request(app).post('/mcp').set('Authorization', auth())
         .set('Accept', 'application/json, text/event-stream').send({ jsonrpc: '2.0', id: 1, method, params });
@@ -52,6 +70,13 @@ describe('AI authorization and content contract', () => {
     });
     it('advertises tool versions and keeps legacy and future calls usable without changing REST', async () => {
         const list = await rpc('tools/list', {});
+        for (const name of ['create_record', 'update_records']) {
+            const tool = list.body.result.tools.find((entry: { name: string }) => entry.name === name);
+            expect(tool.description).toContain('10000');
+            expect(tool.inputSchema.properties.textContent.description).toContain('10000');
+            // JSON Schema maxLength counts code points, not graphemes, so must not reject ZWJ text.
+            expect(tool.inputSchema.properties.textContent.maxLength).toBeUndefined();
+        }
         for (const tool of list.body.result.tools) {
             expect(tool.inputSchema.required).toContain('toolVersion');
             expect(tool.inputSchema.properties.toolVersion.description).toContain('1');
@@ -163,7 +188,7 @@ describe('AI authorization and content contract', () => {
         expect(a.body.id).toBe(b.body.id);
         expect((await call('create_record', { ...args, textContent: 'different' })).status).toBe(409);
         expect((await call('search_records')).body.messages).toHaveLength(1);
-        expect((await call('create_record', { ...args, idempotencyKey: randomUUID(), textContent: 'x'.repeat(2001) })).status).toBe(400);
+        expect((await call('create_record', { ...args, idempotencyKey: randomUUID(), textContent: 'x'.repeat(10001) })).status).toBe(400);
         for (let n = 1; n < 20; n++) expect((await call('create_record', { textContent: 'quota', idempotencyKey: randomUUID() })).status).toBe(200);
         expect((await call('create_record', { textContent: 'over quota', idempotencyKey: randomUUID() })).status).toBe(200);
     });

@@ -305,3 +305,62 @@ struct MacWindowDragArea: NSViewRepresentable {
         }
     }
 }
+
+/// Propagates measured sheet content changes to AppKit on macOS versions that
+/// retain the initial NSHostingView sheet size. Never resizes the main window.
+struct MacSheetSizeObserver: NSViewRepresentable {
+    let contentSize: NSSize
+
+    func makeNSView(context: Context) -> SheetSizeView {
+        let view = SheetSizeView()
+        view.requestedContentSize = contentSize
+        return view
+    }
+
+    func updateNSView(_ view: SheetSizeView, context: Context) {
+        view.requestedContentSize = contentSize
+        view.scheduleResize()
+    }
+
+    final class SheetSizeView: NSView {
+        var requestedContentSize: NSSize = .zero
+        private var resizeScheduled = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            scheduleResize()
+        }
+
+        override func layout() {
+            super.layout()
+            scheduleResize()
+        }
+
+        func scheduleResize() {
+            guard !resizeScheduled else { return }
+            resizeScheduled = true
+            // Updating AppKit after the SwiftUI layout pass avoids a recursive
+            // layout and ensures the window has been attached as a sheet.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.resizeScheduled = false
+                self.resizeSheetIfNeeded()
+            }
+        }
+
+        private func resizeSheetIfNeeded() {
+            guard let window, let parent = window.sheetParent,
+                  requestedContentSize.width > 0, requestedContentSize.height > 0,
+                  requestedContentSize.width.isFinite, requestedContentSize.height.isFinite else { return }
+            let screen = window.screen ?? parent.screen ?? NSScreen.main
+            guard let visibleFrame = screen?.visibleFrame else { return }
+            let desired = NSSize(
+                width: min(requestedContentSize.width, max(1, visibleFrame.width - 80)),
+                height: min(requestedContentSize.height, max(1, visibleFrame.height - 100))
+            )
+            let current = window.contentRect(forFrameRect: window.frame).size
+            guard abs(current.width - desired.width) > 1 || abs(current.height - desired.height) > 1 else { return }
+            window.setContentSize(desired)
+        }
+    }
+}

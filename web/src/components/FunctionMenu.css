@@ -28,7 +28,7 @@
 
 /* Account: compact identity panel with separate session and dismissal actions. */
 .modal-content.account-modal { width: min(420px, calc(100vw - 32px)); padding: 24px; border-radius: 20px; min-height: 0; max-height: calc(100dvh - 32px); overflow-y: auto; text-align: left; }
-.account-modal .modal-title { margin: 0; font-size: 17px; }
+.account-modal .modal-title { margin: 0; }
 .account-identity { display: flex; align-items: center; gap: 14px; padding: 12px 0 16px; border-bottom: 1px solid var(--border-color); }
 .account-avatar { display: grid; place-items: center; flex: 0 0 52px; height: 52px; color: var(--text-secondary); }
 .account-details { min-width: 0; }
@@ -39,11 +39,12 @@
 
 .modal-content.about-modal { width: min(420px, calc(100vw - 32px)); }
 .modal-content.feedback-modal { width: min(520px, calc(100vw - 32px)); overflow-y: auto; }
-.about-identity { display: flex; align-items: center; gap: 16px; padding: 24px 0 20px; }
+.about-panel { text-align: left; }
+.about-identity { display: flex; align-items: center; gap: 16px; padding: 12px 0 16px; }
 .about-identity img { border-radius: 14px; }
 .about-identity h4 { font-size: 23px; font-weight: 650; letter-spacing: -.5px; }
 .about-identity p { margin-top: 4px; font-size: 13px; color: var(--text-main); opacity: .7; }
-.about-description { font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+.about-description { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 20px; }
 .about-panel .shell-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; text-underline-offset: 4px; }
 .shell-form > button { justify-self: end; min-width: 80px; }
 .modal-content button:focus-visible, .modal-content a:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
@@ -51,7 +52,7 @@
 .about-panel .shell-links a { color: #6136d6; }
 @media (prefers-color-scheme: dark) { .about-panel .shell-links a { color: #bba2ff; } }
 
-.about-registration { margin-top: 20px; color: #626268; font-size: 13px; line-height: 1.6; text-align: center; overflow-wrap: anywhere; }
+.about-registration { margin-top: 20px; color: #626268; font-size: 13px; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
 @media (prefers-color-scheme: dark) { .about-registration { color: #b1b1b8; } }
 
 /* Keep panel dismissal visible while content scrolls, including short screens. */
@@ -62,6 +63,6 @@
 .modal-content .modal-close:disabled { opacity: .5; cursor: wait; }
 .feedback-modal .shell-form, .feedback-modal .modal-actions { flex-shrink: 0; }
 
-.modal-content:has(.modal-header) > :not(.modal-header) { flex-shrink: 0; }
+.modal-content:has(.modal-header) > :not(.modal-header, .modal-scroll-body, .ai-prompt-scroll) { flex-shrink: 0; }
 
 @media (pointer: coarse) { .modal-content .modal-close { flex-basis: 44px; width: 44px; height: 44px; } }

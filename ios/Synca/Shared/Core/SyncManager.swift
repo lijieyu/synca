@@ -328,7 +328,38 @@ final class SyncManager: ObservableObject {
     @Published var failedFile: PendingFileUpload?
     private var failedFileCategory: String?
     private var fileUploadTask: Task<SyncaMessage, Error>?
-    func cancelFileUpload() { fileUploadTask?.cancel(); api.cancelUploads() }
+    private var uploadOperationID: UUID?
+    private var uploadCancellationID = UUID()
+
+    func cancelFileUpload() {
+        uploadCancellationID = UUID()
+        uploadOperationID = nil
+        uploadProgress = nil
+        fileUploadTask?.cancel()
+        api.cancelUploads()
+    }
+
+    private func beginUploadProgress() -> UUID {
+        let id = UUID()
+        uploadOperationID = id
+        uploadProgress = 0
+        return id
+    }
+
+    private func finishUploadProgress(_ id: UUID) {
+        guard uploadOperationID == id else { return }
+        uploadOperationID = nil
+        uploadProgress = nil
+    }
+
+    private func uploadProgressHandler(_ id: UUID, generation: UUID,
+                                       index: Int = 0, count: Int = 1) -> @Sendable (Double) -> Void {
+        { value in Task { @MainActor in
+            guard self.uploadOperationID == id, self.syncState.generation == generation else { return }
+            let fraction = (Double(index) + min(1, max(0, value))) / Double(count)
+            self.uploadProgress = max(self.uploadProgress ?? 0, fraction)
+        } }
+    }
     func retryFileUpload() async {
         guard let file = failedFile, !isSending else { return }
         await sendFile(file: file, categoryId: failedFileCategory)
@@ -340,8 +371,8 @@ final class SyncManager: ObservableObject {
         let operationGeneration = syncState.generation
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return .failed }
-        guard trimmedText.count <= 2000 else {
-            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), 2000)))
+        guard MessageTextPolicy.accepts(trimmedText) else {
+            updateStatus(.error(String(format: String(syncaLocalized: "message_list.error_too_long", bundle: .main), MessageTextPolicy.maximumCharacters)))
             return .failed
         }
         let sendGeneration = beginSending()
@@ -377,27 +408,31 @@ final class SyncManager: ObservableObject {
 
     func sendImage(_ imageData: Data, categoryId: String? = nil) async {
         let operationGeneration = syncState.generation
+        let cancellationID = uploadCancellationID
         errorMessage = nil
         let sendGeneration = beginSending()
-        defer { endSending(sendGeneration) }
+        let uploadID = beginUploadProgress()
+        defer { endSending(sendGeneration); finishUploadProgress(uploadID) }
 
         do {
             let message = try await api.sendImageMessage(
                 imageData: imageData,
                 sourceDevice: currentDeviceName(),
-                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
+                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId),
+                progress: uploadProgressHandler(uploadID, generation: operationGeneration)
             )
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
             messages.append(message)
             unclearedCount += 1
             lastRefreshDate = Date()
             persistMessages()
             await AccessManager.shared.refresh()
         } catch APIError.dailyLimitReached(let status) {
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
             AccessManager.shared.presentUpgrade(using: status)
         } catch {
-            guard operationGeneration == syncState.generation else { return }
+            guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
+            if isCancellationError(error) { return }
             handleError(error, contextKey: "sync.error_context.send_image")
         }
 
@@ -406,6 +441,7 @@ final class SyncManager: ObservableObject {
     func sendFile(file: PendingFileUpload, categoryId: String? = nil) async {
         guard !isSending else { return }
         let operationGeneration = syncState.generation
+        let cancellationID = uploadCancellationID
         guard file.fileSize <= PendingFileUpload.maxFileSize else {
             errorMessage = String(syncaLocalized: "message_file.error_too_large", bundle: .main)
             return
@@ -417,9 +453,11 @@ final class SyncManager: ObservableObject {
         }
 
         let sendGeneration = beginSending()
-        defer { endSending(sendGeneration); if operationGeneration == syncState.generation { uploadProgress = nil } }
+        let uploadID = beginUploadProgress()
+        defer { endSending(sendGeneration); finishUploadProgress(uploadID) }
         await AccessManager.shared.refresh()
-        guard operationGeneration == syncState.generation else { return }
+        guard operationGeneration == syncState.generation,
+              cancellationID == uploadCancellationID, !Task.isCancelled else { return }
         if let status = AccessManager.shared.status, !(status.storage?.canUploadFiles ?? (!status.isTrial && status.isUnlimited)) {
             failedFile = file
             failedFileCategory = categoryId
@@ -434,10 +472,7 @@ final class SyncManager: ObservableObject {
                 file: file,
                 sourceDevice: currentDeviceName(),
                 categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId),
-                progress: { value in Task { @MainActor in
-                    guard operationGeneration == self.syncState.generation, self.uploadProgress != nil else { return }
-                    self.uploadProgress = value
-                } }
+                progress: uploadProgressHandler(uploadID, generation: operationGeneration)
             ) }
             fileUploadTask = task
             defer { fileUploadTask = nil }
@@ -462,46 +497,55 @@ final class SyncManager: ObservableObject {
     }
 
     func sendImages(_ imageDatas: [Data], categoryId: String? = nil) async {
-        let operationGeneration = syncState.generation
-        guard !imageDatas.isEmpty else { return }
-        if imageDatas.count == 1 {
-            await sendImage(imageDatas[0], categoryId: categoryId)
-            return
-        }
+        await sendImages(count: imageDatas.count, categoryId: categoryId) { imageDatas[$0] }
+    }
 
+    /// Load just the next original, so a selection does not retain nine full images.
+    func sendImages(count: Int, categoryId: String? = nil,
+                    loadImage: (Int) async -> Data?) async {
+        let operationGeneration = syncState.generation
+        let cancellationID = uploadCancellationID
+        guard count > 0 else { return }
         errorMessage = nil
         let sendGeneration = beginSending()
-        defer { endSending(sendGeneration) }
+        let uploadID = beginUploadProgress()
+        defer { endSending(sendGeneration); finishUploadProgress(uploadID) }
         let targetCategoryId = resolvedSendCategoryId(explicitCategoryId: categoryId)
         var sentCount = 0
         var firstError: Error?
         var wasBlocked = false
 
-        for imageData in imageDatas {
-            guard sendGeneration == syncState.generation else { return }
+        var unavailableCount = 0
+        for index in 0..<count {
+            guard operationGeneration == syncState.generation,
+                  cancellationID == uploadCancellationID, !Task.isCancelled else { return }
+            guard let imageData = await loadImage(index) else { unavailableCount += 1; continue }
+            guard operationGeneration == syncState.generation,
+                  cancellationID == uploadCancellationID else { return }
             do {
                 try Task.checkCancellation()
                 let message = try await api.sendImageMessage(
                     imageData: imageData,
                     sourceDevice: currentDeviceName(),
-                    categoryId: targetCategoryId
+                    categoryId: targetCategoryId,
+                    progress: uploadProgressHandler(uploadID, generation: operationGeneration, index: index, count: count)
                 )
-                guard operationGeneration == syncState.generation else { return }
+                guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
                 messages.append(message)
                 unclearedCount += 1
                 sentCount += 1
                 persistMessages()
             } catch APIError.dailyLimitReached(let status) {
-                guard operationGeneration == syncState.generation else { return }
+                guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
                 AccessManager.shared.presentUpgrade(using: status)
                 wasBlocked = true
                 break
             } catch APIError.unauthorized {
-                guard operationGeneration == syncState.generation else { return }
+                guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
                 handleError(APIError.unauthorized, contextKey: "sync.error_context.send_image")
                 return
             } catch {
-                guard operationGeneration == syncState.generation else { return }
+                guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
                 if isCancellationError(error) { return }
                 if firstError == nil { firstError = error }
             }
@@ -513,9 +557,9 @@ final class SyncManager: ObservableObject {
             let format = String(syncaLocalized: String.LocalizationValue(key), bundle: .main)
             errorMessage = sentCount == 0
                 ? String(format: format, firstError.localizedDescription)
-                : String(format: format, sentCount, imageDatas.count - sentCount, firstError.localizedDescription)
+                : String(format: format, sentCount, count - unavailableCount - sentCount, firstError.localizedDescription)
         } else if wasBlocked && sentCount > 0 {
-            errorMessage = String(format: String(syncaLocalized: "sync.images_send_limit", bundle: .main), sentCount, imageDatas.count - sentCount)
+            errorMessage = String(format: String(syncaLocalized: "sync.images_send_limit", bundle: .main), sentCount, count - unavailableCount - sentCount)
         }
         if sentCount > 0 { await AccessManager.shared.refresh() }
     }

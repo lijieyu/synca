@@ -20,6 +20,7 @@ enum EmbeddedAISession {
         (() => {
           if (window.top !== window || location.origin !== 'https://synca.haerth.cn' ||
               !(location.pathname === '/ai' || location.pathname === '/ai/')) return;
+          window.__syncaEmbeddedAI = true;
           localStorage.setItem('authToken', \(literal(token)));
           localStorage.removeItem('isAdmin');
           localStorage.removeItem('userPlan');

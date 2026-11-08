@@ -117,7 +117,7 @@
 "access.intro_payg_then_template" = "前 %@ 享受优惠，之后按 %@ / %@ 续费。";
 "access.intro_payupfront_then_template" = "优惠价覆盖 %@，之后按 %@ / %@ 续费。";
 "access.subscription_renews_template" = "%@ / %@，自动续费，直至取消。";
-"access.option_lifetime_title" = "Pro 买断";
+"access.option_lifetime_title" = "Synca Pro";
 "access.option_lifetime_subtitle" = "一次购买，三端通用。无需订阅。";
 "access.purchase_setup_pending" = "App Store 购买通道是下一步接入内容。";
 "access.buy_for_price" = "%@ 购买";
@@ -136,7 +136,7 @@
 "access.restore_failed" = "暂时无法恢复购买。";
 "access.purchased_monthly" = "Pro（月付）";
 "access.purchased_yearly" = "Pro（年付）";
-"access.purchased_lifetime" = "Pro 买断";
+"access.purchased_lifetime" = "Synca Pro";
 "access.unlimited_title" = "Pro 权益";
 "access.unlimited_description" = "你已解锁不限量记录权益，并可在所有设备上使用。";
 "access.subscription_billing_label" = "计费方式";
@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "分类名称不能为空";
 "message_category.invalid_message" = "保存前请为每个分类填写名称。";
 "message_category.delete_confirm_title" = "删除分类？";
-"message_category.delete_confirm_message" = "保存后这个分类会被删除。";
+"message_category.delete_confirm_message" = "保存后删除此分类，分类中的记录将保留并移至默认分类。";
 "message_category.color.sky" = "天蓝";
 "message_category.color.mint" = "薄荷";
 "message_category.color.amber" = "琥珀";
@@ -253,7 +253,7 @@
 "storage.expires" = "到期时间";
 "storage.title" = "方案与中转空间";
 "storage.paid_title" = "解锁文件传输";
-"storage.used" = "已使用";
+"storage.used" = "附件空间";
 
 "access.status_load_failed" = "暂时无法加载权益";
 "access.status_load_failed_detail" = "请检查网络连接后重试。";
@@ -355,3 +355,24 @@
 "access.ai_service_notice" = "连接 AI 不包含第三方 AI 服务的订阅费用。";
 
 "access.buyout_label" = "一次性买断";
+
+"message_list.completed_count" = "%d 条已完成";
+
+"message_category.my_categories" = "我的分类";
+"message_category.reorder" = "调整顺序";
+"message_category.finish_reordering" = "完成排序";
+"message_category.more" = "更多操作";
+
+"message_bubble.show_more" = "展开";
+
+"message_bubble.show_less" = "收起";
+
+"message_bubble.copied" = "已复制";
+
+"message_list.support" = "支持";
+
+"message_list.add_photos" = "添加照片";
+
+"message_list.add_file" = "添加文件";
+
+"message_list.send" = "发送";

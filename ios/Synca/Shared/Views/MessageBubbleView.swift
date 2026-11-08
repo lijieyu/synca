@@ -8,6 +8,7 @@ import AppKit
 struct MessageBubbleView: View {
     let message: SyncaMessage
     let categories: [SyncaMessageCategory]
+    var showsSeparator: Bool = true
     var isUpdatingCompletion: Bool = false
     var onEdit: (() -> Void)? = nil
     let onClear: () -> Void
@@ -17,6 +18,7 @@ struct MessageBubbleView: View {
     let onImageLoaded: () -> Void
 
     @State private var copied = false
+    @State private var isTextExpanded = false
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
     @State private var photoSaveError: String?
@@ -114,7 +116,7 @@ struct MessageBubbleView: View {
                 Spacer()
 
                 // #6: Actions row (Always visible)
-                HStack(spacing: 22) {
+                HStack(spacing: actionSpacing) {
                     if message.type == .image && !message.isAttachmentExpired {
                         downloadImageButton
                         copyImageButton
@@ -134,7 +136,7 @@ struct MessageBubbleView: View {
                     }
                     #if os(macOS)
                     Button { showDeleteConfirm = true } label: {
-                        Image(systemName: "trash").font(.system(size: 16))
+                        Image("DeleteOutline").resizable().frame(width: 16, height: 16)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text("common.delete"))
@@ -147,7 +149,7 @@ struct MessageBubbleView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .bottom) { Divider().opacity(0.6) }
+        .overlay(alignment: .bottom) { if showsSeparator { Divider().opacity(0.6) } }
         .contextMenu { messageContextMenu }
         .alert("image_preview.save_failed", isPresented: Binding(
             get: { photoSaveError != nil }, set: { if !$0 { photoSaveError = nil } }
@@ -174,17 +176,14 @@ struct MessageBubbleView: View {
         if let onCategoryChange, !categories.isEmpty {
             Menu {
                 ForEach(categories) { category in
-                    Button {
-                        onCategoryChange(category.id)
-                    } label: {
+                    Toggle(isOn: Binding(
+                        get: { category.id == categoryId },
+                        set: { selected in if selected { onCategoryChange(category.id) } }
+                    )) {
                         Label {
-                            if category.isDefault {
-                                Text("message_category.default_badge", bundle: .main)
-                            } else {
-                                Text(category.name)
-                            }
+                            Text(category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name)
                         } icon: {
-                            Image(systemName: category.id == categoryId ? "checkmark" : "circle.fill")
+                            Image("Category-\(category.color.rawValue)").renderingMode(.original)
                         }
                     }
                 }
@@ -218,39 +217,62 @@ struct MessageBubbleView: View {
     // MARK: - Subviews
     
     private var textContent: some View {
-        #if os(macOS)
-        ZStack(alignment: Alignment.topLeading) {
-            // Invisible native Text to guarantee perfect SwiftUI auto-layout height & wrapping
-            Text(messageText)
-                .font(.body)
-                .lineLimit(nil)
-                .opacity(0)
-                .allowsHitTesting(false)
-            
-            // AppKit Text overlay for selection and custom context menu
-            MacSelectableText(
-                attributedText: linkedNSAttributedText,
-                color: message.isCleared ? Color.secondary : Color.primary,
-                font: .body
-            )
-        }
-        .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
+        VStack(alignment: .leading, spacing: 4) {
+            if isTextExpanded {
+                #if os(macOS)
+                ZStack(alignment: .topLeading) {
+                    Text(messageText).font(.body).fixedSize(horizontal: false, vertical: true)
+                        .hidden().allowsHitTesting(false)
+                    MacSelectableText(attributedText: linkedNSAttributedText,
+                                      color: message.isCleared ? .secondary : .primary, font: .body)
+                }
+                #else
+                LinkTextView(attributedText: linkedNSAttributedText)
+                #endif
+            } else {
+                Text(AttributedString(linkedNSAttributedText)).font(.body).lineLimit(6)
+                    .textSelection(.enabled)
+                    .foregroundStyle(message.isCleared ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(GeometryReader { geometry in
+                        Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
+                            .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
+                            .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
+                            .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
+                    })
+            }
+            if textOverflows || isTextExpanded {
+                Button(isTextExpanded ? "message_bubble.show_less" : "message_bubble.show_more") {
+                    isTextExpanded.toggle()
+                }.font(.caption).buttonStyle(.plain).foregroundStyle(Color.accentColor)
+                    .padding(.vertical, 8)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @State private var textOverflows = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private func updateTextOverflow(width: CGFloat) {
+        guard width > 0 else { return }
+        #if os(iOS)
+        let font = UIFont.preferredFont(forTextStyle: .body)
         #else
-        LinkTextView(attributedText: linkedNSAttributedText)
-            .frame(maxWidth: CGFloat.infinity, alignment: Alignment.leading)
+        let font = NSFont.preferredFont(forTextStyle: .body)
         #endif
+        let size = (messageText as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font], context: nil)
+        textOverflows = size.height > (font.ascender - font.descender + font.leading) * 6 + 1
     }
 
     @ViewBuilder
     private var messageContextMenu: some View {
         if message.type == .text {
             if message.canEditText, let onEdit {
-                Button(action: onEdit) { Label("message_edit.title", systemImage: "pencil") }
+                Button(action: onEdit) { Label("message_edit.title", image: "EditOutline") }
             }
             Button {
                 copyText(messageText)
             } label: {
-                Label("common.copy", systemImage: "doc.on.doc")
+                Label("common.copy", image: "CopyOutline")
             }
             
             Divider()
@@ -258,19 +280,19 @@ struct MessageBubbleView: View {
             Button(role: .destructive) {
                 showDeleteConfirm = true
             } label: {
-                Label("common.delete", systemImage: "trash")
+                Label("common.delete", image: "DeleteOutline")
             }
         } else if !message.isAttachmentExpired, message.type == .image, let urlString = message.imageUrl, let url = URL(string: urlString) {
             Button {
                 self.copyImage(from: url)
             } label: {
-                Label("common.copy", systemImage: "doc.on.doc")
+                Label("common.copy", image: "CopyOutline")
             }
 
             Button {
                 Task { await self.saveImage(from: url) }
             } label: {
-                Label("common.save", systemImage: "square.and.arrow.down")
+                Label("common.save", image: "DownloadOutline")
             }
 
             #if os(macOS)
@@ -288,13 +310,13 @@ struct MessageBubbleView: View {
             Button(role: .destructive) {
                 showDeleteConfirm = true
             } label: {
-                Label("common.delete", systemImage: "trash")
+                Label("common.delete", image: "DeleteOutline")
             }
         } else if !message.isAttachmentExpired, message.type == .file, let urlString = message.fileUrl, let url = URL(string: urlString) {
             Button {
                 Task { await self.saveFile(from: url, suggestedFileName: fileName) }
             } label: {
-                Label("common.save", systemImage: "square.and.arrow.down")
+                Label("common.save", image: "DownloadOutline")
             }
 
             #if os(macOS)
@@ -316,11 +338,11 @@ struct MessageBubbleView: View {
             Button(role: .destructive) {
                 showDeleteConfirm = true
             } label: {
-                Label("common.delete", systemImage: "trash")
+                Label("common.delete", image: "DeleteOutline")
             }
         } else if message.isAttachmentExpired {
             Button(role: .destructive) { showDeleteConfirm = true } label: {
-                Label("common.delete", systemImage: "trash")
+                Label("common.delete", image: "DeleteOutline")
             }
         }
     }
@@ -403,15 +425,25 @@ struct MessageBubbleView: View {
     
     @ViewBuilder
     private var copyActionIcon: some View {
-        #if os(macOS)
         if copied {
             Image(systemName: "checkmark").font(.system(size: 14, weight: .medium))
         } else {
             Image("CopyOutline").resizable().frame(width: 16, height: 16)
         }
+    }
+
+    private var actionTargetSize: CGFloat {
+        #if os(iOS)
+        44
         #else
-        Image(systemName: copied ? "checkmark" : "doc.on.doc")
-            .font(.system(size: 14, weight: .medium))
+        18
+        #endif
+    }
+    private var actionSpacing: CGFloat {
+        #if os(iOS)
+        0
+        #else
+        22
         #endif
     }
 
@@ -422,6 +454,7 @@ struct MessageBubbleView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
         } label: {
             copyActionIcon
+                .frame(width: actionTargetSize, height: actionTargetSize).contentShape(Rectangle())
                 .foregroundStyle(copied ? .green : .secondary)
                 .accessibilityLabel(Text(copied ? "message_bubble.copied" : "common.copy"))
         }
@@ -435,6 +468,7 @@ struct MessageBubbleView: View {
             }
         } label: {
             copyActionIcon
+                .frame(width: actionTargetSize, height: actionTargetSize).contentShape(Rectangle())
                 .foregroundStyle(copied ? .green : .secondary)
                 .accessibilityLabel(Text(copied ? "message_bubble.copied" : "common.copy"))
         }
@@ -448,6 +482,8 @@ struct MessageBubbleView: View {
             }
         } label: {
             saveIconLabel
+                .frame(width: actionTargetSize, height: actionTargetSize).contentShape(Rectangle())
+                .accessibilityLabel(Text("common.save"))
         }
         .buttonStyle(.plain)
         .disabled(saveStatus == .saving)
@@ -459,6 +495,8 @@ struct MessageBubbleView: View {
             Task { await saveFile(from: url, suggestedFileName: fileName) }
         } label: {
             saveIconLabel
+                .frame(width: actionTargetSize, height: actionTargetSize).contentShape(Rectangle())
+                .accessibilityLabel(Text("common.save"))
         }
         .buttonStyle(.plain)
         .disabled(saveStatus == .saving)
@@ -468,7 +506,7 @@ struct MessageBubbleView: View {
         Group {
             switch saveStatus {
             case .none:
-                Image(systemName: "square.and.arrow.down")
+                Image("DownloadOutline").resizable().frame(width: 16, height: 16)
                     .foregroundStyle(.secondary)
             case .saving:
                 ProgressView().scaleEffect(0.6)
@@ -490,6 +528,7 @@ struct MessageBubbleView: View {
             Image(systemName: message.isCleared ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.system(size: 16))
                 .foregroundStyle(.secondary)
+                .frame(width: actionTargetSize, height: actionTargetSize).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(isUpdatingCompletion)
@@ -517,6 +556,8 @@ struct MessageBubbleView: View {
     private func copyText(_ text: String) {
         #if os(iOS)
         UIPasteboard.general.string = text
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: "message_bubble.copied"))
         #elseif os(macOS)
         let pb = NSPasteboard.general
         pb.clearContents()

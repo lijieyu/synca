@@ -72,7 +72,7 @@
   "access.free_usage": "今日使用：%d/%d",
   "access.free_keep_access": "查看、同步、清理和删除已有内容始终可用",
   "access.free_reset_hint": "免费额度会在每天自动重置",
-  "access.unlock_title": "升级 Pro",
+  "access.unlock_title": "Synca Pro",
   "access.unlock_benefit_ai": "连接 AI，查找、整理和保存记录",
   "access.unlock_benefit_unlimited": "不限新增记录数量",
   "access.unlock_benefit_cross_device": "iPhone 和 Mac 跨设备持续可用",
@@ -84,7 +84,7 @@
   "access.option_monthly_subtitle": "按月自动续费，可随时取消。",
   "access.option_yearly_title": "Pro（年付）",
   "access.option_yearly_subtitle": "按年自动续费，每年续费一次。",
-  "access.option_lifetime_title": "Pro 买断",
+  "access.option_lifetime_title": "Synca Pro",
   "access.option_lifetime_subtitle": "一次购买，三端通用。无需订阅。",
   "access.purchase_setup_pending": "App Store 购买通道是下一步接入内容。",
   "access.buy_for_price": "%@ 购买",
@@ -99,7 +99,7 @@
   "access.restore_failed": "暂时无法恢复购买。",
   "access.purchased_monthly": "Pro（月付）",
   "access.purchased_yearly": "Pro（年付）",
-  "access.purchased_lifetime": "Pro 买断",
+  "access.purchased_lifetime": "Synca Pro",
   "access.unlimited_title": "Pro 权益",
   "access.unlimited_description": "你已解锁不限量记录权益，并可在所有设备上使用。",
   "access.purchase_date": "购买时间：%@",
@@ -158,7 +158,7 @@
   "storage.expires": "到期时间",
   "storage.title": "方案与中转空间",
   "storage.paid_title": "解锁文件传输",
-  "storage.used": "已使用",
+  "storage.used": "附件空间",
   "storage.free_title": "免费版",
   "storage.choose_image": "选择图片",
   "storage.choose_file": "选择文件",
@@ -272,13 +272,16 @@
     "text_060": "最近访问：",
     "text_061": "尚未使用",
     "text_062": "已撤销连接",
-    "text_063": "撤销",
+    "text_063": "撤销连接",
     "text_064": "最近操作",
     "text_065": "暂无操作记录。",
     "text_066": "返回记录",
     "text_067": "隐私政策",
     "text_068": "将复制的指令",
-    "text_069": "关闭"
+    "text_069": "关闭",
+    "operations_more": "查看更多",
+    "operations_less": "收起",
+    "operations_limit": "仅显示最近 50 条操作记录。"
   },
   "preferences": {
     "title": "设置",
@@ -306,7 +309,8 @@
       "violet": "紫罗兰",
       "rose": "玫瑰粉",
       "ocean": "海洋蓝"
-    }
+    },
+    "completed_count": "{{count}} 条已完成"
   },
   "storage.shared_file": "附件",
   "account.section_title": "账号",
@@ -332,5 +336,13 @@
   "access.preview_lifetime_price": "¥18",
   "access.preview_price_notice": "预发价格，暂不开放购买。",
   "access.ai_service_notice": "连接 AI 不包含第三方 AI 服务的订阅费用。",
-  "access.buyout_label": "一次性买断"
+  "access.buyout_label": "一次性买断",
+  "message_category.my_categories": "我的分类",
+  "message_category.start_reordering": "调整顺序",
+  "message_category.finish_reordering": "完成排序",
+  "message_category.more_actions": "更多操作",
+  "message_bubble.expand": "展开全文",
+  "message_bubble.collapse": "收起",
+  "message_list.text_limit": "最多 10,000 字，请缩短内容后发送。",
+  "message_list.clear_completed": "清除已完成"
 }

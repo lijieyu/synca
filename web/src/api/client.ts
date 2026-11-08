@@ -97,6 +97,8 @@ export interface UploadOptions { signal: AbortSignal; onProgress: (value: number
 export interface AttachmentOptions { signal?: AbortSignal; expiresAt?: string | null; cacheImage?: boolean }
 const IMAGE_CACHE_LIMIT_BYTES = 16 * 1024 * 1024;
 const IMAGE_CACHE_ITEM_LIMIT_BYTES = 4 * 1024 * 1024;
+// Keep only the latest uploaded original; downloaded images retain their smaller limits.
+const UPLOADED_IMAGE_LIMIT_BYTES = 20 * 1024 * 1024;
 const IMAGE_CACHE_TTL_MS = 60 * 1000;
 
 class APIClient {
@@ -123,12 +125,16 @@ class APIClient {
   }
 
   private readonly imageCache = new Map<string, { blob: Blob; expiresAt: number }>();
+  private uploadedImage: { url: string; blob: Blob; expiresAt: number } | null = null;
+  private sessionVersion = 0;
   private imageCacheToken: string | null = null;
   private readonly attachmentRequests = new Set<AbortController>();
   private readonly activeUploads = new Set<XMLHttpRequest>();
 
   // Never persist protected attachments: an old browser cache must not bypass expiry or sign-out.
   resetSession() {
+    this.sessionVersion += 1;
+    this.uploadedImage = null;
     this.imageCache.clear();
     this.imageCacheToken = this.token;
     this.attachmentRequests.forEach(controller => controller.abort());
@@ -251,7 +257,33 @@ class APIClient {
       formData.append('categoryId', categoryId);
     }
 
-    return this.upload('/messages/image', formData, file, options);
+    const requestToken = this.token;
+    const sessionVersion = this.sessionVersion;
+    const message = await this.upload('/messages/image', formData, file, options);
+    if (requestToken !== this.token || sessionVersion !== this.sessionVersion || options?.signal.aborted) {
+      throw new DOMException('Session changed or upload cancelled', 'AbortError');
+    }
+    this.seedUploadedImage(message, file, requestToken);
+    return message;
+  }
+
+  private seedUploadedImage(message: SyncaMessage, file: File, requestToken: string | null) {
+    if (!requestToken || !message.imageUrl || message.attachmentExpired || message.type !== 'image'
+      || !file.type.startsWith('image/') || file.size > UPLOADED_IMAGE_LIMIT_BYTES) return;
+    let target: URL;
+    try { target = new URL(message.imageUrl, window.location.href); } catch { return; }
+    if (target.origin !== window.location.origin || !target.pathname.startsWith('/api/media/')) return;
+    const expiresAt = message.attachmentExpiresAt ? Date.parse(message.attachmentExpiresAt) : Infinity;
+    if (!(expiresAt > Date.now())) return;
+    this.ensureImageCacheSession(requestToken);
+    this.uploadedImage = { url: target.href, blob: file, expiresAt: Math.min(expiresAt, Date.now() + IMAGE_CACHE_TTL_MS) };
+  }
+
+  private ensureImageCacheSession(requestToken: string) {
+    if (this.imageCacheToken === requestToken) return;
+    this.imageCache.clear();
+    this.uploadedImage = null;
+    this.imageCacheToken = requestToken;
   }
 
   async sendFileMessage(file: File, categoryId?: string | null, options?: UploadOptions): Promise<SyncaMessage> {
@@ -304,7 +336,10 @@ class APIClient {
     const expiresAt = options.expiresAt ? Date.parse(options.expiresAt) : Infinity;
     if (expiresAt <= Date.now()) throw new StorageError('attachment_expired');
     if (options.signal?.aborted) throw new DOMException('Download cancelled', 'AbortError');
-    if (this.imageCacheToken !== requestToken) { this.imageCache.clear(); this.imageCacheToken = requestToken; }
+    this.ensureImageCacheSession(requestToken);
+    if (this.uploadedImage && this.uploadedImage.expiresAt <= Date.now()) this.uploadedImage = null;
+    if (options.cacheImage && this.uploadedImage?.url === target.href
+      && Math.min(this.uploadedImage.expiresAt, expiresAt) > Date.now()) return this.uploadedImage.blob;
     const cached = this.imageCache.get(target.href);
     if (options.cacheImage && cached && Math.min(cached.expiresAt, expiresAt) > Date.now()) {
       this.imageCache.delete(target.href);

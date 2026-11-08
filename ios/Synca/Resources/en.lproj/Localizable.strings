@@ -117,7 +117,7 @@
 "access.intro_payg_then_template" = "Intro offer for %@, then %@ / %@.";
 "access.intro_payupfront_then_template" = "Intro price for %@, then %@ / %@.";
 "access.subscription_renews_template" = "%@ / %@. Auto-renews until canceled.";
-"access.option_lifetime_title" = "Pro Lifetime";
+"access.option_lifetime_title" = "Synca Pro";
 "access.option_lifetime_subtitle" = "One purchase for iPhone, Mac and Web. No subscription.";
 "access.purchase_setup_pending" = "App Store purchase setup is the next step.";
 "access.buy_for_price" = "Buy for %@";
@@ -136,7 +136,7 @@
 "access.restore_failed" = "Unable to restore purchases right now.";
 "access.purchased_monthly" = "Pro (Monthly)";
 "access.purchased_yearly" = "Pro (Yearly)";
-"access.purchased_lifetime" = "Pro Lifetime";
+"access.purchased_lifetime" = "Synca Pro";
 "access.unlimited_title" = "Pro benefits";
 "access.unlimited_description" = "You have unlimited capture access across all your devices.";
 "access.subscription_billing_label" = "Billing";
@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "Category Name Required";
 "message_category.invalid_message" = "Each category needs a name before saving.";
 "message_category.delete_confirm_title" = "Delete Category?";
-"message_category.delete_confirm_message" = "This category will be removed after you save.";
+"message_category.delete_confirm_message" = "After saving, this category will be deleted. Its records will be kept and moved to the default category.";
 "message_category.color.sky" = "Sky";
 "message_category.color.mint" = "Mint";
 "message_category.color.amber" = "Amber";
@@ -253,7 +253,7 @@
 "storage.expires" = "Expires";
 "storage.title" = "Plans & transfer storage";
 "storage.paid_title" = "Unlock file transfers";
-"storage.used" = "Used";
+"storage.used" = "Attachment storage";
 
 "access.status_load_failed" = "Unable to load your plan";
 "access.status_load_failed_detail" = "Check your connection and try again.";
@@ -355,3 +355,24 @@
 "access.ai_service_notice" = "Third-party AI service subscriptions are not included.";
 
 "access.buyout_label" = "One-time purchase";
+
+"message_list.completed_count" = "%d completed items";
+
+"message_category.my_categories" = "My Categories";
+"message_category.reorder" = "Reorder";
+"message_category.finish_reordering" = "Done Reordering";
+"message_category.more" = "More Actions";
+
+"message_bubble.show_more" = "Show more";
+
+"message_bubble.show_less" = "Show less";
+
+"message_bubble.copied" = "Copied";
+
+"message_list.support" = "Support";
+
+"message_list.add_photos" = "Add photos";
+
+"message_list.add_file" = "Attach file";
+
+"message_list.send" = "Send";

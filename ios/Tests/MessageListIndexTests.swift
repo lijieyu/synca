@@ -8,6 +8,12 @@ struct MessageListIndexTests {
     }
 
     static func main() async throws {
+        for character in ["a", "中", "👩🏽‍💻", "e\u{301}"] {
+            let boundary = String(repeating: character, count: 10000)
+            precondition(MessageTextPolicy.accepts(boundary))
+            precondition(!MessageTextPolicy.accepts(boundary + character))
+        }
+        print("PASS: message limit accepts 10000 graphemes and rejects 10001 for ASCII, CJK and composed emoji")
         var editable = message("edit", category: "one", cleared: true)
         precondition(editable.canEditText)
         editable.imagePath = "legacy.png"

@@ -72,7 +72,7 @@
   "access.free_usage": "Today's usage: %d/%d",
   "access.free_keep_access": "Viewing, syncing, clearing, and deleting existing messages always remain available",
   "access.free_reset_hint": "Your free allowance resets automatically every day",
-  "access.unlock_title": "Upgrade to Pro",
+  "access.unlock_title": "Synca Pro",
   "access.unlock_benefit_ai": "Connect AI to find, organize and save records",
   "access.unlock_benefit_unlimited": "Unlimited new records",
   "access.unlock_benefit_cross_device": "Keep using the same access across iPhone and Mac",
@@ -84,7 +84,7 @@
   "access.option_monthly_subtitle": "Monthly subscription. Cancel anytime.",
   "access.option_yearly_title": "Pro (Yearly)",
   "access.option_yearly_subtitle": "Yearly subscription. Renews once a year.",
-  "access.option_lifetime_title": "Pro Lifetime",
+  "access.option_lifetime_title": "Synca Pro",
   "access.option_lifetime_subtitle": "One purchase for iPhone, Mac and Web. No subscription.",
   "access.purchase_setup_pending": "App Store purchase setup is the next step.",
   "access.buy_for_price": "Buy for %@",
@@ -99,7 +99,7 @@
   "access.restore_failed": "Unable to restore purchases right now.",
   "access.purchased_monthly": "Pro (Monthly)",
   "access.purchased_yearly": "Pro (Yearly)",
-  "access.purchased_lifetime": "Pro Lifetime",
+  "access.purchased_lifetime": "Synca Pro",
   "access.unlimited_title": "Pro benefits",
   "access.unlimited_description": "You have unlimited capture access across all your devices.",
   "access.purchase_date": "Purchased on %@",
@@ -158,7 +158,7 @@
   "storage.expires": "Expires",
   "storage.title": "Plans & transfer storage",
   "storage.paid_title": "Unlock file transfers",
-  "storage.used": "Used",
+  "storage.used": "Attachment storage",
   "storage.free_title": "Free",
   "storage.choose_image": "Choose image",
   "storage.choose_file": "Choose file",
@@ -233,7 +233,7 @@
     "text_021": "Capture a thought.\nLet AI take it further.",
     "text_022": "Find and organize your records in AI apps that support MCP. Save the conversation’s conclusions back to Synca.",
     "text_023": "Connect your AI in three steps",
-    "text_024": "AI connections are included with Pro Lifetime.",
+    "text_024": "AI connections are included with Synca Pro.",
     "text_025": "Copy the instruction below and send it to your AI.",
     "text_026": "Follow your AI’s guidance to configure and authorize Synca in your current app.",
     "text_027": "Return to the conversation to find and organize your records.",
@@ -272,13 +272,16 @@
     "text_060": "Last access: ",
     "text_061": "Not used yet",
     "text_062": "Connection revoked",
-    "text_063": "Revoke",
+    "text_063": "Revoke connection",
     "text_064": "Recent operations",
     "text_065": "No operations yet.",
     "text_066": "Back to records",
     "text_067": "Privacy policy",
     "text_068": "Instruction preview",
-    "text_069": "Close"
+    "text_069": "Close",
+    "operations_more": "Show more",
+    "operations_less": "Show less",
+    "operations_limit": "Showing the latest 50 operations."
   },
   "preferences": {
     "title": "Settings",
@@ -306,7 +309,8 @@
       "violet": "Violet",
       "rose": "Rose",
       "ocean": "Ocean"
-    }
+    },
+    "completed_count": "{{count}} completed"
   },
   "storage.shared_file": "Attachment",
   "account.section_title": "Account",
@@ -332,5 +336,13 @@
   "access.preview_lifetime_price": "CNY 18",
   "access.preview_price_notice": "Preview price. Purchasing is not available yet.",
   "access.ai_service_notice": "Third-party AI service subscriptions are not included.",
-  "access.buyout_label": "One-time purchase"
+  "access.buyout_label": "One-time purchase",
+  "message_category.my_categories": "My Categories",
+  "message_category.start_reordering": "Reorder",
+  "message_category.finish_reordering": "Done Reordering",
+  "message_category.more_actions": "More actions",
+  "message_bubble.expand": "Show more",
+  "message_bubble.collapse": "Show less",
+  "message_list.text_limit": "Use 10,000 characters or fewer to send.",
+  "message_list.clear_completed": "Clear completed"
 }
