@@ -65,6 +65,15 @@ struct MacInputCompositionTests {
             let lm = input.layoutManager!, tc = input.textContainer!
             precondition(input.frame.height >= max(lm.usedRect(for: tc).maxY, lm.extraLineFragmentRect.maxY) + input.textContainerInset.height * 2 - 1, "Trailing newline and overflow must fit the document")
         }
+        let scroll = input.enclosingScrollView
+        precondition(scroll != nil, "Capped composer must have an actual scroll view")
+        precondition(scroll!.hasVerticalScroller && !scroll!.hasHorizontalScroller, "Composer only scrolls vertically")
+        input.setSelectedRange(NSRange(location: 0, length: 0))
+        input.scrollRangeToVisible(input.selectedRange())
+        precondition(scroll!.contentView.bounds.minY < 2, "First line must be reachable")
+        input.setSelectedRange(NSRange(location: input.string.utf16.count, length: 0))
+        input.scrollRangeToVisible(input.selectedRange())
+        precondition(scroll!.contentView.bounds.minY > 0, "Last line must be reachable after overflow")
         text = ""; refresh()
         precondition(height == 34 && abs(input.textContainerInset.height - baselinePadding) < 0.5, "Clearing must restore the same single-line layout")
         print("PASS: IME attributes/selection, Latin/CJK composition and commit, stable single-line padding, multiline growth, overflow and clear")

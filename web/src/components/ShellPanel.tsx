@@ -11,7 +11,7 @@ import { version } from '../../package.json';
 export function ShellPanel({ kind, email, onClose, onLogout }: {
   kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void;
 }) {
-  const { logout } = useAuth();
+  const { logout, accessStatus } = useAuth();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [discardConfirm, setDiscardConfirm] = useState(false);
   const { t, i18n } = useTranslation();
@@ -41,7 +41,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
       <div className="account-summary"><div className="account-identity">
         <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
-          <p className="account-email">{email || t('navigation.account')}</p>
+          <p className="account-email" title={email || undefined}>{email || t('navigation.account')}</p><p className="account-plan-subtitle">{accessStatus?.isUnlimited ? 'Synca Pro' : t('access.free_title')}</p>
         </div>
       </div>
       <StorageUsage /></div>

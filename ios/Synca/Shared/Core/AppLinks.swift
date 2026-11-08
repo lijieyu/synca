@@ -5,7 +5,7 @@ enum AppLinks {
     private static let standardTermsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 
     static var aiConnectionURL: URL {
-        var components = URLComponents(url: baseURL.appendingPathComponent("ai"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: baseURL.appendingPathComponent("ai", isDirectory: true), resolvingAgainstBaseURL: false)!
         let language = AppLocalization.identifier
         components.queryItems = [URLQueryItem(name: "lng", value: language)]
         return components.url!

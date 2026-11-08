@@ -3,9 +3,7 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
-/// A selectable text view for macOS designed specifically to act as an overlay
-/// in a ZStack. It relies entirely on the SwiftUI frame for sizing and
-/// only provides selection and link-clicking capabilities.
+/// The same AppKit layout draws and measures selectable body text and links.
 struct MacSelectableText: NSViewRepresentable {
     let attributedText: NSAttributedString
     let color: Color
@@ -18,7 +16,7 @@ struct MacSelectableText: NSViewRepresentable {
         textView.drawsBackground = false
         textView.backgroundColor = .clear
         
-        // Zero out padding so it aligns exactly with the underlying invisible SwiftUI Text
+        // Match the text column without an independent measurement view.
         textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
         
@@ -47,7 +45,16 @@ struct MacSelectableText: NSViewRepresentable {
         context.coordinator.attributedText = attributedText.copy() as? NSAttributedString
         nsView.textStorage?.setAttributedString(attributedText)
         nsView.textColor = textColor
-        nsView.font = NSFont.systemFont(ofSize: 13) // SwiftUI .body roughly maps to 13pt
+        nsView.font = NSFont.preferredFont(forTextStyle: .body)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: CustomContextMenuTextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0,
+              let manager = nsView.layoutManager, let container = nsView.textContainer else { return nil }
+        nsView.setFrameSize(NSSize(width: width, height: nsView.frame.height))
+        container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        manager.ensureLayout(for: container)
+        return CGSize(width: width, height: ceil(manager.usedRect(for: container).maxY))
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {

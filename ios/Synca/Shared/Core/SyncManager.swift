@@ -610,7 +610,16 @@ final class SyncManager: ObservableObject {
     func updateMessageText(_ original: SyncaMessage, textContent: String) async throws {
         let operationGeneration = syncState.generation
         guard original.canEditText else { throw APIError.textEditUnavailable }
-        let updated = try await api.updateMessageText(id: original.id, textContent: textContent, expectedUpdatedAt: original.updatedAt)
+        // An editor may outlive a category write or a poll. Rebase only unchanged
+        // text onto an actual server revision; a failed read leaves its draft intact.
+        let ticket = syncState.ticket
+        let authoritative = try await api.listMessages()
+        guard syncState.accepts(ticket) else { throw CancellationError() }
+        guard let current = authoritative.first(where: { $0.id == original.id }),
+              let revision = MessageSyncState.textEditRevision(original: original, current: current) else {
+            throw APIError.textEditConflict
+        }
+        let updated = try await api.updateMessageText(id: original.id, textContent: textContent, expectedUpdatedAt: revision)
         guard operationGeneration == syncState.generation else { throw CancellationError() }
         if let index = messages.firstIndex(where: { $0.id == original.id }),
            MessageSyncState.acceptingMutation(updated, over: messages[index]) {
@@ -635,10 +644,10 @@ final class SyncManager: ObservableObject {
         }
     }
 
-    func createCategory(name: String, color: MessageCategoryColor) async -> SyncaMessageCategory? {
+    func createCategory(name: String, color: MessageCategoryColor, colorHex: String? = nil) async -> SyncaMessageCategory? {
         let operationGeneration = syncState.generation
         do {
-            let category = try await api.createMessageCategory(name: name, color: color)
+            let category = try await api.createMessageCategory(name: name, color: color, colorHex: colorHex)
             guard operationGeneration == syncState.generation else { return nil }
             categories.append(category)
             categories.sort { lhs, rhs in
@@ -657,14 +666,28 @@ final class SyncManager: ObservableObject {
     }
 
     @discardableResult
-    func updateCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async -> Bool {
+    func updateCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil, colorHex: String? = nil) async -> Bool {
         let operationGeneration = syncState.generation
         do {
-            let updated = try await api.updateMessageCategory(id: id, name: name, color: color)
+            let updated = try await api.updateMessageCategory(id: id, name: name, color: color, colorHex: colorHex)
             guard operationGeneration == syncState.generation else { return false }
             if let index = categories.firstIndex(where: { $0.id == id }) {
                 categories[index] = updated
                 persistCategories()
+            }
+            // Category writes advance each assigned message independently. Never
+            // synthesize those revisions from the category timestamp.
+            let ticket = syncState.ticket
+            do {
+                let authoritative = try await api.listMessages()
+                guard syncState.accepts(ticket) else { return operationGeneration == syncState.generation }
+                messages = authoritative
+                unclearedCount = messages.filter { !$0.isCleared }.count
+                persistMessages()
+            } catch {
+                guard operationGeneration == syncState.generation else { return false }
+                // The category is already committed. Text saves perform their own
+                // guarded read and retain the editor draft if recovery is offline.
             }
             return true
         } catch {
@@ -713,6 +736,7 @@ final class SyncManager: ObservableObject {
                     messages[index].categoryId = defaultCategory.id
                     messages[index].categoryName = defaultCategory.name
                     messages[index].categoryColor = defaultCategory.color
+                    messages[index].categoryColorHex = defaultCategory.colorHex
                     messages[index].categoryIsDefault = true
                 }
             }

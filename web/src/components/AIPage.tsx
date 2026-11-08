@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowUpRight, Copy, Check, MessageSquare } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, Copy, Check, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,11 +28,15 @@ export function AIPage() {
   const params = new URLSearchParams(window.location.search);
   const authorize = params.get('authorize');
   const embedded = (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
+  const [guideVisible, setGuideVisible] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<Connection | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [operationsExpanded, setOperationsExpanded] = useState(false);
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
   const [planVisible, setPlanVisible] = useState(false);
+  const actionPending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -71,21 +75,22 @@ export function AIPage() {
         request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations'),
         authorize ? request<Authorization>(`authorization/${encodeURIComponent(authorize)}`) : null,
       ]);
-      if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); }
+      if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); setLoaded(true); }
     };
     void load().catch(e => { if (active) setError(String(e.message)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [token, request, authorize]);
   const act = async (fn: () => Promise<void>) => {
-    if (busy) return;
+    if (actionPending.current) return;
+    actionPending.current = true;
     setBusy(true); setError(''); setNotice('');
-    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { actionPending.current = false; setBusy(false); }
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible}><div className="ai-content">
+  return <><main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
     {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
-    {!authorize && <><div className="ai-intro-grid"><header className="ai-hero">
+    {!authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible))) && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('ai_page.text_021')}</h1>
       <p>{t('ai_page.text_022')}</p>
     </header>
@@ -109,7 +114,7 @@ export function AIPage() {
         if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
         setNotice(t('ai_page.text_042'));
       })}>{t('ai_page.text_043')}</button></section>}
-    {loading && <p role="status">{t('ai_page.text_044')}</p>}
+    {loading && !loaded && <div className="ai-initial-loading" role="status">{t('ai_page.text_044')}</div>}
     {!isAuthenticated && <section className={`ai-card ${!authorize ? 'ai-manage' : ''}`}><h2>{authorize ? t('ai_page.text_045') : t('ai_page.text_046')}</h2>
       <p>{t('ai_page.text_047')}</p>
       {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('ai_page.text_048')}</button> : <div className="ai-login"><LoginView /></div>}
@@ -125,18 +130,18 @@ export function AIPage() {
         window.location.assign(result.redirectUrl);
       })}>{approve ? t('ai_page.text_055') : t('ai_page.text_056')}</button>)}</div>
     </section>}
-    {isAuthenticated && !authorize && <>
-      <section className="ai-card"><h2>{t('ai_page.text_057')}</h2>
+    {isAuthenticated && !authorize && loaded && <>
+      <section className="ai-card"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" onClick={() => setGuideVisible(value => !value)}>{t('polish.tutorial')}</button></div>
         {!activeConnections.length && <p className="ai-muted">{t('ai_page.text_058')}</p>}
         {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3>
           <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)}</p>
           <p className="ai-muted">{t('ai_page.text_060')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(i18n.language) : t('ai_page.text_061')}</p></div>
-          <button disabled={busy} onClick={() => void act(async () => { await request(`connections/${c.id}`, 'DELETE'); await refresh(); setNotice(t('ai_page.text_062')); })}>{t('ai_page.text_063')}</button></article>)}
+          <button disabled={busy} onClick={() => setRevokeTarget(c)}>{t('ai_page.text_063')}</button></article>)}
       </section>
       <section className="ai-card"><h2>{t('ai_page.text_064')}</h2>{!operations.length && <p className="ai-muted">{t('ai_page.text_065')}</p>}
         <ul className="ai-log" id="ai-operation-list">{(operationsExpanded ? operations : operations.slice(0, 3)).map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>
-        {operationsExpanded && <p className="ai-muted ai-log-limit">{t('ai_page.operations_limit')}</p>}
-        {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => setOperationsExpanded(value => !value)}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}</button></div>}
+        {operationsExpanded && operations.length >= 50 && <p className="ai-muted ai-log-limit">{t('ai_page.operations_limit')}</p>}
+        {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => setOperationsExpanded(value => !value)}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}{operationsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button></div>}
       </section>
     </>}
     {!embedded && <footer className="ai-muted">Synca · <Link to="/">{t('ai_page.text_066')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('ai_page.text_067')}</a></footer>}
@@ -144,5 +149,9 @@ export function AIPage() {
     {previewVisible && <Modal title={t('ai_page.text_068')} message="" confirmText={t('ai_page.text_069')} onConfirm={() => setPreviewVisible(false)} onCancel={() => setPreviewVisible(false)} hideCancel neutral className="ai-prompt-modal">
       <div className="ai-prompt-scroll"><p>{connectionPrompt}</p></div>
     </Modal>}
-  </div></main>;
+  </div></main>{revokeTarget && <Modal title={t('polish.revokeTitle', { name: revokeTarget.name })} message={t('polish.revokeMessage')} destructive confirmText={t('ai_page.text_063')} cancelText={t('common.cancel')} confirmDisabled={busy} cancelDisabled={busy} closeDisabled={busy} onCancel={() => { if (!busy) setRevokeTarget(null); }} onConfirm={() => void act(async () => {
+      await request(`connections/${encodeURIComponent(revokeTarget.id)}`, 'DELETE');
+      setConnections(current => current.filter(c => c.id !== revokeTarget.id));
+      setRevokeTarget(null); setNotice(t('ai_page.text_062')); await refresh();
+    })}>{error && <p role="alert">{error}</p>}</Modal>}</>;
 }

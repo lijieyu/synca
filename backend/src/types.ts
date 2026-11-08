@@ -53,6 +53,7 @@ export interface SyncaMessage {
     categoryId?: string | null;
     categoryName?: string | null;
     categoryColor?: string | null;
+    categoryColorHex?: string | null;
     categoryIsDefault?: boolean;
     isCleared: boolean;
     isDeleted: boolean;
@@ -76,6 +77,7 @@ export interface SyncaMessageCategory {
     userId: string;
     name: string;
     color: SyncaMessageCategoryColor;
+    colorHex?: string | null;
     isDefault: boolean;
     sortOrder: number;
     createdAt: string;

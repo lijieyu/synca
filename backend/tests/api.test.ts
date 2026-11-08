@@ -50,6 +50,93 @@ describe('Synca API', () => {
         await resetDb();
     });
 
+    describe('compatible category palette', () => {
+        it('round trips presets and updates record metadata through sync, preserving name-only edits', async () => {
+            const { authHeader } = await createTestUser();
+            const made = await request(app).post('/message-categories').set('Authorization', authHeader)
+                .send({ name: 'Palette', color: 'slate', colorHex: '#4169A8' });
+            expect(made.status).toBe(201);
+            expect(made.body).toMatchObject({ color: 'sky', colorHex: '#4169a8' });
+            const record = await request(app).post('/messages').set('Authorization', authHeader)
+                .send({ textContent: 'example', categoryId: made.body.id });
+            expect(record.status).toBe(201);
+            expect(record.body.categoryColorHex).toBe('#4169a8');
+            const renamed = await request(app).patch(`/message-categories/${made.body.id}`).set('Authorization', authHeader).send({ name: 'Renamed' });
+            expect(renamed.body.colorHex).toBe('#4169a8');
+            expect(renamed.body.updatedAt > made.body.updatedAt).toBe(true);
+            const synced = await request(app).get('/messages').query({ since: record.body.updatedAt }).set('Authorization', authHeader);
+            expect(synced.body.messages).toEqual(expect.arrayContaining([expect.objectContaining({ id: record.body.id, categoryName: 'Renamed', categoryColorHex: '#4169a8' })]));
+            const legacy = await request(app).patch(`/message-categories/${made.body.id}`).set('Authorization', authHeader).send({ color: 'mint' });
+            expect(legacy.body.color).toBe('mint');
+            expect(legacy.body.colorHex).toBeUndefined();
+            const list = await request(app).get('/messages').set('Authorization', authHeader);
+            expect(list.body.messages[0].categoryColor).toBe('mint');
+            expect(list.body.messages[0].categoryColorHex).toBeUndefined();
+        });
+        it('serializes overlapping recolor and name-only patches without losing metadata or revisions', async () => {
+            const { updateMessageCategory } = await import('../src/store.js');
+            const { userId, authHeader } = await createTestUser();
+            const made = await request(app).post('/message-categories').set('Authorization', authHeader)
+                .send({ name: 'Original', color: 'slate', colorHex: '#676d78' });
+            expect(made.status).toBe(201);
+            const record = await request(app).post('/messages').set('Authorization', authHeader)
+                .send({ textContent: 'Concurrent metadata', categoryId: made.body.id });
+            // Start both mutations without awaiting: same clock and same SQLite connection.
+            // The second write must read the first write's committed palette and revision.
+            const [recolored, renamed] = await Promise.all([
+                updateMessageCategory({ id: made.body.id, userId, colorHex: '#4169a8', now: made.body.updatedAt }),
+                updateMessageCategory({ id: made.body.id, userId, name: 'Concurrent rename', now: made.body.updatedAt }),
+            ]);
+            expect(recolored).toMatchObject({ color: 'sky', colorHex: '#4169a8' });
+            expect(renamed).toMatchObject({ name: 'Concurrent rename', color: 'sky', colorHex: '#4169a8' });
+            expect(recolored!.updatedAt > made.body.updatedAt).toBe(true);
+            expect(renamed!.updatedAt > recolored!.updatedAt).toBe(true);
+            const categories = await request(app).get('/message-categories').set('Authorization', authHeader);
+            expect(categories.body.categories.find((c: { id: string }) => c.id === made.body.id)).toMatchObject(renamed!);
+            const messages = await request(app).get('/messages').set('Authorization', authHeader);
+            const finalRecord = messages.body.messages.find((m: { id: string }) => m.id === record.body.id);
+            expect(finalRecord).toMatchObject({ categoryName: 'Concurrent rename', categoryColor: 'sky', categoryColorHex: '#4169a8' });
+            expect(finalRecord.updatedAt > record.body.updatedAt).toBe(true);
+        });
+        it('permits default colors but forbids rename/delete/order and isolates users', async () => {
+            const { authHeader } = await createTestUser();
+            const initial = await request(app).get('/message-categories').set('Authorization', authHeader);
+            const defaultId = initial.body.categories[0].id;
+            const color = await request(app).patch(`/message-categories/${defaultId}`).set('Authorization', authHeader).send({ colorHex: '#8da35e' });
+            expect(color.status).toBe(200);
+            expect(color.body).toMatchObject({ color: 'mint', colorHex: '#8da35e', isDefault: true });
+            expect((await request(app).patch(`/message-categories/${defaultId}`).set('Authorization', authHeader).send({ name: 'Changed', color: 'sky' })).status).toBe(404);
+            expect((await request(app).delete(`/message-categories/${defaultId}`).set('Authorization', authHeader)).status).toBe(404);
+            expect((await request(app).put('/message-categories/order').set('Authorization', authHeader).send({ categoryIds: [defaultId] })).status).toBe(400);
+            expect((await request(app).patch(`/message-categories/${defaultId}`).set('Authorization', authHeader).send({ color: 'sky', sortOrder: 1 })).status).toBe(400);
+            const other = await createTestUser();
+            expect((await request(app).patch(`/message-categories/${defaultId}`).set('Authorization', other.authHeader).send({ colorHex: '#8276c2' })).status).toBe(404);
+            const listed = await request(app).get('/message-categories').set('Authorization', authHeader);
+            expect(listed.body.categories[0]).toMatchObject({ id: defaultId, name: 'Default', colorHex: '#8da35e', sortOrder: 0 });
+        });
+        it('accepts precisely the shared 16 presets and rejects arbitrary or invalid legacy colors', async () => {
+            const { categoryPalette } = await import('../src/categoryPalette.js');
+            const { authHeader } = await createTestUser();
+            expect(categoryPalette).toHaveLength(16);
+            for (const preset of categoryPalette) {
+                const result = await request(app).post('/message-categories').set('Authorization', authHeader)
+                    .send({ name: preset.name, color: 'slate', colorHex: preset.hex });
+                expect(result.status).toBe(201);
+                expect(result.body).toMatchObject({ color: preset.color, colorHex: preset.hex });
+            }
+            for (const colorHex of ['#ffffff', '#4169a', 'red', 42]) {
+                expect((await request(app).post('/message-categories').set('Authorization', authHeader).send({ name: 'Invalid', color: 'sky', colorHex })).status).toBe(400);
+            }
+            expect((await request(app).post('/message-categories').set('Authorization', authHeader).send({ name: 'Invalid', color: 'denim' })).status).toBe(400);
+            const old = await request(app).post('/message-categories').set('Authorization', authHeader).send({ name: 'Old', color: 'rose' });
+            expect(old.status).toBe(201);
+            expect(old.body.colorHex).toBeUndefined();
+            const cleared = await request(app).patch(`/message-categories/${old.body.id}`).set('Authorization', authHeader).send({ colorHex: null });
+            expect(cleared.status).toBe(200);
+            expect(cleared.body.colorHex).toBeUndefined();
+        });
+    });
+
     describe('record text character limits', () => {
         it.each(['a', '中', '😀', '👨‍👩‍👧‍👦', 'e\u0301'])('accepts 10000 and rejects 10001 graphemes for %s on create and edit', async character => {
             const { authHeader } = await createTestUser({ trialEndsAt: '2020-01-01T00:00:00.000Z' });

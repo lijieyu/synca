@@ -47,7 +47,6 @@
 .about-description { font-size: 14px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 20px; }
 .about-panel .shell-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; text-underline-offset: 4px; }
 .shell-form > button { justify-self: end; min-width: 80px; }
-.modal-content button:focus-visible, .modal-content a:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
 
 .about-panel .shell-links a { color: #6136d6; }
 @media (prefers-color-scheme: dark) { .about-panel .shell-links a { color: #bba2ff; } }
@@ -55,14 +54,4 @@
 .about-registration { margin-top: 20px; color: #626268; font-size: 13px; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
 @media (prefers-color-scheme: dark) { .about-registration { color: #b1b1b8; } }
 
-/* Keep panel dismissal visible while content scrolls, including short screens. */
-.modal-content .modal-header { position: sticky; top: -24px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; margin: -24px -24px 0; padding: 16px 16px 12px 24px; background: var(--panel-bg-color); }
-.modal-content .modal-header .modal-title { margin: 0; }
-.modal-content .modal-close { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--bg-color); color: var(--text-secondary); cursor: pointer; }
-.modal-content .modal-close:hover { background: var(--bg-color); color: var(--text-main); }
-.modal-content .modal-close:disabled { opacity: .5; cursor: wait; }
 .feedback-modal .shell-form, .feedback-modal .modal-actions { flex-shrink: 0; }
-
-.modal-content:has(.modal-header) > :not(.modal-header, .modal-scroll-body, .ai-prompt-scroll) { flex-shrink: 0; }
-
-@media (pointer: coarse) { .modal-content .modal-close { flex-basis: 44px; width: 44px; height: 44px; } }

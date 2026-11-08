@@ -47,8 +47,9 @@ it('keeps lifetime ownership concise without purchase dates or another upgrade',
 it('recognizes historical entitlement without upselling', () => {
   Object.assign(state.status!, { isUnlimited: true, unlimitedSource: 'subscription', storeProductId: 'org.haerth.synca.unlimited.yearly', subscriptionExpiresAt: '2027-04-11T12:00:00Z' });
   const html = render();
-  expect(html).toContain('Pro（年付）');
-  expect(html).toContain('下次续费');
+  expect(html).toContain('Synca Pro');
+  expect(html).not.toContain('Pro（年付）');
+  expect(html).not.toContain('下次续费');
   expect(html).not.toContain('升级终身版');
   expect(html).not.toContain('id6761647007');
 });
@@ -79,7 +80,7 @@ it('keeps the App Store entry visible alongside proposed preview pricing', () =>
     for (const language of ['zh', 'zh-Hant', 'en']) {
       state.language = language;
       const html = render();
-      expect(html).toContain('18');
+      expect(html).toContain('¥28');
       expect(html).toContain('id6761647007');
       expect(html).toContain(i18n.getFixedT(language)('access.buyout_label'));
       for (const key of ['access.preview_price_notice', 'storage.retention_notice', 'access.purchase_shared_account', 'storage.lifetime_notice', 'access.ai_service_notice']) expect(html).not.toContain(i18n.getFixedT(language)(key));
@@ -101,9 +102,10 @@ it.each(['zh', 'zh-Hant', 'en'])('suppresses redundant Pro labels and stale life
 it('keeps valid subscription dates while omitting malformed metadata', () => {
   Object.assign(state.status!, { isUnlimited: true, unlimitedSource: 'subscription', storeProductId: 'org.haerth.synca.unlimited.monthly', purchaseDate: 'invalid', subscriptionExpiresAt: '2027-04-11T12:00:00Z' });
   const html = render();
-  expect(html).toContain(zh['access.purchased_monthly']);
-  expect(html).toContain(zh['access.subscription_expires_label']);
-  expect(html).toContain('2027');
+  expect(html).toContain('Synca Pro');
+  expect(html).not.toContain(zh['access.purchased_monthly']);
+  expect(html).not.toContain(zh['access.subscription_expires_label']);
+  expect(html).not.toContain('2027');
   expect(html).not.toContain(zh['access.purchase_date_label']);
   expect(html).not.toContain(zh['access.current_plan_title']);
 });

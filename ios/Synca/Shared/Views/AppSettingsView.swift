@@ -22,7 +22,7 @@ struct AppSettingsView: View {
             settingsForm
 
         }
-        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80), height: 320)
+        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80), height: min(430, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
         #else
         NavigationStack {
             settingsForm

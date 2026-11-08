@@ -60,6 +60,34 @@ describe('AI record text limits', () => {
     });
 });
 
+describe('AI compatible category palette', () => {
+    it('preserves and clears optional shades and protects the default category', async () => {
+        const created = await call('manage_category', { action: 'create', name: 'Shaded', color: 'slate', colorHex: '#8276c2', idempotencyKey: randomUUID() });
+        expect(created.status).toBe(200);
+        const readCategory = async (id: string) => (await call('list_categories')).body.find((c: { id: string }) => c.id === id);
+        let category = await readCategory(created.body.id);
+        expect(category).toMatchObject({ color: 'violet', colorHex: '#8276c2' });
+        const rec = await call('create_record', { textContent: 'shade', categoryId: category.id, idempotencyKey: randomUUID() });
+        const before = (await call('read_record', { id: rec.body.id })).body;
+        expect(before.categoryColorHex).toBe('#8276c2');
+        expect((await call('manage_category', { action: 'update', id: category.id, expectedUpdatedAt: category.updatedAt, name: 'Renamed shade', idempotencyKey: randomUUID() })).status).toBe(200);
+        category = await readCategory(category.id);
+        expect(category.colorHex).toBe('#8276c2');
+        const after = (await call('read_record', { id: rec.body.id })).body;
+        expect(after.updatedAt > before.updatedAt).toBe(true);
+        expect(after.categoryName).toBe('Renamed shade');
+        expect((await call('manage_category', { action: 'update', id: category.id, expectedUpdatedAt: category.updatedAt, color: 'ocean', idempotencyKey: randomUUID() })).status).toBe(200);
+        expect((await readCategory(category.id)).colorHex).toBeUndefined();
+        const fallback = (await call('list_categories')).body.find((c: { isDefault: boolean }) => c.isDefault);
+        const changed = await call('manage_category', { action: 'update', id: fallback.id, expectedUpdatedAt: fallback.updatedAt, colorHex: '#676d78', idempotencyKey: randomUUID() });
+        expect(changed.status).toBe(200);
+        expect(await readCategory(fallback.id)).toMatchObject({ color: 'slate', colorHex: '#676d78' });
+        expect((await call('manage_category', { action: 'update', id: fallback.id, expectedUpdatedAt: changed.body.updatedAt, name: 'Forbidden', idempotencyKey: randomUUID() })).status).toBe(404);
+        expect((await call('manage_category', { action: 'delete', id: fallback.id, expectedUpdatedAt: changed.body.updatedAt, idempotencyKey: randomUUID() })).status).toBe(404);
+        expect((await call('manage_category', { action: 'create', name: 'Invalid', colorHex: '#ffffff', idempotencyKey: randomUUID() })).status).toBe(400);
+    });
+});
+
 describe('AI authorization and content contract', () => {
     const rpc = (method: string, params: unknown) => request(app).post('/mcp').set('Authorization', auth())
         .set('Accept', 'application/json, text/event-stream').send({ jsonrpc: '2.0', id: 1, method, params });

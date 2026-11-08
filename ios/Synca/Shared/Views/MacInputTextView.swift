@@ -64,7 +64,7 @@ struct MacInputTextView: NSViewRepresentable {
         Self.applyPlainTextStyle(to: textView)
 
         container.textView = textView
-        container.addSubview(textView)
+        container.documentView = textView
         DispatchQueue.main.async {
             context.coordinator.recalculateHeight(for: textView)
         }
@@ -175,51 +175,44 @@ struct MacInputTextView: NSViewRepresentable {
     }
 }
 
-/// A tight AppKit host for NSTextView. Avoid nesting NSScrollView inside SwiftUI's
-/// horizontal ScrollView; that combination can produce stale hit regions in tiled mode.
-final class MacInputContainerView: NSView {
+/// A vertical-only scroll host: the document grows while SwiftUI caps the visible field.
+final class MacInputContainerView: NSScrollView {
     weak var textView: PasteAwareMacTextView?
+    private var layingOutText = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.masksToBounds = true
+        configure()
     }
-
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        wantsLayer = true
-        layer?.masksToBounds = true
+        configure()
     }
-
-    override var acceptsFirstResponder: Bool { true }
-
+    private func configure() {
+        drawsBackground = false
+        borderType = .noBorder
+        hasVerticalScroller = true
+        hasHorizontalScroller = false
+        autohidesScrollers = true
+        // Leave scrollerStyle to the user's system preference.
+    }
     override func layout() {
         super.layout()
         layoutTextView()
     }
-
-    override func mouseDown(with event: NSEvent) {
-        guard let textView else { return }
-        window?.makeFirstResponder(textView)
-        textView.mouseDown(with: event)
-    }
-
-    /// SwiftUI often gives the host a width before AppKit propagates it to the text container; width 0 breaks drawing and typing.
     func layoutTextView() {
-        guard let textView else { return }
-        let w = bounds.width
-        guard w > 0 else { return }
-        var f = textView.frame
-        f.size.width = w
-        f.size.height = max(bounds.height, f.size.height)
-        f.origin = .zero
-        textView.frame = f
-        let inset = textView.textContainerInset.width * 2
-        let containerW = max(1, w - inset)
-        textView.textContainer?.containerSize = NSSize(width: containerW, height: CGFloat.greatestFiniteMagnitude)
-        textView.minSize = NSSize(width: w, height: 0)
-        textView.maxSize = NSSize(width: w, height: CGFloat.greatestFiniteMagnitude)
+        guard !layingOutText, let textView, contentSize.width > 0,
+              let manager = textView.layoutManager, let container = textView.textContainer else { return }
+        layingOutText = true
+        defer { layingOutText = false }
+        let width = contentSize.width
+        textView.minSize = NSSize(width: width, height: 0)
+        textView.maxSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+        textView.setFrameSize(NSSize(width: width, height: max(contentSize.height, textView.frame.height)))
+        // Width tracking owns wrapping; never manually set a competing container width.
+        manager.ensureLayout(for: container)
+        let bottom = max(manager.usedRect(for: container).maxY, manager.extraLineFragmentRect.maxY)
+        textView.setFrameSize(NSSize(width: width, height: max(contentSize.height, ceil(bottom + 2 * textView.textContainerInset.height))))
     }
 }
 

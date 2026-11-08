@@ -5,53 +5,32 @@ import { Modal } from './Modal';
 export const SYNCA_APP_STORE_URL = 'https://apps.apple.com/cn/app/synca-灵感记录-即刻同步/id6761647007';
 
 export function PlanContent({ showStorage = true }: { showStorage?: boolean } = {}) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { accessStatus: status } = useAuth();
-  const isChinese = i18n.language.startsWith('zh');
   const paid = status?.isUnlimited === true;
-  const lifetime = status?.unlimitedSource === 'lifetime';
-  const purchaseDate = !lifetime && status?.purchaseDate ? date(status.purchaseDate) : null;
-  const renewalDate = !lifetime && status?.subscriptionExpiresAt ? date(status.subscriptionExpiresAt) : null;
-  const planName = lifetime ? 'access.purchased_lifetime'
-    : status?.storeProductId === 'org.haerth.synca.unlimited.monthly' ? 'access.purchased_monthly'
-    : status?.storeProductId === 'org.haerth.synca.unlimited.yearly' ? 'access.purchased_yearly'
-    : 'access.status_unlimited';
-  function date(value: string) {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : new Intl.DateTimeFormat(i18n.language, { dateStyle: 'long' }).format(parsed);
-  }
   const benefits = <ul>
     {['access.unlock_benefit_unlimited', 'storage.paid_files', 'storage.paid_capacity', 'access.unlock_benefit_ai'].map(key => <li key={key}>{t(key)}</li>)}
   </ul>;
-  const legal = <div className="plan-legal-links">
-    <a href={`https://synca.haerth.cn/${isChinese ? 'zh-hans' : 'en'}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('access.privacy_policy_link_title')}</a>
-    <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">{t('access.terms_link_title')}</a>
-  </div>;
-  const previewPricing = import.meta.env.VITE_PREVIEW_PRICING === 'true';
   const download = <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
   return <div className="storage-plans">
+      {showStorage && <StorageUsage />}
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
-          <div className="plan-card-header"><h4>{t(paid ? planName : 'access.current_plan_title')}</h4><span className={`plan-badge${paid ? " plan-badge-pro" : ""}`}>{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
-          {paid ? <>
-            {(purchaseDate || renewalDate) && <dl className="plan-dates">
-              {purchaseDate && <><dt>{t('access.purchase_date_label')}</dt><dd>{purchaseDate}</dd></>}
-              {renewalDate && <><dt>{t('access.subscription_expires_label')}</dt><dd>{renewalDate}</dd></>}
-            </dl>}
-            {benefits}{legal}
+          <div className="plan-card-header"><h4>{paid ? 'Synca Pro' : t('access.current_plan_title')}</h4>{paid && <span className="plan-activated">{t('polish.activated')}</span>}</div>
+          {paid ? <>{benefits}
           </> : <>
             <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_types')}</li><li>{t('storage.free_benefits')}</li></ul>
           </>}
         </section>
         {!paid && <section className="storage-plan-paid">
-          <div className="plan-card-header"><h4>{t('access.unlock_title')}</h4><span className="plan-badge plan-badge-pro">Pro</span></div>{benefits}
+          <div className="plan-card-header"><h4>{t('access.unlock_title')}</h4></div>{benefits}
           <div className="plan-price-line">
-            {previewPricing && <strong className="plan-price">{t('access.preview_lifetime_price')}</strong>}
+            <strong className="plan-price">¥28</strong>
             <span className="plan-purchase-kind">{t('access.buyout_label')}</span>
           </div>
-          {download}{legal}
+          {download}
         </section>}
-        {showStorage && <StorageUsage />}
+
       </>}
     </div>;
 }

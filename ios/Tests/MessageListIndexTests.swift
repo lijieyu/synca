@@ -8,6 +8,49 @@ struct MessageListIndexTests {
     }
 
     static func main() async throws {
+        let drag = CategoryReorderDrag.payload(for: "work")
+        let nextDrag = CategoryReorderDrag.payload(for: "work")
+        precondition(drag != nextDrag, "Each new drag must invalidate the prior session payload")
+        precondition(CategoryReorderDrag.validatedID(from: Data(drag.utf8), expected: drag) == "work")
+        for unrelated in ["work", "unrelated external text", nextDrag, CategoryReorderDrag.payload(for: "life")] {
+            precondition(CategoryReorderDrag.validatedID(from: Data(unrelated.utf8), expected: drag) == nil,
+                         "Unrelated text and stale or foreign drag sessions must never select a category")
+        }
+        precondition(CategoryReorderDrag.validatedID(from: nil, expected: drag) == nil)
+        precondition(CategoryReorderDrag.validatedID(from: Data("work\ninvalid-nonce".utf8), expected: "work\ninvalid-nonce") == nil)
+        let acceptsText = CategoryReorderDrag.load([NSItemProvider(object: "external text" as NSString)], expected: drag) { _ in
+            preconditionFailure("Generic text must not reach reorder callback")
+        }
+        precondition(!acceptsText)
+        let acceptedID: String = await withCheckedContinuation { continuation in
+            let accepted = CategoryReorderDrag.load([CategoryReorderDrag.provider(drag)], expected: drag) { id in
+                continuation.resume(returning: id)
+            }
+            precondition(accepted, "The app's registered category provider must be accepted")
+        }
+        precondition(acceptedID == "work", "Verified provider bytes must deliver the dragged category")
+        let decoder = JSONDecoder()
+        let legacyCategory = Data(#"{"id":"category","userId":"test","name":"Work","color":"sky","isDefault":false,"createdAt":"2026-11-09T00:00:00Z","updatedAt":"2026-11-09T00:00:00Z"}"#.utf8)
+        let legacy = try decoder.decode(SyncaMessageCategory.self, from: legacyCategory)
+        precondition(legacy.color == .sky && legacy.colorHex == nil && legacy.sortOrder == 0)
+        for preset in CategoryColorPreset.all {
+            var payload = try JSONSerialization.jsonObject(with: legacyCategory) as! [String: Any]
+            payload["color"] = preset.legacy.rawValue
+            payload["colorHex"] = preset.hex
+            let decoded = try decoder.decode(SyncaMessageCategory.self, from: JSONSerialization.data(withJSONObject: payload))
+            precondition(decoded.color == preset.legacy && decoded.colorHex == preset.hex)
+            precondition(CategoryColorPreset.matching(preset.hex.uppercased())?.hex == preset.hex)
+            let roundtrip = try decoder.decode(SyncaMessageCategory.self, from: JSONEncoder().encode(decoded))
+            precondition(roundtrip == decoded)
+        }
+        precondition(CategoryColorPreset.all.count == 16 && MessageCategoryColor.allCases.count == 8)
+        precondition(CategoryColorPreset.matching("#abcdef") == nil)
+        var metadata = message("metadata", category: "category")
+        metadata.categoryColor = .sky; metadata.categoryColorHex = "#4169a8"
+        let decodedMessage = try decoder.decode(SyncaMessage.self, from: JSONEncoder().encode(metadata))
+        precondition(decodedMessage.categoryColor == .sky && decodedMessage.categoryColorHex == "#4169a8")
+        print("PASS: category drag validates actual payload and nonce, rejects stale/foreign/generic text and malformed data")
+        print("PASS: legacy category decode, all 16 compatible presets, cache roundtrip, invalid hex fallback and record color metadata")
         for character in ["a", "中", "👩🏽‍💻", "e\u{301}"] {
             let boundary = String(repeating: character, count: 10000)
             precondition(MessageTextPolicy.accepts(boundary))
@@ -95,6 +138,21 @@ struct MessageListIndexTests {
         let delayed = message("mutation", category: "one", cleared: true, date: "2026-11-02T00:00:01Z")
         precondition(!MessageSyncState.acceptingMutation(delayed, over: newer))
         precondition(MessageSyncState.acceptingMutation(newer, over: delayed))
+        var originalText = delayed
+        originalText.isCleared = false
+        originalText.textContent = "original draft source"
+        var categoryUpdated = originalText
+        categoryUpdated.categoryName = "Renamed"
+        categoryUpdated.updatedAt = newer.updatedAt
+        precondition(MessageSyncState.textEditRevision(original: originalText, current: categoryUpdated) == newer.updatedAt)
+        var concurrentText = categoryUpdated
+        concurrentText.textContent = "another device"
+        precondition(MessageSyncState.textEditRevision(original: originalText, current: concurrentText) == nil)
+        precondition(MessageSyncState.textEditRevision(original: categoryUpdated, current: originalText) == nil)
+        var deletedText = categoryUpdated
+        deletedText.isDeleted = true
+        precondition(MessageSyncState.textEditRevision(original: originalText, current: deletedText) == nil)
+        print("PASS: category metadata rebase uses authoritative revision; concurrent text, stale response and deletion remain protected")
         var state = MessageSyncState()
         let initial = state.ticket
         precondition(state.accepts(initial))
