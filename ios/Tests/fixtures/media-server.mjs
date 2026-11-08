@@ -17,6 +17,16 @@ const server=http.createServer((request,response)=>{
   if(request.url==='/api/media/redirect'){response.writeHead(302,{location:'http://127.0.0.1:3001/leak'});response.end();return;}
   if(request.url==='/api/media/slow'){setTimeout(()=>{if(!response.destroyed){response.writeHead(200);response.end('private fixture');}},1000);return;}
   if(request.url==='/api/media/file'){response.writeHead(200);response.end('original fixture attachment');return;}
+  if(request.method==='POST' && request.url==='/messages/image'){
+    const chunks=[];
+    request.on('data',data=>chunks.push(data));
+    request.on('end',()=>{
+      const body=Buffer.concat(chunks).toString();
+      const mode=body.match(/name="sourceDevice"\r\n\r\n([^\r]+)/)?.[1]??'normal';
+      const result={id:mode,userId:'native-fixture',type:'image',imageUrl:`http://127.0.0.1:${mode==='foreign'?3001:3000}/api/media/upload-${mode}`,attachmentExpired:mode==='expired',isCleared:false,isDeleted:false,createdAt:'2026-10-22T00:00:00.000Z',updatedAt:'2026-10-22T00:00:00.000Z'};
+      if(mode==='slow')setTimeout(()=>{if(!response.destroyed)json(201,result);},500);else json(201,result);
+    });return;
+  }
   if(request.method==='POST' && request.url==='/messages/file'){
     let size=0;let tail=Buffer.alloc(0);
     request.on('data',data=>{size+=data.length;tail=Buffer.concat([tail,data]).subarray(-2048);});

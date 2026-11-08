@@ -8,6 +8,13 @@ enum KeychainHelper {
     static func delete(key: String) {}
 }
 
+final class ProgressProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Double] = []
+    func record(_ value: Double) { lock.withLock { values.append(value) } }
+    var hasCompleted: Bool { lock.withLock { values.contains { $0 >= 1 } } }
+}
+
 @main
 struct NativeTransferTests {
     @MainActor
@@ -25,6 +32,32 @@ struct NativeTransferTests {
             try handle.truncate(atOffset: UInt64(size)); try handle.close()
             return PendingFileUpload.read(from: url)!
         }
+        ImageCache.clearCache()
+        let original = Data(repeating: 42, count: 1024 * 1024)
+        let progress = ProgressProbe()
+        let uploaded = try await api.sendImageMessage(imageData: original, progress: { progress.record($0) })
+        precondition(progress.hasCompleted, "image upload must report actual bytes sent")
+        precondition(ImageCache.getCachedData(for: URL(string: uploaded.imageUrl!)!, authorizationToken: api.token) == original, "uploaded original should be cached before message is returned")
+        for mode in ["foreign", "expired"] {
+            let message = try await api.sendImageMessage(imageData: original, sourceDevice: mode)
+            precondition(ImageCache.getCachedData(for: URL(string: message.imageUrl!)!, authorizationToken: api.token) == nil)
+        }
+        let stale = Task { try await api.sendImageMessage(imageData: original, sourceDevice: "slow") }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        ImageCache.clearCache()
+        let staleMessage = try await stale.value
+        precondition(ImageCache.getCachedData(for: URL(string: staleMessage.imageUrl!)!, authorizationToken: api.token) == nil)
+        let cancelled = Task { try await api.sendImageMessage(imageData: original, sourceDevice: "slow") }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        api.cancelUploads()
+        do { _ = try await cancelled.value; preconditionFailure("cancelled image upload succeeded") }
+        catch { precondition(error is CancellationError || (error as NSError).code == NSURLErrorCancelled) }
+        let oldSession = Task { try await api.sendImageMessage(imageData: original, sourceDevice: "slow") }
+        try await Task.sleep(nanoseconds: 100_000_000)
+        api.setToken("native-fixture")
+        do { _ = try await oldSession.value; preconditionFailure("old-session image upload succeeded") }
+        catch { precondition(error is CancellationError || (error as NSError).code == NSURLErrorCancelled) }
+        print("PASS: uploaded original cache seeding, expired/foreign rejection, cache clear and same-token session fencing")
         let large = try file("large.zip", size: PendingFileUpload.maxFileSize)
         let result = try await api.sendFileMessage(file: large, progress: { _ in })
         precondition(result.id == large.uploadID && result.fileSize == PendingFileUpload.maxFileSize)

@@ -272,7 +272,12 @@ final class APIClient: ObservableObject {
         return ("image/jpeg", ".jpg") // Default to JPEG
     }
 
-    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
+    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil,
+                          progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> SyncaMessage {
+        let generation = sessionGeneration
+        let cacheGeneration = ImageCache.generation
+        let authorizationToken = token
+        try Task.checkCancellation()
         guard imageData.count <= PendingFileUpload.maxImageSize else { throw APIError.imageTooLarge }
         let url = URL(string: "\(baseURL)/messages/image")!
         var request = URLRequest(url: url)
@@ -311,9 +316,18 @@ final class APIClient: ObservableObject {
         }
 
         data.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = data
-
-        let (responseData, response) = try await performRequest(request)
+        request.timeoutInterval = 15 * 60
+        let delegate = UploadProgressDelegate(progress)
+        let task = Task { try await URLSession.shared.upload(for: request, from: data, delegate: delegate) }
+        let id = UUID()
+        requests[id] = task
+        uploadRequests[id] = task
+        defer { requests.removeValue(forKey: id); uploadRequests.removeValue(forKey: id) }
+        let (responseData, response) = try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: { task.cancel() }
+        guard generation == sessionGeneration else { throw CancellationError() }
+        try Task.checkCancellation()
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -323,7 +337,10 @@ final class APIClient: ObservableObject {
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(SyncaMessage.self, from: responseData)
+        let message = try decoder.decode(SyncaMessage.self, from: responseData)
+        ImageCache.seedUploadedData(imageData, message: message, session: generation,
+                                    authorizationToken: authorizationToken, generation: cacheGeneration)
+        return message
     }
 
     func sendFileMessage(file: PendingFileUpload, sourceDevice: String? = nil, categoryId: String? = nil,

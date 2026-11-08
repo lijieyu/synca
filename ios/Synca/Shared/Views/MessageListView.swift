@@ -1093,19 +1093,13 @@ struct MessageListView: View {
             .onChange(of: self.selectedPhotoItems) { items in
                 guard !items.isEmpty else { return }
                 Task {
-                    // Reverse the order so the 'newest' (usually selected first) 
-                    // appears at the bottom of the chat list
-                    let reversedItems = items.reversed()
-                    var imageDatas: [Data] = []
-                    for item in reversedItems {
-                        if let data = try? await item.loadTransferable(type: Data.self) {
-                            imageDatas.append(data)
-                        }
-                    }
+                    // Preserve the existing selected order, loading one original at a time.
+                    let reversedItems = Array(items.reversed())
+                    let targetCategoryId = activeSendCategoryId
                     self.selectedPhotoItems = []
-                    if !imageDatas.isEmpty {
-                        shouldScrollToBottomAfterSend = true
-                        await self.syncManager.sendImages(imageDatas, categoryId: activeSendCategoryId)
+                    shouldScrollToBottomAfterSend = true
+                    await self.syncManager.sendImages(count: reversedItems.count, categoryId: targetCategoryId) { index in
+                        try? await reversedItems[index].loadTransferable(type: Data.self)
                     }
                 }
             }
@@ -1696,16 +1690,11 @@ private struct TiledCategoryColumn: View {
                 .onChange(of: selectedPhotoItems) { items in
                     guard !items.isEmpty else { return }
                     Task {
-                        let reversedItems = items.reversed()
-                        var imageDatas: [Data] = []
-                        for item in reversedItems {
-                            if let data = try? await item.loadTransferable(type: Data.self) {
-                                imageDatas.append(data)
-                            }
-                        }
+                        let reversedItems = Array(items.reversed())
+                        let targetCategoryId = category.id
                         selectedPhotoItems = []
-                        if !imageDatas.isEmpty {
-                            await syncManager.sendImages(imageDatas, categoryId: category.id)
+                        await syncManager.sendImages(count: reversedItems.count, categoryId: targetCategoryId) { index in
+                            try? await reversedItems[index].loadTransferable(type: Data.self)
                         }
                     }
                 }

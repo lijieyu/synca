@@ -13,6 +13,21 @@ enum ImageCache {
             .appendingPathComponent("SyncaImageCache", isDirectory: true),
         maximumBytes: 128 * 1024 * 1024, maximumAge: 7 * 24 * 60 * 60)
 
+    static var generation: UInt64 { cache.generation }
+
+    /// Called before publishing an upload response. Keep original bytes, and reject
+    /// stale sessions, expired attachments and URLs outside the attachment contract.
+    @MainActor
+    static func seedUploadedData(_ data: Data, message: SyncaMessage, session: UUID,
+                                 authorizationToken: String?, generation: UInt64) {
+        guard APIClient.shared.isCurrentSession(session),
+              authorizationToken == APIClient.shared.token,
+              message.type == .image, !message.isAttachmentExpired,
+              let value = message.imageUrl, let url = URL(string: value),
+              (try? APIClient.shared.attachmentSession(for: url)) == session else { return }
+        try? cache.write(data, named: cacheKey(for: url, authorizationToken: authorizationToken), generation: generation)
+    }
+
     static func getCachedData(for url: URL, authorizationToken: String?) -> Data? {
         cache.data(named: cacheKey(for: url, authorizationToken: authorizationToken))
     }
