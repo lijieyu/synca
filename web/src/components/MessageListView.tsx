@@ -71,6 +71,7 @@ export const MessageListView: React.FC = () => {
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [composerFocusRequest, requestComposerFocus] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(ALL_CATEGORY_ID);
   const [showSettings, setShowSettings] = useState(false);
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
@@ -339,6 +340,22 @@ export const MessageListView: React.FC = () => {
     }
   };
 
+  const activateCategory = (id: string) => {
+    setSelectedCategoryId(id);
+    requestComposerFocus(value => value + 1);
+  };
+
+  const navigateCategories = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const buttons = Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[data-category-id]'));
+    const index = buttons.indexOf(event.currentTarget);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : Math.max(0, Math.min(buttons.length - 1, index + (['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1)));
+    buttons[next].focus();
+    setSelectedCategoryId(buttons[next].dataset.categoryId!);
+  };
+
   const completed = filteredMessages.filter((message) => message.isCleared);
   const pending = filteredMessages.filter((message) => !message.isCleared);
 
@@ -351,7 +368,7 @@ export const MessageListView: React.FC = () => {
 
         <div className="category-toolbar">
           <div className="category-switcher">
-            <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} color-slate`} onClick={() => setSelectedCategoryId(ALL_CATEGORY_ID)}>
+            <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} color-slate`} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
               {t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
@@ -359,9 +376,10 @@ export const MessageListView: React.FC = () => {
               <button
                 key={category.id}
                 className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
-                onClick={() => setSelectedCategoryId(category.id)}
+                data-category-id={category.id}
+                onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
-                onKeyDown={e => { if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
+                onKeyDown={e => { navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
                 {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
@@ -415,7 +433,7 @@ export const MessageListView: React.FC = () => {
             )}
           </div>
 
-          <InputBar categoryId={activeSendCategoryId} onSent={() => void fetchData(true)} />
+          <InputBar focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => void fetchData(true)} />
       </main>
 
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
@@ -478,6 +496,7 @@ export const MessageListView: React.FC = () => {
           <div className="category-create-stack">
             <input
               className="category-name-input"
+              data-initial-focus
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder={t('message_category.name_placeholder', 'Category name')}

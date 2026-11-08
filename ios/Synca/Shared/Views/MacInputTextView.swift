@@ -8,6 +8,7 @@ struct MacInputTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
     let isSending: Bool
+    var focusRequest: Int = 0
     let onPasteImage: (Data) -> Void
     let onPasteFile: (PendingFileUpload) -> Void
     var onSubmit: (() -> Void)? = nil
@@ -78,6 +79,18 @@ struct MacInputTextView: NSViewRepresentable {
         textView.onPasteFile = onPasteFile
         textView.isEditable = !isSending
         textView.isSelectable = !isSending
+        if context.coordinator.lastFocusRequest != focusRequest {
+            context.coordinator.lastFocusRequest = focusRequest
+            if focusRequest > 0, !isSending {
+                DispatchQueue.main.async { [weak textView] in
+                    guard let textView, let window = textView.window,
+                          window.attachedSheet == nil else { return }
+                    let selection = textView.selectedRanges
+                    window.makeFirstResponder(textView)
+                    textView.selectedRanges = selection
+                }
+            }
+        }
         container.layoutTextView()
         // Do not overwrite the text view while IME composition is active (e.g. Chinese input).
         if !textView.hasMarkedText(), textView.string != text {
@@ -108,6 +121,7 @@ struct MacInputTextView: NSViewRepresentable {
         let onPasteImage: (Data) -> Void
         let onPasteFile: (PendingFileUpload) -> Void
         var onSubmit: (() -> Void)?
+        var lastFocusRequest = 0
 
         init(text: Binding<String>, height: Binding<CGFloat>, onPasteImage: @escaping (Data) -> Void, onPasteFile: @escaping (PendingFileUpload) -> Void, onSubmit: (() -> Void)?) {
             _text = text

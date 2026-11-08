@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface Props {
   onSent: () => void;
   categoryId?: string | null;
+  focusRequest?: number;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -19,7 +20,7 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0 }) => {
   const { accessStatus } = useAuth();
   const uploadController = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -44,6 +45,10 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId }) => {
       textareaRef.current?.focus();
     }
   }, [isSending]);
+
+  useEffect(() => {
+    if (focusRequest > 0) textareaRef.current?.focus({ preventScroll: true });
+  }, [focusRequest]);
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current;

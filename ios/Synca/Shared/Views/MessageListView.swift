@@ -97,6 +97,8 @@ struct MessageListView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrollTask: Task<Void, Never>?
     @State private var inputText = ""
+    @State private var composerFocusRequest = 0
+    @FocusState private var sidebarCategoryFocus: String?
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var showFileImporter = false
     @State private var showLogoutConfirm = false
@@ -543,6 +545,8 @@ struct MessageListView: View {
                let category = syncManager.categories.first(where: { $0.id == id }), !category.isDefault {
                 categoryToEdit = category
                 showCreateCategory = true
+            } else {
+                composerFocusRequest += 1
             }
         } label: {
             HStack(spacing: 10) {
@@ -558,6 +562,21 @@ struct MessageListView: View {
             .background((color ?? Color.syncaPurple).opacity(selected ? 0.22 : 0.08), in: RoundedRectangle(cornerRadius: 8))
             .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+            .focused($sidebarCategoryFocus, equals: id)
+            .keyboardShortcut(sidebarCategoryFocus == id ? KeyboardShortcut(.return, modifiers: []) : nil)
+            .onMoveCommand { direction in
+                let order = [syncManager.allCategoryPseudoId] + syncManager.categories.map(\.id)
+                guard let index = order.firstIndex(of: id) else { return }
+                let step: Int
+                switch direction {
+                case .up, .left: step = -1
+                case .down, .right: step = 1
+                default: return
+                }
+                let next = order[max(0, min(order.count - 1, index + step))]
+                syncManager.selectCategory(next)
+                sidebarCategoryFocus = next
+            }
     }
 
     private var accountAccessibilityValue: String {
@@ -1142,7 +1161,7 @@ struct MessageListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         #else
         ZStack(alignment: .leading) {
-            MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, onPasteImage: { imageData in
+            MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, focusRequest: composerFocusRequest, onPasteImage: { imageData in
                 shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData, categoryId: activeSendCategoryId) }
             }, onPasteFile: { pendingFile in
