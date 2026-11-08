@@ -31,7 +31,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
   return <><Modal title={t(kind === 'account' ? 'preferences.account_plan' : kind === 'feedback' ? 'message_list.feedback' : 'message_list.about')}
     hideActions={kind === 'account'}
     scrollBody={kind === 'account' || kind === 'feedback'}
-    className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind === 'about' ? 'compact' : 'large'}
+    className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind === 'about' ? 'compact' : 'standard'}
     closeLabel={t('navigation.close')} closeDisabled={busy}
     neutral={kind !== 'feedback' || sent} message="" confirmText={t(kind === 'feedback' && !sent ? 'feedback.submit' : 'navigation.close')}
     cancelText={t('common.cancel')} hideCancel={kind !== 'feedback' || sent}
@@ -45,11 +45,11 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
         </div>
       </div>
       <PlanContent />
-      <div className="account-danger-actions"><button className="modal-btn modal-btn-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button><button className="modal-btn modal-btn-cancel" onClick={onLogout}>{t('message_list.logout')}</button></div>
+      <div className="account-danger-actions"><button className="account-text-action account-text-action-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button><button className="account-text-action" onClick={onLogout}>{t('message_list.logout')}</button></div>
       {error && <p role="alert">{error}</p>}
     </div>}
     {kind === 'about' && <div className="about-panel">
-      <div className="about-identity"><img src="/logo.png?v=a1" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
+      <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
       <p className="about-registration">浙ICP备2026013056号-3A</p>

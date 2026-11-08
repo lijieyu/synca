@@ -221,10 +221,6 @@ struct MessageListView: View {
             }
             .sheet(isPresented: $showAboutInfo) {
                 AboutSyncaSheet().syncaPreferences()
-                    #if os(iOS)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    #endif
             }
             .sheet(isPresented: $showCategoryManager) {
                 MessageCategoryManagerSheet()
@@ -707,12 +703,14 @@ struct MessageListView: View {
                         showCreateCategory = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 32, height: 32)
+                            .background(Color.secondary.opacity(0.12), in: Circle())
                             .frame(width: 44, height: 44)
-                            .background(Color.secondary.opacity(0.12))
-                            .clipShape(Circle())
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Text("message_category.add_action"))
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 7)
@@ -2470,7 +2468,7 @@ private struct NewMessageCategorySheet: View {
         } message: {
             Text("message_category.duplicate_message")
         }
-        .frame(minWidth: 420, idealWidth: 440, minHeight: 300, idealHeight: 330)
+        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80))
         #endif
         }
         .disabled(isSaving)
@@ -2504,6 +2502,7 @@ private struct MessageCategoryManagerSheet: View {
     @EnvironmentObject var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
 
+    @State private var contentHeight: CGFloat = 200
     @State private var draftRows: [CategoryDraftRow] = []
     @State private var initialDraftRows: [CategoryDraftRow] = []
     @State private var isSaving = false
@@ -2511,6 +2510,13 @@ private struct MessageCategoryManagerSheet: View {
     @State private var showSaveError = false
 
     private var hasChanges: Bool { draftRows != initialDraftRows }
+
+    #if os(macOS)
+    private var preferredSheetHeight: CGFloat {
+        let available = (NSScreen.main?.visibleFrame.height ?? 860) - 100
+        return min(max(280, contentHeight + 125), available)
+    }
+    #endif
 
     private func requestClose() {
         guard !isSaving else { return }
@@ -2680,7 +2686,12 @@ private struct MessageCategoryManagerSheet: View {
             )
         }
         #if os(macOS)
-        .frame(minWidth: 560, idealWidth: 600, minHeight: 380, idealHeight: 460)
+        .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80))
+        .frame(minHeight: preferredSheetHeight, idealHeight: preferredSheetHeight, maxHeight: preferredSheetHeight)
+        .background(MacSheetSizeObserver(contentSize: NSSize(
+            width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80),
+            height: preferredSheetHeight
+        )))
         #endif
     }
 
@@ -2732,9 +2743,11 @@ private struct MessageCategoryManagerSheet: View {
     private var macOSBody: some View {
         VStack(spacing: 0) {
             MacSheetHeader(title: "message_category.section_title", onClose: { requestClose() })
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
             Divider()
             ScrollView {
-                LazyVStack(spacing: 10) {
+                VStack(spacing: 10) {
                     ForEach(draftRows.indices, id: \.self) { index in
                         CategoryDraftListRow(
                             row: $draftRows[index],
@@ -2766,8 +2779,16 @@ private struct MessageCategoryManagerSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: SheetContentHeightKey.self, value: proxy.size.height)
+                })
+            }
+            .onPreferenceChange(SheetContentHeightKey.self) { height in
+                guard height > 0, abs(contentHeight - height) > 1 else { return }
+                contentHeight = height
             }
             .background(Color.syncaPageBackground.opacity(0.55))
 
@@ -2785,6 +2806,8 @@ private struct MessageCategoryManagerSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
         }
     }
     #endif
@@ -2863,7 +2886,8 @@ private struct CategoryDraftListRow: View {
                     .fill(colorAccent(row.color))
                     .frame(width: 11, height: 11)
                 Text(colorName(for: row.color))
-                    .font(.callout.weight(.semibold))
+                    .font(.callout.weight(.medium))
+                    .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -2959,11 +2983,11 @@ private struct CategoryDraftListRow: View {
     }
 
     private var moveControls: some View {
-        VStack(spacing: 2) {
+        HStack(spacing: 0) {
             Button(action: onMoveUp) {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 11, weight: .bold))
-                    .frame(width: 24, height: 18)
+                    .frame(width: 44, height: 44)
             }
             .disabled(!canMoveUp)
             .buttonStyle(.borderless)
@@ -2972,7 +2996,7 @@ private struct CategoryDraftListRow: View {
             Button(action: onMoveDown) {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .bold))
-                    .frame(width: 24, height: 18)
+                    .frame(width: 44, height: 44)
             }
             .disabled(!canMoveDown)
             .buttonStyle(.borderless)
@@ -2985,21 +3009,23 @@ private struct CategoryDraftListRow: View {
         Button(action: onDelete) {
             Image(systemName: "trash")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.red.opacity(0.6))
+                .foregroundStyle(Color.secondary)
                 .frame(width: 44, height: 44)
-                .background(Color.red.opacity(0.10), in: Circle())
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .accessibilityLabel(Text("message_category.delete_action", bundle: .main))
     }
 
     var body: some View {
-        #if os(iOS)
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             TextField(String(syncaLocalized: "message_category.name_placeholder", bundle: .main), text: $row.name)
                 .textFieldStyle(.plain)
                 .font(.body)
+                .accessibilityLabel(Text("message_category.name_placeholder"))
+                #if os(iOS)
                 .textInputAutocapitalization(.words)
+                #endif
                 .focused($isFocused)
                 .onChange(of: focusedRowId) { newId in
                     if newId == row.localId {
@@ -3007,45 +3033,36 @@ private struct CategoryDraftListRow: View {
                         focusedRowId = nil
                     }
                 }
-
-            Spacer(minLength: 8)
-
-            colorPickerButton
-            deleteButton
-            moveControls
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    colorPickerButton
+                    Spacer(minLength: 0)
+                    moveControls
+                    deleteButton
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    colorPickerButton
+                    HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        moveControls
+                        deleteButton
+                    }
+                }
+            }
         }
         .padding(.vertical, 8)
-        #else
-        HStack(spacing: 12) {
-            TextField(String(syncaLocalized: "message_category.name_placeholder", bundle: .main), text: $row.name)
-                .textFieldStyle(.plain)
-                .focused($isFocused)
-                .onChange(of: focusedRowId) { newId in
-                    if newId == row.localId {
-                        isFocused = true
-                        focusedRowId = nil
-                    }
-                }
-
-            Spacer(minLength: 8)
-
-            colorPickerButton
-            deleteButton
-            moveControls
-        }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 11)
-        .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.syncaCardBorder, lineWidth: 1)
-        )
+        #if os(macOS)
+        .padding(.horizontal, 14)
+        .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.syncaCardBorder, lineWidth: 1))
         #endif
     }
 }
 
 private struct AboutSyncaSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var contentHeight: CGFloat = 360
 
     private let websiteURL = URL(string: "https://synca.haerth.cn/")!
 
@@ -3079,15 +3096,8 @@ private struct AboutSyncaSheet: View {
             MacSheetHeader(title: "message_list.about")
             Divider()
             sheetContent
-            Divider()
-            HStack {
-                Spacer()
-                closeButton
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
         }
-        .frame(minWidth: 460, idealWidth: 460, minHeight: 400, idealHeight: 420)
+        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80), height: min(contentHeight + 57, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
 
         #else
         NavigationStack {
@@ -3098,11 +3108,12 @@ private struct AboutSyncaSheet: View {
                     ToolbarItem(placement: .confirmationAction) { closeButton }
                 }
         }
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
         #endif
     }
 
     private var closeButton: some View {
-        Button("message_list.got_it") { dismiss() }
+        Button("common.close") { dismiss() }
             #if os(macOS)
             .buttonStyle(.bordered)
             .foregroundStyle(.primary)
@@ -3167,12 +3178,15 @@ private struct AboutSyncaSheet: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: SheetContentHeightKey.self, value: proxy.size.height)
+            })
         }
         .scrollIndicators(.hidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 24)
+        .onPreferenceChange(SheetContentHeightKey.self) { contentHeight = $0 }
         .background(
             LinearGradient(
                 colors: [

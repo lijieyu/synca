@@ -27,8 +27,10 @@ export function AIPage() {
   const statusLabels: Record<string, string> = { pending: t('ai_page.text_015'), completed: t('ai_page.text_016'), cancelled: t('ai_page.text_017'), expired: t('ai_page.text_018') };
   const params = new URLSearchParams(window.location.search);
   const authorize = params.get('authorize');
+  const embedded = (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
   const [connections, setConnections] = useState<Connection[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [operationsExpanded, setOperationsExpanded] = useState(false);
   const [authorization, setAuthorization] = useState<Authorization | null>(null);
   const [planVisible, setPlanVisible] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -81,8 +83,8 @@ export function AIPage() {
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible}><div className="ai-content">
-    <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a1" alt="" />Synca</Link></nav>
+  return <main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible}><div className="ai-content">
+    {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
     {!authorize && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('ai_page.text_021')}</h1>
       <p>{t('ai_page.text_022')}</p>
@@ -126,15 +128,18 @@ export function AIPage() {
     {isAuthenticated && !authorize && <>
       <section className="ai-card"><h2>{t('ai_page.text_057')}</h2>
         {!activeConnections.length && <p className="ai-muted">{t('ai_page.text_058')}</p>}
-        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3><p>{c.scopes.map(s => labels[s]).join(' · ')}</p>
-          <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)} · {t('ai_page.text_060')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(i18n.language) : t('ai_page.text_061')}</p></div>
+        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3>
+          <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)}</p>
+          <p className="ai-muted">{t('ai_page.text_060')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(i18n.language) : t('ai_page.text_061')}</p></div>
           <button disabled={busy} onClick={() => void act(async () => { await request(`connections/${c.id}`, 'DELETE'); await refresh(); setNotice(t('ai_page.text_062')); })}>{t('ai_page.text_063')}</button></article>)}
       </section>
       <section className="ai-card"><h2>{t('ai_page.text_064')}</h2>{!operations.length && <p className="ai-muted">{t('ai_page.text_065')}</p>}
-        <ul className="ai-log">{operations.map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>
+        <ul className="ai-log" id="ai-operation-list">{(operationsExpanded ? operations : operations.slice(0, 3)).map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>
+        {operationsExpanded && <p className="ai-muted ai-log-limit">{t('ai_page.operations_limit')}</p>}
+        {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => setOperationsExpanded(value => !value)}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}</button></div>}
       </section>
     </>}
-    <footer className="ai-muted">Synca · <Link to="/">{t('ai_page.text_066')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('ai_page.text_067')}</a></footer>
+    {!embedded && <footer className="ai-muted">Synca · <Link to="/">{t('ai_page.text_066')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('ai_page.text_067')}</a></footer>}
     {planVisible && <PlanDialog onClose={() => setPlanVisible(false)} />}
     {previewVisible && <Modal title={t('ai_page.text_068')} message="" confirmText={t('ai_page.text_069')} onConfirm={() => setPreviewVisible(false)} onCancel={() => setPreviewVisible(false)} hideCancel neutral className="ai-prompt-modal">
       <div className="ai-prompt-scroll"><p>{connectionPrompt}</p></div>

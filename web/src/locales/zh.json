@@ -272,13 +272,16 @@
     "text_060": "最近访问：",
     "text_061": "尚未使用",
     "text_062": "已撤销连接",
-    "text_063": "撤销",
+    "text_063": "撤销连接",
     "text_064": "最近操作",
     "text_065": "暂无操作记录。",
     "text_066": "返回记录",
     "text_067": "隐私政策",
     "text_068": "将复制的指令",
-    "text_069": "关闭"
+    "text_069": "关闭",
+    "operations_more": "查看更多",
+    "operations_less": "收起",
+    "operations_limit": "仅显示最近 50 条操作记录。"
   },
   "preferences": {
     "title": "设置",

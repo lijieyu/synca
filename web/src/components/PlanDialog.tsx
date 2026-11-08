@@ -11,14 +11,16 @@ export function PlanContent() {
   const isChinese = i18n.language.startsWith('zh');
   const paid = status?.isUnlimited === true;
   const lifetime = status?.unlimitedSource === 'lifetime';
+  const purchaseDate = !lifetime && status?.purchaseDate ? date(status.purchaseDate) : null;
+  const renewalDate = !lifetime && status?.subscriptionExpiresAt ? date(status.subscriptionExpiresAt) : null;
   const planName = lifetime ? 'access.purchased_lifetime'
     : status?.storeProductId === 'org.haerth.synca.unlimited.monthly' ? 'access.purchased_monthly'
     : status?.storeProductId === 'org.haerth.synca.unlimited.yearly' ? 'access.purchased_yearly'
     : 'access.status_unlimited';
-  const date = (value: string) => {
+  function date(value: string) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : new Intl.DateTimeFormat(i18n.language, { dateStyle: 'long' }).format(parsed);
-  };
+  }
   const bytes = (value: number) => {
     const unit = value >= 1073741824 ? 'GB' : value >= 1048576 ? 'MB' : 'KB';
     const divisor = unit === 'GB' ? 1073741824 : unit === 'MB' ? 1048576 : 1024;
@@ -36,13 +38,12 @@ export function PlanContent() {
   return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
-          <div className="plan-card-header"><h4>{t('access.current_plan_title')}</h4><span className={`plan-badge${paid ? " plan-badge-pro" : ""}`}>{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
+          <div className="plan-card-header"><h4>{t(paid ? planName : 'access.current_plan_title')}</h4><span className={`plan-badge${paid ? " plan-badge-pro" : ""}`}>{t(paid ? 'access.status_unlimited' : 'access.free_title')}</span></div>
           {paid ? <>
-            <h4>{t(planName)}</h4>
-            <dl className="plan-dates">
-              {status.purchaseDate && date(status.purchaseDate) && <><dt>{t('access.purchase_date_label')}</dt><dd>{date(status.purchaseDate)}</dd></>}
-              {!lifetime && status.subscriptionExpiresAt && date(status.subscriptionExpiresAt) && <><dt>{t('access.subscription_expires_label')}</dt><dd>{date(status.subscriptionExpiresAt)}</dd></>}
-            </dl>
+            {(purchaseDate || renewalDate) && <dl className="plan-dates">
+              {purchaseDate && <><dt>{t('access.purchase_date_label')}</dt><dd>{purchaseDate}</dd></>}
+              {renewalDate && <><dt>{t('access.subscription_expires_label')}</dt><dd>{renewalDate}</dd></>}
+            </dl>}
             {benefits}{legal}
           </> : <>
             <ul><li>{t('access.free_daily_rule')}</li><li>{t('storage.free_types')}</li><li>{t('storage.free_benefits')}</li></ul>
@@ -66,5 +67,5 @@ export function PlanContent() {
 
 export function PlanDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  return <Modal title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel hideActions neutral><PlanContent /></Modal>;
+  return <Modal size="standard" scrollBody title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel hideActions neutral><PlanContent /></Modal>;
 }

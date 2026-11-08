@@ -1,12 +1,17 @@
 import SwiftUI
 import StoreKit
+#if os(iOS)
+import SafariServices
+#else
+import WebKit
+#endif
 
 struct AccessCenterView: View {
     var embedded = false
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
+    @State private var legalDocument: LegalDocument?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var toastDismissTask: Task<Void, Never>?
     @State private var contentHeight: CGFloat = 0
@@ -21,7 +26,7 @@ struct AccessCenterView: View {
         static let sectionSpacing: CGFloat = 16
         static let navigationHeight: CGFloat = 64
         static let minimumHeight: CGFloat = 320
-        static let macWidth: CGFloat = 460
+        static let macWidth: CGFloat = 480
     }
 
     var body: some View {
@@ -40,6 +45,9 @@ struct AccessCenterView: View {
             if abs(contentHeight - height) > 1 { contentHeight = height }
         }
         .overlay { purchaseToastOverlay }
+        .sheet(item: $legalDocument) { document in
+            LegalDocumentSheet(document: document).syncaPreferences()
+        }
         .onChange(of: purchaseManager.activeToast) { toast in
             toastDismissTask?.cancel()
             guard toast != nil else { return }
@@ -190,8 +198,6 @@ struct AccessCenterView: View {
 
         return AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text(currentSubscriptionName(status))
                         .font(.title3.weight(.semibold))
@@ -224,16 +230,9 @@ struct AccessCenterView: View {
     private func lifetimeCurrentCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text(currentLifetimeName)
                         .font(.title3.weight(.semibold))
-                    VStack(alignment: .leading, spacing: 4) {
-                        if let purchaseDate = status.purchaseDate {
-                            detailRow("access.purchase_date_label", value: formatDate(purchaseDate), compact: true)
-                        }
-                    }
                 }
 
                 currentPlanBenefits
@@ -589,13 +588,11 @@ struct AccessCenterView: View {
 
     private func legalLinkButton(titleKey: LocalizedStringKey, url: URL) -> some View {
         Button {
-            openURL(url)
+            legalDocument = LegalDocument(url: url, title: titleKey)
         } label: {
             HStack(spacing: 6) {
                 Text(titleKey)
                     .underline()
-                Image(systemName: "arrow.up.right.square")
-                    .font(.caption2.weight(.semibold))
             }
             .font(.footnote)
             .foregroundStyle(Color.secondary.opacity(0.9))
@@ -1099,3 +1096,136 @@ private extension View {
         modifier(PlanPurchaseInteractivity(isInteractionEnabled: isInteractionEnabled, isBusy: isBusy))
     }
 }
+
+private struct LegalDocument: Identifiable {
+    let url: URL
+    let title: LocalizedStringKey
+    var id: URL { url }
+}
+
+private struct LegalDocumentSheet: View {
+    let document: LegalDocument
+    @State private var isLoading = true
+    @State private var didFail = false
+    @State private var reloadID = UUID()
+    var body: some View {
+        #if os(iOS)
+        LegalSafariView(url: document.url).ignoresSafeArea()
+        #else
+        VStack(spacing: 0) {
+            MacSheetHeader(title: document.title)
+            Divider()
+            ZStack {
+                LegalWebView(url: document.url, isLoading: $isLoading, didFail: $didFail)
+                    .id(reloadID)
+                    .opacity(didFail ? 0 : 1)
+                    .accessibilityHidden(didFail)
+                if didFail {
+                    VStack(spacing: 16) {
+                        Text("ai_browser.load_failed")
+                            .font(.body)
+                            .multilineTextAlignment(.center)
+                        Button("common.retry") {
+                            didFail = false
+                            isLoading = true
+                            reloadID = UUID()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(24)
+                } else if isLoading {
+                    ProgressView("message_list.loading")
+                        .padding(20)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+        .frame(width: min(680, (NSScreen.main?.visibleFrame.width ?? 800) - 80),
+               height: min(680, (NSScreen.main?.visibleFrame.height ?? 800) - 100))
+        #endif
+    }
+}
+
+#if os(iOS)
+private struct LegalSafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let controller = SFSafariViewController(url: url)
+        controller.dismissButtonStyle = .close
+        return controller
+    }
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
+}
+#else
+private struct LegalWebView: NSViewRepresentable {
+    let url: URL
+    @Binding var isLoading: Bool
+    @Binding var didFail: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(isLoading: $isLoading, didFail: $didFail) }
+    func makeNSView(context: Context) -> WKWebView {
+        let view = WKWebView()
+        view.navigationDelegate = context.coordinator
+        view.load(URLRequest(url: url))
+        return view
+    }
+    func updateNSView(_ view: WKWebView, context: Context) {}
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        @Binding var isLoading: Bool
+        @Binding var didFail: Bool
+
+        init(isLoading: Binding<Bool>, didFail: Binding<Bool>) {
+            _isLoading = isLoading
+            _didFail = didFail
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            guard let url = action.request.url,
+                  url.scheme?.lowercased() == "https",
+                  url.host != nil, url.user == nil, url.password == nil else {
+                decisionHandler(.cancel)
+                if action.targetFrame?.isMainFrame != false {
+                    isLoading = false
+                    didFail = true
+                }
+                return
+            }
+            if action.targetFrame == nil {
+                decisionHandler(.cancel)
+                webView.load(action.request)
+            } else { decisionHandler(.allow) }
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            isLoading = true
+            didFail = false
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            isLoading = false
+            didFail = false
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            handleFailure(error)
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            handleFailure(error)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            isLoading = false
+            didFail = true
+        }
+
+        private func handleFailure(_ error: Error) {
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            isLoading = false
+            didFail = true
+        }
+    }
+}
+#endif

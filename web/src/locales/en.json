@@ -272,13 +272,16 @@
     "text_060": "Last access: ",
     "text_061": "Not used yet",
     "text_062": "Connection revoked",
-    "text_063": "Revoke",
+    "text_063": "Revoke connection",
     "text_064": "Recent operations",
     "text_065": "No operations yet.",
     "text_066": "Back to records",
     "text_067": "Privacy policy",
     "text_068": "Instruction preview",
-    "text_069": "Close"
+    "text_069": "Close",
+    "operations_more": "Show more",
+    "operations_less": "Show less",
+    "operations_limit": "Showing the latest 50 operations."
   },
   "preferences": {
     "title": "Settings",

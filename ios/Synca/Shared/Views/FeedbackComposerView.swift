@@ -15,6 +15,8 @@ struct FeedbackComposerView: View {
     @EnvironmentObject private var api: APIClient
     @Environment(\.dismiss) private var dismiss
 
+    @State private var contentHeight: CGFloat = 400
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var content = ""
     @State private var email = ""
     @State private var initialEmail = ""
@@ -62,7 +64,9 @@ struct FeedbackComposerView: View {
             Button("feedback.keep_editing", role: .cancel) { }
         }
         #if os(macOS)
-        .frame(minWidth: 420, idealWidth: 480, minHeight: 570, idealHeight: 600)
+        .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80), height: min(contentHeight + 125, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
+        #else
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
         #endif
     }
 
@@ -86,8 +90,12 @@ struct FeedbackComposerView: View {
                 }
             }
             .padding(20)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: SheetContentHeightKey.self, value: proxy.size.height)
+            })
         }
         .scrollIndicators(.hidden)
+        .onPreferenceChange(SheetContentHeightKey.self) { contentHeight = $0 }
     }
 
     private var cancelButton: some View {

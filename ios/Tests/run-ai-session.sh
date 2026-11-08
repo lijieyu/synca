@@ -16,6 +16,7 @@ for(const [origin,path,main,allowed] of [
  const storage=new Map(); const window={}; window.top=main?window:{};
  vm.runInNewContext(script,{window,location:{origin,pathname:path},localStorage:{setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});
  assert.equal(storage.get('authToken'),allowed?token:undefined,`${origin}${path} frame=${main}`);
+ assert.equal(window.__syncaEmbeddedAI,allowed?true:undefined,`embedded chrome ${origin}${path} frame=${main}`);
 }
-console.log('PASS: exact HTTPS origin, no credential URLs, main-frame AI route only, safe token serialization');
+console.log('PASS: exact HTTPS origin, no credential URLs, main-frame AI route only, trusted embedded chrome, safe token serialization');
 JS

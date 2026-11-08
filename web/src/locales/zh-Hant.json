@@ -272,13 +272,16 @@
     "text_060": "最近訪問：",
     "text_061": "尚未使用",
     "text_062": "已撤銷連接",
-    "text_063": "撤銷",
+    "text_063": "撤銷連線",
     "text_064": "最近操作",
     "text_065": "暫無操作記錄。",
     "text_066": "返回記錄",
     "text_067": "隱私政策",
     "text_068": "將複製的指令",
-    "text_069": "關閉"
+    "text_069": "關閉",
+    "operations_more": "查看更多",
+    "operations_less": "收起",
+    "operations_limit": "僅顯示最近 50 筆操作記錄。"
   },
   "preferences": {
     "title": "設定",

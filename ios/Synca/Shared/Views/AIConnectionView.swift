@@ -10,51 +10,68 @@ struct AIConnectionView: View {
     @State private var initialToken: String?
 
     #if os(macOS)
-    private var macSheetWidth: CGFloat {
+    private var macSheetSize: CGSize {
         let parent = NSApp.keyWindow?.sheetParent ?? NSApp.keyWindow
-        return min(880, max(520, (parent?.frame.width ?? 920) - 40))
+        let screen = parent?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let availableWidth = min(parent?.frame.width ?? 920, screen?.width ?? 920) - 40
+        let availableHeight = (screen?.height ?? 800) - 100
+        return CGSize(width: min(880, max(320, availableWidth)), height: min(680, max(320, availableHeight)))
     }
     #endif
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Button { browser.goBack() } label: {
-                    Image(systemName: "chevron.left")
+        Group {
+            #if os(macOS)
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    if browser.canGoBack {
+                        Button { browser.goBack() } label: { Image(systemName: "chevron.left") }
+                            .accessibilityLabel(Text("ai_browser.back"))
+                    }
+                    Text("message_list.connect_ai").font(.headline)
+                    Spacer()
+                    if browser.isLoading { ProgressView().controlSize(.small) }
+                    Button("common.close") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
                 .buttonStyle(.plain)
-                .disabled(!browser.canGoBack)
-                .accessibilityLabel(Text("ai_browser.back"))
-                Text("message_list.connect_ai").font(.headline)
-                Spacer()
-                if browser.isLoading { ProgressView().controlSize(.small) }
-                Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 13, weight: .semibold)).frame(width: 28, height: 28).background(Color.secondary.opacity(0.1), in: Circle()) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("common.close"))
-                    .keyboardShortcut(.cancelAction)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                Divider()
+                browserContent
             }
-            .padding(.horizontal, 20).padding(.vertical, 12)
-            Divider()
-            ZStack {
-                AIWebContainer(browser: browser)
-                if browser.failed {
-                    VStack(spacing: 16) {
-                        Image(systemName: "wifi.exclamationmark").font(.title)
-                        Text("ai_browser.load_failed").multilineTextAlignment(.center)
-                        Button("common.retry") { browser.retry() }
-                            .buttonStyle(.borderedProminent).tint(.syncaPurple)
+            .frame(width: macSheetSize.width, height: macSheetSize.height)
+            #else
+            NavigationStack {
+                browserContent
+                    .navigationTitle(Text("message_list.connect_ai"))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        if browser.canGoBack {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button { browser.goBack() } label: {
+                                    Label("ai_browser.back", systemImage: "chevron.left")
+                                }
+                            }
+                        }
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("common.close") { dismiss() }
+                        }
                     }
-                    .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.background)
-                }
+                    .overlay(alignment: .topTrailing) {
+                        if browser.isLoading {
+                            ProgressView()
+                                .padding(12)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                .padding(12)
+                                .allowsHitTesting(false)
+                        }
+                    }
             }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            #endif
         }
-        #if os(macOS)
-        .frame(width: macSheetWidth, height: 680)
-        #else
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-        #endif
         .onAppear {
             guard initialToken == nil, let token = api.token else { return }
             initialToken = token
@@ -66,6 +83,23 @@ struct AIConnectionView: View {
             dismiss()
         }
         .onDisappear { browser.clearSession() }
+    }
+
+    private var browserContent: some View {
+        ZStack {
+            AIWebContainer(browser: browser)
+            if browser.failed {
+                VStack(spacing: 16) {
+                    Image(systemName: "wifi.exclamationmark").font(.title)
+                        .accessibilityHidden(true)
+                    Text("ai_browser.load_failed").multilineTextAlignment(.center)
+                    Button("common.retry") { browser.retry() }
+                        .buttonStyle(.borderedProminent).tint(.syncaPurple)
+                }
+                .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.background)
+            }
+        }
     }
 }
 

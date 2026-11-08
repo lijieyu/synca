@@ -32,11 +32,14 @@ it('shows free quota, native purchase options and product download link', () => 
   expect(html).toContain('图片保留 3 天');
   expect(html).toContain('图片和文件保留 30 天');
 });
-it('shows lifetime purchase date without selling another upgrade', () => {
+it('keeps lifetime ownership concise without purchase dates or another upgrade', () => {
   Object.assign(state.status!, { isUnlimited: true, plan: 'unlimited', unlimitedSource: 'lifetime', purchaseDate: '2026-04-11T12:00:00Z' });
   const html = render();
-  expect(html).toContain('购买日期');
-  expect(html).toContain('2026');
+  expect(html).not.toContain('购买日期');
+  expect(html).not.toContain('2026');
+  expect(html).not.toContain(zh['access.current_plan_title']);
+  expect(html).not.toContain('plan-dates');
+  expect(html).toContain(zh['access.purchased_lifetime']);
   expect(html).not.toContain('下载 Synca');
   expect(html).not.toContain('免费版');
   expect(html).not.toContain('下次续费');
@@ -82,4 +85,25 @@ it('shows proposed mainland price in preview without a real purchase link', () =
       for (const key of ['access.preview_price_notice', 'storage.retention_notice', 'access.purchase_shared_account', 'storage.lifetime_notice', 'access.ai_service_notice']) expect(html).not.toContain(i18n.getFixedT(language)(key));
     }
   } finally { vi.unstubAllEnvs(); }
+});
+
+it.each(['zh', 'zh-Hant', 'en'])('suppresses redundant Pro labels and stale lifetime renewal metadata in %s', (language) => {
+  state.language = language;
+  Object.assign(state.status!, { isUnlimited: true, unlimitedSource: 'lifetime', purchaseDate: '2026-04-11T12:00:00Z', subscriptionExpiresAt: '2027-04-11T12:00:00Z' });
+  const html = render();
+  const t = i18n.getFixedT(language);
+  expect(html).not.toContain(t('access.current_plan_title'));
+  expect(html).not.toContain(t('access.purchase_date_label'));
+  expect(html).not.toContain(t('access.subscription_expires_label'));
+  expect(html).toContain(t('access.purchased_lifetime'));
+  expect(html).toContain(t('storage.paid_capacity'));
+});
+it('keeps valid subscription dates while omitting malformed metadata', () => {
+  Object.assign(state.status!, { isUnlimited: true, unlimitedSource: 'subscription', storeProductId: 'org.haerth.synca.unlimited.monthly', purchaseDate: 'invalid', subscriptionExpiresAt: '2027-04-11T12:00:00Z' });
+  const html = render();
+  expect(html).toContain(zh['access.purchased_monthly']);
+  expect(html).toContain(zh['access.subscription_expires_label']);
+  expect(html).toContain('2027');
+  expect(html).not.toContain(zh['access.purchase_date_label']);
+  expect(html).not.toContain(zh['access.current_plan_title']);
 });
