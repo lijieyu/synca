@@ -399,7 +399,7 @@ export const MessageListView: React.FC = () => {
       <main className="calm-main">
         <header className="header">
           <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
-          <p>{t('preferences.pending_count', { count: pending.length })}</p></div>
+          <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
           <div className="header-actions">
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RefreshCcw size={18} /></button>
             <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_all_confirm_title')} title={t('message_list.clear_all_confirm_title')}><Trash2 size={18} /></button>

@@ -8,6 +8,13 @@ import WebKit
 
 struct AccessCenterView: View {
     var embedded = false
+    private var showsInlineStorage: Bool {
+        #if os(macOS)
+        return !embedded
+        #else
+        return true
+        #endif
+    }
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
@@ -160,7 +167,7 @@ struct AccessCenterView: View {
                 benefitRow(systemImage: "photo", text: "storage.free_types")
                 benefitRow(systemImage: "externaldrive", text: "storage.free_benefits")
 
-                storageUsage(status)
+                if showsInlineStorage { storageUsage(status) }
             }
         }
     }
@@ -220,7 +227,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
-                storageUsage(status)
+                if showsInlineStorage { storageUsage(status) }
                 legalLinksSection
 
             }
@@ -236,7 +243,7 @@ struct AccessCenterView: View {
                 }
 
                 currentPlanBenefits
-                storageUsage(status)
+                if showsInlineStorage { storageUsage(status) }
                 legalLinksSection
             }
         }

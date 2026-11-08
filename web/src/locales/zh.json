@@ -309,7 +309,8 @@
       "violet": "紫罗兰",
       "rose": "玫瑰粉",
       "ocean": "海洋蓝"
-    }
+    },
+    "completed_count": "{{count}} 条已完成"
   },
   "storage.shared_file": "附件",
   "account.section_title": "账号",

@@ -4,10 +4,9 @@ import { Modal } from './Modal';
 
 export const SYNCA_APP_STORE_URL = 'https://apps.apple.com/cn/app/synca-灵感记录-即刻同步/id6761647007';
 
-export function PlanContent() {
+export function PlanContent({ showStorage = true }: { showStorage?: boolean } = {}) {
   const { t, i18n } = useTranslation();
   const { accessStatus: status } = useAuth();
-  const storage = status?.storage;
   const isChinese = i18n.language.startsWith('zh');
   const paid = status?.isUnlimited === true;
   const lifetime = status?.unlimitedSource === 'lifetime';
@@ -21,11 +20,6 @@ export function PlanContent() {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : new Intl.DateTimeFormat(i18n.language, { dateStyle: 'long' }).format(parsed);
   }
-  const bytes = (value: number) => {
-    const unit = value >= 1073741824 ? 'GB' : value >= 1048576 ? 'MB' : 'KB';
-    const divisor = unit === 'GB' ? 1073741824 : unit === 'MB' ? 1048576 : 1024;
-    return `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(value / divisor)} ${unit}`;
-  };
   const benefits = <ul>
     {['access.unlock_benefit_unlimited', 'storage.paid_files', 'storage.paid_capacity', 'access.unlock_benefit_ai'].map(key => <li key={key}>{t(key)}</li>)}
   </ul>;
@@ -34,7 +28,7 @@ export function PlanContent() {
     <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">{t('access.terms_link_title')}</a>
   </div>;
   const previewPricing = import.meta.env.VITE_PREVIEW_PRICING === 'true';
-  const download = previewPricing ? null : <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
+  const download = <a className="plan-download-link" href={SYNCA_APP_STORE_URL} target="_blank" rel="noopener noreferrer">{t('access.download_to_purchase')}</a>;
   return <div className="storage-plans">
       {!status ? <p role="status">{t('access.status_load_failed')}</p> : <>
         <section className={paid ? 'storage-plan-paid' : undefined}>
@@ -57,10 +51,7 @@ export function PlanContent() {
           </div>
           {download}{legal}
         </section>}
-        {storage && <div><label htmlFor="storage-usage">{t('storage.used')}</label>
-          <p className="plan-usage">{bytes(storage.usedBytes)} / {bytes(storage.limitBytes)}</p>
-          <progress id="storage-usage" value={Math.min(storage.usedBytes, storage.limitBytes)} max={Math.max(1, storage.limitBytes)} />
-        </div>}
+        {showStorage && <StorageUsage />}
       </>}
     </div>;
 }
@@ -68,4 +59,20 @@ export function PlanContent() {
 export function PlanDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   return <Modal size="standard" scrollBody title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel hideActions neutral><PlanContent /></Modal>;
+}
+
+export function StorageUsage() {
+  const { t, i18n } = useTranslation();
+  const { accessStatus } = useAuth();
+  const storage = accessStatus?.storage;
+  const bytes = (value: number) => {
+    const unit = value >= 1073741824 ? 'GB' : value >= 1048576 ? 'MB' : 'KB';
+    const divisor = unit === 'GB' ? 1073741824 : unit === 'MB' ? 1048576 : 1024;
+    return `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(value / divisor)} ${unit}`;
+  };
+  if (!storage) return null;
+  return <div className="account-storage">
+    <div className="account-storage-label"><span>{t('storage.used')}</span><span>{bytes(storage.usedBytes)} / {bytes(storage.limitBytes)}</span></div>
+    <progress aria-label={t('storage.used')} value={Math.max(0, Math.min(storage.usedBytes, storage.limitBytes))} max={Math.max(1, storage.limitBytes)} />
+  </div>;
 }

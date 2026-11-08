@@ -2,7 +2,7 @@ import { PersonIcon } from './PersonIcon';
 import { useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { PlanContent } from './PlanDialog';
+import { PlanContent, StorageUsage } from './PlanDialog';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from './Modal';
 import { api } from '../api/client';
@@ -29,7 +29,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     catch { setError(t('navigation.feedback_failed')); } finally { setBusy(false); }
   };
   return <><Modal title={t(kind === 'account' ? 'preferences.account_plan' : kind === 'feedback' ? 'message_list.feedback' : 'message_list.about')}
-    hideActions={kind === 'account'}
+    hideActions={kind === 'account' || kind === 'about'}
     scrollBody={kind === 'account' || kind === 'feedback'}
     className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind === 'about' ? 'compact' : 'standard'}
     closeLabel={t('navigation.close')} closeDisabled={busy}
@@ -38,13 +38,14 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     confirmDisabled={busy || (kind === 'feedback' && !sent && !content.trim())} cancelDisabled={busy}
     onConfirm={() => { if (kind === 'feedback' && !sent) document.querySelector<HTMLFormElement>('#feedback-form')?.requestSubmit(); else close(); }} onCancel={close}>
     {kind === 'account' && <div className="account-panel">
-      <div className="account-identity">
+      <div className="account-summary"><div className="account-identity">
         <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
           <p className="account-email">{email || t('navigation.account')}</p>
         </div>
       </div>
-      <PlanContent />
+      <StorageUsage /></div>
+      <PlanContent showStorage={false} />
       <div className="account-danger-actions"><button className="account-text-action account-text-action-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button><button className="account-text-action" onClick={onLogout}>{t('message_list.logout')}</button></div>
       {error && <p role="alert">{error}</p>}
     </div>}

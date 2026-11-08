@@ -355,3 +355,5 @@
 "access.ai_service_notice" = "Third-party AI service subscriptions are not included.";
 
 "access.buyout_label" = "One-time purchase";
+
+"message_list.completed_count" = "%d completed items";

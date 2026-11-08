@@ -309,7 +309,8 @@
       "violet": "Violet",
       "rose": "Rose",
       "ocean": "Ocean"
-    }
+    },
+    "completed_count": "{{count}} completed"
   },
   "storage.shared_file": "Attachment",
   "account.section_title": "Account",

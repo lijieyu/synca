@@ -6,7 +6,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(readLanguagePreference);
   const [appearance, setAppearance] = useState(readAppearancePreference);
-  return <Modal size="compact" className="settings-modal" title={t('preferences.title')} message="" confirmText={t('navigation.close')} onConfirm={onClose} onCancel={onClose} closeLabel={t('navigation.close')} hideCancel neutral>
+  return <Modal size="compact" className="settings-modal" title={t('preferences.title')} message="" confirmText={t('navigation.close')} onConfirm={onClose} onCancel={onClose} closeLabel={t('navigation.close')} hideCancel hideActions neutral>
     <div className="preferences-panel">
       <label>{t('preferences.language')}<select aria-label={t('preferences.language')} value={language} onChange={e => {
         const value = e.target.value as LanguagePreference; setLanguage(value); localStorage.setItem('synca.language', value);

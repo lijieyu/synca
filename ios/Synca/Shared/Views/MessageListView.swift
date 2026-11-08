@@ -377,7 +377,9 @@ struct MessageListView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(selectedCategoryTitle).font(.title2.weight(.semibold))
-                        Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId)))
+                        (Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId)))
+                            + Text(" · ")
+                            + Text(String(format: String(syncaLocalized: "message_list.completed_count"), filteredMessages.filter { $0.isCleared }.count)))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()

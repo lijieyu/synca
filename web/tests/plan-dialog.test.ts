@@ -73,14 +73,14 @@ it('renders Traditional Chinese Pro benefits and retention notes', () => {
   expect(html).not.toContain('無限版');
 });
 
-it('shows proposed mainland price in preview without a real purchase link', () => {
+it('keeps the App Store entry visible alongside proposed preview pricing', () => {
   vi.stubEnv('VITE_PREVIEW_PRICING', 'true');
   try {
     for (const language of ['zh', 'zh-Hant', 'en']) {
       state.language = language;
       const html = render();
       expect(html).toContain('18');
-      expect(html).not.toContain('id6761647007');
+      expect(html).toContain('id6761647007');
       expect(html).toContain(i18n.getFixedT(language)('access.buyout_label'));
       for (const key of ['access.preview_price_notice', 'storage.retention_notice', 'access.purchase_shared_account', 'storage.lifetime_notice', 'access.ai_service_notice']) expect(html).not.toContain(i18n.getFixedT(language)(key));
     }

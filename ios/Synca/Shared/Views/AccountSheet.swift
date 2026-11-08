@@ -5,6 +5,7 @@ import AppKit
 
 struct AccountSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var accessManager: AccessManager
 
     @State private var contentHeight: CGFloat = 400
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -108,6 +109,21 @@ struct AccountSheet: View {
                         Spacer(minLength: 0)
                     }
 
+                    #if os(macOS)
+                    if let storage = accessManager.status?.storage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("storage.used")
+                                Spacer(minLength: 8)
+                                Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+                                    .monospacedDigit()
+                            }
+                            .font(.caption).foregroundStyle(.secondary)
+                            ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                                .accessibilityHidden(true)
+                        }.accessibilityElement(children: .combine)
+                    }
+                    #endif
                 }
                 .padding(.vertical, 12)
                 .padding(.bottom, 4)

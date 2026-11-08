@@ -309,7 +309,8 @@
       "violet": "紫羅蘭",
       "rose": "玫瑰粉",
       "ocean": "海洋藍"
-    }
+    },
+    "completed_count": "{{count}} 條已完成"
   },
   "storage.shared_file": "附件",
   "account.section_title": "帳號",

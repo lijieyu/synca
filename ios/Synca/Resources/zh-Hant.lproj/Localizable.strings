@@ -355,3 +355,5 @@
 "access.ai_service_notice" = "連接 AI 不包含第三方 AI 服務的訂閱費用。";
 
 "access.buyout_label" = "一次性買斷";
+
+"message_list.completed_count" = "%d 條已完成";
