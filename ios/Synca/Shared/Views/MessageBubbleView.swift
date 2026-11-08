@@ -11,6 +11,7 @@ struct MessageBubbleView: View {
     var showsSeparator: Bool = true
     var isUpdatingCompletion: Bool = false
     var onEdit: (() -> Void)? = nil
+    var onTextCollapse: (() -> Void)? = nil
     let onClear: () -> Void
     let onDelete: () -> Void
     let onCategoryChange: ((String) -> Void)?
@@ -183,7 +184,11 @@ struct MessageBubbleView: View {
                         Label {
                             Text(category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name)
                         } icon: {
-                            Image("Category-\(category.color.rawValue)").renderingMode(.original)
+                            if CategoryColorPreset.matching(category.colorHex) != nil {
+                                CategoryColorDot(color: category.color, hex: category.colorHex)
+                            } else {
+                                Image("Category-\(category.color.rawValue)").renderingMode(.original)
+                            }
                         }
                     }
                 }
@@ -200,7 +205,9 @@ struct MessageBubbleView: View {
     }
 
     private func categoryBadge(name: String, hasMenu: Bool) -> some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 4) {
+            CategoryColorDot(color: message.categoryColor ?? .slate, hex: message.categoryColorHex)
+                .frame(width: 7, height: 7).accessibilityHidden(true)
             Text(name)
                 .font(.caption2)
             #if os(iOS)
@@ -220,12 +227,8 @@ struct MessageBubbleView: View {
         VStack(alignment: .leading, spacing: 4) {
             if isTextExpanded {
                 #if os(macOS)
-                ZStack(alignment: .topLeading) {
-                    Text(messageText).font(.body).fixedSize(horizontal: false, vertical: true)
-                        .hidden().allowsHitTesting(false)
-                    MacSelectableText(attributedText: linkedNSAttributedText,
-                                      color: message.isCleared ? .secondary : .primary, font: .body)
-                }
+                MacSelectableText(attributedText: linkedNSAttributedText,
+                                  color: message.isCleared ? .secondary : .primary, font: .body)
                 #else
                 LinkTextView(attributedText: linkedNSAttributedText)
                 #endif
@@ -243,9 +246,11 @@ struct MessageBubbleView: View {
             }
             if textOverflows || isTextExpanded {
                 Button(isTextExpanded ? "message_bubble.show_less" : "message_bubble.show_more") {
+                    let collapsing = isTextExpanded
                     isTextExpanded.toggle()
+                    if collapsing { onTextCollapse?() }
                 }.font(.caption).buttonStyle(.plain).foregroundStyle(Color.accentColor)
-                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1010,7 +1015,7 @@ private extension MessageBubbleView {
         mutable.addAttributes(
             [
                 .foregroundColor: baseColor,
-                .font: NSFont.systemFont(ofSize: 13)
+                .font: NSFont.preferredFont(forTextStyle: .body)
             ],
             range: NSRange(location: 0, length: mutable.length)
         )
@@ -1102,4 +1107,28 @@ struct LinkTextView: View {
         EmptyView()
         #endif
     }
+}
+
+/// Render an original-color image because native menu labels do not preserve custom view tint.
+struct CategoryColorDot: View {
+    let color: MessageCategoryColor
+    let hex: String?
+    private var image: Image {
+        #if os(macOS)
+        let image = NSImage(size: NSSize(width: 8, height: 8))
+        image.lockFocus()
+        NSColor(categoryDisplayColor(color, hex: hex)).setFill()
+        NSBezierPath(ovalIn: NSRect(x: 0, y: 0, width: 8, height: 8)).fill()
+        image.unlockFocus()
+        image.isTemplate = false
+        return Image(nsImage: image).renderingMode(.original)
+        #else
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { _ in
+            UIColor(categoryDisplayColor(color, hex: hex)).setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 8, height: 8)).fill()
+        }
+        return Image(uiImage: image).renderingMode(.original)
+        #endif
+    }
+    var body: some View { image.resizable().frame(width: 8, height: 8) }
 }

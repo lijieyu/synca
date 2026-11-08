@@ -1,3 +1,4 @@
+import { categoryColorPatch } from './categoryPalette.js';
 import { nextMessageTimestamp } from './messageRevision.js';
 import { db } from './db.js';
 import { sql, type Transaction, type Selectable } from 'kysely';
@@ -49,12 +50,13 @@ function toMessage(row: Selectable<MessagesTable>, baseUrl?: string): SyncaMessa
     };
 }
 
-function toCategory(row: MessageCategoriesTable): SyncaMessageCategory {
+function toCategory(row: Selectable<MessageCategoriesTable>): SyncaMessageCategory {
     return {
         id: row.id,
         userId: row.user_id,
         name: row.name,
         color: row.color as SyncaMessageCategoryColor,
+        colorHex: row.color_hex ?? undefined,
         isDefault: row.is_default === 1,
         sortOrder: row.sort_order ?? 0,
         createdAt: row.created_at,
@@ -438,7 +440,7 @@ export async function deleteAccount(input: {
 
 // ── Message Category DAO ──
 
-async function ensureDefaultCategory(userId: string, now = new Date().toISOString(), executor: typeof db = db): Promise<MessageCategoriesTable> {
+async function ensureDefaultCategory(userId: string, now = new Date().toISOString(), executor: typeof db = db): Promise<Selectable<MessageCategoriesTable>> {
     const existing = await executor.selectFrom('message_categories')
         .selectAll()
         .where('user_id', '=', userId)
@@ -485,6 +487,7 @@ export async function createMessageCategory(input: {
     userId: string;
     name: string;
     color: SyncaMessageCategoryColor;
+    colorHex?: string | null;
     now: string;
 }): Promise<SyncaMessageCategory> {
     const id = uuidv4();
@@ -499,7 +502,7 @@ export async function createMessageCategory(input: {
         id,
         user_id: input.userId,
         name: input.name,
-        color: input.color,
+        ...categoryColorPatch(input, { color: input.color }),
         is_default: 0,
         sort_order: sortOrder,
         created_at: input.now,
@@ -519,34 +522,35 @@ export async function updateMessageCategory(input: {
     userId: string;
     name?: string;
     color?: SyncaMessageCategoryColor;
+    colorHex?: string | null;
     now: string;
 }): Promise<SyncaMessageCategory | undefined> {
-    const existing = await db.selectFrom('message_categories')
-        .selectAll()
-        .where('id', '=', input.id)
-        .where('user_id', '=', input.userId)
-        .executeTakeFirst();
+    return db.transaction().execute(async trx => {
+        const existing = await trx.selectFrom('message_categories')
+            .selectAll()
+            .where('id', '=', input.id)
+            .where('user_id', '=', input.userId)
+            .executeTakeFirst();
 
-    if (!existing || existing.is_default === 1) {
-        return undefined;
-    }
+        if (!existing || (existing.is_default === 1 && (input.name !== undefined || (input.color === undefined && input.colorHex === undefined)))) {
+            return undefined;
+        }
 
-    await db.updateTable('message_categories')
-        .set({
+        const updatedAt = new Date(Math.max(Date.parse(input.now), Date.parse(existing.updated_at) + 1)).toISOString();
+        await trx.updateTable('message_categories').set({
             name: input.name ?? existing.name,
-            color: input.color ?? existing.color,
-            updated_at: input.now,
-        })
-        .where('id', '=', input.id)
-        .where('user_id', '=', input.userId)
-        .execute();
+            ...categoryColorPatch(input, existing), updated_at: updatedAt,
+        }).where('id', '=', input.id).where('user_id', '=', input.userId).execute();
+        await trx.updateTable('messages').set({ updated_at: nextMessageTimestamp(updatedAt) })
+            .where('user_id', '=', input.userId).where('category_id', '=', input.id).execute();
 
-    const row = await db.selectFrom('message_categories')
-        .selectAll()
-        .where('id', '=', input.id)
-        .executeTakeFirst();
-
-    return row ? toCategory(row) : undefined;
+        const row = await trx.selectFrom('message_categories')
+            .selectAll()
+            .where('id', '=', input.id)
+            .where('user_id', '=', input.userId)
+            .executeTakeFirstOrThrow();
+        return toCategory(row);
+    });
 }
 
 export async function reorderMessageCategories(input: {
@@ -683,7 +687,7 @@ export async function listMessages(params: {
         .selectAll('messages')
         .select([
             'message_categories.name as category_name',
-            'message_categories.color as category_color',
+            'message_categories.color as category_color', 'message_categories.color_hex as category_color_hex',
             'message_categories.is_default as category_is_default',
         ])
         .where('messages.user_id', '=', params.userId);
@@ -705,7 +709,7 @@ export async function listMessages(params: {
     return rows.map((row: any) => ({
         ...toMessage(row, params.baseUrl),
         categoryName: row.category_name ?? undefined,
-        categoryColor: row.category_color ?? undefined,
+        categoryColor: row.category_color ?? undefined, categoryColorHex: row.category_color_hex ?? undefined,
         categoryIsDefault: row.category_is_default === 1,
     }));
 }
@@ -716,7 +720,7 @@ export async function getMessage(id: string, baseUrl?: string): Promise<SyncaMes
         .selectAll('messages')
         .select([
             'message_categories.name as category_name',
-            'message_categories.color as category_color',
+            'message_categories.color as category_color', 'message_categories.color_hex as category_color_hex',
             'message_categories.is_default as category_is_default',
         ])
         .where('messages.id', '=', id)
@@ -724,7 +728,7 @@ export async function getMessage(id: string, baseUrl?: string): Promise<SyncaMes
     return row ? {
         ...toMessage(row as any, baseUrl),
         categoryName: (row as any).category_name ?? undefined,
-        categoryColor: (row as any).category_color ?? undefined,
+        categoryColor: (row as any).category_color ?? undefined, categoryColorHex: (row as any).category_color_hex ?? undefined,
         categoryIsDefault: (row as any).category_is_default === 1,
     } : undefined;
 }
@@ -834,10 +838,10 @@ export async function updateMessageText(input: {
         const row = await trx.selectFrom('messages')
             .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
             .selectAll('messages').select(['message_categories.name as category_name',
-                'message_categories.color as category_color', 'message_categories.is_default as category_is_default'])
+                'message_categories.color as category_color', 'message_categories.color_hex as category_color_hex', 'message_categories.is_default as category_is_default'])
             .where('messages.id', '=', input.id).where('messages.user_id', '=', input.userId).executeTakeFirstOrThrow();
         return { message: { ...toMessage(row, input.baseUrl), categoryName: row.category_name ?? undefined,
-            categoryColor: row.category_color ?? undefined, categoryIsDefault: row.category_is_default === 1 } };
+            categoryColor: row.category_color ?? undefined, categoryColorHex: row.category_color_hex ?? undefined, categoryIsDefault: row.category_is_default === 1 } };
     });
 }
 
@@ -854,10 +858,10 @@ export async function setMessageCompletion(id: string, userId: string, completed
         const row = await trx.selectFrom('messages')
             .leftJoin('message_categories', 'message_categories.id', 'messages.category_id')
             .selectAll('messages').select(['message_categories.name as category_name',
-                'message_categories.color as category_color', 'message_categories.is_default as category_is_default'])
+                'message_categories.color as category_color', 'message_categories.color_hex as category_color_hex', 'message_categories.is_default as category_is_default'])
             .where('messages.id', '=', id).where('messages.user_id', '=', userId).executeTakeFirstOrThrow();
         return { ...toMessage(row, baseUrl), categoryName: row.category_name ?? undefined,
-            categoryColor: row.category_color ?? undefined, categoryIsDefault: row.category_is_default === 1 };
+            categoryColor: row.category_color ?? undefined, categoryColorHex: row.category_color_hex ?? undefined, categoryIsDefault: row.category_is_default === 1 };
     });
 }
 

@@ -30,7 +30,6 @@ struct AIConnectionView: View {
                     }
                     Text("message_list.connect_ai").font(.headline)
                     Spacer()
-                    if browser.isLoading { ProgressView().controlSize(.small) }
                     Button("common.close") { dismiss() }
                         .keyboardShortcut(.cancelAction)
                 }
@@ -58,15 +57,6 @@ struct AIConnectionView: View {
                             Button("common.close") { dismiss() }
                         }
                     }
-                    .overlay(alignment: .topTrailing) {
-                        if browser.isLoading {
-                            ProgressView()
-                                .padding(12)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                .padding(12)
-                                .allowsHitTesting(false)
-                        }
-                    }
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -88,6 +78,12 @@ struct AIConnectionView: View {
     private var browserContent: some View {
         ZStack {
             AIWebContainer(browser: browser)
+            if browser.isLoading && !browser.hasLoadedDocument && !browser.failed {
+                ProgressView("message_list.loading")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.background)
+                    .allowsHitTesting(false)
+            }
             if browser.failed {
                 VStack(spacing: 16) {
                     Image(systemName: "wifi.exclamationmark").font(.title)
@@ -108,6 +104,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     @Published private(set) var canGoBack = false
     @Published private(set) var isLoading = true
     @Published private(set) var failed = false
+    @Published private(set) var hasLoadedDocument = false
     let webView: WKWebView
     private var externalOpen: ((URL) -> Void)?
     private var observations: [NSKeyValueObservation] = []
@@ -187,6 +184,9 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
             externalOpen?(url)
         }
         decisionHandler(.cancel)
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        hasLoadedDocument = true
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { failed = false }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { handle(error) }

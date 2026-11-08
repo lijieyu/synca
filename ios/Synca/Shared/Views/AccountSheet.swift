@@ -55,7 +55,7 @@ struct AccountSheet: View {
                     ToolbarItem(placement: .confirmationAction) { closeButton }
                 }
         }
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
+        .presentationDetents([.medium, .large])
         #endif
     }
 
@@ -73,43 +73,29 @@ struct AccountSheet: View {
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .center, spacing: 14) {
-                        #if os(macOS)
                         Image(systemName: "person.fill")
-                            .font(.system(size: 24, weight: .regular))
+                            .font(.system(size: 20, weight: .regular))
                             .foregroundStyle(.secondary)
-                            .frame(width: 48, height: 48)
-                            .accessibilityHidden(true)
-                        #else
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundStyle(Color.accentColor)
                             .frame(width: 36, height: 36)
-                        #endif
+                            .accessibilityHidden(true)
 
                         VStack(alignment: .leading, spacing: 4) {
-
+                            Text(resolvedAccountEmail)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                                .textSelection(.enabled).multilineTextAlignment(.leading)
+                            if let status = accessManager.status {
+                                Text(status.isUnlimited ? "access.pro_name" : "access.free_title")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                             if isPrivateRelayEmail {
-                                Label {
-                                    Text("account.email_hidden_title", bundle: .main)
-                                } icon: {
-                                    Image(systemName: "eye.slash.fill")
-                                }
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                            } else {
-                                Text(resolvedAccountEmail)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .textSelection(.enabled)
-                                    .multilineTextAlignment(.leading)
+                                Label("account.email_hidden_title", systemImage: "eye.slash.fill")
+                                    .font(.caption).foregroundStyle(.secondary)
                             }
                         }
 
                         Spacer(minLength: 0)
                     }
 
-                    #if os(macOS)
                     if let storage = accessManager.status?.storage {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -123,12 +109,10 @@ struct AccountSheet: View {
                                 .accessibilityHidden(true)
                         }.accessibilityElement(children: .combine)
                     }
-                    #endif
                 }
                 .padding(.vertical, 12)
                 .padding(.bottom, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .bottom) { Divider() }
 
                 AccessCenterView(embedded: true)
                     .fixedSize(horizontal: false, vertical: true)

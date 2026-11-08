@@ -156,7 +156,6 @@ private struct MacTitlebarMetrics {
 }
 
 private struct MacTitlebarIdentityView: View {
-    @ObservedObject private var accessManager = AccessManager.shared
     let metrics: MacTitlebarMetrics
 
     var body: some View {
@@ -165,15 +164,6 @@ private struct MacTitlebarIdentityView: View {
                 .font(.system(size: metrics.titleFontSize, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-
-            if let status = accessManager.status {
-                Button {
-                    NotificationCenter.default.post(name: .syncaRequestAccount, object: nil)
-                } label: {
-                    HeaderAccessBadge(status: status)
-                }
-                .buttonStyle(.plain)
-            }
         }
         .frame(width: metrics.identityWidth, alignment: .leading)
         .padding(.leading, metrics.leadingPadding)

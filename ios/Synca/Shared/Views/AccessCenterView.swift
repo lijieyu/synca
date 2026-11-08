@@ -8,13 +8,7 @@ import WebKit
 
 struct AccessCenterView: View {
     var embedded = false
-    private var showsInlineStorage: Bool {
-        #if os(macOS)
-        return !embedded
-        #else
-        return true
-        #endif
-    }
+    private var showsInlineStorage: Bool { !embedded }
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
@@ -176,10 +170,7 @@ struct AccessCenterView: View {
         AccessModuleCard(style: .accent) {
             VStack(alignment: .leading, spacing: 16) {
                 adaptiveRow {
-                    Text("access.unlock_title", bundle: .main)
-                        .font(.headline)
-                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
-                    planBadge("access.status_unlimited_badge", pro: true)
+                    Text("access.pro_name", bundle: .main).font(.headline)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -191,7 +182,15 @@ struct AccessCenterView: View {
 
 
                 VStack(spacing: 10) {
-                    lifetimePurchaseButton()
+                    if purchaseManager.isLoadingProducts {
+                        ProgressView("message_list.loading")
+                    } else if purchaseManager.lifetimeProduct == nil {
+                        Text("access.purchase_fetch_failed").font(.subheadline).foregroundStyle(.secondary)
+                        Button("common.retry") { Task { await purchaseManager.loadProducts() } }
+                            .buttonStyle(.bordered)
+                    } else {
+                        lifetimePurchaseButton()
+                    }
                 }
 
                 restoreInlineButton.frame(maxWidth: .infinity, alignment: .trailing)
@@ -201,50 +200,23 @@ struct AccessCenterView: View {
     }
 
     private func subscriptionCurrentCard(_ status: AccessStatus) -> some View {
-        let showsTime = shouldShowTimeForPurchaseDetails(status)
-
-        return AccessModuleCard(style: .neutral) {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(currentSubscriptionName(status))
-                        .font(.title3.weight(.semibold))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        if let activeProductID = activeSubscriptionProductID(for: status) {
-                            detailRow(
-                                "access.subscription_billing_label",
-                                value: subscriptionComplianceDetail(for: activeProductID),
-                                compact: true
-                            )
-                        }
-                        if let purchaseDate = status.purchaseDate {
-                            detailRow("access.purchase_date_label", value: formatDate(purchaseDate, includeTime: showsTime), compact: true)
-                        }
-                        if let renewalDate = status.subscriptionExpiresAt {
-                            detailRow("access.subscription_expires_label", value: formatDate(renewalDate, includeTime: showsTime), compact: true)
-                        }
-                    }
-                }
-
-                currentPlanBenefits
-                if showsInlineStorage { storageUsage(status) }
-                legalLinksSection
-
-            }
-        }
+        paidBenefitsCard(status)
     }
 
     private func lifetimeCurrentCard(_ status: AccessStatus) -> some View {
+        paidBenefitsCard(status)
+    }
+
+    private func paidBenefitsCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(currentLifetimeName)
-                        .font(.title3.weight(.semibold))
+                adaptiveRow {
+                    Text("access.pro_name").font(.title3.weight(.semibold))
+                    if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+                    Text("access.activated").font(.subheadline).foregroundStyle(.secondary)
                 }
-
                 currentPlanBenefits
                 if showsInlineStorage { storageUsage(status) }
-                legalLinksSection
             }
         }
     }
@@ -914,11 +886,7 @@ struct HeaderAccessBadge: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-            if status.isUnlimited {
-                Image(systemName: "infinity")
-                    .font(.system(size: 11.5, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
-            } else {
+            if !status.isUnlimited {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.accentColor)
@@ -963,11 +931,7 @@ struct AccessStatusPill: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-            if status.isUnlimited {
-                Image(systemName: "infinity")
-                    .font(.system(size: compact ? 11 : 12, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
-            } else if showUpgradeIndicator {
+            if !status.isUnlimited && showUpgradeIndicator {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: compact ? 12 : 13, weight: .bold))
                     .foregroundStyle(Color.accentColor)

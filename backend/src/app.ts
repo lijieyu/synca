@@ -1,3 +1,4 @@
+import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
 import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension, isSupportedDocument } from './attachmentPolicy.js';
 import { createAIRouter, aiRateLimit } from './aiRoutes.js';
@@ -75,7 +76,6 @@ if (!fs.existsSync(feedbackUploadsDir)) {
     fs.mkdirSync(feedbackUploadsDir, { recursive: true });
 }
 
-const supportedCategoryColors = new Set(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
 const attachmentMetadata = z.object({
     sourceDevice: z.string().max(50).optional(),
     categoryId: z.string().uuid().nullable().optional(),
@@ -334,10 +334,11 @@ app.get('/message-categories', auth, async (req, res) => {
 app.post('/message-categories', auth, async (req, res) => {
     const parsed = z.object({
         name: z.string().trim().min(1).max(40),
-        color: z.string().trim().min(1).max(20),
+        color: categoryColorSchema,
+        colorHex: categoryColorHexSchema.optional(),
     }).safeParse(req.body);
 
-    if (!parsed.success || !supportedCategoryColors.has(parsed.data.color)) {
+    if (!parsed.success) {
         return res.status(400).json({ error: 'invalid_payload' });
     }
 
@@ -345,7 +346,8 @@ app.post('/message-categories', auth, async (req, res) => {
         const category = await createMessageCategory({
             userId: getUserId(req),
             name: parsed.data.name,
-            color: parsed.data.color as any,
+            color: parsed.data.color,
+            colorHex: parsed.data.colorHex,
             now: new Date().toISOString(),
         });
         res.status(201).json(category);
@@ -358,10 +360,11 @@ app.post('/message-categories', auth, async (req, res) => {
 app.patch('/message-categories/:id', auth, async (req, res) => {
     const parsed = z.object({
         name: z.string().trim().min(1).max(40).optional(),
-        color: z.string().trim().min(1).max(20).optional(),
-    }).safeParse(req.body);
+        color: categoryColorSchema.optional(),
+        colorHex: categoryColorHexSchema.optional(),
+    }).strict().refine(value => value.name !== undefined || value.color !== undefined || value.colorHex !== undefined).safeParse(req.body);
 
-    if (!parsed.success || (parsed.data.color && !supportedCategoryColors.has(parsed.data.color))) {
+    if (!parsed.success) {
         return res.status(400).json({ error: 'invalid_payload' });
     }
 
@@ -370,7 +373,8 @@ app.patch('/message-categories/:id', auth, async (req, res) => {
             id: req.params.id,
             userId: getUserId(req),
             name: parsed.data.name,
-            color: parsed.data.color as any,
+            color: parsed.data.color,
+            colorHex: parsed.data.colorHex,
             now: new Date().toISOString(),
         });
         if (!category) {

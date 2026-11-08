@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "分類名稱不能為空";
 "message_category.invalid_message" = "儲存前請為每個分類填寫名稱。";
 "message_category.delete_confirm_title" = "刪除分類？";
-"message_category.delete_confirm_message" = "儲存後刪除此分類，分類中的記錄將保留並移至預設分類。";
+"message_category.delete_confirm_message" = "刪除此分類後，其中的記錄將保留並移至預設分類。";
 "message_category.color.sky" = "天藍";
 "message_category.color.mint" = "薄荷";
 "message_category.color.amber" = "琥珀";
@@ -342,7 +342,7 @@
 
 "message_category.save_failed_title" = "無法儲存分類";
 
-"message_category.save_failed_message" = "部分變更可能已儲存。請檢查網路後重試；尚未儲存的內容仍保留。";
+"message_category.save_failed_message" = "未能儲存此變更，請檢查網路後重試。";
 
 "storage.free_types" = "支援文字和圖片";
 
@@ -376,3 +376,14 @@
 "message_list.add_file" = "加入檔案";
 
 "message_list.send" = "傳送";
+
+"access.activated" = "已開通";
+"message_category.color.graphite" = "石墨";
+"message_category.color.denim" = "丹寧藍";
+"message_category.color.teal" = "青綠";
+"message_category.color.olive" = "橄欖綠";
+"message_category.color.honey" = "蜜黃";
+"message_category.color.peach" = "桃色";
+"message_category.color.berry" = "莓紅";
+"message_category.color.lavender" = "薰衣草";
+"access.pro_name" = "Synca Pro";

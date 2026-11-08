@@ -91,3 +91,15 @@
 .ai-page.ai-embedded h1 { font-size: 28px; margin: 12px 0 16px; letter-spacing: -.025em; }
 .ai-page.ai-embedded .ai-hero > p { font-size: 14px; line-height: 1.7; }
 .ai-page.ai-embedded .ai-connect h2 { font-size: 20px; }
+
+.ai-initial-loading { min-height:55dvh; display:grid; place-items:center; }
+.ai-section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.ai-page .ai-text-link { border:0; background:transparent; color:var(--text-secondary); padding:8px 0; font-size:12px; }
+.ai-section-actions { display:flex; justify-content:center; }
+.ai-page .ai-section-actions button { display:flex; align-items:center; gap:4px; background:transparent; border:0; box-shadow:none; }
+@media (max-width: 700px) { .ai-page .ai-nav, .ai-page footer { display:none; } }
+
+.ai-page .ai-section-actions { justify-content:center; }
+.ai-page .ai-section-heading h2 { margin:0; }
+.ai-page .ai-section-heading { margin-bottom:16px; }
+@media(max-width:700px) { .ai-page .ai-section-heading { flex-wrap:nowrap; gap:8px; align-items:baseline; } .ai-page .ai-section-heading h2 { font-size:18px; } .ai-page .ai-text-link { font-size:11px; flex-shrink:0; } }

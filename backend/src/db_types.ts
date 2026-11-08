@@ -42,6 +42,7 @@ export interface MessageCategoriesTable {
     user_id: string;
     name: string;
     color: string;
+    color_hex: Generated<string | null>;
     is_default: number; // 0 | 1
     sort_order: number;
     created_at: string;

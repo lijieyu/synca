@@ -68,6 +68,10 @@ export async function runMigrations() {
             updated_at TEXT NOT NULL
         )
     `.execute(db);
+    const categoryColumns = await sql<{ name: string }>`PRAGMA table_info(message_categories)`.execute(db);
+    if (!categoryColumns.rows.some(column => column.name === 'color_hex')) {
+        await sql`ALTER TABLE message_categories ADD COLUMN color_hex TEXT`.execute(db);
+    }
     try {
         await sql`ALTER TABLE message_categories ADD COLUMN sort_order INTEGER DEFAULT 0`.execute(db);
     } catch (_e) {}

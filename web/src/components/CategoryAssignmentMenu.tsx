@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { categoryStyle } from './CategoryPalette';
 import type { MessageCategory } from '../api/client';
 
 export function CategoryAssignmentMenu({ categories, categoryId, disabled, onChange }: {
@@ -40,7 +41,7 @@ export function CategoryAssignmentMenu({ categories, categoryId, disabled, onCha
     <button ref={trigger} className="category-assignment-trigger" disabled={disabled} aria-label={`${t('storage.message_category')}: ${selected ? label(selected) : ''}`}
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={() => setOpen(!open)}
       onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setOpen(true); } }}>
-      {selected && <><span className={`category-color-dot color-${selected.color}`} aria-hidden="true" /><span>{label(selected)}</span></>}<ChevronDown size={10} aria-hidden="true" />
+      {selected && <><span className={`category-color-dot color-${selected.color}`} style={categoryStyle(selected.colorHex)} aria-hidden="true" /><span>{label(selected)}</span></>}<ChevronDown size={10} aria-hidden="true" />
     </button>
     {open && createPortal(<div ref={menu} style={position} className="category-assignment-menu" id={menuId} role="menu" aria-label={t('storage.message_category')} onKeyDown={event => {
       const nodes = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=menuitemradio]')];
@@ -54,7 +55,7 @@ export function CategoryAssignmentMenu({ categories, categoryId, disabled, onCha
     }}>
       {categories.map(category => <button key={category.id} role="menuitemradio" aria-checked={category.id === categoryId} tabIndex={-1} disabled={disabled}
         onClick={() => { close(); onChange(category.id); }}>
-        <span className={`category-color-dot color-${category.color}`} aria-hidden="true" /><span>{label(category)}</span>
+        <span className={`category-color-dot color-${category.color}`} style={categoryStyle(category.colorHex)} aria-hidden="true" /><span>{label(category)}</span>
         {category.id === categoryId && <Check size={15} aria-hidden="true" />}
       </button>)}
     </div>, document.body)}

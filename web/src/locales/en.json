@@ -50,7 +50,7 @@
   "message_category.invalid_title": "Category Name Required",
   "message_category.invalid_message": "Each category needs a name before saving.",
   "message_category.delete_confirm_title": "Delete Category?",
-  "message_category.delete_confirm_message": "This category will be removed after you save.",
+  "message_category.delete_confirm_message": "This category will be deleted. Its records move to Default.",
   "sync.error_context.sync": "Sync",
   "sync.error_context.send": "Send",
   "sync.error_context.send_image": "Image Send",
@@ -344,5 +344,32 @@
   "message_bubble.expand": "Show more",
   "message_bubble.collapse": "Show less",
   "message_list.text_limit": "Use 10,000 characters or fewer to send.",
-  "message_list.clear_completed": "Clear completed"
+  "message_list.clear_completed": "Clear completed",
+  "polish": {
+    "activated": "Activated",
+    "tutorial": "View connection guide",
+    "revokeTitle": "Revoke {{name}}?",
+    "revokeMessage": "This app will no longer have access to your Synca records. You can reconnect later.",
+    "color": "Choose color",
+    "reorder": "Reorder category (Alt + Up / Down)",
+    "colors": {
+      "Sky": "Sky",
+      "Mint": "Mint",
+      "Amber": "Amber",
+      "Coral": "Coral",
+      "Violet": "Violet",
+      "Slate": "Slate",
+      "Rose": "Rose",
+      "Ocean": "Ocean",
+      "Graphite": "Graphite",
+      "Denim": "Denim",
+      "Teal": "Teal",
+      "Olive": "Olive",
+      "Honey": "Honey",
+      "Peach": "Peach",
+      "Berry": "Berry",
+      "Lavender": "Lavender"
+    },
+    "done": "Done"
+  }
 }

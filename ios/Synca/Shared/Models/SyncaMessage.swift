@@ -96,6 +96,7 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
     var categoryId: String?
     var categoryName: String?
     var categoryColor: MessageCategoryColor?
+    var categoryColorHex: String?
     var categoryIsDefault: Bool?
     var isCleared: Bool
     var isDeleted: Bool
@@ -177,6 +178,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
     let userId: String
     var name: String
     var color: MessageCategoryColor
+    var colorHex: String?
     var isDefault: Bool
     var sortOrder: Int
     let createdAt: String
@@ -187,6 +189,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
         case userId
         case name
         case color
+        case colorHex
         case isDefault
         case sortOrder
         case createdAt
@@ -198,6 +201,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
         userId: String,
         name: String,
         color: MessageCategoryColor,
+        colorHex: String? = nil,
         isDefault: Bool,
         sortOrder: Int = 0,
         createdAt: String,
@@ -207,6 +211,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
         self.userId = userId
         self.name = name
         self.color = color
+        self.colorHex = colorHex
         self.isDefault = isDefault
         self.sortOrder = sortOrder
         self.createdAt = createdAt
@@ -219,6 +224,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
         userId = try container.decode(String.self, forKey: .userId)
         name = try container.decode(String.self, forKey: .name)
         color = try container.decode(MessageCategoryColor.self, forKey: .color)
+        colorHex = try container.decodeIfPresent(String.self, forKey: .colorHex)
         isDefault = try container.decode(Bool.self, forKey: .isDefault)
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try container.decode(String.self, forKey: .createdAt)
@@ -320,6 +326,13 @@ struct MessageSyncState {
         guard let date else { return cursor }
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date.addingTimeInterval(-1))
+    }
+
+    static func textEditRevision(original: SyncaMessage, current: SyncaMessage) -> String? {
+        guard original.id == current.id, original.canEditText, current.canEditText,
+              original.textContent == current.textContent,
+              acceptingMutation(current, over: original) else { return nil }
+        return current.updatedAt
     }
 
     static func acceptingMutation(_ response: SyncaMessage, over current: SyncaMessage) -> Bool {
@@ -445,4 +458,62 @@ enum CategorySwipeNavigation {
 enum MessageTextPolicy {
     static let maximumCharacters = 10000
     static func accepts(_ text: String) -> Bool { text.count <= maximumCharacters }
+}
+
+/// Additive presets retain the legacy wire token for old servers and clients.
+struct CategoryColorPreset: Identifiable, Sendable {
+    let name: String
+    let hex: String
+    let legacy: MessageCategoryColor
+    var id: String { hex }
+    static let all: [CategoryColorPreset] = [
+        .init(name: "sky", hex: "#3b82f6", legacy: .sky),
+        .init(name: "mint", hex: "#22c55e", legacy: .mint),
+        .init(name: "amber", hex: "#f59e0b", legacy: .amber),
+        .init(name: "coral", hex: "#ef4444", legacy: .coral),
+        .init(name: "violet", hex: "#a855f7", legacy: .violet),
+        .init(name: "slate", hex: "#64748b", legacy: .slate),
+        .init(name: "rose", hex: "#ec4899", legacy: .rose),
+        .init(name: "ocean", hex: "#06b6d4", legacy: .ocean),
+        .init(name: "graphite", hex: "#676d78", legacy: .slate),
+        .init(name: "denim", hex: "#4169a8", legacy: .sky),
+        .init(name: "teal", hex: "#4a9a9d", legacy: .ocean),
+        .init(name: "olive", hex: "#8da35e", legacy: .mint),
+        .init(name: "honey", hex: "#d9b24b", legacy: .amber),
+        .init(name: "peach", hex: "#df8e73", legacy: .coral),
+        .init(name: "berry", hex: "#af597b", legacy: .rose),
+        .init(name: "lavender", hex: "#8276c2", legacy: .violet)
+    ]
+    static func matching(_ hex: String?) -> CategoryColorPreset? {
+        guard let hex else { return nil }
+        return all.first { $0.hex == hex.lowercased() }
+    }
+}
+
+/// Reordering accepts only this process's current drag payload, never generic text drops.
+enum CategoryReorderDrag {
+    static let type = UTType(exportedAs: "org.haerth.synca.category-reorder")
+    static func payload(for id: String) -> String { id + "\n" + UUID().uuidString }
+    static func provider(_ payload: String) -> NSItemProvider {
+        let provider = NSItemProvider()
+        provider.registerDataRepresentation(forTypeIdentifier: type.identifier, visibility: .ownProcess) { completion in
+            completion(Data(payload.utf8), nil)
+            return nil
+        }
+        return provider
+    }
+    static func validatedID(from data: Data?, expected: String) -> String? {
+        guard let data, String(data: data, encoding: .utf8) == expected else { return nil }
+        let parts = expected.split(separator: "\n", omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, UUID(uuidString: String(parts[1])) != nil else { return nil }
+        return String(parts[0])
+    }
+    static func load(_ providers: [NSItemProvider], expected: String, onDrop: @escaping @MainActor @Sendable (String) -> Void) -> Bool {
+        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(type.identifier) }) else { return false }
+        provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, error in
+            guard error == nil, let id = validatedID(from: data, expected: expected) else { return }
+            Task { @MainActor in onDrop(id) }
+        }
+        return true
+    }
 }

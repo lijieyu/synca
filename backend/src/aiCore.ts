@@ -1,3 +1,4 @@
+import { categoryColorSchema, categoryColorHexSchema, categoryColorPatch } from './categoryPalette.js';
 import { trimmedRecordTextSchema } from './recordText.js';
 import { nextMessageTimestamp } from './messageRevision.js';
 import fs from 'node:fs/promises';
@@ -61,7 +62,7 @@ export async function assertActive(actor: Actor, trx: Transaction<Database>) {
     if (!row) throw new AIError(401, 'invalid_token');
     await assertAIAccess(actor.userId, trx);
 }
-export const colors = z.enum(['sky', 'mint', 'amber', 'coral', 'violet', 'slate', 'rose', 'ocean']);
+export const colors = categoryColorSchema;
 export const versionedId = z.object({ id: z.string().uuid(), expectedUpdatedAt: z.string().datetime() });
 export const mutationSchema = z.object({
     items: z.array(versionedId).min(1).max(100),
@@ -164,7 +165,7 @@ export async function updateMessages(actor: Actor, args: z.infer<typeof mutation
 }
 export const categorySchema = z.object({ action: z.enum(['create', 'update', 'delete', 'reorder']),
     id: z.string().uuid().optional(), expectedUpdatedAt: z.string().datetime().optional(),
-    name: z.string().trim().min(1).max(40).optional(), color: colors.optional(),
+    name: z.string().trim().min(1).max(40).optional(), color: colors.optional(), colorHex: categoryColorHexSchema.optional(),
     categoryIds: z.array(z.string().uuid()).max(100).optional(), categoryVersions: z.array(versionedId).max(100).optional(), idempotencyKey: z.string().uuid(),
 }).strict();
 export async function changeCategory(actor: Actor, args: z.infer<typeof categorySchema>) {
@@ -183,7 +184,7 @@ export async function changeCategory(actor: Actor, args: z.infer<typeof category
             if (!args.name) throw new AIError(400, 'name_required');
             const max = await trx.selectFrom('message_categories').select(eb => eb.fn.max<number>('sort_order').as('n')).where('user_id', '=', actor.userId).executeTakeFirst();
             const id = randomUUID();
-            await trx.insertInto('message_categories').values({ id, user_id: actor.userId, name: args.name, color: args.color ?? 'slate',
+            await trx.insertInto('message_categories').values({ id, user_id: actor.userId, name: args.name, ...categoryColorPatch(args, { color: 'slate' }),
                 is_default: 0, sort_order: Number(max?.n ?? 0) + 1000, created_at: now, updated_at: now }).execute();
             result = { id, updatedAt: now };
         } else if (args.action === 'reorder') {
@@ -195,8 +196,8 @@ export async function changeCategory(actor: Actor, args: z.infer<typeof category
             result = { ok: true };
         } else {
             if (!args.id || !args.expectedUpdatedAt) throw new AIError(400, 'id_and_version_required');
-            const row = await trx.selectFrom('message_categories').selectAll().where('id', '=', args.id).where('user_id', '=', actor.userId).where('is_default', '=', 0).executeTakeFirst();
-            if (!row) throw new AIError(404, 'category_not_found_or_not_editable');
+            const row = await trx.selectFrom('message_categories').selectAll().where('id', '=', args.id).where('user_id', '=', actor.userId).executeTakeFirst();
+            if (!row || (row.is_default === 1 && (args.action !== 'update' || args.name !== undefined || args.categoryIds !== undefined || args.categoryVersions !== undefined || (args.color === undefined && args.colorHex === undefined)))) throw new AIError(404, 'category_not_found_or_not_editable');
             if (row.updated_at !== args.expectedUpdatedAt) throw new AIError(409, 'version_conflict');
             if (args.action === 'delete') {
                 const fallback = await trx.selectFrom('message_categories').select('id').where('user_id', '=', actor.userId).where('is_default', '=', 1).executeTakeFirstOrThrow();
@@ -204,9 +205,10 @@ export async function changeCategory(actor: Actor, args: z.infer<typeof category
                 await trx.deleteFrom('message_categories').where('id', '=', args.id).where('user_id', '=', actor.userId).execute();
                 result = { deleted: true, movedToCategoryId: fallback.id };
             } else {
-                if (!args.name && !args.color) throw new AIError(400, 'no_changes');
+                if (!args.name && !args.color && args.colorHex === undefined) throw new AIError(400, 'no_changes');
                 const updatedAt = new Date(Math.max(Date.now(), Date.parse(row.updated_at) + 1)).toISOString();
-                await trx.updateTable('message_categories').set({ name: args.name ?? row.name, color: args.color ?? row.color, updated_at: updatedAt }).where('id', '=', args.id).where('user_id', '=', actor.userId).execute();
+                await trx.updateTable('message_categories').set({ name: args.name ?? row.name, ...categoryColorPatch(args, row), updated_at: updatedAt }).where('id', '=', args.id).where('user_id', '=', actor.userId).execute();
+                await trx.updateTable('messages').set({ updated_at: nextMessageTimestamp(updatedAt) }).where('user_id', '=', actor.userId).where('category_id', '=', args.id).execute();
                 result = { id: args.id, updatedAt };
             }
         }

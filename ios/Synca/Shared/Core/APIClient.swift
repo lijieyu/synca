@@ -207,17 +207,17 @@ final class APIClient: ObservableObject {
         return response.categories
     }
 
-    func createMessageCategory(name: String, color: MessageCategoryColor) async throws -> SyncaMessageCategory {
-        try await post("/message-categories", body: [
-            "name": name,
-            "color": color.rawValue,
-        ])
+    func createMessageCategory(name: String, color: MessageCategoryColor, colorHex: String? = nil) async throws -> SyncaMessageCategory {
+        var body: [String: Any] = ["name": name, "color": color.rawValue]
+        if let colorHex { body["colorHex"] = colorHex }
+        return try await post("/message-categories", body: body)
     }
 
-    func updateMessageCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil) async throws -> SyncaMessageCategory {
+    func updateMessageCategory(id: String, name: String? = nil, color: MessageCategoryColor? = nil, colorHex: String? = nil) async throws -> SyncaMessageCategory {
         var body: [String: Any] = [:]
         if let name { body["name"] = name }
         if let color { body["color"] = color.rawValue }
+        if let colorHex { body["colorHex"] = colorHex }
         return try await patch("/message-categories/\(id)", body: body)
     }
 

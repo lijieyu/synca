@@ -25,6 +25,7 @@ export interface SyncaMessage {
   categoryId: string | null;
   categoryName: string | null;
   categoryColor: MessageCategoryColor | null;
+  categoryColorHex?: string | null;
   categoryIsDefault: boolean;
   type: 'text' | 'image' | 'file';
   isCleared: boolean;
@@ -40,6 +41,7 @@ export interface MessageCategory {
   userId: string;
   name: string;
   color: MessageCategoryColor;
+  colorHex?: string | null;
   isDefault: boolean;
   sortOrder: number;
   createdAt: string;
@@ -217,14 +219,14 @@ class APIClient {
     return this.fetch<{ categories: MessageCategory[] }>('/message-categories');
   }
 
-  async createMessageCategory(name: string, color: MessageCategoryColor): Promise<MessageCategory> {
+  async createMessageCategory(name: string, color: MessageCategoryColor, colorHex?: string | null): Promise<MessageCategory> {
     return this.fetch<MessageCategory>('/message-categories', {
       method: 'POST',
-      body: JSON.stringify({ name, color }),
+      body: JSON.stringify({ name, color, colorHex }),
     });
   }
 
-  async updateMessageCategory(id: string, payload: Partial<Pick<MessageCategory, 'name' | 'color'>>): Promise<MessageCategory> {
+  async updateMessageCategory(id: string, payload: Partial<Pick<MessageCategory, 'name' | 'color' | 'colorHex'>>): Promise<MessageCategory> {
     return this.fetch<MessageCategory>(`/message-categories/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),

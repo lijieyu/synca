@@ -1,4 +1,5 @@
 import React from 'react';
+import './Modal.css';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';

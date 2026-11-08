@@ -217,7 +217,7 @@
 "message_category.invalid_title" = "Category Name Required";
 "message_category.invalid_message" = "Each category needs a name before saving.";
 "message_category.delete_confirm_title" = "Delete Category?";
-"message_category.delete_confirm_message" = "After saving, this category will be deleted. Its records will be kept and moved to the default category.";
+"message_category.delete_confirm_message" = "This category will be deleted. Its records will be kept and moved to the default category.";
 "message_category.color.sky" = "Sky";
 "message_category.color.mint" = "Mint";
 "message_category.color.amber" = "Amber";
@@ -342,7 +342,7 @@
 
 "message_category.save_failed_title" = "Unable to Save Categories";
 
-"message_category.save_failed_message" = "Some changes may have been saved. Check your connection and retry; your remaining edits are preserved.";
+"message_category.save_failed_message" = "Couldn’t save this change. Check your connection and try again.";
 
 "storage.free_types" = "Text and images supported";
 
@@ -376,3 +376,14 @@
 "message_list.add_file" = "Attach file";
 
 "message_list.send" = "Send";
+
+"access.activated" = "Activated";
+"message_category.color.graphite" = "Graphite";
+"message_category.color.denim" = "Denim";
+"message_category.color.teal" = "Teal";
+"message_category.color.olive" = "Olive";
+"message_category.color.honey" = "Honey";
+"message_category.color.peach" = "Peach";
+"message_category.color.berry" = "Berry";
+"message_category.color.lavender" = "Lavender";
+"access.pro_name" = "Synca Pro";

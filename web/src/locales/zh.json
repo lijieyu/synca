@@ -50,7 +50,7 @@
   "message_category.invalid_title": "分类名称不能为空",
   "message_category.invalid_message": "保存前请为每个分类填写名称。",
   "message_category.delete_confirm_title": "删除分类？",
-  "message_category.delete_confirm_message": "保存后这个分类会被删除。",
+  "message_category.delete_confirm_message": "删除此分类后，其中的记录会移到默认分类。",
   "sync.error_context.sync": "同步",
   "sync.error_context.send": "发送",
   "sync.error_context.send_image": "图片发送",
@@ -344,5 +344,32 @@
   "message_bubble.expand": "展开全文",
   "message_bubble.collapse": "收起",
   "message_list.text_limit": "最多 10,000 字，请缩短内容后发送。",
-  "message_list.clear_completed": "清除已完成"
+  "message_list.clear_completed": "清除已完成",
+  "polish": {
+    "activated": "已开通",
+    "tutorial": "查看连接教程",
+    "revokeTitle": "撤销 {{name}} 的连接？",
+    "revokeMessage": "此应用将无法再访问你的 Synca 记录。你可以稍后重新连接。",
+    "color": "选择颜色",
+    "reorder": "调整分类顺序（Alt + 上下方向键）",
+    "colors": {
+      "Sky": "天蓝",
+      "Mint": "薄荷",
+      "Amber": "琥珀",
+      "Coral": "珊瑚",
+      "Violet": "紫罗兰",
+      "Slate": "石板灰",
+      "Rose": "玫瑰",
+      "Ocean": "海蓝",
+      "Graphite": "石墨",
+      "Denim": "丹宁",
+      "Teal": "青绿",
+      "Olive": "橄榄",
+      "Honey": "蜂蜜",
+      "Peach": "蜜桃",
+      "Berry": "莓果",
+      "Lavender": "薰衣草"
+    },
+    "done": "完成"
+  }
 }
