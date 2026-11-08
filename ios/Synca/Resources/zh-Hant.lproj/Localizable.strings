@@ -71,33 +71,33 @@
 "api.invalid_response" = "服務器響應異常";
 "api.unauthorized" = "登入已過期，請重新登入";
 "api.http_error" = "請求失敗 (%d): %@";
-"access.center_title" = "Synca 無限版";
+"access.center_title" = "Synca Pro";
 "access.status_trial" = "試用中 · 剩餘 %d 天";
 "access.status_free" = "免費版 · 今日 %d/%d";
-"access.status_unlimited" = "無限版";
-"access.status_unlimited_badge" = "無限版";
+"access.status_unlimited" = "Pro";
+"access.status_unlimited_badge" = "Pro";
 "access.status_trial_inline" = "Trial %d天";
 "access.status_free_inline" = "免費版 %d/%d";
 "access.status_unlimited_inline" = "∞";
 "access.status_trial_compact" = "試用 %d天";
 "access.status_free_compact" = "免費 %d/%d";
-"access.status_unlimited_compact" = "無限版";
+"access.status_unlimited_compact" = "Pro";
 "access.trial_description" = "你仍在 7 天不限量試用期內，剩餘 %d 天。";
 "access.free_description" = "今天已記錄 %d/%d 條。";
 "access.current_plan_title" = "當前套餐";
 "access.current_free_summary" = "今日 %d/%d";
-"access.free_daily_rule" = "每天最多新增 20 條";
+"access.free_daily_rule" = "每天新增 20 條記錄";
 "access.free_title" = "免費版";
 "access.trial_rule" = "試用期內不限量記錄 · 剩餘 %d 天";
 "access.free_rule" = "每天最多新增 %d 條消息";
 "access.free_usage" = "今日使用：%d/%d";
 "access.free_keep_access" = "查看、同步、清理和刪除已有內容始終可用";
 "access.free_reset_hint" = "免費額度會在每天 0 點自動重置";
-"access.unlock_title" = "解鎖檔案傳輸";
-"access.unlock_benefit_unlimited" = "不限新增消息數量";
+"access.unlock_title" = "升級 Pro";
+"access.unlock_benefit_unlimited" = "不限新增記錄數量";
 "access.unlock_benefit_cross_device" = "iPhone 和 Mac 跨裝置持續可用";
 "access.unlock_benefit_capture_anytime" = "靈感來了隨時記錄，不再受限";
-"access.purchase_shared_account" = "一次購買，同步解鎖 iPhone 和 Mac";
+"access.purchase_shared_account" = "同一帳號，iPhone、Mac 和 Web 共享 Pro 權益。";
 "access.shared_base_feature" = "所有套餐都支援同步、圖片附件和歷史記錄訪問";
 "access.shared_future_feature" = "並包含未來上線的所有高級功能";
 "access.subscription_info_title" = "訂閱資訊";
@@ -109,16 +109,16 @@
 "access.terms_link_title" = "使用條款";
 "access.purchase_options_title" = "購買方式";
 "access.purchase_shared_hint" = "同一帳號下，所有裝置均可通用。";
-"access.option_monthly_title" = "無限版（月付）";
+"access.option_monthly_title" = "Pro（月付）";
 "access.option_monthly_subtitle" = "按月自動續費，可隨時取消。";
-"access.option_yearly_title" = "無限版（年付）";
+"access.option_yearly_title" = "Pro（年付）";
 "access.option_yearly_subtitle" = "按年自動續費，每年續費一次。";
 "access.intro_free_trial_then_template" = "%@ 免費試用，之後按 %@ / %@ 自動續費，直至取消。";
 "access.intro_payg_then_template" = "前 %@ 享受優惠，之後按 %@ / %@ 續費。";
 "access.intro_payupfront_then_template" = "優惠價覆蓋 %@，之後按 %@ / %@ 續費。";
 "access.subscription_renews_template" = "%@ / %@，自動續費，直至取消。";
-"access.option_lifetime_title" = "終身版";
-"access.option_lifetime_subtitle" = "一次性買斷，永久可用。";
+"access.option_lifetime_title" = "Pro 買斷";
+"access.option_lifetime_subtitle" = "一次購買，三端通用。無需訂閱。";
 "access.purchase_setup_pending" = "App Store 購買通道是下一步接入內容。";
 "access.buy_for_price" = "%@ 購買";
 "access.restore_purchases" = "恢復購買";
@@ -134,10 +134,10 @@
 "access.restore_success" = "已恢復此 App Store 帳號下的購買記錄。";
 "access.restore_no_purchases" = "這個帳號當前沒有可恢復的購買記錄。";
 "access.restore_failed" = "暫時無法恢復購買。";
-"access.purchased_monthly" = "無限版（月付）";
-"access.purchased_yearly" = "無限版（年付）";
-"access.purchased_lifetime" = "終身版";
-"access.unlimited_title" = "無限版權益";
+"access.purchased_monthly" = "Pro（月付）";
+"access.purchased_yearly" = "Pro（年付）";
+"access.purchased_lifetime" = "Pro 買斷";
+"access.unlimited_title" = "Pro 權益";
 "access.unlimited_description" = "你已解鎖不限量記錄權益，並可在所有裝置上使用。";
 "access.subscription_billing_label" = "計費方式";
 "access.purchase_date_label" = "購買日期";
@@ -237,10 +237,10 @@
 
 "common.send" = "發送";
 
-"storage.free_benefits" = "圖片同步 · 200 MB 空間 · 儲存 3 天";
-"storage.paid_files" = "圖片與檔案同步";
-"storage.paid_capacity" = "2 GB 中轉空間，附件儲存 7 天";
-"storage.retention_notice" = "附件到期自動刪除，請及時另存。永久購買解鎖功能，不代表永久儲存附件。";
+"storage.free_benefits" = "200 MB 附件空間，圖片保留 3 天";
+"storage.paid_files" = "解鎖檔案傳輸，單個最大 200 MB";
+"storage.paid_capacity" = "2 GB 附件空間，圖片和檔案保留 30 天";
+"storage.retention_notice" = "附件到期後清理，請及時下載。文字記錄不受附件保留期限限制。";
 "storage.paid_required" = "檔案傳輸為付費功能";
 "storage.full" = "中轉空間已滿，請刪除不需要的附件後重試。";
 "storage.expired" = "附件已過期";
@@ -249,7 +249,7 @@
 "storage.retry_hint" = "檔案尚未發送，可重試或取消。";
 "storage.retry" = "重試上傳";
 "storage.free_hint" = "圖片儲存 3 天，請及時另存";
-"storage.paid_hint" = "圖片與檔案儲存 7 天，請及時另存";
+"storage.paid_hint" = "圖片和檔案保留 30 天，請及時下載";
 "storage.expires" = "到期時間";
 "storage.title" = "方案與中轉空間";
 "storage.paid_title" = "解鎖檔案傳輸";
@@ -261,7 +261,7 @@
 
 "message_list.connect_ai" = "連接 AI";
 
-"access.unlock_benefit_ai" = "連接 AI，在對話中查找、整理和儲存記錄";
+"access.unlock_benefit_ai" = "連接 AI，查找、整理和儲存記錄";
 
 "message_bubble.mark_incomplete" = "取消完成";
 "message_bubble.mark_complete" = "標記完成";
@@ -343,3 +343,15 @@
 "message_category.save_failed_title" = "無法儲存分類";
 
 "message_category.save_failed_message" = "部分變更可能已儲存。請檢查網路後重試；尚未儲存的內容仍保留。";
+
+"storage.free_types" = "支援文字和圖片";
+
+"storage.lifetime_notice" = "買斷解鎖 Pro 權益，附件仍保留 30 天。";
+
+"access.preview_lifetime_price" = "人民幣 ¥18";
+
+"access.preview_price_notice" = "預發價格，暫不開放購買。";
+
+"access.ai_service_notice" = "連接 AI 不包含第三方 AI 服務的訂閱費用。";
+
+"access.buyout_label" = "一次性買斷";

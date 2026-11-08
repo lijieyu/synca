@@ -29,6 +29,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     catch { setError(t('navigation.feedback_failed')); } finally { setBusy(false); }
   };
   return <><Modal title={t(kind === 'account' ? 'preferences.account_plan' : kind === 'feedback' ? 'message_list.feedback' : 'message_list.about')}
+    hideActions={kind === 'account'}
     scrollBody={kind === 'account' || kind === 'feedback'}
     className={kind === 'feedback' ? 'feedback-modal' : `${kind}-modal`} size={kind === 'about' ? 'compact' : 'large'}
     closeLabel={t('navigation.close')} closeDisabled={busy}
@@ -41,7 +42,6 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
         <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
           <p className="account-email">{email || t('navigation.account')}</p>
-          <p className="account-provider">{t('navigation.provider')}</p>
         </div>
       </div>
       <PlanContent />
@@ -49,7 +49,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
       {error && <p role="alert">{error}</p>}
     </div>}
     {kind === 'about' && <div className="about-panel">
-      <div className="about-identity"><img src="/logo.png" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
+      <div className="about-identity"><img src="/logo.png?v=a1" alt="" width={56} height={56} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
       <p className="about-registration">浙ICP备2026013056号-3A</p>

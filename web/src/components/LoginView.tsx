@@ -72,7 +72,7 @@ export const LoginView: React.FC = () => {
   return (
     <div className="auth-container">
       <img 
-        src="/logo.png" 
+        src="/logo.png?v=a1"
         alt="Synca" 
         style={{ 
           width: '96px', 

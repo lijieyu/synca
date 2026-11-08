@@ -145,7 +145,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: 'Access Model',
                     paragraphs: [
                         'Synca offers a free plan that allows up to 20 new entries per day.',
-                        'Synca also offers optional paid access through monthly and annual subscriptions, as well as a lifetime purchase. The pricing, billing period, renewal terms, and product details shown in the app or on the App Store at the time of purchase will control.',
+                        'Synca Pro is available as a one-time lifetime purchase, with no subscription renewal. The price and product details displayed at checkout apply. Lifetime access does not mean permanent attachment storage; Pro attachments are kept for 30 days.',
                     ],
                 },
                 {
@@ -212,7 +212,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: 'Product Scope',
                     paragraphs: [
                         'Synca is designed for personal capture and cross-device sync of text and image entries using Sign in with Apple.',
-                        'Synca offers a free plan that allows up to 20 new entries per day. Paid plans unlock files up to 200 MB, 2 GB of transfer storage and 7-day attachment retention. Free accounts have 200 MB of image storage with 3-day retention. Images are limited to 50 MB. Save attachments elsewhere before they expire; lifetime purchase does not mean permanent storage.',
+                        'Synca offers a free plan that allows up to 20 new entries per day. Paid plans unlock files up to 200 MB, 2 GB of transfer storage and 30-day attachment retention. Free accounts have 200 MB of image storage with 3-day retention. Images are limited to 50 MB. Save attachments elsewhere before they expire; lifetime purchase does not mean permanent storage.',
                     ],
                 },
                 {
@@ -349,7 +349,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: '访问规则',
                     paragraphs: [
                         'Synca 免费版用户每日最多可新增 20 条内容。',
-                        'Synca 也已提供可选付费访问，包括月付订阅、年付订阅和买断版本。具体价格、计费周期、续费规则以及产品细节以应用内或 App Store 购买页面展示内容为准。',
+                        'Synca Pro 提供一次性买断，无需订阅续费。具体价格与产品细节以购买页面展示内容为准。买断指 Pro 权益，不代表附件永久保存；Pro 附件保留 30 天。',
                     ],
                 },
                 {
@@ -416,7 +416,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     heading: '产品范围',
                     paragraphs: [
                         'Synca 主要用于通过 Sign in with Apple 登录后，在个人设备之间同步文字和图片记录。',
-                        'Synca 免费版用户每日最多可新增 20 条内容；免费版提供 200 MB 图片空间，保存 3 天；付费版解锁最大 200 MB 文件传输、2 GB 中转空间及 7 天附件保存。图片最大 50 MB。请在到期前另存，永久购买不代表永久保存附件。',
+                        'Synca 免费版用户每日最多可新增 20 条内容；免费版提供 200 MB 图片空间，保存 3 天；付费版解锁最大 200 MB 文件传输、2 GB 中转空间及 30 天附件保存。图片最大 50 MB。请在到期前另存，永久购买不代表永久保存附件。',
                     ],
                 },
                 {

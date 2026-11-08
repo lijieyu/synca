@@ -94,8 +94,8 @@
 .calm-sidebar .category-todo-badge { min-width:24px; height:22px; padding:2px 7px; line-height:18px; background:color-mix(in srgb, var(--category-accent) 24%, var(--panel-bg-color)); color:var(--text-main); font-weight:650; }
 .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) minmax(100px,160px) 38px 34px; }
 .category-manager-heading { padding-left:10px; }
-.account-panel .storage-plans { margin-top:24px; }
-.account-danger-actions { display:flex; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border-color); margin-top:24px; padding-top:20px; }
+.account-panel .storage-plans { margin-top:16px; }
+.account-danger-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border-color); margin-top:24px; padding-top:20px; }
 .feedback-modal .modal-primary-actions { display:flex; flex-wrap:nowrap; }
 .feedback-modal .modal-primary-actions .modal-btn { min-width:0; }
 @media(max-width:480px) { .category-color-field { grid-column:auto; } .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) 90px 32px 28px; gap:6px; } }
@@ -116,3 +116,6 @@
 .account-entry:hover, .account-entry[aria-expanded=true] { background:var(--card-bg-color); }
 .category-editor-modal .modal-leading-action { color:var(--text-secondary); font-weight:500; }
 .category-editor-modal .modal-leading-action:hover { color:var(--text-main); filter:none; }
+
+.plan-notes { color:var(--text-secondary); font-size:12px; line-height:1.6; }
+.plan-notes p + p { margin-top:6px; }

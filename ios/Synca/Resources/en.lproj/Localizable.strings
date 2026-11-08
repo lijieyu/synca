@@ -71,33 +71,33 @@
 "api.invalid_response" = "Invalid server response";
 "api.unauthorized" = "Session expired. Please sign in again";
 "api.http_error" = "Request failed (%d): %@";
-"access.center_title" = "Synca Unlimited";
+"access.center_title" = "Synca Pro";
 "access.status_trial" = "Trial · %d days left";
 "access.status_free" = "Free · %d/%d today";
-"access.status_unlimited" = "Unlimited";
-"access.status_unlimited_badge" = "Unlimited";
+"access.status_unlimited" = "Pro";
+"access.status_unlimited_badge" = "Pro";
 "access.status_trial_inline" = "Trial %dd";
 "access.status_free_inline" = "Free %d/%d";
 "access.status_unlimited_inline" = "∞";
 "access.status_trial_compact" = "Trial %dd";
 "access.status_free_compact" = "Free %d/%d";
-"access.status_unlimited_compact" = "Unlimited";
+"access.status_unlimited_compact" = "Pro";
 "access.trial_description" = "You are still in your 7-day unlimited trial. %d day(s) remaining.";
 "access.free_description" = "You can add up to %d/%d messages today.";
 "access.current_plan_title" = "Current Plan";
 "access.current_free_summary" = "Today %d/%d";
-"access.free_daily_rule" = "Add up to 20 new messages per day";
+"access.free_daily_rule" = "Add 20 records per day";
 "access.free_title" = "Free";
 "access.trial_rule" = "Unlimited captures during trial · %d day(s) left";
 "access.free_rule" = "Add up to %d new messages per day";
 "access.free_usage" = "Today's usage: %d/%d";
 "access.free_keep_access" = "Viewing, syncing, clearing, and deleting existing messages always remain available";
 "access.free_reset_hint" = "Your free allowance resets automatically every day at midnight";
-"access.unlock_title" = "Unlock file transfers";
-"access.unlock_benefit_unlimited" = "Unlimited new messages";
+"access.unlock_title" = "Upgrade to Pro";
+"access.unlock_benefit_unlimited" = "Unlimited new records";
 "access.unlock_benefit_cross_device" = "Keep using the same access across iPhone and Mac";
 "access.unlock_benefit_capture_anytime" = "Capture whenever inspiration hits";
-"access.purchase_shared_account" = "One purchase unlocks Synca across iPhone and Mac";
+"access.purchase_shared_account" = "Share Pro across iPhone, Mac and Web with the same account.";
 "access.shared_base_feature" = "All plans include sync, image attachments, and history access";
 "access.shared_future_feature" = "Includes all future premium features as they ship";
 "access.subscription_info_title" = "Subscription Information";
@@ -109,16 +109,16 @@
 "access.terms_link_title" = "Terms of Use";
 "access.purchase_options_title" = "Purchase Options";
 "access.purchase_shared_hint" = "Available across all your devices on the same account.";
-"access.option_monthly_title" = "Unlimited (Monthly)";
+"access.option_monthly_title" = "Pro (Monthly)";
 "access.option_monthly_subtitle" = "Monthly subscription. Cancel anytime.";
-"access.option_yearly_title" = "Unlimited (Yearly)";
+"access.option_yearly_title" = "Pro (Yearly)";
 "access.option_yearly_subtitle" = "Yearly subscription. Renews once a year.";
 "access.intro_free_trial_then_template" = "%@ free, then %@ / %@. Auto-renews until canceled.";
 "access.intro_payg_then_template" = "Intro offer for %@, then %@ / %@.";
 "access.intro_payupfront_then_template" = "Intro price for %@, then %@ / %@.";
 "access.subscription_renews_template" = "%@ / %@. Auto-renews until canceled.";
-"access.option_lifetime_title" = "Lifetime";
-"access.option_lifetime_subtitle" = "One-time purchase. Permanent access.";
+"access.option_lifetime_title" = "Pro Lifetime";
+"access.option_lifetime_subtitle" = "One purchase for iPhone, Mac and Web. No subscription.";
 "access.purchase_setup_pending" = "App Store purchase setup is the next step.";
 "access.buy_for_price" = "Buy for %@";
 "access.restore_purchases" = "Restore Purchases";
@@ -134,10 +134,10 @@
 "access.restore_success" = "Your App Store purchases have been restored.";
 "access.restore_no_purchases" = "No purchases were found to restore for this account.";
 "access.restore_failed" = "Unable to restore purchases right now.";
-"access.purchased_monthly" = "Unlimited (Monthly)";
-"access.purchased_yearly" = "Unlimited (Yearly)";
-"access.purchased_lifetime" = "Lifetime";
-"access.unlimited_title" = "Unlimited";
+"access.purchased_monthly" = "Pro (Monthly)";
+"access.purchased_yearly" = "Pro (Yearly)";
+"access.purchased_lifetime" = "Pro Lifetime";
+"access.unlimited_title" = "Pro benefits";
 "access.unlimited_description" = "You have unlimited capture access across all your devices.";
 "access.subscription_billing_label" = "Billing";
 "access.purchase_date_label" = "Purchase date";
@@ -237,10 +237,10 @@
 
 "common.send" = "Send";
 
-"storage.free_benefits" = "Image sync · 200 MB storage · kept for 3 days";
-"storage.paid_files" = "Image and file sync";
-"storage.paid_capacity" = "2 GB transfer storage; attachments kept for 7 days";
-"storage.retention_notice" = "Attachments expire automatically. Save a copy elsewhere. Lifetime purchase unlocks features, not permanent attachment storage.";
+"storage.free_benefits" = "200 MB attachment storage; images kept for 3 days";
+"storage.paid_files" = "Unlock file transfers, up to 200 MB per file";
+"storage.paid_capacity" = "2 GB attachment storage; images and files kept for 30 days";
+"storage.retention_notice" = "Attachments are removed when they expire. Download them in time. Text records are not subject to attachment retention limits.";
 "storage.paid_required" = "File transfers require a paid plan";
 "storage.full" = "Transfer storage is full. Delete attachments you no longer need, then try again.";
 "storage.expired" = "Attachment expired";
@@ -249,7 +249,7 @@
 "storage.retry_hint" = "File not sent. Retry or cancel.";
 "storage.retry" = "Retry upload";
 "storage.free_hint" = "Images are kept for 3 days. Save a copy elsewhere.";
-"storage.paid_hint" = "Images and files are kept for 7 days. Save a copy elsewhere.";
+"storage.paid_hint" = "Images and files are kept for 30 days. Download them in time.";
 "storage.expires" = "Expires";
 "storage.title" = "Plans & transfer storage";
 "storage.paid_title" = "Unlock file transfers";
@@ -261,7 +261,7 @@
 
 "message_list.connect_ai" = "Connect AI";
 
-"access.unlock_benefit_ai" = "Connect AI to find, organize and save records in conversation";
+"access.unlock_benefit_ai" = "Connect AI to find, organize and save records";
 
 "message_bubble.mark_incomplete" = "Mark incomplete";
 "message_bubble.mark_complete" = "Mark complete";
@@ -343,3 +343,15 @@
 "message_category.save_failed_title" = "Unable to Save Categories";
 
 "message_category.save_failed_message" = "Some changes may have been saved. Check your connection and retry; your remaining edits are preserved.";
+
+"storage.free_types" = "Text and images supported";
+
+"storage.lifetime_notice" = "Lifetime unlocks Pro access. Attachments are still kept for 30 days.";
+
+"access.preview_lifetime_price" = "CNY 18";
+
+"access.preview_price_notice" = "Preview price. Purchasing is not available yet.";
+
+"access.ai_service_notice" = "Third-party AI service subscriptions are not included.";
+
+"access.buyout_label" = "One-time purchase";

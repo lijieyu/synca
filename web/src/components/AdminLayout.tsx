@@ -68,7 +68,7 @@ export const AdminLayout: React.FC = () => {
       )}
       <div className="header" style={{ borderBottom: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
+          <img src="/logo.png?v=a1" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
           <h1 className="header-title" style={{ fontSize: '18px' }}>Synca Admin</h1>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>

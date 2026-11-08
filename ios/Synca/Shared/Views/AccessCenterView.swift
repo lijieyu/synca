@@ -12,6 +12,7 @@ struct AccessCenterView: View {
     @State private var contentHeight: CGFloat = 0
     @ScaledMetric(relativeTo: .subheadline) private var purchaseTitleSize = 15
     @ScaledMetric(relativeTo: .headline) private var purchasePriceSize = 18
+    @ScaledMetric(relativeTo: .title) private var lifetimePriceSize = 28
     @ScaledMetric(relativeTo: .caption) private var purchaseSubtitleSize = 12
     @ScaledMetric(relativeTo: .headline) private var offerCodeSize = 18
 
@@ -141,15 +142,16 @@ struct AccessCenterView: View {
     private func currentFreeCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
-                Text("access.free_title").font(.title3.weight(.semibold))
-
-                Text(String(format: String(syncaLocalized: "access.current_free_summary", bundle: .main), status.todayUsed, status.todayLimit ?? 20))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                HStack {
+                    Text("access.current_plan_title").font(.subheadline).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    planBadge("access.free_title", pro: false)
+                }
 
                 benefitRow(systemImage: "calendar.badge.clock", text: "access.free_daily_rule")
-                benefitRow(systemImage: "photo", text: "storage.free_benefits")
+                benefitRow(systemImage: "photo", text: "storage.free_types")
+                benefitRow(systemImage: "externaldrive", text: "storage.free_benefits")
+
                 storageUsage(status)
             }
         }
@@ -162,23 +164,22 @@ struct AccessCenterView: View {
                     Text("access.unlock_title", bundle: .main)
                         .font(.headline)
                     if !dynamicTypeSize.isAccessibilitySize { Spacer() }
-                    restoreInlineButton
+                    planBadge("access.status_unlimited_badge", pro: true)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
                     benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
-                    benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
-                    benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
                     benefitRow(systemImage: "doc", text: "storage.paid_files")
                     benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+                    benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
                 }
 
+
                 VStack(spacing: 10) {
-                    subscriptionPurchaseButton(.monthly)
-                    subscriptionPurchaseButton(.yearly)
                     lifetimePurchaseButton()
                 }
 
+                restoreInlineButton.frame(maxWidth: .infinity, alignment: .trailing)
                 legalLinksSection
             }
         }
@@ -216,7 +217,6 @@ struct AccessCenterView: View {
                 storageUsage(status)
                 legalLinksSection
 
-                lifetimeUpgradeSection(status)
             }
         }
     }
@@ -273,7 +273,7 @@ struct AccessCenterView: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 adaptiveRow {
-                    Text(product?.displayName ?? fallbackProductName(for: productID))
+                    Text(fallbackProductName(for: productID))
                         .font(planOptionTitleFont)
                         .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.92)
@@ -319,29 +319,19 @@ struct AccessCenterView: View {
                 _ = await purchaseManager.purchase(.lifetime)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                adaptiveRow {
-                    Text(currentLifetimeName)
-                        .font(planOptionTitleFont)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if currentProductID == SyncaProductID.lifetime.rawValue {
+                    ProgressView().controlSize(.small)
+                } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
+                    Text(price)
+                        .font(.system(size: lifetimePriceSize, weight: .bold))
                         .fixedSize(horizontal: false, vertical: true)
-                        .minimumScaleFactor(0.92)
-                        .allowsTightening(true)
-                        .layoutPriority(1)
-                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 12) }
-                    if currentProductID == SyncaProductID.lifetime.rawValue {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else if let price = purchaseManager.lifetimeProduct?.displayPrice {
-                        Text(price)
-                            .font(planOptionPriceFont)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .minimumScaleFactor(0.8)
-                    }
+                } else {
+                    Text("access.purchase_unavailable_short")
+                        .font(.subheadline)
                 }
-                Text("access.option_lifetime_subtitle", bundle: .main)
-                    .font(planOptionSubtitleFont)
-                    .foregroundStyle(.white)
+                Text("access.buyout_label")
+                    .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -613,11 +603,21 @@ struct AccessCenterView: View {
         .buttonStyle(.plain)
     }
 
+    private func planBadge(_ title: LocalizedStringKey, pro: Bool) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(pro ? Color.accentColor : Color.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background((pro ? Color.accentColor : Color.secondary).opacity(0.12), in: Capsule())
+    }
+
     private var legalLinksSection: some View {
         adaptiveRow {
             legalLinkButton(titleKey: "access.privacy_policy_link_title", url: AppLinks.privacyPolicyURL)
             legalLinkButton(titleKey: "access.terms_link_title", url: AppLinks.termsOfUseURL)
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
         .padding(.top, 2)
     }
 
@@ -635,9 +635,9 @@ struct AccessCenterView: View {
     private func currentSubscriptionName(_ status: AccessStatus) -> String {
         switch status.storeProductId {
         case SyncaProductID.monthly.rawValue:
-            return purchaseManager.monthlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_monthly", bundle: .main)
+            return String(syncaLocalized: "access.purchased_monthly", bundle: .main)
         case SyncaProductID.yearly.rawValue:
-            return purchaseManager.yearlyProduct?.displayName ?? String(syncaLocalized: "access.purchased_yearly", bundle: .main)
+            return String(syncaLocalized: "access.purchased_yearly", bundle: .main)
         default:
             return String(syncaLocalized: "access.status_unlimited", bundle: .main)
         }
@@ -655,7 +655,7 @@ struct AccessCenterView: View {
     }
 
     private var currentLifetimeName: String {
-        purchaseManager.lifetimeProduct?.displayName ?? String(syncaLocalized: "access.purchased_lifetime", bundle: .main)
+        String(syncaLocalized: "access.purchased_lifetime", bundle: .main)
     }
 
     private func fallbackProductName(for productID: SyncaProductID) -> String {
@@ -846,10 +846,10 @@ struct AccessCenterView: View {
     private var currentPlanBenefits: some View {
         VStack(alignment: .leading, spacing: 10) {
             benefitRow(systemImage: "infinity", text: "access.unlock_benefit_unlimited")
-            benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
-            benefitRow(systemImage: "ipad.and.iphone", text: "access.purchase_shared_account")
             benefitRow(systemImage: "doc", text: "storage.paid_files")
             benefitRow(systemImage: "externaldrive", text: "storage.paid_capacity")
+            benefitRow(systemImage: "sparkles", text: "access.unlock_benefit_ai")
+
         }
     }
 
