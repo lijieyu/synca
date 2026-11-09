@@ -178,8 +178,8 @@
 .account-summary { border-bottom:0; }
 .account-plan-subtitle,.plan-activated { font-size:12px; color:var(--text-secondary); }
 .account-panel .storage-plans { font-size:13px; }
-.calm-sidebar .category-all { background:transparent; color:light-dark(#171719,#fff); font-weight:500; }
-.calm-sidebar .category-all::before { background:light-dark(#171719,#fff); width:10px; height:10px; flex-basis:10px; border-radius:3px; }
+.calm-sidebar .category-all { background:light-dark(#363638,#dedee3); color:light-dark(#fff,#171719); font-weight:500; min-height:38px; padding-top:7px; padding-bottom:7px; margin-block:3px; }
+.calm-sidebar .category-all::before { background:currentColor; width:10px; height:10px; flex-basis:10px; border-radius:3px; }
 .calm-sidebar .category-all.active { background:light-dark(#171719,#f7f7f9); color:light-dark(#fff,#171719); min-height:38px; padding-top:7px; padding-bottom:7px; margin-block:3px; }
 .calm-sidebar .category-all.active::before { background:currentColor; opacity:.6; }
 .calm-sidebar .category-all .category-todo-badge { color:inherit; }
