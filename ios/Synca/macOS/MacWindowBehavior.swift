@@ -433,3 +433,85 @@ struct MacFeedbackIcon: Shape {
         return p.applying(CGAffineTransform(scaleX: rect.width / 24, y: rect.height / 24).concatenating(CGAffineTransform(translationX: rect.minX, y: rect.minY)))
     }
 }
+
+/// Own the sidebar scroll host so SwiftUI cannot reserve legacy-scroller width.
+struct MacSidebarScrollView<Content: View>: NSViewRepresentable {
+    @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
+    let content: Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = MacSidebarOverlayScrollView()
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        scroll.scrollerStyle = .overlay
+        scroll.autohidesScrollers = true
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.verticalScroller = MacSidebarScroller()
+        scroll.scrollerStyle = .overlay
+        scroll.verticalScroller?.controlSize = .small
+        scroll.verticalScroller?.alphaValue = 0
+        let host = NSHostingView(rootView: hostedContent)
+        host.translatesAutoresizingMaskIntoConstraints = false
+        scroll.documentView = host
+        NSLayoutConstraint.activate([
+            host.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
+            host.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            host.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor)
+        ])
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        (scroll.documentView as? NSHostingView<AnyView>)?.rootView = hostedContent
+    }
+
+    private var hostedContent: AnyView {
+        AnyView(content.environment(\.locale, locale).environment(\.colorScheme, colorScheme))
+    }
+}
+
+private final class MacSidebarScroller: NSScroller {
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
+    override func mouseDown(with event: NSEvent) {
+        let scroll = enclosingScrollView as? MacSidebarOverlayScrollView
+        scroll?.revealScroller(keepingVisible: true)
+        super.mouseDown(with: event)
+        scroll?.revealScroller()
+    }
+}
+
+private final class MacSidebarOverlayScrollView: NSScrollView {
+    // AppKit may reapply the system legacy style when attaching or resizing.
+    // Keep the viewport full width; the indicator overlays only the outer inset.
+    override var scrollerStyle: NSScroller.Style {
+        get { .overlay }
+        set { super.scrollerStyle = .overlay }
+    }
+
+    private var hideWork: DispatchWorkItem?
+    private var hoverArea: NSTrackingArea?
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+    override func mouseEntered(with event: NSEvent) { revealScroller() }
+    override func mouseExited(with event: NSEvent) { revealScroller() }
+    override func scrollWheel(with event: NSEvent) { revealScroller(); super.scrollWheel(with: event) }
+    override func flashScrollers() { revealScroller() }
+    func revealScroller(keepingVisible: Bool = false) {
+        hideWork?.cancel()
+        verticalScroller?.alphaValue = 1
+        guard !keepingVisible else { return }
+        let work = DispatchWorkItem { [weak self] in self?.verticalScroller?.alphaValue = 0 }
+        hideWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: work)
+    }
+}

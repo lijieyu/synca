@@ -499,10 +499,10 @@ struct MessageListView: View {
             HStack(spacing: 10) {
                 Image("LoginLogo").resizable().frame(width: 28, height: 28).clipShape(RoundedRectangle(cornerRadius: 8))
                 Text("Synca").font(.title2.weight(.semibold))
-            }.padding(.horizontal, 12).padding(.top, 48).padding(.bottom, 24)
+            }.padding(.horizontal, 24).padding(.top, 48).padding(.bottom, 24)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(MacWindowDragArea())
-            ScrollView {
+            MacSidebarScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     sidebarCategory(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "message_list.all_records"), color: nil, count: allTodoCount)
                         .padding(.bottom, 16)
@@ -520,6 +520,7 @@ struct MessageListView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(12)
                     }.buttonStyle(.plain).foregroundStyle(.secondary)
                 }
+                .padding(.horizontal, 12)
             }
             Spacer(minLength: 12)
             Button { showManagementMenu.toggle() } label: {
@@ -558,9 +559,10 @@ struct MessageListView: View {
             .accessibilityLabel(Text("account.menu"))
             .accessibilityValue(Text(accountAccessibilityValue))
             .accessibilityAddTraits(.isButton)
+            .padding(.horizontal, 12)
             .padding(.bottom, 14)
         }
-        .padding(.horizontal, 12).frame(width: desktopSidebarWidth)
+        .frame(width: desktopSidebarWidth)
         .background(Color(nsColor: .controlBackgroundColor))
         .overlay(alignment: .trailing) {
             MacSidebarResizeHandle(
