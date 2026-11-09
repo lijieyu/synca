@@ -234,3 +234,9 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 
 /* Mouse-opened panels restore focus without adding a keyboard-only ring. */
 .calm-shell .account-entry[data-pointer-opened=true]:focus-visible { outline:none; }
+
+/* Let the scrollport reach the sidebar edge; inset its content, not its scrollbar. */
+@media(min-width:701px) {
+  .calm-sidebar .category-toolbar { margin-right:-14px; overflow-x:hidden; overflow-y:auto; }
+  .calm-sidebar .category-switcher { padding-right:14px; min-width:0; }
+}
