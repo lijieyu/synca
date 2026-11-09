@@ -172,6 +172,8 @@ struct MacInputTextView: NSViewRepresentable {
                 height = fieldH
             }
 
+            (textView.enclosingScrollView as? MacInputContainerView)?.setVerticalScrollingEnabled(
+                usedHeight + 2 * verticalPad > maxFieldH)
             let selection = textView.selectedRange()
             let textLength = (textView.string as NSString).length
             let clampedLocation = min(selection.location, textLength)
@@ -204,12 +206,25 @@ final class MacInputContainerView: NSScrollView {
         configure()
     }
     private func configure() {
+        let clipView = MacInputClipView()
+        clipView.drawsBackground = false
+        contentView = clipView
+        verticalScrollElasticity = .none
         drawsBackground = false
         borderType = .noBorder
-        hasVerticalScroller = true
+        hasVerticalScroller = false
         hasHorizontalScroller = false
         autohidesScrollers = true
         // Leave scrollerStyle to the user's system preference.
+    }
+    func setVerticalScrollingEnabled(_ enabled: Bool) {
+        guard let clipView = contentView as? MacInputClipView else { return }
+        clipView.scrollingEnabled = enabled
+        if hasVerticalScroller != enabled { hasVerticalScroller = enabled }
+        if !enabled, clipView.bounds.origin != .zero {
+            clipView.scroll(to: .zero)
+            reflectScrolledClipView(clipView)
+        }
     }
     override func layout() {
         super.layout()
@@ -228,6 +243,18 @@ final class MacInputContainerView: NSScrollView {
         manager.ensureLayout(for: container)
         let bottom = max(manager.usedRect(for: container).maxY, manager.extraLineFragmentRect.maxY)
         textView.setFrameSize(NSSize(width: width, height: max(contentSize.height, ceil(alignedTextHeight(bottom, in: textView) + 2 * textView.textContainerInset.height))))
+    }
+}
+
+/// NSTextView may temporarily grow its document during IME composition and scroll
+/// its caret into view. Keep the viewport anchored while the composer can grow;
+/// only enable scrolling once actual text exceeds the visible height cap.
+private final class MacInputClipView: NSClipView {
+    var scrollingEnabled = false
+    override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
+        var constrained = super.constrainBoundsRect(proposedBounds)
+        if !scrollingEnabled { constrained.origin = .zero }
+        return constrained
     }
 }
 
