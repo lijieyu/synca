@@ -35,6 +35,9 @@ struct MenuCheck {
         ]).items[0].submenu!
         precondition(submenu.items[0].state == .on && submenu.items[1].state == .off)
         precondition(submenu.items[0].image?.isTemplate == false)
+        if #available(macOS 27.0, *) {
+            precondition(submenu.items[0].preferredImageVisibility == .visible)
+        }
         (submenu.items[1].representedObject as! MacMessageMenuAction).invokeMenuAction()
         precondition(changed)
         print("PASS: category submenu checkmarks, original color image, selection callback;")

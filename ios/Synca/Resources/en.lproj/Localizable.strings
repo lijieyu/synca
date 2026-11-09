@@ -387,3 +387,6 @@
 "message_category.color.berry" = "Berry";
 "message_category.color.lavender" = "Lavender";
 "access.pro_name" = "Synca Pro";
+
+"message_bubble.complete_action" = "Complete";
+"message_bubble.restore_action" = "Restore";

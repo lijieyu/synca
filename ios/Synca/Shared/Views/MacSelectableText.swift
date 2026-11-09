@@ -193,6 +193,9 @@ final class MacMessageMenuAction: NSObject {
             item.isEnabled = action.isEnabled
             item.state = action.isSelected ? .on : .off
             item.image = action.image ?? action.symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
+            if #available(macOS 27.0, *), action.image?.isTemplate == false {
+                item.preferredImageVisibility = .visible
+            }
             if !action.children.isEmpty { item.submenu = makeMenu(action.children) }
             menu.addItem(item)
         }
