@@ -498,17 +498,19 @@ struct MessageListView: View {
             Spacer(minLength: 12)
             Button { showManagementMenu.toggle() } label: {
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 7) {
+                    HStack(alignment: .top, spacing: 7) {
                         Image(systemName: "person.fill")
-                            .font(.system(size: 16)).foregroundStyle(.secondary).accessibilityHidden(true)
+                            .font(.system(size: 16)).frame(width: 16).foregroundStyle(.secondary).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 4) {
                         Text(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
                             .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
                             .help(api.currentUserEmail ?? String(syncaLocalized: "account.section_title"))
+                            if let status = accessManager.status {
+                                Text(planName(status)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    if let status = accessManager.status {
-                        Text(planName(status)).font(.caption).foregroundStyle(.secondary)
                     }
                     if let status = accessManager.status { DailyQuotaView(status: status) }
                 }
