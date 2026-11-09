@@ -124,6 +124,11 @@
 .settings-modal .preferences-panel > label { grid-template-columns:minmax(64px,1fr) minmax(0,180px); gap:12px; min-height:64px; }
 .settings-modal .preferences-panel > label + label { border-top:1px solid var(--border-color); }
 .settings-modal .preferences-panel select { background:transparent; text-align:right; padding:8px 4px; }
+/* Native selects may retain :focus-visible after a pointer selection. Keep focus
+   for accessibility, but show its ring only during keyboard interaction. */
+.settings-modal .preferences-panel select:focus { outline:none; }
+.settings-modal .preferences-panel:not([data-pointer-interaction=true]) select:focus-visible { outline:2px solid var(--synca-purple); outline-offset:2px; }
+@media(forced-colors:active) { .settings-modal .preferences-panel:not([data-pointer-interaction=true]) select:focus-visible { outline-color:Highlight; } }
 .account-summary { padding-bottom:18px; border-bottom:1px solid var(--border-color); }
 .account-summary .account-identity { border:0; padding-bottom:12px; }
 .account-storage-label { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--text-secondary); margin-bottom:8px; }
