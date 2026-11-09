@@ -8,6 +8,8 @@ struct MacSelectableText: NSViewRepresentable {
     let attributedText: NSAttributedString
     let color: Color
     let font: Font
+    var maximumNumberOfLines: Int = 0
+    var contextMenuActions: [MacMessageMenuAction] = []
 
     func makeNSView(context: Context) -> CustomContextMenuTextView {
         let textView = CustomContextMenuTextView()
@@ -39,6 +41,9 @@ struct MacSelectableText: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: CustomContextMenuTextView, context: Context) {
+        nsView.contextMenuActions = contextMenuActions
+        nsView.textContainer?.maximumNumberOfLines = maximumNumberOfLines
+        nsView.textContainer?.lineBreakMode = maximumNumberOfLines == 0 ? .byWordWrapping : .byTruncatingTail
         let textColor = NSColor(color)
         guard context.coordinator.attributedText?.isEqual(to: attributedText) != true
             || nsView.textColor != textColor else { return }
@@ -74,6 +79,7 @@ struct MacSelectableText: NSViewRepresentable {
 }
 
 class CustomContextMenuTextView: NSTextView {
+    var contextMenuActions: [MacMessageMenuAction] = []
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         for area in self.trackingAreas { self.removeTrackingArea(area) }
@@ -139,10 +145,61 @@ class CustomContextMenuTextView: NSTextView {
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
-        // Returning nil allows the right-click event to bubble up to the SwiftUI container,
-        // which handles the consistent card-level context menu.
-        return nil
+        MacMessageMenuAction.makeMenu(contextMenuActions)
     }
+
+}
+
+/// Both AppKit text and the SwiftUI row render the same current message actions.
+@MainActor
+final class MacMessageMenuAction: NSObject {
+    let title: String?
+    let symbol: String?
+    let image: NSImage?
+    let isSelected: Bool
+    let children: [MacMessageMenuAction]
+    let isEnabled: Bool
+    let isDestructive: Bool
+    let action: () -> Void
+
+    init(_ title: String? = nil, symbol: String? = nil, assetName: String? = nil, image: NSImage? = nil, isSelected: Bool = false, children: [MacMessageMenuAction] = [], isEnabled: Bool = true, isDestructive: Bool = false, action: @escaping () -> Void = {}) {
+        self.title = title
+        self.symbol = symbol
+        if let assetName, let assetImage = NSImage(named: assetName)?.copy() as? NSImage {
+            assetImage.size = NSSize(width: 16, height: 16)
+            assetImage.isTemplate = true
+            self.image = assetImage
+        } else {
+            self.image = image
+        }
+        self.isSelected = isSelected
+        self.children = children
+        self.isEnabled = isEnabled
+        self.isDestructive = isDestructive
+        self.action = action
+    }
+
+    static func makeMenu(_ actions: [MacMessageMenuAction]) -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        for action in actions {
+            guard let title = action.title else {
+                menu.addItem(.separator())
+                continue
+            }
+            let item = NSMenuItem(title: title, action: #selector(invokeMenuAction), keyEquivalent: "")
+            item.target = action
+            item.representedObject = action // NSMenuItem's target is weak.
+            item.isEnabled = action.isEnabled
+            item.state = action.isSelected ? .on : .off
+            item.image = action.image ?? action.symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
+            if !action.children.isEmpty { item.submenu = makeMenu(action.children) }
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc func invokeMenuAction() { action() }
 }
 
 #else

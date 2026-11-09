@@ -479,23 +479,13 @@ struct MessageListView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     sidebarCategory(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "message_list.all_records"), color: nil, count: allTodoCount)
-                    Text("message_list.my_categories").font(.caption).foregroundStyle(.secondary)
-                        .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 7)
-                    ForEach(syncManager.categories) { category in
+                        .padding(.bottom, 16)
+                    MacCategoryReorderStack(categories: syncManager.categories, spacing: 4, handleOnly: false, disabled: sidebarReordering, onCommit: { ids in
+                        sidebarReordering = true
+                        _ = await syncManager.reorderCategories(ids: ids)
+                        sidebarReordering = false
+                    }) { category in
                         sidebarCategory(id: category.id, title: category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name, color: categoryDisplayColor(category.color, hex: category.colorHex), count: todoCount(for: category.id))
-                            .onDrag {
-                                guard !category.isDefault, !sidebarReordering else { return NSItemProvider() }
-                                let payload = CategoryReorderDrag.payload(for: category.id)
-                                sidebarDragPayload = payload
-                                return CategoryReorderDrag.provider(payload)
-                            }
-                            .onDrop(of: [CategoryReorderDrag.type], isTargeted: nil) { providers in
-                                guard !category.isDefault, !sidebarReordering, let expected = sidebarDragPayload else { return false }
-                                sidebarDragPayload = nil
-                                return CategoryReorderDrag.load(providers, expected: expected) { id in
-                                    _ = reorderSidebar(id, to: category.id)
-                                }
-                            }
                             .accessibilityAction(named: Text("message_category.move_up")) { moveSidebar(category, by: -1) }
                             .accessibilityAction(named: Text("message_category.move_down")) { moveSidebar(category, by: 1) }
                     }
@@ -560,16 +550,17 @@ struct MessageListView: View {
         } label: {
             HStack(spacing: 10) {
                 if let color { Circle().fill(color).frame(width: 8, height: 8) }
-                else { Image(systemName: "tray").frame(width: 16) }
+                else { Image(systemName: "square.grid.2x2").font(.system(size: 14, weight: .regular)).frame(width: 16) }
                 Text(title).lineLimit(2).multilineTextAlignment(.leading)
                 Spacer(minLength: 4)
                 if count > 0 { Text(count, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background((color ?? Color.primary).opacity(selected ? 0.24 : 0.12), in: Capsule()) }
+                    .background((color ?? (selected ? Color.syncaPageBackground : Color.primary)).opacity(selected ? 0.24 : 0.12), in: Capsule()) }
             }
-            .padding(.horizontal, 12).padding(.vertical, 11)
-            .foregroundStyle(color == nil ? Color.syncaPageBackground : Color.primary)
-            .background(color == nil ? Color.primary.opacity(selected ? 1 : 0.82) : color!.opacity(selected ? 0.22 : 0.08), in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 44)
+            .foregroundStyle(color == nil && selected ? Color.syncaPageBackground : Color.primary)
+            .background(color == nil ? Color.primary.opacity(selected ? 1 : 0.06) : color!.opacity(selected ? 0.22 : 0.08), in: RoundedRectangle(cornerRadius: 8))
+            .overlay { if color == nil && !selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.1), lineWidth: 1) } }
             .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
             .focused($sidebarCategoryFocus, equals: id)
@@ -1047,7 +1038,12 @@ struct MessageListView: View {
         Button {
             self.showClearAllConfirm = true
         } label: {
-            Image("BroomOutline").resizable().scaledToFit().frame(width: 24, height: 24)
+            Image("BroomOutline").resizable().scaledToFit()
+                #if os(macOS)
+                .frame(width: 18, height: 18)
+                #else
+                .frame(width: 24, height: 24)
+                #endif
                 .frame(width: 44, height: 44)
                 .foregroundStyle(.secondary)
         }
@@ -2562,6 +2558,22 @@ private struct MessageCategoryManagerSheet: View {
 
     private var rows: some View {
         VStack(spacing: 0) {
+            #if os(macOS)
+            MacCategoryReorderStack(categories: syncManager.categories, spacing: 0, handleOnly: true, disabled: busy, onCommit: { ids in
+                busy = true
+                if !(await syncManager.reorderCategories(ids: ids)) { failed = true }
+                busy = false
+            }) { category in
+                InlineCategoryRow(category: category, busy: busy,
+                    onRename: { rename(category, name: $0) },
+                    onDraftName: { draftNames[category.id] = $0 },
+                    onColor: { preset in
+                        perform { await syncManager.updateCategory(id: category.id, color: preset.legacy, colorHex: preset.hex) }
+                    },
+                    onDelete: { pendingDelete = category },
+                    onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) })
+            }
+            #else
             ForEach(syncManager.categories) { category in
                 InlineCategoryRow(category: category, busy: busy,
                     onRename: { rename(category, name: $0) },
@@ -2586,6 +2598,7 @@ private struct MessageCategoryManagerSheet: View {
                     }
                 if category.id != syncManager.categories.last?.id { Divider().padding(.horizontal, 16) }
             }
+            #endif
             if adding {
                 HStack {
                     TextField("message_category.name_placeholder", text: $newName).onSubmit(addCategory)
@@ -2930,3 +2943,121 @@ private struct MessageListNavigationContainer<Content: View>: View {
         #endif
     }
 }
+
+#if os(macOS)
+/// Local pointer reordering: the row follows the pointer, siblings make room, and only the final order is saved.
+/// No pasteboard drag session is created, so reordering never advertises a copy operation.
+private struct MacCategoryRowFrames: PreferenceKey {
+    static let defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) { value.merge(nextValue(), uniquingKeysWith: { _, new in new }) }
+}
+private struct MacCategoryReorderStack<Row: View>: View {
+    let categories: [SyncaMessageCategory]
+    let spacing: CGFloat
+    let handleOnly: Bool
+    let disabled: Bool
+    let onCommit: ([String]) async -> Void
+    @ViewBuilder let row: (SyncaMessageCategory) -> Row
+    @State private var coordinateID = UUID()
+    @State private var frames: [String: CGRect] = [:]
+    @State private var originalFrames: [String: CGRect] = [:]
+    @State private var originalIDs: [String] = []
+    @State private var previewIDs: [String] = []
+    @State private var draggedID: String?
+    @GestureState private var gestureInFlight = false
+    @State private var gestureCancelled = false
+    @State private var gestureGeneration = UUID()
+    @State private var translation: CGFloat = 0
+    @State private var saving = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var ordered: [SyncaMessageCategory] {
+        guard !previewIDs.isEmpty else { return categories }
+        let lookup = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+        return categories.filter(\.isDefault) + previewIDs.compactMap { lookup[$0] }
+    }
+    var body: some View {
+        VStack(spacing: spacing) {
+            ForEach(ordered) { category in
+                row(category)
+                    .background(GeometryReader { geometry in
+                        Color.clear.preference(key: MacCategoryRowFrames.self, value: [category.id: geometry.frame(in: .named(coordinateID))])
+                    })
+                    .overlay(alignment: .trailing) {
+                        if handleOnly && !category.isDefault {
+                            Color.clear.frame(width: 36).contentShape(Rectangle()).gesture(drag(category))
+                        }
+                    }
+                    .highPriorityGesture(handleOnly || category.isDefault ? nil : drag(category))
+                    .offset(y: dragOffset(for: category.id))
+                    .transaction { if draggedID == category.id { $0.animation = nil } }
+                    .zIndex(draggedID == category.id ? 1 : 0)
+                    .shadow(color: .black.opacity(draggedID == category.id ? 0.12 : 0), radius: 5, y: 2)
+            }
+        }
+        .coordinateSpace(name: coordinateID)
+        .onPreferenceChange(MacCategoryRowFrames.self) { frames = $0 }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: previewIDs)
+        .disabled(saving)
+        .onChange(of: gestureInFlight) { active in
+            guard !active else { return }
+            let generation = gestureGeneration
+            // Let a successful onEnded capture/commit its order before cancellation cleanup.
+            DispatchQueue.main.async {
+                guard !gestureInFlight, !saving, generation == gestureGeneration else { return }
+                gestureCancelled = false
+                reset()
+            }
+        }
+        .onExitCommand { if !saving { gestureCancelled = gestureInFlight; reset() } }
+        .onDisappear { if !saving { reset() } }
+        .onChange(of: categories.map(\.id)) { _ in if !saving { gestureCancelled = gestureInFlight; reset() } }
+    }
+    private func dragOffset(for id: String) -> CGFloat {
+        guard draggedID == id, let original = originalFrames[id],
+              let firstY = originalFrames.values.map(\.minY).min() else { return 0 }
+        let currentY = ordered.prefix(while: { $0.id != id }).reduce(firstY) {
+            $0 + (originalFrames[$1.id]?.height ?? 0) + spacing
+        }
+        return original.minY + translation - currentY
+    }
+    private func drag(_ category: SyncaMessageCategory) -> some Gesture {
+        DragGesture(minimumDistance: 6, coordinateSpace: .named(coordinateID))
+            .updating($gestureInFlight) { _, active, _ in active = true }
+            .onChanged { value in
+                guard !disabled, !saving, !gestureCancelled, !category.isDefault else { return }
+                if draggedID == nil {
+                    gestureGeneration = UUID()
+                    draggedID = category.id
+                    originalFrames = frames
+                    originalIDs = categories.filter { !$0.isDefault }.map(\.id)
+                    previewIDs = originalIDs
+                }
+                guard draggedID == category.id, let origin = originalFrames[category.id] else { return }
+                translation = value.translation.height
+                let center = origin.midY + translation
+                guard let nearest = originalIDs.min(by: { abs((originalFrames[$0]?.midY ?? center) - center) < abs((originalFrames[$1]?.midY ?? center) - center) }),
+                      let destination = originalIDs.firstIndex(of: nearest) else { return }
+                var ids = originalIDs.filter { $0 != category.id }
+                ids.insert(category.id, at: min(destination, ids.count))
+                if previewIDs != ids { previewIDs = ids }
+            }
+            .onEnded { value in
+                defer { gestureCancelled = false }
+                guard !gestureCancelled, draggedID == category.id else { return }
+                let bounds = originalFrames.values.reduce(CGRect.null) { $0.union($1) }.insetBy(dx: -24, dy: -24)
+                guard bounds.contains(value.location) else { reset(); return }
+                let ids = previewIDs
+                draggedID = nil; translation = 0
+                guard ids != originalIDs else { reset(); return }
+                saving = true
+                Task { @MainActor in
+                    await onCommit(ids)
+                    saving = false
+                    reset()
+                }
+            }
+    }
+    private func reset() { draggedID = nil; translation = 0; previewIDs = []; originalIDs = []; originalFrames = [:] }
+}
+#endif
