@@ -376,5 +376,6 @@
   "storage.current_paid_capacity": "{{capacity}} 附件空間，圖片和檔案保留 {{days}} 天",
   "access.mainland_price_note": "中國大陸 App Store 價格，以 App 內為準",
   "access.current_daily_rule": "每日可新增 {{count}} 則記錄",
-  "storage.current_paid_files": "解鎖檔案傳輸，單個最大 {{size}}"
+  "storage.current_paid_files": "解鎖檔案傳輸，單個最大 {{size}}",
+  "ai_page.back_to_connections": "返回連線管理"
 }

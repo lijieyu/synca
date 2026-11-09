@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Copy, Check, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Copy, Check, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +29,11 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const authorize = presentation === 'page' ? params.get('authorize') : null;
   const embedded = presentation === 'dialog' || (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
   const [guideVisible, setGuideVisible] = useState(false);
+  const pageRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const scroller = pageRef.current?.closest('.modal-scroll-body') ?? pageRef.current;
+    scroller?.scrollTo({ top: 0 });
+  }, [guideVisible]);
   const [loaded, setLoaded] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [revokeTarget, setRevokeTarget] = useState<Connection | null>(null);
@@ -90,9 +95,11 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <><main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
+  const showingTutorial = !authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible)));
+  return <><main ref={pageRef} className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
     {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
-    {!authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible))) && <><div className="ai-intro-grid"><header className="ai-hero">
+    {guideVisible && activeConnections.length > 0 && <button className="ai-text-link ai-guide-back" onClick={() => setGuideVisible(false)}><ArrowLeft size={16} aria-hidden="true" />{t('ai_page.back_to_connections')}</button>}
+    {showingTutorial && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('ai_page.text_021')}</h1>
       <p>{t('ai_page.text_022')}</p>
     </header>
@@ -111,7 +118,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     </>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
     {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => { if (presentation === 'dialog') { setError(''); setLoaded(false); setLoadAttempt(value => value + 1); } else window.location.reload(); }}>{t('ai_page.text_038')}</button></div>}
-    {isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('ai_page.text_039')}</h2><p>{t('ai_page.text_040')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button> <button disabled={busy} onClick={() => void act(async () => {
+    {!showingTutorial && isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('ai_page.text_039')}</h2><p>{t('ai_page.text_040')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button> <button disabled={busy} onClick={() => void act(async () => {
         await refreshAccessStatus();
         if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
         setNotice(t('ai_page.text_042'));
@@ -132,8 +139,8 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
         window.location.assign(result.redirectUrl);
       })}>{approve ? t('ai_page.text_055') : t('ai_page.text_056')}</button>)}</div>
     </section>}
-    {isAuthenticated && !authorize && loaded && <>
-      <section className="ai-card"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" onClick={() => setGuideVisible(value => !value)}>{t('polish.tutorial')}</button></div>
+    {isAuthenticated && !authorize && loaded && !showingTutorial && <>
+      <section className="ai-card"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" onClick={() => setGuideVisible(true)}>{t('polish.tutorial')}</button></div>
         {!activeConnections.length && <p className="ai-muted">{t('ai_page.text_058')}</p>}
         {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3>
           <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)}</p>
