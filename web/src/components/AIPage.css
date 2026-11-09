@@ -51,7 +51,7 @@
 .ai-page .ai-prompt { padding:12px; margin-top:8px; border-radius:8px; background:var(--ai-subtle); color:var(--ai-muted); font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
 .ai-page .ai-copy-foot .ai-text-link { min-width:76px; justify-content:flex-end; }
 .ai-page .ai-initial-loading { min-height:200px; display:grid; place-items:center; color:var(--ai-muted); }
-.ai-page .ai-notice:not(:empty) { padding:10px 0; color:var(--ai-muted); }
+.ai-page .ai-notice { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .ai-page .ai-error { padding:12px; background:var(--ai-subtle); border-radius:8px; margin:12px 0; overflow-wrap:anywhere; }
 .ai-page .ai-error button { margin-left:8px; }
 .ai-page .ai-consent p,.ai-page .ai-manage p { margin:12px 0; }

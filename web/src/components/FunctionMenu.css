@@ -1,7 +1,10 @@
 .function-menu { position: relative; }
 .function-menu-panel { position: absolute; right: 0; top: calc(100% + 10px); width: 224px; padding: 6px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg-color); box-shadow: 0 12px 48px #0002; z-index: 50; }
 .function-menu-panel :is(button,a) { display: flex; align-items: center; gap: 12px; padding: 11px 12px; min-height: 44px; width: 100%; border: 0; border-radius: 8px; font: inherit; font-size: 14px; text-align: left; text-decoration: none; background: transparent; color: var(--text-main); cursor: pointer; }
-.function-menu-panel :is(button,a):is(:hover,:focus-visible) { background: var(--synca-mint-light); outline: 2px solid var(--synca-purple); outline-offset: -2px; }
+.function-menu-panel :is(button,a):hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); outline:none; }
+.calm-shell .function-menu-panel :is(button,a):focus-visible { background: color-mix(in srgb, var(--text-main) 14%, transparent); outline:none; }
+.function-menu-panel :is(button,a):active { background: color-mix(in srgb, var(--text-main) 14%, transparent); }
+@media(forced-colors:active) { .calm-shell .function-menu-panel :is(button,a):focus-visible { outline:2px solid Highlight; outline-offset:-2px; } }
 .app-container .header { flex-shrink: 0; min-height: 64px; height: auto; gap: 12px; padding: 10px 20px; background: var(--card-bg-color); }
 .header-brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .header-brand img { width: 30px; height: 30px; border-radius: 8px; }
