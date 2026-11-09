@@ -43,6 +43,6 @@ export function FunctionMenu({ email, planLabel, usage, onAccount, onSettings, o
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
         e.preventDefault(); nodes[e.key === 'Home' ? 0 : e.key === 'End' ? nodes.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length]?.focus();
       }
-    }}><button role="menuitem" className="menu-account-header" onClick={() => { close(); onAccount(); }}><PersonIcon size={20} /><span>{t('preferences.account_plan')}<small>{email}</small></span></button><hr role="separator" />{items.map(({ title, Icon, action }, index) => <div key={title}>{index === 3 && <hr role="separator" />}<button key={title} role="menuitem" onClick={() => { close(); action(); }}><Icon size={18} aria-hidden="true" />{title}</button></div>)}</div>}
+    }}><button role="menuitem" className="menu-account-header" onClick={() => { close(); onAccount(); }}><PersonIcon size={18} /><span>{t('preferences.account_plan')}</span></button><hr role="separator" />{items.map(({ title, Icon, action }, index) => <div key={title}>{index === 3 && <hr role="separator" />}<button key={title} role="menuitem" onClick={() => { close(); action(); }}><Icon size={18} aria-hidden="true" />{title}</button></div>)}</div>}
   </div>;
 }

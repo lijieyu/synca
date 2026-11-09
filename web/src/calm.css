@@ -40,9 +40,7 @@
 .calm-sidebar .function-menu { margin-top:18px; }
 .calm-sidebar .function-menu-panel { top:auto; bottom:calc(100% + 8px); left:0; right:auto; width:260px; max-width:calc(100vw - 28px); max-height:calc(100dvh - 140px); overflow:auto; }
 .function-menu-panel hr { border:0; border-top:1px solid var(--border-color); margin:5px; }
-.function-menu-panel .menu-account-header { padding-top:14px; padding-bottom:14px; }
 .menu-account-header span { min-width:0; }
-.menu-account-header small { display:block; color:var(--text-secondary); overflow-wrap:anywhere; font-size:11px; margin-top:5px; }
 .account-plan-link { padding:12px 0; border:0; background:transparent; color:var(--synca-purple); cursor:pointer; font:inherit; }
 .preferences-panel { display:grid; gap:16px; text-align:left; margin-top:12px; }
 .preferences-panel>label { display:grid; grid-template-columns:minmax(80px,1fr) minmax(0,1.5fr); gap:16px; align-items:center; }
