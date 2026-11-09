@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Modal } from './Modal';
 import { Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MessageCategoryColor } from '../api/client';
@@ -11,11 +12,53 @@ export const CATEGORY_PALETTE: { name: string; hex: string; color: MessageCatego
 export function categoryStyle(colorHex?: string | null): React.CSSProperties | undefined {
   return CATEGORY_PALETTE.some(p => p.hex === colorHex) ? { '--category-accent': colorHex } as React.CSSProperties : undefined;
 }
-export function CategoryPalette({ color, colorHex, onChange }: {color: MessageCategoryColor; colorHex?: string | null; onChange: (color: MessageCategoryColor, hex: string) => void}) {
- const { t } = useTranslation(); const [open,setOpen] = useState(false); const root = useRef<HTMLDivElement>(null); const trigger = useRef<HTMLButtonElement>(null);
- useEffect(() => { if (!open) return; const dismiss = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); }; document.addEventListener('pointerdown',dismiss); return () => document.removeEventListener('pointerdown',dismiss); }, [open]);
- return <div className="category-palette" ref={root} onKeyDown={e => { if(e.key === 'Escape') { e.stopPropagation(); setOpen(false); trigger.current?.focus(); } }}>
- <button ref={trigger} type="button" className={`palette-trigger color-${color}`} style={categoryStyle(colorHex)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => setOpen(!open)}><span /></button>
- {open && <div className="palette-popover" role="group" aria-label={t('polish.color')}>{CATEGORY_PALETTE.map(p => <button key={p.hex} type="button" title={t(`polish.colors.${p.name}`)} aria-label={t(`polish.colors.${p.name}`)} aria-pressed={colorHex ? colorHex === p.hex : color === p.color && CATEGORY_PALETTE.find(c => c.color === color)?.hex === p.hex} style={{background:p.hex}} onClick={() => {onChange(p.color,p.hex);setOpen(false);trigger.current?.focus();}}>{(colorHex ? colorHex === p.hex : CATEGORY_PALETTE.find(c => c.color === color)?.hex === p.hex) && <Check size={18} />}</button>)}</div>}
- </div>;
+export function CategoryPalette({ color, colorHex, onChange, expanded = false }: {
+  color: MessageCategoryColor; colorHex?: string | null;
+  onChange: (color: MessageCategoryColor, hex: string) => void; expanded?: boolean;
+}) {
+  const { t } = useTranslation();
+  const supportsPopover = typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function';
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const trigger = useRef<HTMLButtonElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open || !supportsPopover) return;
+    popover.current?.showPopover();
+    popover.current?.querySelector<HTMLButtonElement>('[aria-pressed=true]')?.focus({ preventScroll: true });
+    const dismiss = (event: PointerEvent) => {
+      if (!trigger.current?.contains(event.target as Node) && !popover.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const close = () => setOpen(false);
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus(); }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape, true);
+    window.addEventListener('resize', close);
+    document.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', escape, true);
+      window.removeEventListener('resize', close);
+      document.removeEventListener('scroll', close, true);
+    };
+  }, [open, supportsPopover]);
+  const selectedHex = colorHex ?? CATEGORY_PALETTE.find(item => item.color === color)?.hex;
+  const swatches = <div ref={popover} popover={expanded ? undefined : "manual"} className={expanded ? 'palette-grid' : 'palette-popover'} style={expanded ? undefined : position} role="group" aria-label={t('polish.color')}>
+    {CATEGORY_PALETTE.map(item => <button key={item.hex} type="button" title={t(`polish.colors.${item.name}`)} aria-label={t(`polish.colors.${item.name}`)} aria-pressed={selectedHex === item.hex} style={{ background: item.hex }} onClick={() => {
+      onChange(item.color, item.hex); setOpen(false); if (!expanded) trigger.current?.focus();
+    }}>{selectedHex === item.hex && <Check size={18} strokeWidth={2.5} />}</button>)}
+  </div>;
+  if (expanded) return swatches;
+  return <div className="category-palette">
+    <button ref={trigger} type="button" className={`palette-trigger color-${color}`} style={categoryStyle(colorHex)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => {
+      const bounds = trigger.current!.getBoundingClientRect();
+      setPosition({ left: Math.max(12, Math.min(bounds.left, window.innerWidth - 208)), top: Math.max(12, Math.min(bounds.bottom + 4, window.innerHeight - 208)) });
+      setOpen(value => !value);
+    }}><span /></button>
+    {open && (supportsPopover ? swatches : <Modal title={t('polish.color')} message="" hideActions onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)}>
+      <CategoryPalette expanded color={color} colorHex={colorHex} onChange={(nextColor, hex) => { onChange(nextColor, hex); setOpen(false); }} />
+    </Modal>)}
+  </div>;
 }

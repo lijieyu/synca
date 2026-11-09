@@ -178,19 +178,33 @@
 .account-summary { border-bottom:0; }
 .account-plan-subtitle,.plan-activated { font-size:12px; color:var(--text-secondary); }
 .account-panel .storage-plans { font-size:13px; }
-.calm-sidebar .category-all { background:light-dark(#e2e2e7,#393940); color:light-dark(#34343b,#ebebef); }
-.calm-sidebar .category-all.active { background:light-dark(#484850,#d8d8df); color:light-dark(#fff,#24242b); }
+.calm-sidebar .category-all { background:transparent; color:light-dark(#171719,#fff); font-weight:500; }
+.calm-sidebar .category-all::before { background:light-dark(#171719,#fff); width:10px; height:10px; flex-basis:10px; border-radius:3px; }
+.calm-sidebar .category-all.active { background:light-dark(#171719,#f7f7f9); color:light-dark(#fff,#171719); min-height:38px; padding-top:7px; padding-bottom:7px; margin-block:3px; }
+.calm-sidebar .category-all.active::before { background:currentColor; opacity:.6; }
 .calm-sidebar .category-all .category-todo-badge { color:inherit; }
 .category-palette { position:relative; flex-shrink:0; }
 .category-palette .palette-trigger { display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; background:transparent; }
 .palette-trigger span { width:20px; height:20px; border-radius:6px; background:var(--category-accent); }
-.palette-popover { position:absolute; left:0; top:44px; z-index:8; display:grid; grid-template-columns:repeat(4,44px); gap:2px; padding:6px; border:1px solid var(--border-color); border-radius:12px; background:var(--card-bg-color); box-shadow:0 8px 24px #0003; }
-.category-manager-content .palette-popover button { width:44px; height:44px; display:grid; place-items:center; border:3px solid var(--card-bg-color); border-radius:9px; color:white; }
-.category-manager-content .palette-popover button:hover { filter:brightness(.9); }
+.palette-popover { margin:0; inset:auto; position:fixed; z-index:10000; display:grid; grid-template-columns:repeat(4,44px); gap:2px; padding:6px; border:1px solid var(--border-color); border-radius:12px; background:var(--card-bg-color); box-shadow:0 8px 24px #0003; }
+.palette-popover button { width:44px; height:44px; display:grid; place-items:center; border:3px solid var(--card-bg-color); border-radius:9px; color:white; }
+.palette-popover button:hover { filter:brightness(.9); }
 .category-manager-name { width:0; flex:1; min-width:30px; border:0; padding:8px 0; color:var(--text-main); background:transparent; font:inherit; font-size:14px; }
 .category-manager-name:disabled { opacity:1; color:var(--text-secondary); }
-.category-manager-scroll:has(.palette-popover) { padding-bottom:194px; }
+
 .category-manager-row-actions { gap:0; }
 .category-manager-row { padding:8px 6px; gap:4px; }
 .category-create-stack .palette-popover button { width:44px; height:44px; display:grid; place-items:center; border:3px solid var(--card-bg-color); border-radius:9px; color:#fff; }
-.category-create-stack:has(.palette-popover) { padding-bottom:194px; }
+
+
+.palette-grid { display:grid; grid-template-columns:repeat(8, minmax(0, 1fr)); gap:4px; width:100%; }
+.palette-grid button { width:100%; min-height:40px; aspect-ratio:1; display:grid; place-items:center; padding:0; border:4px solid var(--card-bg-color); border-radius:12px; color:#fff; cursor:pointer; }
+.palette-grid button[aria-pressed=true] { outline:2px solid var(--text-main); outline-offset:-2px; }
+.palette-grid button:focus-visible,.palette-popover button:focus-visible { outline:2px solid var(--synca-purple); outline-offset:0; }
+.category-sort-handle { touch-action:none; cursor:grab!important; }
+.sortable-row { position:relative; transition:transform 160ms cubic-bezier(.2,.7,.2,1); user-select:none; will-change:transform; }
+.calm-sidebar .sortable-picked,.category-manager-row.sortable-picked { z-index:10; transition:none; cursor:grabbing; background:var(--card-bg-color); box-shadow:0 4px 16px #0002,0 0 0 1px var(--border-color); border-radius:8px; }
+.message-bubble.cleared .category-color-dot { opacity:.38; }
+@media(max-width:380px) { .palette-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } .palette-grid button { aspect-ratio:auto; min-height:44px; } }
+
+.calm-sidebar .sortable-picked { background:color-mix(in srgb,var(--category-accent) 12%,var(--card-bg-color)); }

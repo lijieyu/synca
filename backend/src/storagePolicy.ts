@@ -4,7 +4,7 @@ import { db } from './db.js';
 export const IMAGE_LIMIT = 50 * 1024 * 1024;
 export const FILE_LIMIT = 200 * 1024 * 1024;
 export function storagePolicy(paid: boolean) {
-    return { limitBytes: (paid ? 2048 : 200) * 1024 * 1024, imageLimitBytes: IMAGE_LIMIT,
+    return { limitBytes: (paid ? 1024 : 100) * 1024 * 1024, imageLimitBytes: IMAGE_LIMIT,
         fileLimitBytes: paid ? FILE_LIMIT : 0, retentionDays: paid ? 30 : 3, canUploadFiles: paid };
 }
 export async function storageUsage(userId: string) {

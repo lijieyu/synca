@@ -237,9 +237,9 @@
 
 "common.send" = "发送";
 
-"storage.free_benefits" = "200 MB 附件空间，图片保留 3 天";
+"storage.free_benefits" = "100 MB 附件空间，图片保留 3 天";
 "storage.paid_files" = "解锁文件传输，单个最大 200 MB";
-"storage.paid_capacity" = "2 GB 附件空间，图片和文件保留 30 天";
+"storage.paid_capacity" = "1 GB 附件空间，图片和文件保留 30 天";
 "storage.retention_notice" = "附件到期后清理，请及时下载。文字记录不受附件保留期限制。";
 "storage.paid_required" = "文件传输为付费功能";
 "storage.full" = "中转空间已满，请删除不需要的附件后重试。";

@@ -1,3 +1,4 @@
+import { moveItem, usePointerSort } from '../hooks/usePointerSort';
 import { CategoryPalette, categoryStyle } from './CategoryPalette';
 import { BroomIcon } from './BroomIcon';
 import { SettingsPanel } from './SettingsPanel';
@@ -76,7 +77,6 @@ export const MessageListView: React.FC = () => {
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
   const [showDuplicateCategoryModal, setShowDuplicateCategoryModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [dragCategory, setDragCategory] = useState<string | null>(null);
   const [categoryManagerEditor, setCategoryManagerEditor] = useState<CategoryManagerDraftRow | null>(null);
   const [categoryManagerRows, setCategoryManagerRows] = useState<CategoryManagerDraftRow[]>([]);
   const [categoryManagerDeleteTarget, setCategoryManagerDeleteTarget] = useState<CategoryManagerDraftRow | null>(null);
@@ -92,6 +92,7 @@ export const MessageListView: React.FC = () => {
   const fetchRevision = useRef(0);
   const pendingFetches = useRef(0);
   const categoryWritePending = useRef(false);
+  const categoryDragPending = useRef(false);
   const managerBaseline = useRef(new Map<string, MessageCategory>());
   useEffect(() => { categoryWritePending.current = categorySaving; }, [categorySaving]);
 
@@ -108,7 +109,7 @@ export const MessageListView: React.FC = () => {
         api.listMessageCategories(),
       ]);
 
-      if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken')) return false;
+      if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken') || categoryDragPending.current) return false;
       const sortedMessages = sortMessages(messagesRes.messages);
       setMessages(sortedMessages);
       setCategories(categoriesRes.categories);
@@ -153,7 +154,7 @@ export const MessageListView: React.FC = () => {
     didRestorePreferencesRef.current = false;
     void fetchData(true);
     const poll = () => {
-      if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current) void fetchData(false);
+      if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
     };
     const timer = setInterval(poll, 10000);
     document.addEventListener('visibilitychange', poll);
@@ -242,7 +243,7 @@ export const MessageListView: React.FC = () => {
   const saveCategoryRow = async (row: CategoryManagerDraftRow, patch: Partial<Pick<MessageCategory, 'name' | 'color' | 'colorHex'>>) => {
     if (!row.id || categoryWritePending.current) return;
     if (patch.name !== undefined) { const name = patch.name.trim(); if (!name || name === categories.find(c => c.id === row.id)?.name) return; patch = {...patch,name}; }
-    categoryWritePending.current = true; setCategorySaving(true);
+    ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
     try {
       const updated = await api.updateMessageCategory(row.id, patch);
       setCategoryManagerRows(rows => rows.map(item => item.id === updated.id ? {...item,...(patch.name !== undefined ? {name:updated.name} : {}),...(patch.color !== undefined || patch.colorHex !== undefined ? {color:updated.color,colorHex:updated.colorHex} : {})} : item));
@@ -255,8 +256,20 @@ export const MessageListView: React.FC = () => {
     if (categoryWritePending.current) return;
     const previous = categoryManagerRows; setCategoryManagerRows(next);
     if (next.some(row => !row.id)) return;
-    categoryWritePending.current = true; setCategorySaving(true);
-    try { await api.reorderMessageCategories(next.filter(row => !row.isDefault).map(row => row.id!)); setCategories(current => [...current].sort((a,b) => next.findIndex(row => row.id === a.id) - next.findIndex(row => row.id === b.id))); }
+    ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
+    try {
+      // Pointer sorting keeps an active name field focused. Flush its draft under
+      // this same write lock, so blur and reorder cannot race or lose either edit.
+      const renamed = new Map<string, MessageCategory>();
+      for (const row of next) {
+        const saved = categories.find(category => category.id === row.id);
+        if (!row.isDefault && row.name.trim() && saved && row.name.trim() !== saved.name) {
+          renamed.set(saved.id, await api.updateMessageCategory(saved.id, { name: row.name.trim() }));
+        }
+      }
+      await api.reorderMessageCategories(next.filter(row => !row.isDefault).map(row => row.id!));
+      setCategories(current => current.map(category => renamed.get(category.id) ?? category).sort((a,b) => next.findIndex(row => row.id === a.id) - next.findIndex(row => row.id === b.id)));
+    }
     catch { setCategoryManagerRows(previous); setCategoryManagerError({title:t('common.error'),message:t('navigation.save_failed')}); }
     finally { categoryWritePending.current = false; setCategorySaving(false); }
   };
@@ -291,7 +304,7 @@ export const MessageListView: React.FC = () => {
     if (categoryManagerEditor) {
       const duplicated = categoryManagerRows.some(row => row.clientId !== categoryManagerEditor.clientId && row.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
       if (duplicated) { setShowDuplicateCategoryModal(true); return; }
-      categoryWritePending.current = true; setCategorySaving(true);
+      ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
       try {
         const saved = categoryManagerEditor.id ? await api.updateMessageCategory(categoryManagerEditor.id,{name:trimmedName,color:newCategoryColor,colorHex:newCategoryHex}) : await api.createMessageCategory(trimmedName,newCategoryColor,newCategoryHex);
         const updated = { ...categoryManagerEditor, ...saved, colorHex:saved.colorHex };
@@ -347,7 +360,7 @@ export const MessageListView: React.FC = () => {
     }
 
     const baselineById = managerBaseline.current;
-    categoryWritePending.current = true; setCategorySaving(true);
+    ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
     try {
       // Read current server membership; a draft's absence never means deletion.
       const latest = await api.listMessageCategories();
@@ -384,15 +397,27 @@ export const MessageListView: React.FC = () => {
   };
 
   const reorderSidebar = async (source: string, target: string) => {
-    if (categorySaving || source === target) return;
+    if (categoryWritePending.current || source === target) return;
     const previous = categories; const custom = categories.filter(c => !c.isDefault);
     const from = custom.findIndex(c => c.id === source), to = custom.findIndex(c => c.id === target);
     if (from < 0 || to < 0) return;
-    custom.splice(to,0,custom.splice(from,1)[0]); setCategories([...categories.filter(c => c.isDefault),...custom]); setCategorySaving(true);
+    custom.splice(to,0,custom.splice(from,1)[0]); setCategories([...categories.filter(c => c.isDefault),...custom]); ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
     try { await api.reorderMessageCategories(custom.map(c => c.id)); }
     catch { setCategories(previous); setCategoryManagerError({title:t('common.error'),message:t('navigation.save_failed')}); }
-    finally { setCategorySaving(false); setDragCategory(null); }
+    finally { categoryWritePending.current = false; setCategorySaving(false); }
   };
+
+  const sortLifecycle = {
+    disabled: categorySaving,
+    onStart: () => { categoryDragPending.current = true; ++fetchRevision.current; },
+    onEnd: () => { categoryDragPending.current = false; },
+  };
+  const sidebarSort = usePointerSort({ ...sortLifecycle, onCommit: (source, target) => { void reorderSidebar(source, target); } });
+  const managerSort = usePointerSort({ ...sortLifecycle, onCommit: (source, target) => {
+    const from = categoryManagerRows.findIndex(row => row.clientId === source);
+    const to = categoryManagerRows.findIndex(row => row.clientId === target);
+    if (from > 0 && to > 0) void reorderManager(moveItem(categoryManagerRows, from, to));
+  } });
 
   const activateCategory = (id: string) => {
     setSelectedCategoryId(id);
@@ -421,7 +446,7 @@ export const MessageListView: React.FC = () => {
         <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span></div>
 
         <div className="category-toolbar">
-          <div className="category-switcher">
+          <div className="category-switcher" ref={sidebarSort.containerRef}>
             <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} category-all`} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
               {t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
@@ -434,8 +459,8 @@ export const MessageListView: React.FC = () => {
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
                 style={categoryStyle(category.colorHex)}
-                draggable={!category.isDefault && !categorySaving} aria-keyshortcuts={category.isDefault ? undefined : 'Alt+ArrowUp Alt+ArrowDown'} title={category.isDefault ? undefined : t('polish.reorder')}
-                onDragStart={e => { setDragCategory(category.id); e.dataTransfer.setData('text/plain',category.id); }} onDragEnd={() => setDragCategory(null)} onDragOver={e => { if (!category.isDefault) e.preventDefault(); }} onDrop={e => { e.preventDefault(); if(dragCategory) void reorderSidebar(dragCategory,category.id); }}
+                data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false} aria-keyshortcuts={category.isDefault ? undefined : 'Alt+ArrowUp Alt+ArrowDown'} title={category.isDefault ? undefined : t('polish.reorder')}
+
                 onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
                 {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
@@ -458,7 +483,7 @@ export const MessageListView: React.FC = () => {
           <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
           <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
           <div className="header-actions">
-            <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RefreshCcw size={18} /></button>
+            <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RefreshCcw size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
         </header>
@@ -546,13 +571,17 @@ export const MessageListView: React.FC = () => {
         >
           <fieldset className="category-manager-content" disabled={categorySaving}>
             <div className="category-manager-scroll">
-              <div className="category-manager-rows">
+              <div className="category-manager-rows" ref={managerSort.containerRef}>
                 {categoryManagerRows.map((row, index) => (
-                  <div key={row.clientId} className="category-manager-row">
+                  <div key={row.clientId} className="category-manager-row" data-sort-id={row.isDefault ? undefined : row.clientId}>
                     <CategoryPalette color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
                     <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />
                     {!row.isDefault && <div className="category-manager-row-actions">
-                      <button type="button" draggable aria-label={`${t('polish.reorder')} ${row.name}`} onDragStart={() => setDragCategory(row.clientId)} onDragEnd={() => setDragCategory(null)} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const source = categoryManagerRows.findIndex(item => item.clientId === dragCategory); if(source < 1) return; const next=[...categoryManagerRows]; next.splice(index,0,next.splice(source,1)[0]); void reorderManager(next); setDragCategory(null); }} onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
+                      <button type="button" className="category-sort-handle" aria-label={`${t('polish.reorder')} ${row.name}`} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" onPointerDown={e => {
+                        // Avoid blur starting an independent save before drag activation.
+                        if (document.activeElement?.classList.contains('category-manager-name')) e.preventDefault();
+                        managerSort.begin(e, row.clientId, true);
+                      }} onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
                       <button type="button" onClick={() => moveCategoryManagerRow(index,-1)} disabled={index <= 1} aria-label={`${t('message_category.move_up')} ${row.name}`}><ChevronUp size={17}/></button>
                       <button type="button" onClick={() => moveCategoryManagerRow(index,1)} disabled={index === categoryManagerRows.length-1} aria-label={`${t('message_category.move_down')} ${row.name}`}><ChevronDown size={17}/></button>
                       <button type="button" className="category-manager-delete" onClick={() => setCategoryManagerDeleteTarget(row)} aria-label={`${t('message_category.delete_action')} ${row.name}`}><Trash2 size={17}/></button>
@@ -594,7 +623,7 @@ export const MessageListView: React.FC = () => {
               autoFocus
             />
 
-            <CategoryPalette color={newCategoryColor} colorHex={newCategoryHex} onChange={(color, hex) => { setNewCategoryColor(color); setNewCategoryHex(hex); }} />
+            <CategoryPalette expanded color={newCategoryColor} colorHex={newCategoryHex} onChange={(color, hex) => { setNewCategoryColor(color); setNewCategoryHex(hex); }} />
           </div>
         </Modal>
       )}
@@ -621,7 +650,7 @@ export const MessageListView: React.FC = () => {
           confirmDisabled={categorySaving} cancelDisabled={categorySaving} closeDisabled={categorySaving}
           onConfirm={() => { void (async () => {
             if (categoryWritePending.current) return;
-            categoryWritePending.current = true; setCategorySaving(true);
+            ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
             try { if(categoryManagerDeleteTarget.id) await api.deleteMessageCategory(categoryManagerDeleteTarget.id); setCategoryManagerRows(rows => rows.filter(row => row.clientId !== categoryManagerDeleteTarget.clientId)); setCategoryManagerDeleteTarget(null); await fetchData(false); }
             catch { setCategoryManagerError({title:t('common.error'),message:t('navigation.save_failed')}); }
             finally { categoryWritePending.current = false; setCategorySaving(false); }

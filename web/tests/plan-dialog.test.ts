@@ -39,7 +39,7 @@ it('keeps lifetime ownership concise without purchase dates or another upgrade',
   expect(html).not.toContain('2026');
   expect(html).not.toContain(zh['access.current_plan_title']);
   expect(html).not.toContain('plan-dates');
-  expect(html).toContain(zh['access.purchased_lifetime']);
+  expect(html).toContain(zh.polish.activated);
   expect(html).not.toContain('下载 Synca');
   expect(html).not.toContain('免费版');
   expect(html).not.toContain('下次续费');
@@ -74,13 +74,16 @@ it('renders Traditional Chinese Pro benefits and retention notes', () => {
   expect(html).not.toContain('無限版');
 });
 
-it('keeps the App Store entry visible alongside proposed preview pricing', () => {
+it('shows verified mainland pricing with the App Store entry in all locales', () => {
   vi.stubEnv('VITE_PREVIEW_PRICING', 'true');
   try {
     for (const language of ['zh', 'zh-Hant', 'en']) {
       state.language = language;
       const html = render();
-      expect(html).toContain('¥28');
+      expect(html).toContain('¥98');
+      expect(html).toContain(i18n.getFixedT(language)('access.mainland_price_note'));
+      expect(html).toContain('100 MB');
+      expect(html).toContain('1 GB');
       expect(html).toContain('id6761647007');
       expect(html).toContain(i18n.getFixedT(language)('access.buyout_label'));
       for (const key of ['access.preview_price_notice', 'storage.retention_notice', 'access.purchase_shared_account', 'storage.lifetime_notice', 'access.ai_service_notice']) expect(html).not.toContain(i18n.getFixedT(language)(key));
@@ -96,7 +99,7 @@ it.each(['zh', 'zh-Hant', 'en'])('suppresses redundant Pro labels and stale life
   expect(html).not.toContain(t('access.current_plan_title'));
   expect(html).not.toContain(t('access.purchase_date_label'));
   expect(html).not.toContain(t('access.subscription_expires_label'));
-  expect(html).toContain(t('access.purchased_lifetime'));
+  expect(html).toContain(t('polish.activated'));
   expect(html).toContain(t('storage.paid_capacity'));
 });
 it('keeps valid subscription dates while omitting malformed metadata', () => {
@@ -108,4 +111,26 @@ it('keeps valid subscription dates while omitting malformed metadata', () => {
   expect(html).not.toContain('2027');
   expect(html).not.toContain(zh['access.purchase_date_label']);
   expect(html).not.toContain(zh['access.current_plan_title']);
+});
+
+it.each(['zh', 'zh-Hant', 'en'])('uses API storage allowance for the current plan in %s', language => {
+  state.language = language;
+  Object.assign(state.status!, { isUnlimited: true, storage: { usedBytes: 1200 * 1048576, limitBytes: 1073741824, retentionDays: 30, imageLimitBytes: 50 * 1048576, fileLimitBytes: 200 * 1048576, canUploadFiles: true } });
+  let html = render();
+  expect(html).toContain('1 GB');
+  expect(html).not.toContain('<li>2 GB');
+  state.status!.storage!.limitBytes = 512 * 1048576;
+  state.status!.storage!.retentionDays = 14;
+  html = render();
+  expect(html).toContain('512 MB');
+  expect(html).toContain('14');
+  expect(html).not.toContain('30');
+});
+
+it('uses live free daily and storage allowances without losing the paid offer', () => {
+  Object.assign(state.status!, { todayLimit: 25, storage: { usedBytes: 0, limitBytes: 64 * 1048576, retentionDays: 2, imageLimitBytes: 50 * 1048576, fileLimitBytes: 0, canUploadFiles: false } });
+  const html = render();
+  expect(html).toContain('每日可新增 25 条记录');
+  expect(html).toContain('64 MB 附件空间，图片保留 2 天');
+  expect(html).toContain('1 GB 附件空间，图片和文件保留 30 天');
 });

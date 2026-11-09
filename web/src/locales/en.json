@@ -142,9 +142,9 @@
   "image_preview.load_failed": "Image Load Failed",
   "image_preview.tap_to_retry": "Tap to Retry",
   "common.send": "Send",
-  "storage.free_benefits": "200 MB attachment storage; images kept for 3 days",
+  "storage.free_benefits": "100 MB attachment storage; images kept for 3 days",
   "storage.paid_files": "Unlock file transfers, up to 200 MB per file",
-  "storage.paid_capacity": "2 GB attachment storage; images and files kept for 30 days",
+  "storage.paid_capacity": "1 GB attachment storage; images and files kept for 30 days",
   "storage.retention_notice": "Attachments are removed when they expire. Download them in time. Text records are not subject to attachment retention limits.",
   "storage.paid_required": "File transfers require a paid plan",
   "storage.full": "Transfer storage is full. Delete attachments you no longer need, then try again.",
@@ -371,5 +371,10 @@
       "Lavender": "Lavender"
     },
     "done": "Done"
-  }
+  },
+  "storage.current_free_capacity": "{{capacity}} attachment storage; images kept for {{days}} days",
+  "storage.current_paid_capacity": "{{capacity}} attachment storage; images and files kept for {{days}} days",
+  "access.mainland_price_note": "Mainland China App Store price; confirm in app",
+  "access.current_daily_rule": "Add {{count}} records per day",
+  "storage.current_paid_files": "Unlock file transfers, up to {{size}} per file"
 }
