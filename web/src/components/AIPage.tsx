@@ -32,12 +32,6 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const pageRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const connectionScroll = useRef(0);
-  const pinnedModal = useRef<{ element: HTMLElement; height: string } | null>(null);
-  const releaseModalHeight = () => {
-    if (pinnedModal.current) pinnedModal.current.element.style.height = pinnedModal.current.height;
-    pinnedModal.current = null;
-  };
-  useEffect(() => () => releaseModalHeight(), []);
   const pendingTransition = useRef<{ height: number; scroll: number; focus: string | null } | null>(null);
   const animations = useRef<Animation[]>([]);
   const scroller = () => pageRef.current?.closest<HTMLElement>('.modal-scroll-body') ?? pageRef.current;
@@ -47,7 +41,6 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     pendingTransition.current = { height, scroll, focus };
   };
   const changeGuide = (visible: boolean) => {
-    releaseModalHeight();
     setPreviewVisible(false);
     if (visible) connectionScroll.current = scroller()?.scrollTop ?? 0;
     prepareTransition(visible ? 0 : connectionScroll.current, visible ? '.ai-guide-back' : '[data-guide-link]');
@@ -146,13 +139,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
       <p className="ai-intro">{t('ai_refined.intro')}</p>
       <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(`ai_refined.detail${step}`)}</p></div></li>)}</ol>
       <button className="ai-primary ai-copy" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_refined.copy')}</span></button>
-      <div className="ai-copy-foot"><p className="ai-tip">{t('ai_refined.tip')}</p><button className="ai-text-link" aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => {
-        if (!previewVisible) {
-          const modal = pageRef.current?.closest<HTMLElement>('.ai-management-modal');
-          if (modal) { pinnedModal.current = { element: modal, height: modal.style.height }; modal.style.height = `${modal.getBoundingClientRect().height}px`; }
-        } else releaseModalHeight();
-        setPreviewVisible(value => !value);
-      }}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
+      <div className="ai-copy-foot"><p className="ai-tip">{t('ai_refined.tip')}</p><button className="ai-text-link" aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => setPreviewVisible(value => !value)}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
       {previewVisible && <div className="ai-prompt" id="ai-prompt-content">{connectionPrompt}</div>}
     </section>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
