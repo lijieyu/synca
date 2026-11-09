@@ -1,0 +1,1005 @@
+{
+  "before": [
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "setMarkedText.end.nextTurn",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {3.12939453125, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 1,
+      "marked": "{0, 1}",
+      "origin": "{0, 8}",
+      "pid": 19326,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{1, 0}",
+      "sequence": 297,
+      "time": 1811.9454997083335,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {3.12939453125, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 34}}",
+      "clipBounds": "{{0, 0}, {561, 34}}",
+      "event": "insertText.end.nextTurn",
+      "extraLine": "{{0, 2}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 34}}",
+      "glyphs": [
+        {
+          "baseline": 21,
+          "index": 0,
+          "line": "{{0, 0}, {561, 16}}",
+          "location": "{0, 13}",
+          "used": "{{0, 0}, {12.898832684824903, 16}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 1,
+      "marked": "{1, 0}",
+      "origin": "{0, 8}",
+      "pid": 19326,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 34}}",
+      "scrolling": false,
+      "selected": "{1, 0}",
+      "sequence": 315,
+      "time": 1812.9479382916668,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        }
+      },
+      "usedRect": "{{0, 0}, {12.898832684824903, 16}}",
+      "windowFrame": "{{351, 24}, {561, 34}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 34}}",
+      "event": "setMarkedText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {17.653227216074903, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{14.523832684824903, 14}",
+          "used": "{{0, 0}, {17.653227216074903, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 2,
+      "marked": "{1, 1}",
+      "origin": "{0, 8}",
+      "pid": 19326,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 1}"
+        },
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{1, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 34}}",
+      "scrolling": false,
+      "selected": "{2, 0}",
+      "sequence": 327,
+      "time": 1814.1995599583333,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {17.653227216074903, 19}}",
+      "windowFrame": "{{351, 23}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 34}}",
+      "clipBounds": "{{0, 0}, {561, 34}}",
+      "event": "insertText.end.nextTurn",
+      "extraLine": "{{0, 2}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 34}}",
+      "glyphs": [
+        {
+          "baseline": 21,
+          "index": 0,
+          "line": "{{0, 0}, {561, 16}}",
+          "location": "{0, 13}",
+          "used": "{{0, 0}, {25.797665369649806, 16}}"
+        },
+        {
+          "baseline": 21,
+          "index": 1,
+          "line": "{{0, 0}, {561, 16}}",
+          "location": "{12.898832684824903, 13}",
+          "used": "{{0, 0}, {25.797665369649806, 16}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 2,
+      "marked": "{2, 0}",
+      "origin": "{0, 8}",
+      "pid": 19326,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 2}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 34}}",
+      "scrolling": false,
+      "selected": "{2, 0}",
+      "sequence": 370,
+      "time": 1816.7776494583334,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        }
+      },
+      "usedRect": "{{0, 0}, {25.797665369649806, 16}}",
+      "windowFrame": "{{351, 24}, {561, 34}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 34}}",
+      "event": "setMarkedText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{12.898832684824903, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 2,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{27.422665369649806, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 3,
+      "marked": "{2, 1}",
+      "origin": "{0, 8}",
+      "pid": 19326,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 2}"
+        },
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{2, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 34}}",
+      "scrolling": false,
+      "selected": "{3, 0}",
+      "sequence": 378,
+      "time": 1817.7086347083334,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {30.552059900899806, 19}}",
+      "windowFrame": "{{351, 23}, {561, 35}}"
+    }
+  ],
+  "after": [
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "insertText.end.nextTurn",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {12.898832684824903, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 1,
+      "marked": "{1, 0}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{1, 0}",
+      "sequence": 361,
+      "time": 2232.8740975833334,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        }
+      },
+      "usedRect": "{{0, 0}, {12.898832684824903, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "setMarkedText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {17.653227216074903, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{14.523832684824903, 14}",
+          "used": "{{0, 0}, {17.653227216074903, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 2,
+      "marked": "{1, 1}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 1}"
+        },
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{1, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{2, 0}",
+      "sequence": 369,
+      "time": 2233.157758875,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {17.653227216074903, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "insertText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {25.797665369649806, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{12.898832684824903, 14}",
+          "used": "{{0, 0}, {25.797665369649806, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 2,
+      "marked": "{2, 0}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 2}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{2, 0}",
+      "sequence": 381,
+      "time": 2233.8920757916667,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        }
+      },
+      "usedRect": "{{0, 0}, {25.797665369649806, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "setMarkedText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{12.898832684824903, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 2,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{27.422665369649806, 14}",
+          "used": "{{0, 0}, {30.552059900899806, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 3,
+      "marked": "{2, 1}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 2}"
+        },
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{2, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{3, 0}",
+      "sequence": 396,
+      "time": 2234.1498894166666,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {30.552059900899806, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "insertText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {38.696498054474709, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{12.898832684824903, 14}",
+          "used": "{{0, 0}, {38.696498054474709, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 2,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{25.797665369649806, 14}",
+          "used": "{{0, 0}, {38.696498054474709, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 3,
+      "marked": "{3, 0}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 3}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{3, 0}",
+      "sequence": 408,
+      "time": 2234.245288375,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        }
+      },
+      "usedRect": "{{0, 0}, {38.696498054474709, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    },
+    {
+      "bounds": "{{0, 0}, {561, 35}}",
+      "clipBounds": "{{0, 0}, {561, 35}}",
+      "event": "setMarkedText.end",
+      "extraLine": "{{0, 5}, {0, 0}}",
+      "font": {
+        "ascender": 12.568359375,
+        "descender": -2.7421875,
+        "leading": 0,
+        "name": ".PingFangUITextSC-Regular",
+        "size": 13
+      },
+      "frame": "{{0, 0}, {561, 35}}",
+      "glyphs": [
+        {
+          "baseline": 22,
+          "index": 0,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{0, 14}",
+          "used": "{{0, 0}, {43.450892585724709, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 1,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{12.898832684824903, 14}",
+          "used": "{{0, 0}, {43.450892585724709, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 2,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{25.797665369649806, 14}",
+          "used": "{{0, 0}, {43.450892585724709, 19}}"
+        },
+        {
+          "baseline": 22,
+          "index": 3,
+          "line": "{{0, 0}, {561, 19}}",
+          "location": "{40.321498054474709, 14}",
+          "used": "{{0, 0}, {43.450892585724709, 19}}"
+        }
+      ],
+      "inset": "{0, 8}",
+      "length": 4,
+      "marked": "{3, 1}",
+      "origin": "{0, 8}",
+      "pid": 24861,
+      "preferredFont": {
+        "ascender": 14.086487064830362,
+        "descender": -4.224059810169637,
+        "leading": 0.6894531250000009,
+        "name": ".SFNS-Regular",
+        "size": 13
+      },
+      "runs": [
+        {
+          "font": {
+            "ascender": 12.568359375,
+            "descender": -2.7421875,
+            "leading": 0,
+            "name": ".PingFangUITextSC-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{0, 3}"
+        },
+        {
+          "font": {
+            "ascender": 14.086487064830362,
+            "descender": -4.224059810169637,
+            "leading": 0.6894531250000009,
+            "name": ".SFNS-Regular",
+            "size": 13
+          },
+          "paragraph": {
+            "lineHeightMultiple": 0,
+            "lineSpacing": 0,
+            "maximumLineHeight": 0,
+            "minimumLineHeight": 0,
+            "paragraphSpacing": 0
+          },
+          "range": "{3, 1}"
+        }
+      ],
+      "scale": 2,
+      "scrollFrame": "{{0, 0}, {561, 35}}",
+      "scrolling": false,
+      "selected": "{4, 0}",
+      "sequence": 423,
+      "time": 2234.415411541667,
+      "typing": {
+        "font": {
+          "ascender": 14.086487064830362,
+          "descender": -4.224059810169637,
+          "leading": 0.6894531250000009,
+          "name": ".SFNS-Regular",
+          "size": 13
+        },
+        "paragraph": {
+          "lineHeightMultiple": 0,
+          "lineSpacing": 0,
+          "maximumLineHeight": 0,
+          "minimumLineHeight": 0,
+          "paragraphSpacing": 0
+        }
+      },
+      "usedRect": "{{0, 0}, {43.450892585724709, 19}}",
+      "windowFrame": "{{351, 24}, {561, 35}}"
+    }
+  ]
+}
