@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from './Modal';
-import { Check } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MessageCategoryColor } from '../api/client';
 export const CATEGORY_PALETTE: { name: string; hex: string; color: MessageCategoryColor }[] = [
@@ -12,9 +12,9 @@ export const CATEGORY_PALETTE: { name: string; hex: string; color: MessageCatego
 export function categoryStyle(colorHex?: string | null): React.CSSProperties | undefined {
   return CATEGORY_PALETTE.some(p => p.hex === colorHex) ? { '--category-accent': colorHex } as React.CSSProperties : undefined;
 }
-export function CategoryPalette({ color, colorHex, onChange, expanded = false }: {
+export function CategoryPalette({ color, colorHex, onChange, expanded = false, showChevron = false }: {
   color: MessageCategoryColor; colorHex?: string | null;
-  onChange: (color: MessageCategoryColor, hex: string) => void; expanded?: boolean;
+  onChange: (color: MessageCategoryColor, hex: string) => void; expanded?: boolean; showChevron?: boolean;
 }) {
   const { t } = useTranslation();
   const supportsPopover = typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function';
@@ -52,11 +52,11 @@ export function CategoryPalette({ color, colorHex, onChange, expanded = false }:
   </div>;
   if (expanded) return swatches;
   return <div className="category-palette">
-    <button ref={trigger} type="button" className={`palette-trigger color-${color}`} style={categoryStyle(colorHex)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => {
+    <button ref={trigger} type="button" className={`palette-trigger color-${color}${showChevron ? ' palette-trigger-dropdown' : ''}`} style={categoryStyle(colorHex)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => {
       const bounds = trigger.current!.getBoundingClientRect();
       setPosition({ left: Math.max(12, Math.min(bounds.left, window.innerWidth - 208)), top: Math.max(12, Math.min(bounds.bottom + 4, window.innerHeight - 208)) });
       setOpen(value => !value);
-    }}><span /></button>
+    }}><span aria-hidden="true" />{showChevron && <ChevronDown size={12} aria-hidden="true" />}</button>
     {open && (supportsPopover ? swatches : <Modal title={t('polish.color')} message="" hideActions onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)}>
       <CategoryPalette expanded color={color} colorHex={colorHex} onChange={(nextColor, hex) => { onChange(nextColor, hex); setOpen(false); }} />
     </Modal>)}

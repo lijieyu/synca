@@ -717,6 +717,7 @@ struct MessageListView: View {
                         syncManager.selectCategory(syncManager.allCategoryPseudoId)
                     }
                     .id(syncManager.allCategoryPseudoId)
+                    .padding(.trailing, 12)
 
                     ForEach(syncManager.categories) { category in
                         categoryChip(
@@ -759,14 +760,16 @@ struct MessageListView: View {
     private func categoryChip(title: String, color: Color, neutral: Bool = false, isSelected: Bool, badgeCount: Int = 0, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
+                if neutral { Image(systemName: "square.grid.2x2").font(.system(size: 13)) }
                 Text(title).font(.subheadline.weight(isSelected ? .semibold : .regular))
                 if badgeCount > 0 { Text(badgeCount, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
                     .padding(.horizontal, 5).padding(.vertical, 2)
-                    .background(color.opacity(isSelected ? 0.25 : 0.14), in: Capsule()) }
+                    .background((neutral && isSelected ? Color.syncaPageBackground : color).opacity(isSelected ? 0.25 : 0.14), in: Capsule()) }
             }
-            .foregroundStyle(neutral ? Color.syncaPageBackground : Color.primary)
+            .foregroundStyle(neutral && isSelected ? Color.syncaPageBackground : Color.primary)
             .padding(.horizontal, 11).padding(.vertical, 6)
-            .background(neutral ? Color.primary.opacity(isSelected ? 1 : 0.82) : color.opacity(isSelected ? 0.24 : 0.10), in: Capsule())
+            .background(neutral ? Color.primary.opacity(isSelected ? 1 : 0.06) : color.opacity(isSelected ? 0.24 : 0.10), in: Capsule())
+            .overlay { if neutral && !isSelected { Capsule().strokeBorder(Color.primary.opacity(0.10), lineWidth: 1) } }
             .frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -2277,9 +2280,11 @@ private struct NewMessageCategorySheet: View {
 
     let category: SyncaMessageCategory?
     let onManageCategories: () -> Void
+    let showsManageCategories: Bool
 
-    init(category: SyncaMessageCategory? = nil, onManageCategories: @escaping () -> Void) {
+    init(category: SyncaMessageCategory? = nil, showsManageCategories: Bool = true, onManageCategories: @escaping () -> Void) {
         self.category = category
+        self.showsManageCategories = showsManageCategories
         self.onManageCategories = onManageCategories
         _name = State(initialValue: category?.name ?? "")
         _color = State(initialValue: category?.color ?? .sky)
@@ -2385,16 +2390,18 @@ private struct NewMessageCategorySheet: View {
 
                 Section("message_category.color_label") { paletteButton }
 
-                Section {
-                    Button {
-                        requestClose(manage: true)
-                    } label: {
-                        HStack {
-                            Label("message_list.manage_categories", systemImage: "slider.horizontal.3")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.tertiary)
+                if showsManageCategories {
+                    Section {
+                        Button {
+                            requestClose(manage: true)
+                        } label: {
+                            HStack {
+                                Label("message_list.manage_categories", systemImage: "slider.horizontal.3")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
                     }
                 }
@@ -2408,7 +2415,7 @@ private struct NewMessageCategorySheet: View {
                     Button("common.cancel") { requestClose() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(category == nil ? "message_category.add_action" : "common.save") {
+                    Button(category == nil ? "common.add" : "common.save") {
                         createCategory()
                     }
                     .disabled(!canCreate)
@@ -2448,7 +2455,10 @@ private struct NewMessageCategorySheet: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
-                    paletteButton
+                    CategoryPresetPicker(selectedHex: colorHex, legacy: color, columnCount: 8) { preset in
+                        color = preset.legacy
+                        colorHex = preset.hex
+                    }
                 }
             }
             .padding(20)
@@ -2456,14 +2466,16 @@ private struct NewMessageCategorySheet: View {
             Divider()
 
             HStack(spacing: 12) {
-                Button {
-                    requestClose(manage: true)
-                } label: {
-                    Text("message_list.manage_categories", bundle: .main)
-                        .font(.callout.weight(.semibold))
+                if showsManageCategories {
+                    Button {
+                        requestClose(manage: true)
+                    } label: {
+                        Text("message_list.manage_categories", bundle: .main)
+                            .font(.callout.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -2507,9 +2519,8 @@ private struct MessageCategoryManagerSheet: View {
     @State private var pendingDelete: SyncaMessageCategory?
     @State private var busy = false
     @State private var failed = false
-    @State private var newName = ""
     @State private var adding = false
-    @State private var dragPayload: String?
+    @State private var previewOrder: [String]?
     @State private var draftNames: [String: String] = [:]
 
     private func finish() {
@@ -2566,81 +2577,89 @@ private struct MessageCategoryManagerSheet: View {
         move(category.id, to: custom[index + offset].id)
     }
 
+    private func categoryRow(_ category: SyncaMessageCategory) -> some View {
+        InlineCategoryRow(category: category, busy: busy, draftName: draftNames[category.id],
+            onRename: { rename(category, name: $0) },
+            onDraftName: { draftNames[category.id] = $0 },
+            onColor: { preset in
+                perform { await syncManager.updateCategory(id: category.id, color: preset.legacy, colorHex: preset.hex) }
+            },
+            onDelete: { pendingDelete = category },
+            onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) })
+    }
+
+    private var addButton: some View {
+        Button { adding = true } label: {
+            Label("message_category.add_action", systemImage: "plus")
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        }.buttonStyle(.plain).disabled(busy)
+    }
+
+    #if os(iOS)
+    private var customCategories: [SyncaMessageCategory] {
+        let categories = syncManager.categories.filter { !$0.isDefault }
+        guard let previewOrder else { return categories }
+        let lookup = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+        return previewOrder.compactMap { lookup[$0] }
+    }
+
+    private func reorder(from source: IndexSet, to destination: Int) {
+        guard !busy else { return }
+        var ids = customCategories.map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        guard ids != customCategories.map(\.id) else { return }
+        previewOrder = ids
+        busy = true
+        Task { @MainActor in
+            let succeeded = await syncManager.reorderCategories(ids: ids)
+            // The authoritative list changes only on success; clearing the preview rolls back failure.
+            previewOrder = nil
+            busy = false
+            if !succeeded { failed = true }
+        }
+    }
+
+    private var rows: some View {
+        List {
+            Section {
+                ForEach(syncManager.categories.filter(\.isDefault)) { category in
+                    categoryRow(category)
+                }
+                ForEach(customCategories) { category in
+                    categoryRow(category)
+                        .deleteDisabled(true)
+                        .moveDisabled(busy)
+                }
+                .onMove(perform: reorder)
+            }
+            Section { addButton }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .environment(\.editMode, .constant(.active))
+    }
+    #else
     private var rows: some View {
         VStack(spacing: 0) {
-            #if os(macOS)
             MacCategoryReorderStack(categories: syncManager.categories, spacing: 0, handleOnly: true, disabled: busy, onCommit: { ids in
                 busy = true
                 if !(await syncManager.reorderCategories(ids: ids)) { failed = true }
                 busy = false
             }) { category in
-                InlineCategoryRow(category: category, busy: busy,
-                    onRename: { rename(category, name: $0) },
-                    onDraftName: { draftNames[category.id] = $0 },
-                    onColor: { preset in
-                        perform { await syncManager.updateCategory(id: category.id, color: preset.legacy, colorHex: preset.hex) }
-                    },
-                    onDelete: { pendingDelete = category },
-                    onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) })
+                categoryRow(category)
             }
-            #else
-            ForEach(syncManager.categories) { category in
-                InlineCategoryRow(category: category, busy: busy,
-                    onRename: { rename(category, name: $0) },
-                    onDraftName: { draftNames[category.id] = $0 },
-                    onColor: { preset in
-                        perform { await syncManager.updateCategory(id: category.id, color: preset.legacy, colorHex: preset.hex) }
-                    },
-                    onDelete: { pendingDelete = category },
-                    onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) })
-                    .onDrag {
-                        guard !category.isDefault, !busy else { return NSItemProvider() }
-                        let payload = CategoryReorderDrag.payload(for: category.id)
-                        dragPayload = payload
-                        return CategoryReorderDrag.provider(payload)
-                    }
-                    .onDrop(of: [CategoryReorderDrag.type], isTargeted: nil) { providers in
-                        guard !category.isDefault, !busy, let expected = dragPayload else { return false }
-                        dragPayload = nil
-                        return CategoryReorderDrag.load(providers, expected: expected) { id in
-                            move(id, to: category.id)
-                        }
-                    }
-                if category.id != syncManager.categories.last?.id { Divider().padding(.horizontal, 16) }
-            }
-            #endif
-            if adding {
-                HStack {
-                    TextField("message_category.name_placeholder", text: $newName).onSubmit(addCategory)
-                    Button("message_category.add_action", action: addCategory).disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
-                    Button("common.cancel") { adding = false; newName = "" }
-                }.padding(16)
-            }
-            Button { adding = true } label: {
-                Label("message_category.add_action", systemImage: "plus")
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }.buttonStyle(.plain).padding(16).disabled(busy || adding)
+            addButton.padding(16)
         }
         .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 12))
         .padding(20)
     }
-
-    private func addCategory() {
-        let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-        guard !syncManager.categories.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else { failed = true; return }
-        perform {
-            guard await syncManager.createCategory(name: name, color: .sky) != nil else { return false }
-            adding = false; newName = ""
-            return true
-        }
-    }
+    #endif
 
     var body: some View {
         Group {
             #if os(iOS)
             NavigationStack {
-                ScrollView { rows }
+                rows
                     .background(Color.syncaPageBackground)
                     .navigationTitle("message_category.section_title")
                     .navigationBarTitleDisplayMode(.inline)
@@ -2653,6 +2672,15 @@ private struct MessageCategoryManagerSheet: View {
                 ScrollView { rows }.frame(maxHeight: 540)
             }.frame(width: 480, height: min(620, CGFloat(syncManager.categories.count) * 64 + 180))
             #endif
+        }
+        .sheet(isPresented: $adding) {
+            NewMessageCategorySheet(showsManageCategories: false, onManageCategories: { adding = false })
+                .environmentObject(syncManager)
+                .syncaPreferences()
+                #if os(iOS)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                #endif
         }
         .interactiveDismissDisabled(busy)
         .alert("message_category.save_failed_title", isPresented: $failed) {
@@ -2671,6 +2699,7 @@ private struct MessageCategoryManagerSheet: View {
 private struct InlineCategoryRow: View {
     let category: SyncaMessageCategory
     let busy: Bool
+    let draftName: String?
     let onRename: (String) -> Void
     let onDraftName: (String) -> Void
     let onColor: (CategoryColorPreset) -> Void
@@ -2684,32 +2713,56 @@ private struct InlineCategoryRow: View {
     var body: some View {
         HStack(spacing: 4) {
             Button { palettePresented = true } label: {
-                Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex))
-                    .frame(width: 20, height: 20).frame(width: 44, height: 44)
+                HStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(categoryDisplayColor(category.color, hex: category.colorHex))
+                        .frame(width: 18, height: 18)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                }.frame(width: 44, height: 44)
             }.buttonStyle(.plain).accessibilityLabel(Text("message_category.color_label"))
                 .popover(isPresented: $palettePresented) {
                     CategoryPresetPicker(selectedHex: category.colorHex, legacy: category.color) { preset in
                         palettePresented = false; onColor(preset)
                     }.modifier(CompactCategoryPopover())
                 }
-            if category.isDefault {
-                Text("message_category.default_badge").frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                TextField("message_category.name_placeholder", text: $name)
+                TextField("message_category.name_placeholder", text: category.isDefault ? .constant(String(syncaLocalized: "message_category.default_badge")) : $name)
                     .textFieldStyle(.plain).focused($editing)
+                    #if os(iOS)
+                    // Keep the input independent of List's persistent reorder mode.
+                    .environment(\.editMode, .constant(.inactive))
+                    #endif
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+                    .accessibilityLabel(Text("message_category.name_placeholder"))
+                    #if os(iOS)
+                    .contentShape(Rectangle())
+                    .onTapGesture { editing = true }
+                    #endif
+                    .disabled(category.isDefault)
                     .onSubmit { editing = false }
                     .onChange(of: name) { onDraftName($0) }
                     .onChange(of: editing) { focused in if !focused { onRename(name) } }
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash").frame(width: 44, height: 44)
                 }.buttonStyle(.plain).accessibilityLabel(Text("message_category.delete_action"))
+                    .disabled(category.isDefault)
+                    .opacity(category.isDefault ? 0.3 : 1)
+                #if os(macOS)
                 Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
-                    .frame(width: 28, height: 44).accessibilityHidden(true)
-            }
+                    .frame(width: 28, height: 44).opacity(category.isDefault ? 0.3 : 1).accessibilityHidden(true)
+                #else
+                if category.isDefault {
+                    Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
+                        .frame(width: 24, height: 44).opacity(0.3).accessibilityHidden(true)
+                }
+                #endif
         }
         .font(.body).padding(.horizontal, 8).padding(.vertical, 4)
         .disabled(busy)
-        .onAppear { name = category.name }
+        .onAppear { name = draftName ?? category.name }
         // A returned category confirms a successful rename. Busy ending alone does not:
         // keep the local draft on network failure so Done or submit can retry it.
         .onChange(of: category.name) { if !editing { name = $0 } }
@@ -2732,9 +2785,10 @@ private struct CompactCategoryPopover: ViewModifier {
 private struct CategoryPresetPicker: View {
     let selectedHex: String?
     let legacy: MessageCategoryColor
+    var columnCount: Int = 4
     let onSelect: (CategoryColorPreset) -> Void
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 0), count: 4), spacing: 0) {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 0), count: columnCount), spacing: 0) {
             ForEach(CategoryColorPreset.all) { preset in
                 let colorNameKey = "message_category.color.\(preset.name)"
                 let selected = selectedHex?.lowercased() == preset.hex || (selectedHex == nil && CategoryColorPreset.all.first(where: { $0.legacy == legacy })?.hex == preset.hex)
@@ -2747,7 +2801,7 @@ private struct CategoryPresetPicker: View {
                     .accessibilityLabel(Text(verbatim: AppLocalization.string(colorNameKey)))
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
-        }.padding(10).frame(width: 196)
+        }.padding(10).frame(width: CGFloat(columnCount) * 44 + 20)
     }
 }
 

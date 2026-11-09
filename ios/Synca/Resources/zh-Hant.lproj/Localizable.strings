@@ -13,6 +13,7 @@
 "common.cancel" = "取消";
 "common.delete" = "刪除";
 "common.copy" = "拷貝";
+"common.add" = "加入";
 "common.save" = "儲存";
 "common.done" = "完成";
 "common.all" = "全部";

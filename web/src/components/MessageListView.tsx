@@ -11,7 +11,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid } from 'lucide-react';
+import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -580,18 +580,16 @@ export const MessageListView: React.FC = () => {
               <div className="category-manager-rows" ref={managerSort.containerRef}>
                 {categoryManagerRows.map((row, index) => (
                   <div key={row.clientId} className="category-manager-row" data-sort-id={row.isDefault ? undefined : row.clientId}>
-                    <CategoryPalette color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
+                    <CategoryPalette showChevron color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
                     <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />
-                    {!row.isDefault && <div className="category-manager-row-actions">
-                      <button type="button" className="category-sort-handle" aria-label={`${t('polish.reorder')} ${row.name}`} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" onPointerDown={e => {
+                    <div className="category-manager-row-actions">
+                      <button type="button" className="category-sort-handle" disabled={row.isDefault} aria-label={`${t('polish.reorder')} ${row.name}`} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" onPointerDown={e => {
                         // Avoid blur starting an independent save before drag activation.
                         if (document.activeElement?.classList.contains('category-manager-name')) e.preventDefault();
-                        managerSort.begin(e, row.clientId, true);
-                      }} onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
-                      <button type="button" onClick={() => moveCategoryManagerRow(index,-1)} disabled={index <= 1} aria-label={`${t('message_category.move_up')} ${row.name}`}><ChevronUp size={17}/></button>
-                      <button type="button" onClick={() => moveCategoryManagerRow(index,1)} disabled={index === categoryManagerRows.length-1} aria-label={`${t('message_category.move_down')} ${row.name}`}><ChevronDown size={17}/></button>
-                      <button type="button" className="category-manager-delete" onClick={() => setCategoryManagerDeleteTarget(row)} aria-label={`${t('message_category.delete_action')} ${row.name}`}><Trash2 size={17}/></button>
-                    </div>}
+                        if (!row.isDefault) managerSort.begin(e, row.clientId, true);
+                      }} onKeyDown={e => { if(!row.isDefault && e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
+                      <button type="button" className="category-manager-delete" disabled={row.isDefault} onClick={() => setCategoryManagerDeleteTarget(row)} aria-label={`${t('message_category.delete_action')} ${row.name}`}><Trash2 size={17}/></button>
+                    </div>
                   </div>
                 ))}
               </div>
