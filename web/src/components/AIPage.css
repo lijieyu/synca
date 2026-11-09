@@ -20,7 +20,7 @@
 .ai-page button:disabled { opacity:.5; cursor:default; }
 .ai-page :focus-visible { outline:2px solid var(--ai-accent); outline-offset:3px; }
 .ai-page .ai-primary { background:var(--ai-button); color:#fff; font-weight:500; }
-.ai-page .ai-muted,.ai-page .ai-intro,.ai-page .ai-tip { color:var(--ai-muted); }
+.ai-page .ai-muted,.ai-page .ai-intro { color:var(--ai-muted); }
 .ai-page .ai-muted { font-size:12px; line-height:1.7; }
 .ai-page .ai-intro { font-size:13px; line-height:1.65; }
 .ai-page .ai-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
@@ -47,11 +47,11 @@
 .ai-page .ai-steps strong { font-weight:600; }
 .ai-page .ai-steps p { margin-top:3px; color:var(--ai-muted); font-size:12px; line-height:1.6; }
 .ai-page .ai-copy { width:100%; min-height:40px; }
-.ai-page .ai-copy-foot { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:6px; color:var(--ai-muted); font-size:12px; }
+.ai-page .ai-copy-foot { display:flex; justify-content:flex-end; align-items:flex-start; gap:8px; margin-top:6px; color:var(--ai-muted); font-size:12px; }
 .ai-page .ai-prompt { padding:12px; margin-top:8px; border-radius:8px; background:var(--ai-subtle); color:var(--ai-muted); font-size:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
-.ai-page .ai-tip { margin-top:20px; font-size:12px; line-height:1.65; }
+.ai-page .ai-copy-foot .ai-text-link { min-width:76px; justify-content:flex-end; }
 .ai-page .ai-initial-loading { min-height:200px; display:grid; place-items:center; color:var(--ai-muted); }
-.ai-page .ai-notice:not(:empty) { padding:10px 0; color:var(--ai-muted); }
+.ai-page .ai-notice { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .ai-page .ai-error { padding:12px; background:var(--ai-subtle); border-radius:8px; margin:12px 0; overflow-wrap:anywhere; }
 .ai-page .ai-error button { margin-left:8px; }
 .ai-page .ai-consent p,.ai-page .ai-manage p { margin:12px 0; }
@@ -82,7 +82,7 @@
 
 .ai-page .ai-tutorial-heading { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:flex-start; gap:6px 8px; margin-bottom:8px; }
 .ai-page .ai-tutorial-heading h1 { margin:0; text-wrap:balance; }
-.ai-page .ai-pro-badge { flex-shrink:0; padding:2px 6px; border-radius:5px; white-space:nowrap; background:light-dark(#eee8fc,#3a2e50); color:light-dark(#6840b3,#d3b5ff); font-size:10px; line-height:16px; font-weight:500; }
+.ai-page .ai-pro-badge { flex-shrink:0; padding:1px 5px; border-radius:4px; white-space:nowrap; background:light-dark(#eee8fc,#3a2e50); color:light-dark(#6840b3,#d3b5ff); font-size:9px; line-height:14px; font-weight:400; }
 @media(max-width:480px) {
  .ai-page .ai-tutorial-heading h1 { font-size:20px; line-height:1.4; }
  .ai-page .ai-intro { font-size:15px; line-height:1.6; }
@@ -92,5 +92,6 @@
  .ai-page .ai-steps strong { font-size:16px; }
  .ai-page .ai-steps p { font-size:14px; line-height:1.6; margin-top:5px; }
  .ai-page .ai-copy { min-height:48px; font-size:15px; }
- .ai-page .ai-tip { margin-top:10px; font-size:13px; }
 }
+/* Reserve the scrollbar before revealing the prompt so the action row stays put. */
+.ai-management-modal .modal-scroll-body { scrollbar-gutter:stable; }

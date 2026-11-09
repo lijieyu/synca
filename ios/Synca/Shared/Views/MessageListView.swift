@@ -131,9 +131,9 @@ struct MessageListView: View {
     @State private var sidebarResizeStart: CGFloat?
     @State private var desktopAvailableWidth: CGFloat = 800
     @State private var sidebarResizeHovered = false
-    private var sidebarMaximumWidth: CGFloat { max(220, min(360, desktopAvailableWidth - 480)) }
+    private var sidebarMaximumWidth: CGFloat { max(200, min(360, desktopAvailableWidth - 480)) }
     private var desktopSidebarWidth: CGFloat {
-        min(sidebarMaximumWidth, max(220, sidebarLiveWidth ?? (preferredSidebarWidth.isFinite ? preferredSidebarWidth : 220)))
+        min(sidebarMaximumWidth, max(200, sidebarLiveWidth ?? (preferredSidebarWidth.isFinite ? preferredSidebarWidth : 220)))
     }
     #endif
     @State private var showAppSettings = false
@@ -563,35 +563,29 @@ struct MessageListView: View {
         .padding(.horizontal, 12).frame(width: desktopSidebarWidth)
         .background(Color(nsColor: .controlBackgroundColor))
         .overlay(alignment: .trailing) {
-            Rectangle().fill(Color.clear).frame(width: 8).contentShape(Rectangle())
+            MacSidebarResizeHandle(
+                onBegin: { sidebarResizeStart = desktopSidebarWidth },
+                onDrag: { delta in
+                    sidebarLiveWidth = min(sidebarMaximumWidth, max(200, (sidebarResizeStart ?? desktopSidebarWidth) + delta))
+                },
+                onEnd: {
+                    preferredSidebarWidth = desktopSidebarWidth
+                    sidebarLiveWidth = nil; sidebarResizeStart = nil
+                },
+                onReset: { preferredSidebarWidth = 220; sidebarLiveWidth = nil; sidebarResizeStart = nil },
+                onHover: { sidebarResizeHovered = $0 }
+            ).frame(width: 8)
                 .overlay(alignment: .trailing) {
                     Rectangle().fill(Color.secondary.opacity(sidebarResizeHovered || sidebarResizeStart != nil ? 0.45 : 0)).frame(width: 2)
                         .allowsHitTesting(false)
                 }
-                .onHover { hovering in
-                    sidebarResizeHovered = hovering
-                    if hovering { NSCursor.resizeLeftRight.set() } else if sidebarResizeStart == nil { NSCursor.arrow.set() }
-                }
-                .onTapGesture(count: 2) { preferredSidebarWidth = 220; sidebarLiveWidth = nil }
-                .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .global)
-                    .onChanged { value in
-                        if sidebarResizeStart == nil { sidebarResizeStart = desktopSidebarWidth }
-                        sidebarLiveWidth = min(sidebarMaximumWidth, max(220, (sidebarResizeStart ?? desktopSidebarWidth) + value.translation.width))
-                        NSCursor.resizeLeftRight.set()
-                    }
-                    .onEnded { _ in
-                        preferredSidebarWidth = desktopSidebarWidth
-                        sidebarLiveWidth = nil; sidebarResizeStart = nil
-                        if !sidebarResizeHovered { NSCursor.arrow.set() }
-                    })
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text("navigation.resize_sidebar"))
                 .accessibilityValue(Text("\(Int(desktopSidebarWidth))"))
                 .accessibilityAdjustableAction { direction in
                     let change: CGFloat = direction == .increment ? 10 : -10
-                    preferredSidebarWidth = min(sidebarMaximumWidth, max(220, desktopSidebarWidth + change))
+                    preferredSidebarWidth = min(sidebarMaximumWidth, max(200, desktopSidebarWidth + change))
                 }
-                .onDisappear { if sidebarResizeHovered || sidebarResizeStart != nil { NSCursor.arrow.set() } }
         }
     }
 
@@ -1107,7 +1101,15 @@ struct MessageListView: View {
         Button { showManagementMenu = false; showCategoryManager = true } label: { Label("message_list.manage_categories", systemImage: "tag") }
         Button { showManagementMenu = false; showAIConnection = true } label: { Label("message_list.connect_ai", systemImage: "sparkles") }
         Divider()
-        Button { showManagementMenu = false; showFeedbackComposer = true } label: { Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right") }
+        Button { showManagementMenu = false; showFeedbackComposer = true } label: {
+            #if os(macOS)
+            Label { Text("message_list.feedback") } icon: {
+                MacFeedbackIcon().stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)).frame(width: 18, height: 18)
+            }
+            #else
+            Label("message_list.feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+            #endif
+        }
         Button { showManagementMenu = false; showAboutInfo = true } label: { Label("message_list.about", systemImage: "info.circle") }
         Button { showManagementMenu = false; showLogoutConfirm = true } label: { Label("message_list.sign_out", systemImage: "rectangle.portrait.and.arrow.right") }
     }
@@ -1254,7 +1256,7 @@ struct MessageListView: View {
 
         #else
         ZStack(alignment: .leading) {
-            MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, focusRequest: composerFocusRequest, onPasteImage: { imageData in
+            MacInputTextView(text: $inputText, height: $inputHeight, isSending: syncManager.isSending, placeholder: AppLocalization.string(syncManager.isSending ? "message_list.sending_placeholder" : "message_list.input_placeholder"), focusRequest: composerFocusRequest, onPasteImage: { imageData in
                 shouldScrollToBottomAfterSend = true
                 Task { await syncManager.sendImage(imageData, categoryId: activeSendCategoryId) }
             }, onPasteFile: { pendingFile in
@@ -1269,14 +1271,7 @@ struct MessageListView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
 
-            if inputText.isEmpty {
-                Text(syncManager.isSending ? "message_list.sending_placeholder" : "message_list.input_placeholder", bundle: .main)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 12)
-                    .padding(.top, 1)
-                    .allowsHitTesting(false)
-            }
+
         }
 
         #endif
@@ -3019,14 +3014,26 @@ extension View {
 }
 
 #if os(macOS)
+private struct ManagementMenuLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 10) {
+            configuration.icon.frame(width: 18, height: 18)
+            configuration.title
+        }
+    }
+}
 private struct ManagementMenuRowStyle: ButtonStyle {
+    @State private var isHovered = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .labelStyle(ManagementMenuLabelStyle())
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10).padding(.vertical, 8)
             .contentShape(Rectangle())
-            .background(configuration.isPressed ? Color.primary.opacity(0.08) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 6))
+            .background(Color.primary.opacity(configuration.isPressed ? 0.14 : isHovered ? 0.08 : 0),
+                        in: RoundedRectangle(cornerRadius: 8))
+            .onHover { isHovered = $0 }
     }
 }
 #endif

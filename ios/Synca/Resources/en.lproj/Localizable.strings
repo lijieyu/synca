@@ -30,8 +30,8 @@
 "message_list.clear_completed_all_categories" = "Delete completed items in all categories.";
 "message_list.clear_completed_category_format" = "Delete completed items in %@.";
 "message_list.clear_completed_all_messages" = "Delete completed items in all messages.";
-"message_list.logout_confirm_title" = "Confirm Sign Out";
-"message_list.logout_confirm_message" = "You will need to sign in again";
+"message_list.logout_confirm_title" = "Log out?";
+"message_list.logout_confirm_message" = "You need to log in again to continue using Synca";
 "message_list.logout" = "Sign Out";
 "message_list.about" = "About Synca";
 "message_list.feedback" = "Feedback";

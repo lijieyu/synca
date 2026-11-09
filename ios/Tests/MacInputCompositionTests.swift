@@ -14,6 +14,8 @@ struct MacInputCompositionTests {
         }
         let host = NSHostingView(rootView: root())
         host.frame = NSRect(x: 0, y: 0, width: 400, height: 34)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = host
         host.layoutSubtreeIfNeeded()
         func find(_ view: NSView) -> PasteAwareMacTextView? {
             if let textView = view as? PasteAwareMacTextView { return textView }
@@ -23,6 +25,7 @@ struct MacInputCompositionTests {
         func settle() { RunLoop.current.run(until: Date().addingTimeInterval(0.02)) }
         func refresh() { host.rootView = root(); host.layoutSubtreeIfNeeded(); settle() }
         settle()
+        precondition(input.shouldDrawPlaceholder, "Empty composer shows placeholder")
         let marker = NSAttributedString.Key("IMERegressionMarker")
         let composing = NSAttributedString(string: "ni", attributes: [
             .font: NSFont.preferredFont(forTextStyle: .body),
@@ -30,6 +33,7 @@ struct MacInputCompositionTests {
             marker: "owned-by-input-method"
         ])
         input.setMarkedText(composing, selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        precondition(!input.shouldDrawPlaceholder, "Marked text must hide placeholder before a binding refresh")
         // Some input methods annotate the marked run after setMarkedText.
         input.textStorage?.addAttribute(marker, value: "owned-by-input-method", range: input.markedRange())
         let markedRange = input.markedRange()
@@ -53,12 +57,16 @@ struct MacInputCompositionTests {
                 input.setMarkedText(pinyin, selectedRange: NSRange(location: pinyin.utf16.count, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
                 refresh()
                 precondition(abs(input.textContainerInset.height - baselinePadding) < 0.5, "Single-line composition must keep stable padding")
+                let used = input.layoutManager!.usedRect(for: input.textContainer!).height
+                precondition(abs(input.textContainerOrigin.y - (34 - used) / 2) < 0.51, "Actual AppKit text origin must be centered, including Chinese system language metrics")
                 precondition(height == 34, "Single-line composition must not resize the field")
             }
             input.insertText("好好", replacementRange: NSRange(location: NSNotFound, length: 0))
             refresh()
             precondition(input.string == prefix + "好好", "Candidate commit must replace marked text only")
         }
+        window.contentView = nil
+        host.frame = NSRect(x: 0, y: 0, width: 400, height: 34)
         for sample in ["中文\n", String(repeating: "中文 English 👨‍👩‍👧‍👦 ", count: 30)] {
             text = sample; refresh()
             precondition(height > 34 && height <= 104, "Multiline input must grow within the field cap")
@@ -76,6 +84,11 @@ struct MacInputCompositionTests {
         precondition(scroll!.contentView.bounds.minY > 0, "Last line must be reachable after overflow")
         text = ""; refresh()
         precondition(height == 34 && abs(input.textContainerInset.height - baselinePadding) < 0.5, "Clearing must restore the same single-line layout")
+        precondition(input.shouldDrawPlaceholder, "Clearing restores placeholder")
+        input.setMarkedText("a", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        precondition(!input.shouldDrawPlaceholder, "First IME keystroke hides placeholder")
+        input.insertText("", replacementRange: input.markedRange())
+        precondition(input.shouldDrawPlaceholder, "Cancelled composition restores placeholder immediately")
         print("PASS: IME attributes/selection, Latin/CJK composition and commit, stable single-line padding, multiline growth, overflow and clear")
     }
 }

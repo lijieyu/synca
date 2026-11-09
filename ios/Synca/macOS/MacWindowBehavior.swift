@@ -363,3 +363,73 @@ struct MacSheetSizeObserver: NSViewRepresentable {
         }
     }
 }
+
+/// AppKit owns cursor rectangles and tracking so SwiftUI hover updates cannot
+/// replace the resize cursor while the pointer is resting on the divider.
+struct MacSidebarResizeHandle: NSViewRepresentable {
+    var onBegin: () -> Void
+    var onDrag: (CGFloat) -> Void
+    var onEnd: () -> Void
+    var onReset: () -> Void
+    var onHover: (Bool) -> Void
+
+    func makeNSView(context: Context) -> HandleView { HandleView(callbacks: self) }
+    func updateNSView(_ view: HandleView, context: Context) { view.callbacks = self }
+
+    final class HandleView: NSView {
+        var callbacks: MacSidebarResizeHandle
+        private var startX: CGFloat?
+        init(callbacks: MacSidebarResizeHandle) { self.callbacks = callbacks; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        override func resetCursorRects() { addCursorRect(bounds, cursor: .resizeLeftRight) }
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            trackingAreas.forEach(removeTrackingArea)
+            addTrackingArea(NSTrackingArea(rect: .zero, options: [.inVisibleRect, .activeAlways, .cursorUpdate, .mouseEnteredAndExited], owner: self))
+            window?.invalidateCursorRects(for: self)
+        }
+        override func cursorUpdate(with event: NSEvent) { NSCursor.resizeLeftRight.set() }
+        override func mouseEntered(with event: NSEvent) { callbacks.onHover(true); NSCursor.resizeLeftRight.set() }
+        override func mouseExited(with event: NSEvent) {
+            callbacks.onHover(false)
+            if startX == nil { window?.invalidateCursorRects(for: self) }
+        }
+        override func mouseDown(with event: NSEvent) {
+            if event.clickCount == 2 { callbacks.onReset(); return }
+            startX = event.locationInWindow.x
+            callbacks.onBegin()
+            NSCursor.resizeLeftRight.set()
+        }
+        override func mouseDragged(with event: NSEvent) {
+            guard let startX else { return }
+            callbacks.onDrag(event.locationInWindow.x - startX)
+            NSCursor.resizeLeftRight.set()
+        }
+        override func mouseUp(with event: NSEvent) {
+            if startX != nil { callbacks.onEnd() }
+            startX = nil
+            window?.invalidateCursorRects(for: self)
+        }
+    }
+}
+
+/// Same single text bubble silhouette as the Web feedback entry.
+struct MacFeedbackIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 22, y: 17))
+        p.addQuadCurve(to: CGPoint(x: 20, y: 19), control: CGPoint(x: 22, y: 19))
+        p.addLine(to: CGPoint(x: 6.8, y: 19))
+        p.addLine(to: CGPoint(x: 2, y: 22))
+        p.addLine(to: CGPoint(x: 2, y: 5))
+        p.addQuadCurve(to: CGPoint(x: 4, y: 3), control: CGPoint(x: 2, y: 3))
+        p.addLine(to: CGPoint(x: 20, y: 3))
+        p.addQuadCurve(to: CGPoint(x: 22, y: 5), control: CGPoint(x: 22, y: 3))
+        p.closeSubpath()
+        for (y, endX) in [(7.0, 15.0), (11.0, 17.0), (15.0, 13.0)] {
+            p.move(to: CGPoint(x: 7, y: y)); p.addLine(to: CGPoint(x: endX, y: y))
+        }
+        return p.applying(CGAffineTransform(scaleX: rect.width / 24, y: rect.height / 24).concatenating(CGAffineTransform(translationX: rect.minX, y: rect.minY)))
+    }
+}
