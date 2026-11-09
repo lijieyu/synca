@@ -132,3 +132,5 @@
 .ai-page.ai-dialog .ai-examples { grid-template-columns:1fr; gap:0; margin:0 0 12px; }
 .ai-page.ai-dialog .ai-examples p { padding:8px 0; font-size:12px; }
 .ai-page.ai-dialog .ai-initial-loading { min-height:200px; }
+
+.ai-page .ai-guide-back { margin-bottom:8px; gap:6px; }

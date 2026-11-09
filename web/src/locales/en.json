@@ -376,5 +376,6 @@
   "storage.current_paid_capacity": "{{capacity}} attachment storage; images and files kept for {{days}} days",
   "access.mainland_price_note": "Mainland China App Store price; confirm in app",
   "access.current_daily_rule": "Add {{count}} records per day",
-  "storage.current_paid_files": "Unlock file transfers, up to {{size}} per file"
+  "storage.current_paid_files": "Unlock file transfers, up to {{size}} per file",
+  "ai_page.back_to_connections": "Back to connections"
 }
