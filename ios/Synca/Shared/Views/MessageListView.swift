@@ -1052,7 +1052,6 @@ struct MessageListView: View {
                 .frame(width: 24, height: 24)
                 #endif
                 .frame(width: 44, height: 44)
-                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("message_list.clear_completed"))
