@@ -450,7 +450,7 @@ struct MessageListView: View {
                 .accessibilityAction(named: Text("message_list.next_category")) { switchCategory(horizontal: -80, vertical: 0) }
                 .accessibilityAction(named: Text("message_list.previous_category")) { switchCategory(horizontal: 80, vertical: 0) }
                 #endif
-            inputBar.frame(maxWidth: 800)
+            inputBar.frame(maxWidth: streamMaximumWidth + 40)
         }
     }
 
@@ -886,7 +886,7 @@ struct MessageListView: View {
                             .frame(height: 1)
                             .id("bottom")
                     }
-                    .frame(maxWidth: 760)
+                    .frame(maxWidth: streamMaximumWidth)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
@@ -1096,6 +1096,14 @@ struct MessageListView: View {
         4
         #else
         16
+        #endif
+    }
+
+    private var streamMaximumWidth: CGFloat {
+        #if os(macOS)
+        880
+        #else
+        760
         #endif
     }
 
