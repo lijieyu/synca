@@ -178,11 +178,13 @@
 .account-summary { border-bottom:0; }
 .account-plan-subtitle,.plan-activated { font-size:12px; color:var(--text-secondary); }
 .account-panel .storage-plans { font-size:13px; }
-.calm-sidebar .category-all { background:light-dark(#363638,#dedee3); color:light-dark(#fff,#171719); font-weight:500; min-height:38px; padding-top:7px; padding-bottom:7px; margin-block:3px; }
-.calm-sidebar .category-all::before { background:currentColor; width:10px; height:10px; flex-basis:10px; border-radius:3px; }
-.calm-sidebar .category-all.active { background:light-dark(#171719,#f7f7f9); color:light-dark(#fff,#171719); min-height:38px; padding-top:7px; padding-bottom:7px; margin-block:3px; }
-.calm-sidebar .category-all.active::before { background:currentColor; opacity:.6; }
-.calm-sidebar .category-all .category-todo-badge { color:inherit; }
+/* All is an overview entry, separated from user categories without changing row height. */
+.calm-sidebar .category-all { background:light-dark(#1717190f,#ffffff12); color:var(--text-main); box-shadow:inset 0 0 0 1px light-dark(#17171918,#ffffff1c); font-weight:500; margin:0 0 16px; }
+.calm-sidebar .category-all > svg { flex-shrink:0; }
+.calm-sidebar .category-all.active { background:light-dark(#171719,#f7f7f9); color:light-dark(#fff,#171719); box-shadow:none; }
+.calm-sidebar .category-all .category-todo-badge { color:inherit; background:light-dark(#17171909,#ffffff12); }
+.calm-sidebar .category-all.active .category-todo-badge { background:light-dark(#ffffff24,#17171912); }
+@media(max-width:700px) { .calm-sidebar .category-all { margin:0 12px 0 0; } }
 .category-palette { position:relative; flex-shrink:0; }
 .category-palette .palette-trigger { display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; background:transparent; }
 .palette-trigger span { width:20px; height:20px; border-radius:6px; background:var(--category-accent); }
