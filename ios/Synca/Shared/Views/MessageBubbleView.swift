@@ -184,6 +184,9 @@ struct MessageBubbleView: View {
                         get: { category.id == categoryId },
                         set: { selected in if selected { onCategoryChange(category.id) } }
                     )) {
+                        #if os(macOS)
+                        Text(CategoryColorDot(color: category.color, hex: category.colorHex).image) + Text("  " + (category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name))
+                        #else
                         Label {
                             Text(category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name)
                         } icon: {
@@ -193,6 +196,7 @@ struct MessageBubbleView: View {
                                 Image("Category-\(category.color.rawValue)").renderingMode(.original)
                             }
                         }
+                        #endif
                     }
                 }
             } label: {
@@ -396,14 +400,19 @@ struct MessageBubbleView: View {
     }
     
     #if os(macOS)
+    @ViewBuilder
     private func macMenuLabel(_ title: String, action: MacMessageMenuAction) -> some View {
-        Label {
-            Text(title)
-        } icon: {
-            if let image = action.image {
-                Image(nsImage: image).renderingMode(image.isTemplate ? .template : .original)
-            } else if let symbol = action.symbol {
-                Image(systemName: symbol)
+        if let image = action.image, !image.isTemplate {
+            Text(Image(nsImage: image).renderingMode(.original)) + Text("  " + title)
+        } else {
+            Label {
+                Text(title)
+            } icon: {
+                if let image = action.image {
+                    Image(nsImage: image).renderingMode(image.isTemplate ? .template : .original)
+                } else if let symbol = action.symbol {
+                    Image(systemName: symbol)
+                }
             }
         }
     }
@@ -428,7 +437,8 @@ struct MessageBubbleView: View {
                 actions.append(.init(String(syncaLocalized: "message_bubble.save_as"), symbol: "folder.badge.plus", isEnabled: saveStatus != .saving) { Task { await saveFileAs(from: url, suggestedFileName: fileName) } })
             }
         }
-        if !actions.isEmpty { actions.append(.init()) }
+        actions.append(.init(String(syncaLocalized: message.isCleared ? "message_bubble.restore_action" : "message_bubble.complete_action"), symbol: message.isCleared ? "arrow.uturn.backward" : "checkmark.circle", isEnabled: !isUpdatingCompletion, action: onClear))
+        actions.append(.init())
         if let onCategoryChange, !categories.isEmpty {
             let choices = categories.map { category in
                 let image = NSImage(size: NSSize(width: 8, height: 8))
@@ -443,8 +453,9 @@ struct MessageBubbleView: View {
                 ) { if category.id != message.categoryId { onCategoryChange(category.id) } }
             }
             actions.append(.init(String(syncaLocalized: "message_category.section_title"), symbol: "tag", children: choices))
+            actions.append(.init())
         }
-        actions.append(.init(String(syncaLocalized: message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"), symbol: message.isCleared ? "arrow.uturn.backward" : "checkmark.circle", isEnabled: !isUpdatingCompletion, action: onClear))
+
         actions.append(.init(String(syncaLocalized: "common.delete"), assetName: "DeleteOutline", isDestructive: true) { showDeleteConfirm = true })
         return actions
     }
@@ -1211,7 +1222,7 @@ struct LinkTextView: View {
 struct CategoryColorDot: View {
     let color: MessageCategoryColor
     let hex: String?
-    private var image: Image {
+    var image: Image {
         #if os(macOS)
         let image = NSImage(size: NSSize(width: 8, height: 8))
         image.lockFocus()

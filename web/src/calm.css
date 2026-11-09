@@ -165,7 +165,7 @@
 .category-assignment-trigger { display:flex; align-items:center; gap:4px; min-height:28px; padding:0; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
 .category-assignment-trigger > span:not(.category-color-dot) { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .category-color-dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:var(--category-accent,var(--text-secondary)); }
-.category-assignment-menu { font-size:12px; position:fixed; width:min(220px,65vw); max-height:240px; overflow:auto; z-index:40; padding:5px; border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg-color); box-shadow:0 8px 24px #0002; }
+.category-assignment-menu { font-size:12px; position:fixed; width:min(220px,65vw); max-height:min(420px, calc(100dvh - 16px)); overflow:auto; z-index:40; padding:5px; border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg-color); box-shadow:0 8px 24px #0002; }
 .category-assignment-menu button { display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:8px; border:0; border-radius:6px; background:transparent; color:var(--text-main); font:inherit; text-align:left; cursor:pointer; }
 .category-assignment-menu button > span:not(.category-color-dot) { flex:1; min-width:0; overflow-wrap:anywhere; }
 .category-assignment-menu button > svg { flex-shrink:0; color:var(--synca-purple); }
