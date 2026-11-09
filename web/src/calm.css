@@ -237,6 +237,7 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 
 /* Let the scrollport reach the sidebar edge; inset its content, not its scrollbar. */
 @media(min-width:701px) {
-  .calm-sidebar .category-toolbar { margin-right:-14px; overflow-x:hidden; overflow-y:auto; }
+  .calm-sidebar .category-toolbar { margin-right:-14px; overflow-x:hidden; overflow-y:auto; scrollbar-width:thin; scrollbar-color:transparent transparent; }
+  .calm-sidebar .category-toolbar:is(:hover,:focus-within) { scrollbar-color:color-mix(in srgb,var(--text-secondary) 55%,transparent) transparent; }
   .calm-sidebar .category-switcher { padding-right:14px; min-width:0; }
 }
