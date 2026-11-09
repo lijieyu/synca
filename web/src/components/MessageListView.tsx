@@ -462,7 +462,7 @@ export const MessageListView: React.FC = () => {
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
                 style={categoryStyle(category.colorHex)}
-                data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false} aria-keyshortcuts={category.isDefault ? undefined : 'Alt+ArrowUp Alt+ArrowDown'} title={category.isDefault ? undefined : t('polish.reorder')}
+                data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false}
 
                 onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
@@ -586,7 +586,7 @@ export const MessageListView: React.FC = () => {
                     <CategoryPalette showChevron color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
                     <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />
                     <div className="category-manager-row-actions">
-                      <button type="button" className="category-sort-handle" disabled={row.isDefault} aria-label={`${t('polish.reorder')} ${row.name}`} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown" onPointerDown={e => {
+                      <button type="button" className="category-sort-handle" disabled={row.isDefault} aria-label={`${t('polish.reorder')} ${row.name}`} onPointerDown={e => {
                         // Avoid blur starting an independent save before drag activation.
                         if (document.activeElement?.classList.contains('category-manager-name')) e.preventDefault();
                         if (!row.isDefault) managerSort.begin(e, row.clientId, true);
