@@ -65,7 +65,7 @@ struct MessageTextEditorView: View {
     private var editorContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             #if os(macOS)
-            MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true, horizontalTextInset: 0)
+            MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true, horizontalTextInset: 0, verticalTextInset: 0)
                 .accessibilityLabel(Text("message_edit.content"))
                 .frame(minHeight: 180)
             #else

@@ -291,7 +291,16 @@ struct MacWindowDragArea: NSViewRepresentable {
     private final class DragAreaView: NSView {
         override var mouseDownCanMoveWindow: Bool { true }
         override func mouseDown(with event: NSEvent) {
-            window?.performDrag(with: event)
+            guard let window else { return }
+            if event.clickCount == 2 {
+                switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+                case "None": break
+                case "Minimize": window.performMiniaturize(nil)
+                default: window.performZoom(nil)
+                }
+            } else {
+                window.performDrag(with: event)
+            }
         }
     }
 }

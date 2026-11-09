@@ -192,11 +192,19 @@
 .palette-popover { margin:0; inset:auto; position:fixed; z-index:10000; display:grid; grid-template-columns:repeat(4,44px); gap:2px; padding:6px; border:1px solid var(--border-color); border-radius:12px; background:var(--card-bg-color); box-shadow:0 8px 24px #0003; }
 .palette-popover button { width:44px; height:44px; display:grid; place-items:center; border:3px solid var(--card-bg-color); border-radius:9px; color:white; }
 .palette-popover button:hover { filter:brightness(.9); }
-.category-manager-name { width:0; flex:1; min-width:30px; border:0; padding:8px 0; color:var(--text-main); background:transparent; font:inherit; font-size:14px; }
+.category-manager-name { box-sizing:border-box; width:0; flex:1; min-width:0; min-height:40px; border:1px solid var(--border-color); border-radius:8px; padding:8px 12px; color:var(--text-main); background:color-mix(in srgb, var(--text-main) 3%, var(--card-bg-color)); font:inherit; font-size:14px; }
+.category-manager-name:focus-visible { outline:2px solid var(--synca-purple); outline-offset:2px; }
+.category-manager-row .palette-trigger-dropdown { display:flex; align-items:center; justify-content:center; gap:5px; width:52px; min-height:44px; border:0; border-radius:8px; background:transparent; color:var(--text-secondary); }
+.category-manager-row .palette-trigger-dropdown span { width:18px; height:18px; border-radius:5px; }
 .category-manager-name:disabled { opacity:1; color:var(--text-secondary); }
 
-.category-manager-row-actions { gap:0; }
-.category-manager-row { padding:8px 6px; gap:4px; }
+.category-manager-content .category-manager-row-actions { gap:0; }
+.category-manager-content .category-manager-row { padding:8px 6px; gap:8px; }
+@media (max-width:420px) {
+  .category-manager-content .category-manager-row { display:grid; grid-template-columns:52px minmax(0,1fr); }
+  .category-manager-name { width:100%; font-size:16px; }
+  .category-manager-row-actions { grid-column:1 / -1; justify-self:end; }
+}
 .category-create-stack .palette-popover button { width:44px; height:44px; display:grid; place-items:center; border:3px solid var(--card-bg-color); border-radius:9px; color:#fff; }
 
 

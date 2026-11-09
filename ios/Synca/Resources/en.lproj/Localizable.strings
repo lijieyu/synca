@@ -13,6 +13,7 @@
 "common.cancel" = "Cancel";
 "common.delete" = "Delete";
 "common.copy" = "Copy";
+"common.add" = "Add";
 "common.save" = "Save";
 "common.done" = "Done";
 "common.all" = "All";

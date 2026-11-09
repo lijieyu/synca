@@ -382,6 +382,7 @@ struct MacPlainTextEditor: NSViewRepresentable {
     var isEditable = true
     var focusesOnAppear = false
     var horizontalTextInset: CGFloat = 12
+    var verticalTextInset: CGFloat = 16
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -423,7 +424,7 @@ struct MacPlainTextEditor: NSViewRepresentable {
             NSAttributedString.Key.font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
             NSAttributedString.Key.foregroundColor: NSColor.textColor,
         ]
-        textView.textContainerInset = NSSize(width: horizontalTextInset, height: 16)
+        textView.textContainerInset = NSSize(width: horizontalTextInset, height: verticalTextInset)
         textView.textContainer?.lineFragmentPadding = 0
         textView.isHorizontallyResizable = false
         textView.isVerticallyResizable = true

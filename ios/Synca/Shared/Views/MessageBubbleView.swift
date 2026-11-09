@@ -75,7 +75,7 @@ struct MessageBubbleView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: contentSpacing) {
             // Content
             Group {
                 if message.type != .text && message.isAttachmentExpired {
@@ -148,7 +148,8 @@ struct MessageBubbleView: View {
             }
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, verticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) { if showsSeparator { Divider().opacity(0.6) } }
         #if os(macOS)
@@ -169,6 +170,22 @@ struct MessageBubbleView: View {
             let suffix = message.type == .image ? String(syncaLocalized: "message_bubble.delete_image_suffix", bundle: .main) : ""
             Text(String(syncaLocalized: "message_bubble.delete_confirm_message", bundle: .main).replacingOccurrences(of: "%@", with: suffix))
         }
+    }
+
+    private var contentSpacing: CGFloat {
+        #if os(iOS)
+        4
+        #else
+        6
+        #endif
+    }
+
+    private var verticalPadding: CGFloat {
+        #if os(iOS)
+        8
+        #else
+        12
+        #endif
     }
 
     private var cardBackground: Color {
@@ -215,9 +232,7 @@ struct MessageBubbleView: View {
         HStack(spacing: 4) {
             CategoryColorDot(color: message.categoryColor ?? .slate, hex: message.categoryColorHex)
                 .frame(width: 7, height: 7).accessibilityHidden(true)
-                #if os(macOS)
                 .opacity(message.isCleared ? 0.4 : 1)
-                #endif
             Text(name)
                 .font(.caption2)
             #if os(iOS)
@@ -264,12 +279,22 @@ struct MessageBubbleView: View {
             }
             #endif
             if textOverflows || isTextExpanded {
-                Button(isTextExpanded ? "message_bubble.show_less" : "message_bubble.show_more") {
+                Button {
                     let collapsing = isTextExpanded
                     isTextExpanded.toggle()
                     if collapsing { onTextCollapse?() }
-                }.font(.caption).buttonStyle(.plain).foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                } label: {
+                    Text(isTextExpanded ? "message_bubble.show_less" : "message_bubble.show_more")
+                        #if os(iOS)
+                        // Keep the touch target inside the label so plain buttons hit-test its full area.
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                        .contentShape(Rectangle())
+                        #endif
+                }
+                .font(.caption).buttonStyle(.plain).foregroundStyle(Color.accentColor)
+                #if os(macOS)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                #endif
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -437,25 +462,7 @@ struct MessageBubbleView: View {
                 actions.append(.init(String(syncaLocalized: "message_bubble.save_as"), symbol: "folder.badge.plus", isEnabled: saveStatus != .saving) { Task { await saveFileAs(from: url, suggestedFileName: fileName) } })
             }
         }
-        actions.append(.init(String(syncaLocalized: message.isCleared ? "message_bubble.restore_action" : "message_bubble.complete_action"), symbol: message.isCleared ? "arrow.uturn.backward" : "checkmark.circle", isEnabled: !isUpdatingCompletion, action: onClear))
-        actions.append(.init())
-        if let onCategoryChange, !categories.isEmpty {
-            let choices = categories.map { category in
-                let image = NSImage(size: NSSize(width: 8, height: 8))
-                image.lockFocus()
-                NSColor(categoryDisplayColor(category.color, hex: category.colorHex)).setFill()
-                NSBezierPath(ovalIn: NSRect(x: 0, y: 0, width: 8, height: 8)).fill()
-                image.unlockFocus()
-                image.isTemplate = false
-                return MacMessageMenuAction(
-                    category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name,
-                    image: image, isSelected: category.id == message.categoryId
-                ) { if category.id != message.categoryId { onCategoryChange(category.id) } }
-            }
-            actions.append(.init(String(syncaLocalized: "message_category.section_title"), symbol: "tag", children: choices))
-            actions.append(.init())
-        }
-
+        if !actions.isEmpty { actions.append(.init()) }
         actions.append(.init(String(syncaLocalized: "common.delete"), assetName: "DeleteOutline", isDestructive: true) { showDeleteConfirm = true })
         return actions
     }
