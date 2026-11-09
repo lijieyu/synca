@@ -14,7 +14,7 @@ struct MacInputTextView: NSViewRepresentable {
     let onPasteFile: (PendingFileUpload) -> Void
     var onSubmit: (() -> Void)? = nil
 
-    private static var textFont: NSFont {
+    nonisolated private static var textFont: NSFont {
         NSFont.preferredFont(forTextStyle: .body)
     }
 
@@ -35,6 +35,7 @@ struct MacInputTextView: NSViewRepresentable {
         let textView = PasteAwareMacTextView()
         textView.placeholder = placeholder
         textView.delegate = context.coordinator
+        textView.layoutManager?.delegate = context.coordinator
         textView.onPasteImage = onPasteImage
         textView.onPasteFile = onPasteFile
         textView.onSubmit = onSubmit
@@ -120,7 +121,7 @@ struct MacInputTextView: NSViewRepresentable {
         textView.textStorage?.setAttributes(textAttributes, range: fullRange)
     }
 
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject, NSTextViewDelegate, NSLayoutManagerDelegate {
         @Binding var text: String
         @Binding var height: CGFloat
         let onPasteImage: (Data) -> Void
@@ -140,6 +141,26 @@ struct MacInputTextView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
             recalculateHeight(for: textView)
+        }
+
+        // A CJK fallback run can be shorter than the Latin IME run that follows it.
+        // Give both the configured body's baseline and minimum line box without
+        // rewriting marked-text attributes or clipping taller glyphs (e.g. emoji).
+        func layoutManager(_ layoutManager: NSLayoutManager,
+                           shouldSetLineFragmentRect lineFragmentRect: UnsafeMutablePointer<NSRect>,
+                           lineFragmentUsedRect: UnsafeMutablePointer<NSRect>,
+                           baselineOffset: UnsafeMutablePointer<CGFloat>,
+                           in textContainer: NSTextContainer,
+                           forGlyphRange glyphRange: NSRange) -> Bool {
+            let font = MacInputTextView.textFont
+            let minimumHeight = layoutManager.defaultLineHeight(for: font)
+            let minimumBaseline = layoutManager.defaultBaselineOffset(for: font)
+            let baseline = max(baselineOffset.pointee, minimumBaseline)
+            let shift = baseline - baselineOffset.pointee
+            lineFragmentRect.pointee.size.height = max(minimumHeight, lineFragmentRect.pointee.height + shift)
+            lineFragmentUsedRect.pointee.size.height = max(minimumHeight, lineFragmentUsedRect.pointee.height + shift)
+            baselineOffset.pointee = baseline
+            return true
         }
 
         @MainActor
