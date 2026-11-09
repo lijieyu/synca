@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Copy, Check, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowLeft, Copy, Check, Blocks, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,10 +30,21 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const embedded = presentation === 'dialog' || (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
   const [guideVisible, setGuideVisible] = useState(false);
   const pageRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const scroller = pageRef.current?.closest('.modal-scroll-body') ?? pageRef.current;
-    scroller?.scrollTo({ top: 0 });
-  }, [guideVisible]);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const connectionScroll = useRef(0);
+  const pendingTransition = useRef<{ height: number; scroll: number; focus: string | null } | null>(null);
+  const animations = useRef<Animation[]>([]);
+  const scroller = () => pageRef.current?.closest<HTMLElement>('.modal-scroll-body') ?? pageRef.current;
+  const prepareTransition = (scroll = scroller()?.scrollTop ?? 0, focus: string | null = null) => {
+    const height = contentRef.current?.getBoundingClientRect().height ?? 0;
+    animations.current.forEach(animation => animation.cancel());
+    pendingTransition.current = { height, scroll, focus };
+  };
+  const changeGuide = (visible: boolean) => {
+    if (visible) connectionScroll.current = scroller()?.scrollTop ?? 0;
+    prepareTransition(visible ? 0 : connectionScroll.current, visible ? '.ai-guide-back' : '[data-guide-link]');
+    setGuideVisible(visible);
+  };
   const [loaded, setLoaded] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [revokeTarget, setRevokeTarget] = useState<Connection | null>(null);
@@ -44,11 +55,35 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const [planVisible, setPlanVisible] = useState(false);
   const actionPending = useRef(false);
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
+  useLayoutEffect(() => {
+    const pending = pendingTransition.current, content = contentRef.current;
+    pendingTransition.current = null;
+    if (!pending || !content) return;
+    const restore = () => {
+      scroller()?.scrollTo({ top: pending.scroll, behavior: 'instant' });
+      if (pending.focus) content.querySelector<HTMLElement>(pending.focus)?.focus({ preventScroll: true });
+    };
+    const height = content.getBoundingClientRect().height;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !content.animate) { restore(); return; }
+    // Animate the same surface; keep React state and the surrounding dialog alive.
+    const size = content.animate([{ height: `${pending.height}px`, overflow: 'hidden' }, { height: `${height}px`, overflow: 'hidden' }], { duration: 200, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    const fade = content.animate([{ opacity: .35, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 180, easing: 'ease-out' });
+    animations.current = [size, fade];
+    void size.finished.then(restore, () => {});
+    return () => { size.cancel(); fade.cancel(); };
+  }, [guideVisible, operationsExpanded, previewVisible]);
+  useEffect(() => {
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (['zh-Hans', 'zh-Hant', 'en'].includes(detail?.language)) void i18n.changeLanguage(detail.language);
+    };
+    window.addEventListener('synca-native-preferences', update);
+    return () => window.removeEventListener('synca-native-preferences', update);
+  }, [i18n]);
   useEffect(() => {
     if (!copied) return;
     const timer = window.setTimeout(() => setCopied(false), 2500);
@@ -76,7 +111,6 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   useEffect(() => {
     if (!token) return;
     let active = true;
-    setLoading(true);
     const load = async () => {
       const [c, o, a] = await Promise.all([
         request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations'),
@@ -84,7 +118,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
       ]);
       if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); setLoaded(true); }
     };
-    void load().catch(e => { if (active) setError(String(e.message)); }).finally(() => { if (active) setLoading(false); });
+    void load().catch(e => { if (active) setError(String(e.message)); });
     return () => { active = false; };
   }, [token, request, authorize, loadAttempt]);
   const act = async (fn: () => Promise<void>) => {
@@ -96,26 +130,18 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
   const showingTutorial = !authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible)));
-  return <><main ref={pageRef} className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
+  return <><main ref={pageRef} className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}`} inert={planVisible || Boolean(revokeTarget)}><div ref={contentRef} className="ai-content">
     {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
-    {guideVisible && activeConnections.length > 0 && <button className="ai-text-link ai-guide-back" onClick={() => setGuideVisible(false)}><ArrowLeft size={16} aria-hidden="true" />{t('ai_page.back_to_connections')}</button>}
-    {showingTutorial && <><div className="ai-intro-grid"><header className="ai-hero">
-      <h1>{t('ai_page.text_021')}</h1>
-      <p>{t('ai_page.text_022')}</p>
-    </header>
-    <section className="ai-card ai-connect" id="connect"><h2>{t('ai_page.text_023')}</h2>
-      <p className="ai-muted">{t('ai_page.text_024')}</p>
-      <ol><li>{t('ai_page.text_025')}</li>
-        <li>{t('ai_page.text_026')}</li>
-        <li>{t('ai_page.text_027')}</li></ol>
-      <button className="ai-primary" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_page.text_029')}</span></button>
-      <p className="ai-muted">{t('ai_page.text_030')}</p>
-      <button className="ai-preview-trigger" aria-haspopup="dialog" onClick={() => setPreviewVisible(true)}>{t('ai_page.text_031')}<ArrowUpRight size={15} aria-hidden="true" /></button>
-    </section></div>
-    <section className="ai-examples" aria-label={t('ai_page.text_032')}>
-      {[t('ai_page.text_033'), t('ai_page.text_034'), t('ai_page.text_035')].map(v => <p key={v}><MessageSquare size={18} aria-hidden="true" />{v}</p>)}
-    </section>
-    </>}
+    {guideVisible && activeConnections.length > 0 && <button className="ai-text-link ai-guide-back" onClick={() => changeGuide(false)}><ArrowLeft size={16} aria-hidden="true" />{t('ai_page.back_to_connections')}</button>}
+    {showingTutorial && <section className="ai-tutorial">
+      <div className="ai-tutorial-heading"><h1>{t('ai_refined.title')}</h1><span className="ai-pro-badge">{t('ai_refined.pro')}</span></div>
+      <p className="ai-intro">{t('ai_refined.intro')}</p>
+      <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(`ai_refined.detail${step}`)}</p></div></li>)}</ol>
+      <button className="ai-primary ai-copy" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_refined.copy')}</span></button>
+      <div className="ai-copy-foot"><button className="ai-text-link" aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => { prepareTransition(); setPreviewVisible(value => !value); }}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
+      {previewVisible && <div className="ai-prompt" id="ai-prompt-content">{connectionPrompt}</div>}
+      <p className="ai-tip">{t('ai_refined.tip')}</p>
+    </section>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
     {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => { if (presentation === 'dialog') { setError(''); setLoaded(false); setLoadAttempt(value => value + 1); } else window.location.reload(); }}>{t('ai_page.text_038')}</button></div>}
     {!showingTutorial && isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('ai_page.text_039')}</h2><p>{t('ai_page.text_040')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button> <button disabled={busy} onClick={() => void act(async () => {
@@ -123,7 +149,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
         if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
         setNotice(t('ai_page.text_042'));
       })}>{t('ai_page.text_043')}</button></section>}
-    {loading && !loaded && <div className="ai-initial-loading" role="status">{t('ai_page.text_044')}</div>}
+    {isAuthenticated && !loaded && !error && <div className="ai-initial-loading" role="status">{t('ai_page.text_044')}</div>}
     {!isAuthenticated && <section className={`ai-card ${!authorize ? 'ai-manage' : ''}`}><h2>{authorize ? t('ai_page.text_045') : t('ai_page.text_046')}</h2>
       <p>{t('ai_page.text_047')}</p>
       {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('ai_page.text_048')}</button> : <div className="ai-login"><LoginView /></div>}
@@ -140,24 +166,21 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
       })}>{approve ? t('ai_page.text_055') : t('ai_page.text_056')}</button>)}</div>
     </section>}
     {isAuthenticated && !authorize && loaded && !showingTutorial && <>
-      <section className="ai-card"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" onClick={() => setGuideVisible(true)}>{t('polish.tutorial')}</button></div>
+      <section className="ai-card ai-connections"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" data-guide-link onClick={() => changeGuide(true)}>{t('polish.tutorial')}</button></div>
         {!activeConnections.length && <p className="ai-muted">{t('ai_page.text_058')}</p>}
-        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div><h3>{c.name}</h3>
+        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div className="ai-app-mark" aria-hidden="true"><Blocks size={17} /></div><div className="ai-connection-meta"><h3>{c.name}</h3>
           <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)}</p>
           <p className="ai-muted">{t('ai_page.text_060')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(i18n.language) : t('ai_page.text_061')}</p></div>
-          <button disabled={busy} onClick={() => setRevokeTarget(c)}>{t('ai_page.text_063')}</button></article>)}
+          <button className="ai-revoke" disabled={busy} onClick={() => setRevokeTarget(c)}>{t('ai_page.text_063')}</button></article>)}
       </section>
-      <section className="ai-card"><h2>{t('ai_page.text_064')}</h2>{!operations.length && <p className="ai-muted">{t('ai_page.text_065')}</p>}
-        <ul className="ai-log" id="ai-operation-list">{(operationsExpanded ? operations : operations.slice(0, 3)).map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind} · {statusLabels[o.status] ?? o.status}{o.connectionName ? ` · ${o.connectionName}` : ''}</span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>
+      <section className="ai-card ai-recent"><h2>{t('ai_page.text_064')}</h2>{!operations.length && <p className="ai-muted">{t('ai_page.text_065')}</p>}
+        <ul className="ai-log" id="ai-operation-list">{(operationsExpanded ? operations : operations.slice(0, 3)).map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind}<small>{o.connectionName ? `${o.connectionName} · ` : ''}{statusLabels[o.status] ?? o.status}</small></span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>
         {operationsExpanded && operations.length >= 50 && <p className="ai-muted ai-log-limit">{t('ai_page.operations_limit')}</p>}
-        {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => setOperationsExpanded(value => !value)}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}{operationsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button></div>}
+        {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => { prepareTransition(); setOperationsExpanded(value => !value); }}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}{operationsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button></div>}
       </section>
     </>}
     {!embedded && <footer className="ai-muted">Synca · <Link to="/">{t('ai_page.text_066')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('ai_page.text_067')}</a></footer>}
     {planVisible && <PlanDialog onClose={() => setPlanVisible(false)} />}
-    {previewVisible && <Modal title={t('ai_page.text_068')} message="" confirmText={t('ai_page.text_069')} onConfirm={() => setPreviewVisible(false)} onCancel={() => setPreviewVisible(false)} hideCancel neutral className="ai-prompt-modal">
-      <div className="ai-prompt-scroll"><p>{connectionPrompt}</p></div>
-    </Modal>}
   </div></main>{revokeTarget && <Modal title={t('polish.revokeTitle', { name: revokeTarget.name })} message={t('polish.revokeMessage')} destructive confirmText={t('ai_page.text_063')} cancelText={t('common.cancel')} confirmDisabled={busy} cancelDisabled={busy} closeDisabled={busy} onCancel={() => { if (!busy) setRevokeTarget(null); }} onConfirm={() => void act(async () => {
       await request(`connections/${encodeURIComponent(revokeTarget.id)}`, 'DELETE');
       setConnections(current => current.filter(c => c.id !== revokeTarget.id));

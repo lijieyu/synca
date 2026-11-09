@@ -9,8 +9,14 @@ export const CATEGORY_PALETTE: { name: string; hex: string; color: MessageCatego
   ['Graphite','#676d78','slate'],['Denim','#4169a8','sky'],['Teal','#4a9a9d','ocean'],['Olive','#8da35e','mint'],
   ['Honey','#d9b24b','amber'],['Peach','#df8e73','coral'],['Berry','#af597b','rose'],['Lavender','#8276c2','violet'],
 ].map(([name, hex, color]) => ({ name, hex, color: color as MessageCategoryColor }));
-export function categoryStyle(colorHex?: string | null): React.CSSProperties | undefined {
-  return CATEGORY_PALETTE.some(p => p.hex === colorHex) ? { '--category-accent': colorHex } as React.CSSProperties : undefined;
+// Legacy names and explicit shades must resolve through the same palette.
+export function categoryHex(color: MessageCategoryColor, colorHex?: string | null): string {
+  return (CATEGORY_PALETTE.find(preset => preset.hex === colorHex?.toLowerCase())
+    ?? CATEGORY_PALETTE.find(preset => preset.color === color)
+    ?? CATEGORY_PALETTE[5]).hex;
+}
+export function categoryStyle(colorHex: string | null | undefined, color: MessageCategoryColor): React.CSSProperties {
+  return { '--category-accent': categoryHex(color, colorHex) } as React.CSSProperties;
 }
 export function CategoryPalette({ color, colorHex, onChange, expanded = false, showChevron = false }: {
   color: MessageCategoryColor; colorHex?: string | null;
@@ -44,7 +50,7 @@ export function CategoryPalette({ color, colorHex, onChange, expanded = false, s
       document.removeEventListener('scroll', close, true);
     };
   }, [open, supportsPopover]);
-  const selectedHex = colorHex ?? CATEGORY_PALETTE.find(item => item.color === color)?.hex;
+  const selectedHex = categoryHex(color, colorHex);
   const swatches = <div ref={popover} popover={expanded ? undefined : "manual"} className={expanded ? 'palette-grid' : 'palette-popover'} style={expanded ? undefined : position} role="group" aria-label={t('polish.color')}>
     {CATEGORY_PALETTE.map(item => <button key={item.hex} type="button" title={t(`polish.colors.${item.name}`)} aria-label={t(`polish.colors.${item.name}`)} aria-pressed={selectedHex === item.hex} style={{ background: item.hex }} onClick={() => {
       onChange(item.color, item.hex); setOpen(false); if (!expanded) trigger.current?.focus();
@@ -52,7 +58,7 @@ export function CategoryPalette({ color, colorHex, onChange, expanded = false, s
   </div>;
   if (expanded) return swatches;
   return <div className="category-palette">
-    <button ref={trigger} type="button" className={`palette-trigger color-${color}${showChevron ? ' palette-trigger-dropdown' : ''}`} style={categoryStyle(colorHex)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => {
+    <button ref={trigger} type="button" className={`palette-trigger color-${color}${showChevron ? ' palette-trigger-dropdown' : ''}`} style={categoryStyle(colorHex, color)} aria-label={t('polish.color')} aria-expanded={open} onClick={() => {
       const bounds = trigger.current!.getBoundingClientRect();
       setPosition({ left: Math.max(12, Math.min(bounds.left, window.innerWidth - 208)), top: Math.max(12, Math.min(bounds.bottom + 4, window.innerHeight - 208)) });
       setOpen(value => !value);

@@ -7,16 +7,26 @@ xcrun swiftc -module-cache-path "$tmp/module-cache" "$root/ios/Synca/Shared/Core
 "$tmp/test" > "$tmp/payload.json"
 node --input-type=module - "$tmp/payload.json" <<'JS'
 import fs from 'node:fs'; import vm from 'node:vm'; import assert from 'node:assert/strict';
-const {script,token}=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const {script,token,preferences}=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 for(const [origin,path,main,allowed] of [
  ['https://synca.haerth.cn','/ai',true,true],['https://synca.haerth.cn','/ai/',true,true],
  ['https://synca.haerth.cn.evil.test','/ai',true,false],['http://synca.haerth.cn','/ai',true,false],
  ['https://synca.haerth.cn:444','/ai',true,false],['https://synca.haerth.cn','/ai',false,false],
  ['https://synca.haerth.cn','/privacy-policy',true,false],['https://synca.haerth.cn','/aievil',true,false]]) {
- const storage=new Map(); const window={}; window.top=main?window:{};
- vm.runInNewContext(script,{window,location:{origin,pathname:path},localStorage:{setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});
+ const storage=new Map(); const events=[]; const window={dispatchEvent:event=>events.push(event)}; window.top=main?window:{}; const document={documentElement:{dataset:{},lang:''}}; const CustomEvent=function(type,options){this.type=type;this.detail=options.detail};
+ const context={window,document,CustomEvent,location:{origin,pathname:path},localStorage:{setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}};
+ vm.runInNewContext(script,context);
  assert.equal(storage.get('authToken'),allowed?token:undefined,`${origin}${path} frame=${main}`);
+ assert.equal(storage.get('synca.appearance'),allowed?'dark':undefined);
+ assert.equal(storage.get('synca.language'),allowed?'zh-Hant':undefined);
+ assert.equal(window.__syncaNativePreferences?.language,allowed?'zh-Hant':undefined);
+ vm.runInNewContext(preferences,context);
+ assert.equal(storage.get('synca.appearance'),allowed?'light':undefined);
+ assert.equal(storage.get('synca.language'),allowed?'en':undefined);
+ assert.equal(document.documentElement.dataset.appearance,allowed?'light':undefined);
+ assert.equal(events.length,allowed?1:0);
+ if(allowed){assert.equal(events[0].type,'synca-native-preferences');assert.equal(events[0].detail.language,'en');assert.equal(storage.get('authToken'),token);}
  assert.equal(window.__syncaEmbeddedAI,allowed?true:undefined,`embedded chrome ${origin}${path} frame=${main}`);
 }
-console.log('PASS: exact HTTPS origin, no credential URLs, main-frame AI route only, trusted embedded chrome, safe token serialization');
+console.log('PASS: exact HTTPS origin, no credential URLs, main-frame AI route only, trusted embedded chrome, safe token serialization, initial and live native presentation without auth mutation');
 JS

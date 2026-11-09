@@ -209,11 +209,7 @@ struct MessageBubbleView: View {
                         Label {
                             Text(category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name)
                         } icon: {
-                            if CategoryColorPreset.matching(category.colorHex) != nil {
-                                CategoryColorDot(color: category.color, hex: category.colorHex)
-                            } else {
-                                Image("Category-\(category.color.rawValue)").renderingMode(.original)
-                            }
+                            CategoryColorDot(color: category.color, hex: category.colorHex)
                         }
                         #endif
                     }

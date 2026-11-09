@@ -6,6 +6,9 @@ struct AIConnectionView: View {
     @EnvironmentObject private var api: APIClient
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var browser = AIConnectionBrowser()
     @State private var initialToken: String?
 
@@ -15,7 +18,7 @@ struct AIConnectionView: View {
         let screen = parent?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
         let availableWidth = min(parent?.frame.width ?? 920, screen?.width ?? 920) - 40
         let availableHeight = (screen?.height ?? 800) - 100
-        return CGSize(width: min(880, max(320, availableWidth)), height: min(680, max(320, availableHeight)))
+        return CGSize(width: min(600, max(320, availableWidth)), height: min(560, max(320, availableHeight)))
     }
     #endif
 
@@ -24,19 +27,15 @@ struct AIConnectionView: View {
             #if os(macOS)
             VStack(spacing: 0) {
                 MacSheetHeader(title: "message_list.connect_ai")
-                Divider()
-                browserContent
-                Divider()
-                HStack(spacing: 12) {
-                    if browser.canGoBack {
+                if browser.canGoBack {
+                    HStack {
                         Button { browser.goBack() } label: {
                             Label("ai_browser.back", systemImage: "chevron.left")
                         }.buttonStyle(.plain)
-                    }
-                    Spacer()
-                    Button("common.close") { dismiss() }
-                        .buttonStyle(.bordered)
-                }.padding(20)
+                        Spacer()
+                    }.padding(.horizontal, 24).padding(.bottom, 8)
+                }
+                browserContent
             }
             .frame(width: macSheetSize.width, height: macSheetSize.height)
             #else
@@ -57,14 +56,20 @@ struct AIConnectionView: View {
                         }
                     }
             }
-            .presentationDetents([.large])
+            .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(620), .large])
             .presentationDragIndicator(.visible)
             #endif
         }
         .onAppear {
             guard initialToken == nil, let token = api.token else { return }
             initialToken = token
-            browser.start(token: token, email: api.currentUserEmail) { url in openURL(url) }
+            browser.start(token: token, email: api.currentUserEmail, appearance: resolvedAppearance, language: AppLocalization.identifier) { url in openURL(url) }
+        }
+        .onChange(of: colorScheme) { _ in
+            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier)
+        }
+        .onChange(of: locale.identifier) { _ in
+            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier)
         }
         .onChange(of: api.token) { token in
             guard token != initialToken else { return }
@@ -73,6 +78,8 @@ struct AIConnectionView: View {
         }
         .onDisappear { browser.clearSession() }
     }
+
+    private var resolvedAppearance: String { colorScheme == .dark ? "dark" : "light" }
 
     private var browserContent: some View {
         ZStack {
@@ -108,6 +115,10 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     private var externalOpen: ((URL) -> Void)?
     private var observations: [NSKeyValueObservation] = []
     private var started = false
+    private var sessionToken: String?
+    private var sessionEmail: String?
+    private var appearance = "light"
+    private var language = "en"
     private var permittedDocumentOrigins: Set<String> = []
 
     override init() {
@@ -128,14 +139,30 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         ]
     }
 
-    func start(token: String, email: String?, externalOpen: @escaping (URL) -> Void) {
+    func start(token: String, email: String?, appearance: String, language: String, externalOpen: @escaping (URL) -> Void) {
         guard !started else { return }
         started = true
         self.externalOpen = externalOpen
-        let script = WKUserScript(source: EmbeddedAISession.bootstrap(token: token, email: email), injectionTime: .atDocumentStart, forMainFrameOnly: true)
-        webView.configuration.userContentController.addUserScript(script)
+        sessionToken = token
+        sessionEmail = email
+        updatePreferences(appearance: appearance, language: language)
         webView.load(URLRequest(url: AppLinks.aiConnectionURL))
     }
+    func updatePreferences(appearance: String, language: String) {
+        self.appearance = appearance
+        self.language = language
+        guard let sessionToken else { return }
+        let controller = webView.configuration.userContentController
+        controller.removeAllUserScripts()
+        controller.addUserScript(WKUserScript(
+            source: EmbeddedAISession.bootstrap(token: sessionToken, email: sessionEmail, appearance: appearance, language: language),
+            injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
+        if let url = webView.url, EmbeddedAISession.isTrusted(url) {
+            webView.evaluateJavaScript(EmbeddedAISession.preferences(appearance: appearance, language: language), completionHandler: nil)
+        }
+    }
+
     func retry() {
         failed = false
         webView.load(URLRequest(url: webView.url ?? AppLinks.aiConnectionURL))
@@ -147,6 +174,8 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         webView.configuration.websiteDataStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {}
         webView.loadHTMLString("", baseURL: nil)
         permittedDocumentOrigins.removeAll()
+        sessionToken = nil
+        sessionEmail = nil
         externalOpen = nil
     }
 
@@ -186,6 +215,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         hasLoadedDocument = true
+        updatePreferences(appearance: appearance, language: language)
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { failed = false }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { handle(error) }

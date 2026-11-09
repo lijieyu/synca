@@ -377,5 +377,21 @@
   "access.mainland_price_note": "中國大陸 App Store 價格，以 App 內為準",
   "access.current_daily_rule": "每日可新增 {{count}} 則記錄",
   "storage.current_paid_files": "解鎖檔案傳輸，單個最大 {{size}}",
-  "ai_page.back_to_connections": "返回連線管理"
+  "ai_page.back_to_connections": "返回連線管理",
+  "ai_refined": {
+    "title": "連接你的 AI",
+    "intro": "在 AI 對話中查找、整理記錄，也能把新想法儲存回來。",
+    "step1": "複製連接指令",
+    "detail1": "把下面的指令傳送給你使用的 AI。",
+    "step2": "依提示完成授權",
+    "detail2": "在 AI 應用程式內新增 Synca，並確認允許存取。",
+    "step3": "回到對話，開始使用",
+    "detail3": "試試：「幫我整理本週的記錄」。",
+    "copy": "複製連接指令",
+    "pro": "Synca Pro 權益",
+    "show_prompt": "查看指令",
+    "hide_prompt": "收起指令",
+    "tip": "無需產生或複製金鑰。能否直接連接，取決於 AI 應用程式是否支援 MCP。"
+  },
+  "navigation.resize_sidebar": "調整側欄寬度"
 }

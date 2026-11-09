@@ -484,6 +484,10 @@ struct CategoryColorPreset: Identifiable, Sendable {
         .init(name: "berry", hex: "#af597b", legacy: .rose),
         .init(name: "lavender", hex: "#8276c2", legacy: .violet)
     ]
+    /// A missing legacy shade resolves exactly like selecting that color today.
+    static func resolved(legacy: MessageCategoryColor, hex: String?) -> CategoryColorPreset {
+        matching(hex) ?? all.first { $0.legacy == legacy } ?? all[5]
+    }
     static func matching(_ hex: String?) -> CategoryColorPreset? {
         guard let hex else { return nil }
         return all.first { $0.hex == hex.lowercased() }
