@@ -22,7 +22,9 @@ struct AppSettingsView: View {
             settingsForm
 
         }
-        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80), height: min(430, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
+        .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80))
+        .frame(maxHeight: (NSScreen.main?.visibleFrame.height ?? 860) - 100)
+        .fixedSize(horizontal: false, vertical: true)
         #else
         NavigationStack {
             settingsForm
@@ -58,7 +60,8 @@ struct AppSettingsView: View {
                         Text("settings.download_location")
                         Text(settings.macOSDefaultSavePath?.path ?? String(syncaLocalized: "settings.downloads"))
                             .font(.caption).foregroundStyle(.secondary)
-                            .textSelection(.enabled).lineLimit(3)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     Button("settings.change") { chooseDirectory() }

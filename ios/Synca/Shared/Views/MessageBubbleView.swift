@@ -151,6 +151,9 @@ struct MessageBubbleView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) { if showsSeparator { Divider().opacity(0.6) } }
+        #if os(macOS)
+        .contentShape(Rectangle())
+        #endif
         .contextMenu { messageContextMenu }
         .alert("image_preview.save_failed", isPresented: Binding(
             get: { photoSaveError != nil }, set: { if !$0 { photoSaveError = nil } }
@@ -208,6 +211,9 @@ struct MessageBubbleView: View {
         HStack(spacing: 4) {
             CategoryColorDot(color: message.categoryColor ?? .slate, hex: message.categoryColorHex)
                 .frame(width: 7, height: 7).accessibilityHidden(true)
+                #if os(macOS)
+                .opacity(message.isCleared ? 0.4 : 1)
+                #endif
             Text(name)
                 .font(.caption2)
             #if os(iOS)
@@ -225,13 +231,21 @@ struct MessageBubbleView: View {
     
     private var textContent: some View {
         VStack(alignment: .leading, spacing: 4) {
+            #if os(macOS)
+            MacSelectableText(attributedText: linkedNSAttributedText,
+                              color: message.isCleared ? .secondary : .primary, font: .body,
+                              maximumNumberOfLines: isTextExpanded ? 0 : 6,
+                              contextMenuActions: macMessageMenuActions)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(GeometryReader { geometry in
+                    Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
+                        .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
+                })
+            #else
             if isTextExpanded {
-                #if os(macOS)
-                MacSelectableText(attributedText: linkedNSAttributedText,
-                                  color: message.isCleared ? .secondary : .primary, font: .body)
-                #else
                 LinkTextView(attributedText: linkedNSAttributedText)
-                #endif
             } else {
                 Text(AttributedString(linkedNSAttributedText)).font(.body).lineLimit(6)
                     .textSelection(.enabled)
@@ -244,6 +258,7 @@ struct MessageBubbleView: View {
                             .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
                     })
             }
+            #endif
             if textOverflows || isTextExpanded {
                 Button(isTextExpanded ? "message_bubble.show_less" : "message_bubble.show_more") {
                     let collapsing = isTextExpanded
@@ -270,6 +285,33 @@ struct MessageBubbleView: View {
 
     @ViewBuilder
     private var messageContextMenu: some View {
+        #if os(macOS)
+        let actions = macMessageMenuActions
+        ForEach(actions.indices, id: \.self) { index in
+            let item = actions[index]
+            if let title = item.title {
+                if !item.children.isEmpty {
+                    Menu {
+                        ForEach(item.children.indices, id: \.self) { childIndex in
+                            let child = item.children[childIndex]
+                            Toggle(isOn: Binding(get: { child.isSelected }, set: { selected in if selected { child.action() } })) {
+                                macMenuLabel(child.title ?? "", action: child)
+                            }
+                        }
+                    } label: {
+                        macMenuLabel(title, action: item)
+                    }
+                } else {
+                    Button(role: item.isDestructive ? .destructive : nil, action: item.action) {
+                        macMenuLabel(title, action: item)
+                    }
+                    .disabled(!item.isEnabled)
+                }
+            } else {
+                Divider()
+            }
+        }
+        #else
         if message.type == .text {
             if message.canEditText, let onEdit {
                 Button(action: onEdit) { Label("message_edit.title", image: "EditOutline") }
@@ -350,8 +392,64 @@ struct MessageBubbleView: View {
                 Label("common.delete", image: "DeleteOutline")
             }
         }
+        #endif
     }
     
+    #if os(macOS)
+    private func macMenuLabel(_ title: String, action: MacMessageMenuAction) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            if let image = action.image {
+                Image(nsImage: image).renderingMode(image.isTemplate ? .template : .original)
+            } else if let symbol = action.symbol {
+                Image(systemName: symbol)
+            }
+        }
+    }
+
+    private var macMessageMenuActions: [MacMessageMenuAction] {
+        var actions: [MacMessageMenuAction] = []
+        if message.type == .text {
+            if message.canEditText, let onEdit {
+                actions.append(.init(String(syncaLocalized: "message_edit.title"), assetName: "EditOutline", action: onEdit))
+            }
+            actions.append(.init(String(syncaLocalized: "common.copy"), assetName: "CopyOutline") { copyText(messageText) })
+        } else if !message.isAttachmentExpired {
+            if message.type == .image, let value = message.imageUrl, let url = URL(string: value) {
+                actions.append(.init(String(syncaLocalized: "common.copy"), assetName: "CopyOutline") { copyImage(from: url) })
+                actions.append(.init(String(syncaLocalized: "common.save"), assetName: "DownloadOutline", isEnabled: saveStatus != .saving) { Task { await saveImage(from: url) } })
+                actions.append(.init(String(syncaLocalized: "message_bubble.open_with_preview"), symbol: "eye") { openWithPreview(url: url) })
+                actions.append(.init(String(syncaLocalized: "message_bubble.show_in_finder"), symbol: "folder") { showInFinder(url: url) })
+                actions.append(.init(String(syncaLocalized: "message_bubble.save_as"), symbol: "folder.badge.plus", isEnabled: saveStatus != .saving) { Task { await saveImageAs(from: url) } })
+            } else if message.type == .file, let value = message.fileUrl, let url = URL(string: value) {
+                actions.append(.init(String(syncaLocalized: "common.save"), assetName: "DownloadOutline", isEnabled: saveStatus != .saving) { Task { await saveFile(from: url, suggestedFileName: fileName) } })
+                actions.append(.init(String(syncaLocalized: "message_bubble.show_in_finder"), symbol: "folder") { showInFinder(url: url, suggestedFileName: fileName) })
+                actions.append(.init(String(syncaLocalized: "message_bubble.save_as"), symbol: "folder.badge.plus", isEnabled: saveStatus != .saving) { Task { await saveFileAs(from: url, suggestedFileName: fileName) } })
+            }
+        }
+        if !actions.isEmpty { actions.append(.init()) }
+        if let onCategoryChange, !categories.isEmpty {
+            let choices = categories.map { category in
+                let image = NSImage(size: NSSize(width: 8, height: 8))
+                image.lockFocus()
+                NSColor(categoryDisplayColor(category.color, hex: category.colorHex)).setFill()
+                NSBezierPath(ovalIn: NSRect(x: 0, y: 0, width: 8, height: 8)).fill()
+                image.unlockFocus()
+                image.isTemplate = false
+                return MacMessageMenuAction(
+                    category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name,
+                    image: image, isSelected: category.id == message.categoryId
+                ) { if category.id != message.categoryId { onCategoryChange(category.id) } }
+            }
+            actions.append(.init(String(syncaLocalized: "message_category.section_title"), symbol: "tag", children: choices))
+        }
+        actions.append(.init(String(syncaLocalized: message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"), symbol: message.isCleared ? "arrow.uturn.backward" : "checkmark.circle", isEnabled: !isUpdatingCompletion, action: onClear))
+        actions.append(.init(String(syncaLocalized: "common.delete"), assetName: "DeleteOutline", isDestructive: true) { showDeleteConfirm = true })
+        return actions
+    }
+    #endif
+
     private var imageContent: some View {
         Group {
             if let urlString = message.imageUrl, let url = URL(string: urlString) {
