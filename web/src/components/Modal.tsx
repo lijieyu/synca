@@ -13,6 +13,7 @@ interface Props {
   onCancel: () => void;
   leadingActionText?: string;
   onLeadingAction?: () => void;
+  leadingActionDisabled?: boolean;
   destructive?: boolean;
   children?: React.ReactNode;
   size?: 'compact' | 'standard' | 'large';
@@ -30,7 +31,7 @@ interface Props {
 
 export const Modal: React.FC<Props> = ({
   title, message, confirmText = 'OK', cancelText = 'Cancel',
-  onConfirm, onCancel, leadingActionText, onLeadingAction, destructive = false, children, size, scrollBody = false, hideCancel = false, hideActions = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false, confirmDisabled = false, cancelDisabled = false
+  onConfirm, onCancel, leadingActionText, onLeadingAction, leadingActionDisabled = false, destructive = false, children, size, scrollBody = false, hideCancel = false, hideActions = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false, confirmDisabled = false, cancelDisabled = false
 }) => {
   const { t } = useTranslation();
   closeLabel = closeLabel ?? t('navigation.close');
@@ -78,7 +79,7 @@ export const Modal: React.FC<Props> = ({
         </div> : <>{message ? <p className="modal-message">{message}</p> : null}{children}</>}
         {!hideActions && <div className={`modal-actions ${leadingActionText && onLeadingAction ? 'modal-actions-with-leading' : ''}`}>
           {leadingActionText && onLeadingAction && (
-            <button className="modal-leading-action" onClick={onLeadingAction}>{leadingActionText}</button>
+            <button className="modal-leading-action" disabled={leadingActionDisabled} onClick={onLeadingAction}>{leadingActionText}</button>
           )}
           <div className="modal-primary-actions">
             {secondaryAction}

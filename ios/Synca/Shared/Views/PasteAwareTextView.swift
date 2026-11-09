@@ -36,9 +36,7 @@ struct PasteAwareTextView: UIViewRepresentable {
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.returnKeyType = .send
         textView.enablesReturnKeyAutomatically = true
-        if let tint = UIColor(named: "AccentColor") {
-            textView.tintColor = tint
-        }
+        textView.tintColor = .systemBlue
         textView.text = text
         return textView
     }

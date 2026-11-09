@@ -105,7 +105,7 @@ struct MessageTextEditorView: View {
             else { Text("common.save") }
         }
         .disabled(!canSave)
-        .tint(.syncaPurple)
+        .tint(.accentColor)
         #if os(macOS)
         .buttonStyle(MacPrimaryActionButtonStyle())
         #endif
@@ -207,7 +207,7 @@ struct MacPrimaryActionButtonStyle: ButtonStyle {
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
             .background(
-                isEnabled ? Color.syncaPurple : Color.primary.opacity(0.08),
+                isEnabled ? Color.accentColor : Color.primary.opacity(0.08),
                 in: RoundedRectangle(cornerRadius: 6, style: .continuous)
             )
             .opacity(configuration.isPressed && isEnabled ? 0.8 : 1)
