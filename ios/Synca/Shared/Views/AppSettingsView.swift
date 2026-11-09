@@ -20,6 +20,13 @@ struct AppSettingsView: View {
             MacSheetHeader(title: "settings.title")
             Divider()
             settingsForm
+            Divider()
+            HStack {
+                Spacer()
+                Button("common.done") { dismiss() }
+                    .buttonStyle(MacPrimaryActionButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }.padding(20)
 
         }
         .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80))
@@ -104,7 +111,7 @@ struct DailyQuotaView: View {
                 GeometryReader { geometry in
                     Capsule().fill(Color.secondary.opacity(0.12))
                         .overlay(alignment: .leading) {
-                            Capsule().fill(Color.syncaPurple)
+                            Capsule().fill(Color.accentColor)
                                 .frame(width: geometry.size.width * Double(min(max(status.todayUsed, 0), limit)) / Double(limit))
                         }
                 }

@@ -571,6 +571,9 @@ export const MessageListView: React.FC = () => {
           closeLabel={t('navigation.close')}
           message=""
           hideCancel confirmText={t('polish.done')}
+          leadingActionText={t('message_category.add_action')}
+          onLeadingAction={() => { if (!categorySaving) editCategoryManagerRow(); }}
+          leadingActionDisabled={categorySaving}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCategoryManagerSave()}
           onCancel={() => { if (categorySaving) return; if (JSON.stringify(categoryManagerRows) !== JSON.stringify(buildCategoryManagerRows())) void handleCategoryManagerSave(); else setShowCategoryModal(false); }}
@@ -593,7 +596,6 @@ export const MessageListView: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <button type="button" className="category-manager-add" onClick={() => editCategoryManagerRow()}><Plus size={18} /><span>{t('message_category.add_action')}</span></button>
             </div>
           </fieldset>
         </Modal>

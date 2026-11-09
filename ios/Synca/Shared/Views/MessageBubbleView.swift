@@ -353,7 +353,7 @@ struct MessageBubbleView: View {
             
             Divider()
             
-            Button(role: .destructive) {
+            Button {
                 showDeleteConfirm = true
             } label: {
                 Label("common.delete", image: "DeleteOutline")
@@ -383,7 +383,7 @@ struct MessageBubbleView: View {
             
             Divider()
             
-            Button(role: .destructive) {
+            Button {
                 showDeleteConfirm = true
             } label: {
                 Label("common.delete", image: "DeleteOutline")
@@ -411,13 +411,13 @@ struct MessageBubbleView: View {
 
             Divider()
 
-            Button(role: .destructive) {
+            Button {
                 showDeleteConfirm = true
             } label: {
                 Label("common.delete", image: "DeleteOutline")
             }
         } else if message.isAttachmentExpired {
-            Button(role: .destructive) { showDeleteConfirm = true } label: {
+            Button { showDeleteConfirm = true } label: {
                 Label("common.delete", image: "DeleteOutline")
             }
         }

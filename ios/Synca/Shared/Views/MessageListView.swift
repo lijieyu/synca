@@ -476,6 +476,8 @@ struct MessageListView: View {
                 Image("LoginLogo").resizable().frame(width: 28, height: 28).clipShape(RoundedRectangle(cornerRadius: 8))
                 Text("Synca").font(.title2.weight(.semibold))
             }.padding(.horizontal, 12).padding(.top, 48).padding(.bottom, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(MacWindowDragArea())
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     sidebarCategory(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "message_list.all_records"), color: nil, count: allTodoCount)
@@ -717,7 +719,7 @@ struct MessageListView: View {
                         syncManager.selectCategory(syncManager.allCategoryPseudoId)
                     }
                     .id(syncManager.allCategoryPseudoId)
-                    .padding(.trailing, 12)
+                    Divider().frame(height: 20).padding(.horizontal, 4).accessibilityHidden(true)
 
                     ForEach(syncManager.categories) { category in
                         categoryChip(
@@ -1327,7 +1329,6 @@ struct MessageListView: View {
     }
 
     private func restoreCollapsedMessage(_ message: SyncaMessage, proxy: ScrollViewProxy) {
-        #if os(macOS)
         scrollTask?.cancel()
         shouldScrollToBottomAfterInitialLoad = false
         shouldScrollToBottomAfterSend = false
@@ -1343,7 +1344,6 @@ struct MessageListView: View {
             guard !Task.isCancelled, categoryID == syncManager.selectedCategoryId else { return }
             proxy.scrollTo(rowID, anchor: .top)
         }
-        #endif
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
@@ -2388,7 +2388,12 @@ private struct NewMessageCategorySheet: View {
                         }
                 }
 
-                Section("message_category.color_label") { paletteButton }
+                Section {
+                    CategoryPresetPicker(selectedHex: colorHex, legacy: color) { preset in
+                        color = preset.legacy
+                        colorHex = preset.hex
+                    }
+                }
 
                 if showsManageCategories {
                     Section {
@@ -2451,10 +2456,6 @@ private struct NewMessageCategorySheet: View {
                     )
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("message_category.color_label", bundle: .main)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
                     CategoryPresetPicker(selectedHex: colorHex, legacy: color, columnCount: 8) { preset in
                         color = preset.legacy
                         colorHex = preset.hex
@@ -2648,7 +2649,6 @@ private struct MessageCategoryManagerSheet: View {
             }) { category in
                 categoryRow(category)
             }
-            addButton.padding(16)
         }
         .background(Color.syncaCardBackground, in: RoundedRectangle(cornerRadius: 12))
         .padding(20)
@@ -2667,9 +2667,20 @@ private struct MessageCategoryManagerSheet: View {
             }
             #else
             VStack(spacing: 0) {
-                MacSheetHeader(title: "message_category.section_title", onClose: finish)
+                MacSheetHeader(title: "message_list.manage_categories", onClose: finish)
                 Divider()
                 ScrollView { rows }.frame(maxHeight: 540)
+                Divider()
+                HStack(spacing: 12) {
+                    Button { adding = true } label: {
+                        Label("message_category.add_action", systemImage: "plus")
+                    }.buttonStyle(.plain).disabled(busy)
+                    Spacer()
+                    Button("common.done", action: finish)
+                        .buttonStyle(MacPrimaryActionButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(busy)
+                }.padding(20)
             }.frame(width: 480, height: min(620, CGFloat(syncManager.categories.count) * 64 + 180))
             #endif
         }
@@ -3061,8 +3072,10 @@ private struct MacCategoryReorderStack<Row: View>: View {
         }
         .coordinateSpace(name: coordinateID)
         .onPreferenceChange(MacCategoryRowFrames.self) { frames = $0 }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: previewIDs)
-        .disabled(saving)
+        // Animate actual placement changes, not clearing the preview after a save.
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: ordered.map(\.id))
+        // Block duplicate interactions without dimming every category during the request.
+        .allowsHitTesting(!saving)
         .onChange(of: gestureInFlight) { active in
             guard !active else { return }
             let generation = gestureGeneration

@@ -23,21 +23,20 @@ struct AIConnectionView: View {
         Group {
             #if os(macOS)
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    if browser.canGoBack {
-                        Button { browser.goBack() } label: { Image(systemName: "chevron.left") }
-                            .accessibilityLabel(Text("ai_browser.back"))
-                    }
-                    Text("message_list.connect_ai").font(.headline)
-                    Spacer()
-                    Button("common.close") { dismiss() }
-                        .keyboardShortcut(.cancelAction)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                MacSheetHeader(title: "message_list.connect_ai")
                 Divider()
                 browserContent
+                Divider()
+                HStack(spacing: 12) {
+                    if browser.canGoBack {
+                        Button { browser.goBack() } label: {
+                            Label("ai_browser.back", systemImage: "chevron.left")
+                        }.buttonStyle(.plain)
+                    }
+                    Spacer()
+                    Button("common.close") { dismiss() }
+                        .buttonStyle(.bordered)
+                }.padding(20)
             }
             .frame(width: macSheetSize.width, height: macSheetSize.height)
             #else
@@ -90,7 +89,7 @@ struct AIConnectionView: View {
                         .accessibilityHidden(true)
                     Text("ai_browser.load_failed").multilineTextAlignment(.center)
                     Button("common.retry") { browser.retry() }
-                        .buttonStyle(.borderedProminent).tint(.syncaPurple)
+                        .buttonStyle(.borderedProminent).tint(.accentColor)
                 }
                 .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.background)
