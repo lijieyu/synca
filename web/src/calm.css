@@ -208,3 +208,7 @@
 @media(max-width:380px) { .palette-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } .palette-grid button { aspect-ratio:auto; min-height:44px; } }
 
 .calm-sidebar .sortable-picked { background:color-mix(in srgb,var(--category-accent) 12%,var(--card-bg-color)); }
+
+/* Local confirmation treatment; other form dialogs retain their layout. */
+.logout-confirm-modal .modal-message { text-align:center; padding:16px 0 8px; }
+.logout-confirm-modal .modal-actions { border-top:0; padding-top:0; margin-top:16px; }

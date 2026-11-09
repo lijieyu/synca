@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next';
 import './FunctionMenu.css';
 
 // Keep in the same order as MessageListView.settingsMenu on iOS/macOS.
-export function FunctionMenu({ email, planLabel, usage, onAccount, onSettings, onCategories, onFeedback, onAbout, onLogout }: {
+export function FunctionMenu({ email, planLabel, usage, onAccount, onSettings, onCategories, onAI, onFeedback, onAbout, onLogout }: {
   email: string | null; planLabel: string; usage: { used: number; limit: number } | null;
-  onAccount: () => void; onSettings: () => void; onCategories: () => void; onFeedback: () => void; onAbout: () => void; onLogout: () => void;
+  onAccount: () => void; onSettings: () => void; onCategories: () => void; onAI: () => void; onFeedback: () => void; onAbout: () => void; onLogout: () => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const keyboardOpen = useRef(false);
@@ -26,7 +26,7 @@ export function FunctionMenu({ email, planLabel, usage, onAccount, onSettings, o
   const items = [
     { title: t('preferences.title'), Icon: Settings, action: onSettings },
     { title: t('message_list.manage_categories'), Icon: Tags, action: onCategories },
-    { title: t('ai.connect'), Icon: Sparkles, href: `/ai?lng=${i18n.language}` },
+    { title: t('ai.connect'), Icon: Sparkles, action: onAI },
     { title: t('message_list.feedback'), Icon: MessageSquareText, action: onFeedback },
     { title: t('message_list.about'), Icon: Info, action: onAbout },
     { title: t('message_list.logout'), Icon: LogOut, action: onLogout },
@@ -42,8 +42,6 @@ export function FunctionMenu({ email, planLabel, usage, onAccount, onSettings, o
       if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
         e.preventDefault(); nodes[e.key === 'Home' ? 0 : e.key === 'End' ? nodes.length - 1 : (index + (e.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length]?.focus();
       }
-    }}><button role="menuitem" className="menu-account-header" onClick={() => { close(); onAccount(); }}><PersonIcon size={20} /><span>{t('preferences.account_plan')}<small>{email}</small></span></button><hr role="separator" />{items.map(({ title, Icon, action, href }, index) => <div key={title}>{index === 3 && <hr role="separator" />}{href
-      ? <a key={title} role="menuitem" href={href} target="_blank" rel="noopener noreferrer" onClick={close}><Icon size={18} aria-hidden="true" />{title}</a>
-      : <button key={title} role="menuitem" onClick={() => { close(); action?.(); }}><Icon size={18} aria-hidden="true" />{title}</button>}</div>)}</div>}
+    }}><button role="menuitem" className="menu-account-header" onClick={() => { close(); onAccount(); }}><PersonIcon size={20} /><span>{t('preferences.account_plan')}<small>{email}</small></span></button><hr role="separator" />{items.map(({ title, Icon, action }, index) => <div key={title}>{index === 3 && <hr role="separator" />}<button key={title} role="menuitem" onClick={() => { close(); action(); }}><Icon size={18} aria-hidden="true" />{title}</button></div>)}</div>}
   </div>;
 }

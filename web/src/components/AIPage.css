@@ -103,3 +103,32 @@
 .ai-page .ai-section-heading h2 { margin:0; }
 .ai-page .ai-section-heading { margin-bottom:16px; }
 @media(max-width:700px) { .ai-page .ai-section-heading { flex-wrap:nowrap; gap:8px; align-items:baseline; } .ai-page .ai-section-heading h2 { font-size:18px; } .ai-page .ai-text-link { font-size:11px; flex-shrink:0; } }
+
+/* Web menu presentation reuses the shell dialog without the public page chrome. */
+.ai-page.ai-dialog { height:auto; overflow:visible; scrollbar-gutter:auto; background:transparent; color:var(--text-main); font-size:13px; --ai-surface:var(--panel-bg-color); --ai-ink:var(--text-main); --ai-muted:var(--text-secondary); --ai-line:var(--border-color); }
+.ai-page.ai-dialog .ai-content { max-width:none; padding:4px 0 0; }
+.ai-page.ai-dialog .ai-card { padding:16px; margin-bottom:12px; border-radius:12px; }
+.ai-page.ai-dialog .ai-card:last-child { margin-bottom:0; }
+.ai-page.ai-dialog h2 { font-size:14px; margin:0 0 12px; }
+.ai-page.ai-dialog h3 { font-size:13px; margin:0 0 4px; }
+.ai-page.ai-dialog .ai-section-heading { margin-bottom:4px; }
+.ai-page.ai-dialog .ai-section-heading h2 { margin:0; }
+.ai-page.ai-dialog .ai-connection { gap:8px; padding:12px 0; }
+.ai-page.ai-dialog .ai-connection:last-child { padding-bottom:0; }
+.ai-page.ai-dialog :is(.ai-muted,.ai-log li) { font-size:12px; line-height:1.6; }
+.ai-page.ai-dialog p { margin-bottom:8px; }
+.ai-page.ai-dialog .ai-connection p { margin-bottom:2px; }
+.ai-page.ai-dialog button { min-height:36px; padding:6px 12px; font-size:13px; border-radius:8px; }
+.ai-page.ai-dialog .ai-text-link { font-size:12px; padding:6px 0; }
+.ai-page.ai-dialog .ai-log { margin:0; }
+.ai-page.ai-dialog .ai-log li { padding:8px 0; }
+.ai-page.ai-dialog .ai-intro-grid { grid-template-columns:1fr; gap:12px; padding:0 0 12px; }
+.ai-page.ai-dialog .ai-hero { padding:0; }
+.ai-page.ai-dialog h1 { font-size:18px; margin:8px 0; letter-spacing:0; }
+.ai-page.ai-dialog .ai-hero > p { font-size:13px; line-height:1.6; max-width:none; }
+.ai-page.ai-dialog .ai-connect { box-shadow:none; border-top-width:1px; }
+.ai-page.ai-dialog .ai-connect ol { gap:10px; margin-bottom:12px; }
+.ai-page.ai-dialog .ai-connect li { font-size:13px; }
+.ai-page.ai-dialog .ai-examples { grid-template-columns:1fr; gap:0; margin:0 0 12px; }
+.ai-page.ai-dialog .ai-examples p { padding:8px 0; font-size:12px; }
+.ai-page.ai-dialog .ai-initial-loading { min-height:200px; }

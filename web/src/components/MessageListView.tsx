@@ -1,3 +1,4 @@
+import { AIPage } from './AIPage';
 import { moveItem, usePointerSort } from '../hooks/usePointerSort';
 import { CategoryPalette, categoryStyle } from './CategoryPalette';
 import { BroomIcon } from './BroomIcon';
@@ -72,6 +73,7 @@ export const MessageListView: React.FC = () => {
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [showAI, setShowAI] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
@@ -473,7 +475,7 @@ export const MessageListView: React.FC = () => {
           </div>
 
         </div>
-      <FunctionMenu email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.purchased_lifetime' : 'access.free_title')}
+      <FunctionMenu onAI={() => setShowAI(true)} email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.purchased_lifetime' : 'access.free_title')}
         usage={plan === 'free' && accessStatus ? { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 } : null}
         onAccount={() => setPanel('account')} onSettings={() => setShowSettings(true)} onCategories={openCategoryManager}
         onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} onLogout={() => setShowLogoutModal(true)} />
@@ -529,8 +531,11 @@ export const MessageListView: React.FC = () => {
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 
+      {showAI && <Modal title={t('ai.connect')} message="" size="large" className="ai-management-modal" scrollBody hideActions onCancel={() => setShowAI(false)} onConfirm={() => setShowAI(false)}><AIPage presentation="dialog" /></Modal>}
+
       {showLogoutModal && (
         <Modal
+          className="logout-confirm-modal"
           title={t('message_list.logout_confirm_title', 'Confirm Sign Out')}
           message={t('message_list.logout_confirm_message', 'You will need to sign in again')}
           confirmText={t('message_list.sign_out', 'Sign Out')}
