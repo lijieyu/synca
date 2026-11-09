@@ -59,6 +59,7 @@ struct MacInputCompositionTests {
                 precondition(abs(input.textContainerInset.height - baselinePadding) < 0.5, "Single-line composition must keep stable padding")
                 let used = input.layoutManager!.usedRect(for: input.textContainer!).height
                 precondition(abs(input.textContainerOrigin.y - (34 - used) / 2) < 0.51, "Actual AppKit text origin must be centered, including Chinese system language metrics")
+                precondition(abs(input.enclosingScrollView!.contentView.bounds.minY) < 0.01, "Single-line IME must not scroll inside an unchanged composer")
                 precondition(height == 34, "Single-line composition must not resize the field")
             }
             input.insertText("好好", replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -85,10 +86,12 @@ struct MacInputCompositionTests {
         text = ""; refresh()
         precondition(height == 34 && abs(input.textContainerInset.height - baselinePadding) < 0.5, "Clearing must restore the same single-line layout")
         precondition(input.shouldDrawPlaceholder, "Clearing restores placeholder")
+        precondition(!input.enclosingScrollView!.hasVerticalScroller, "Clearing overflow must hide the scroller again")
+        precondition(input.enclosingScrollView!.contentView.bounds.origin == .zero, "Clearing overflow must restore the viewport origin")
         input.setMarkedText("a", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
         precondition(!input.shouldDrawPlaceholder, "First IME keystroke hides placeholder")
         input.insertText("", replacementRange: input.markedRange())
         precondition(input.shouldDrawPlaceholder, "Cancelled composition restores placeholder immediately")
-        print("PASS: IME attributes/selection, Latin/CJK composition and commit, stable single-line padding, multiline growth, overflow and clear")
+        print("PASS: IME attributes/selection, Latin/CJK composition and commit, stable single-line padding and zero internal scroll, multiline growth, overflow and clear")
     }
 }

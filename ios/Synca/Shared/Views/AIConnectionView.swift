@@ -127,7 +127,6 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         configuration.websiteDataStore = .nonPersistent()
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
-        #if os(macOS)
         configuration.userContentController.add(AIContentHeightHandler { [weak self] height, scroll in
             guard let self else { return }
             if abs((self.contentHeight ?? 0) - height) > 1 { self.contentHeight = height }
@@ -144,7 +143,6 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
                 }
             }
         }, name: "syncaAIContentHeight")
-        #endif
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -177,16 +175,15 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
             source: EmbeddedAISession.bootstrap(token: sessionToken, email: sessionEmail, appearance: appearance, language: language),
             injectionTime: .atDocumentStart, forMainFrameOnly: true
         ))
-        #if os(macOS)
         controller.addUserScript(WKUserScript(source: Self.contentHeightScript,
             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
-        #endif
         if let url = webView.url, EmbeddedAISession.isTrusted(url) {
             webView.evaluateJavaScript(EmbeddedAISession.preferences(appearance: appearance, language: language), completionHandler: nil)
         }
     }
 
-    #if os(macOS)
+    // Both native platforms reveal the full instruction after expansion.
+    // Only the Mac presentation uses the measured height to resize its sheet.
     // Measure the content, not the viewport-sized .ai-page: shrinking the window
     // must not feed its own previous height back into the next measurement.
     private static let contentHeightScript = """
@@ -210,7 +207,6 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
       schedule();
     })();
     """
-    #endif
 
     func retry() {
         failed = false
@@ -289,7 +285,6 @@ private struct AIWebContainer: UIViewRepresentable {
 }
 #endif
 
-#if os(macOS)
 /// The controller owns this proxy; its callback captures the browser weakly.
 @MainActor
 private final class AIContentHeightHandler: NSObject, WKScriptMessageHandler {
@@ -307,4 +302,3 @@ private final class AIContentHeightHandler: NSObject, WKScriptMessageHandler {
         onHeight(height, ["end", "start"].contains(scroll ?? "") ? scroll : nil)
     }
 }
-#endif
