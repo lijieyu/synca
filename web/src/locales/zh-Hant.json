@@ -351,7 +351,7 @@
     "revokeTitle": "撤銷 {{name}} 的連接？",
     "revokeMessage": "此應用程式將無法再存取你的 Synca 記錄。你可以稍後重新連接。",
     "color": "選擇顏色",
-    "reorder": "調整分類順序（Alt + 上下方向鍵）",
+    "reorder": "調整分類順序",
     "colors": {
       "Sky": "天藍",
       "Mint": "薄荷",

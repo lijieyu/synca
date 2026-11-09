@@ -351,7 +351,7 @@
     "revokeTitle": "Revoke {{name}}?",
     "revokeMessage": "This app will no longer have access to your Synca records. You can reconnect later.",
     "color": "Choose color",
-    "reorder": "Reorder category (Alt + Up / Down)",
+    "reorder": "Reorder category",
     "colors": {
       "Sky": "Sky",
       "Mint": "Mint",
