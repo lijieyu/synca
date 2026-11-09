@@ -261,8 +261,6 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
         <div className="message-header">
           <div className="message-metadata">
             <span>{formatTime(message.createdAt)}</span>
-            <span>·</span>
-            <span>{message.sourceDevice}</span>
             {message.categoryName && (
               <>
                 <span>·</span>
