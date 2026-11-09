@@ -391,3 +391,5 @@
 
 "message_bubble.complete_action" = "完成";
 "message_bubble.restore_action" = "恢复";
+
+"navigation.resize_sidebar" = "调整侧栏宽度";

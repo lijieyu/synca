@@ -1,3 +1,4 @@
+import { SidebarFrame } from './SidebarFrame';
 import { AIPage } from './AIPage';
 import { moveItem, usePointerSort } from '../hooks/usePointerSort';
 import { CategoryPalette, categoryStyle } from './CategoryPalette';
@@ -444,7 +445,7 @@ export const MessageListView: React.FC = () => {
     <div className="app-container calm-shell">
       {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-      <aside className="calm-sidebar">
+      <SidebarFrame>
         <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span></div>
 
         <div className="category-toolbar">
@@ -461,7 +462,7 @@ export const MessageListView: React.FC = () => {
                 data-category-id={category.id}
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
-                style={categoryStyle(category.colorHex)}
+                style={categoryStyle(category.colorHex, category.color)}
                 data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false}
 
                 onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
@@ -480,7 +481,7 @@ export const MessageListView: React.FC = () => {
         usage={plan === 'free' && accessStatus ? { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 } : null}
         onAccount={() => setPanel('account')} onSettings={() => setShowSettings(true)} onCategories={openCategoryManager}
         onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} onLogout={() => setShowLogoutModal(true)} />
-      </aside>
+      </SidebarFrame>
       <main className="calm-main">
         <header className="header">
           <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>

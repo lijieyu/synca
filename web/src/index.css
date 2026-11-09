@@ -980,14 +980,7 @@ button.category-chip:hover {
   flex: 0 0 auto;
 }
 
-.category-color-dot.color-slate { background: rgba(120, 120, 128, 0.95); }
-.category-color-dot.color-sky { background: rgba(10, 132, 255, 0.95); }
-.category-color-dot.color-mint { background: rgba(48, 209, 88, 0.95); }
-.category-color-dot.color-amber { background: rgba(255, 159, 10, 0.95); }
-.category-color-dot.color-coral { background: rgba(255, 105, 97, 0.95); }
-.category-color-dot.color-violet { background: rgba(175, 82, 222, 0.95); }
-.category-color-dot.color-rose { background: rgba(255, 55, 95, 0.95); }
-.category-color-dot.color-ocean { background: rgba(90, 200, 250, 0.95); }
+.category-color-dot { background: var(--category-accent, var(--text-secondary)); }
 
 .category-add-action {
   min-height: 42px;

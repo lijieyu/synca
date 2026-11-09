@@ -3,7 +3,7 @@
 :root[data-appearance=dark] { --bg-color:#19191e; --sidebar-bg:#202025; --card-bg-color:#232329; --panel-bg-color:#232329; --text-main:#efeff6; --text-secondary:#a5a5b2; --border-color:#34343d; --synca-mint-light:#ffffff0d; --synca-purple:#a98aff; --selection-bg:#352a50; --cleared-border-color:#ebebf533; --cleared-icon-color:#ebebf5b3; --send-icon-arrow-color:#fff; color-scheme:dark; }
 @media(prefers-color-scheme:dark) { :root:not([data-appearance=light]) { --bg-color:#19191e; --sidebar-bg:#202025; --card-bg-color:#232329; --panel-bg-color:#232329; --text-main:#efeff6; --text-secondary:#a5a5b2; --border-color:#34343d; --synca-purple:#a98aff; --selection-bg:#352a50; color-scheme:dark; } }
 .calm-shell { flex-direction:row; height:100dvh; }
-.calm-sidebar { width:236px; flex-shrink:0; display:flex; flex-direction:column; background:var(--sidebar-bg); border-right:1px solid var(--border-color); padding:28px 14px 14px; min-height:0; }
+.calm-sidebar { position:relative; width:var(--sidebar-width,236px); flex-shrink:0; display:flex; flex-direction:column; background:var(--sidebar-bg); border-right:1px solid var(--border-color); padding:28px 14px 14px; min-height:0; }
 .sidebar-brand { display:flex; gap:10px; align-items:center; padding:0 12px 26px; font-size:23px; font-weight:650; letter-spacing:-.6px; }
 .sidebar-brand img { width:30px; height:30px; border-radius:9px; }
 .calm-sidebar .category-toolbar { padding:0; border:0; min-height:0; flex:1; overflow:auto; align-items:flex-start; }
@@ -74,17 +74,10 @@
 .calm-sidebar .category-chip { justify-content:flex-start; gap:10px; opacity:1; font-weight:500; }
 .calm-sidebar .category-chip.active { font-weight:600; }
 .calm-sidebar .category-todo-badge { position:static; flex-shrink:0; border:0; box-shadow:none; font-size:12px; font-weight:500; }
-.color-slate { --category-accent:#8996ab; }.color-sky { --category-accent:#0a84ff; }.color-mint { --category-accent:#34b78a; }.color-amber { --category-accent:#d69b28; }.color-coral { --category-accent:#ee8064; }.color-violet { --category-accent:#a083df; }.color-rose { --category-accent:#d77ba5; }.color-ocean { --category-accent:#2999ac; }
+.color-slate { --category-accent:#64748b; }.color-sky { --category-accent:#3b82f6; }.color-mint { --category-accent:#22c55e; }.color-amber { --category-accent:#f59e0b; }.color-coral { --category-accent:#ef4444; }.color-violet { --category-accent:#a855f7; }.color-rose { --category-accent:#ec4899; }.color-ocean { --category-accent:#06b6d4; }
 .calm-sidebar .category-chip.active { box-shadow:none; border:0; }
 .account-provider,.about-registration { color:var(--text-secondary); }
 .about-panel .shell-links a { color:var(--synca-purple); }
-/* Explicit appearance also applies to the standalone AI guide. */
-:root[data-appearance=light] .ai-page { --ai-accent:#6849cf; --ai-surface:#fff; --ai-ink:#252333; --ai-muted:#6c687d; --ai-line:#e7e3f0; background:#f7f6fb; }
-:root[data-appearance=dark] .ai-page { --ai-accent:#b5a0ff; --ai-surface:#23222c; --ai-ink:#f1eff9; --ai-muted:#b4afc4; --ai-line:#383441; background:#191820; }
-:root[data-appearance] .ai-page a:not(.ai-primary) { color:var(--ai-accent); }
-:root[data-appearance=light] .ai-page .ai-primary { background:#6849cf; border-color:#6849cf; color:white; }
-:root[data-appearance=dark] .ai-page .ai-primary { background:#8061de; border-color:#8061de; color:white; }
-
 /* A single boundary around the composer, with category color carried by labels. */
 .calm-main .input-bar { padding:0; }
 .calm-main .input-shell { border:0; border-radius:inherit; box-shadow:none; background:transparent; }
@@ -226,3 +219,10 @@
 
 /* Keep the plan on the same text axis as the account name (16px icon + 9px gap). */
 .account-entry > .identity-email { padding-left:25px; margin-top:4px; }
+
+.sidebar-resizer { position:absolute; z-index:20; top:0; bottom:0; right:-4px; width:8px; cursor:col-resize; touch-action:none; }
+.sidebar-resizer::after { content:''; position:absolute; top:0; bottom:0; left:3px; width:2px; background:transparent; }
+.sidebar-resizer:hover::after,.sidebar-resizer:focus-visible::after { background:var(--text-secondary); opacity:.45; }
+.sidebar-resizer:focus-visible { outline:2px solid var(--text-secondary); outline-offset:-2px; }
+body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; user-select:none!important; }
+@media(max-width:700px) { .sidebar-resizer { display:none; } }

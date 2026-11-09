@@ -125,6 +125,17 @@ struct MessageListView: View {
     @State private var showCategoryManager = false
     @State private var sidebarDragPayload: String?
     @State private var sidebarReordering = false
+    #if os(macOS)
+    @AppStorage("synca.sidebarWidth") private var preferredSidebarWidth = 220.0
+    @State private var sidebarLiveWidth: CGFloat?
+    @State private var sidebarResizeStart: CGFloat?
+    @State private var desktopAvailableWidth: CGFloat = 800
+    @State private var sidebarResizeHovered = false
+    private var sidebarMaximumWidth: CGFloat { max(220, min(360, desktopAvailableWidth - 480)) }
+    private var desktopSidebarWidth: CGFloat {
+        min(sidebarMaximumWidth, max(220, sidebarLiveWidth ?? (preferredSidebarWidth.isFinite ? preferredSidebarWidth : 220)))
+    }
+    #endif
     @State private var showAppSettings = false
     @State private var showManagementMenu = false
     @State private var showAIConnection = false
@@ -407,6 +418,10 @@ struct MessageListView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(GeometryReader { proxy in
+            Color.clear.onAppear { desktopAvailableWidth = proxy.size.width }
+                .onChange(of: proxy.size.width) { desktopAvailableWidth = $0 }
+        })
         .ignoresSafeArea(.container, edges: .top)
         .overlay {
             if showManagementMenu {
@@ -418,7 +433,7 @@ struct MessageListView: View {
             if showManagementMenu {
                 VStack(alignment: .leading, spacing: 2) { managementMenuItems }
                     .buttonStyle(ManagementMenuRowStyle())
-                    .padding(8).frame(width: 196)
+                    .padding(8).frame(width: desktopSidebarWidth - 24)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.syncaCardBorder, lineWidth: 1))
                     .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
@@ -545,8 +560,39 @@ struct MessageListView: View {
             .accessibilityAddTraits(.isButton)
             .padding(.bottom, 14)
         }
-        .padding(.horizontal, 12).frame(width: 220)
+        .padding(.horizontal, 12).frame(width: desktopSidebarWidth)
         .background(Color(nsColor: .controlBackgroundColor))
+        .overlay(alignment: .trailing) {
+            Rectangle().fill(Color.clear).frame(width: 8).contentShape(Rectangle())
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(Color.secondary.opacity(sidebarResizeHovered || sidebarResizeStart != nil ? 0.45 : 0)).frame(width: 2)
+                        .allowsHitTesting(false)
+                }
+                .onHover { hovering in
+                    sidebarResizeHovered = hovering
+                    if hovering { NSCursor.resizeLeftRight.set() } else if sidebarResizeStart == nil { NSCursor.arrow.set() }
+                }
+                .onTapGesture(count: 2) { preferredSidebarWidth = 220; sidebarLiveWidth = nil }
+                .gesture(DragGesture(minimumDistance: 2, coordinateSpace: .global)
+                    .onChanged { value in
+                        if sidebarResizeStart == nil { sidebarResizeStart = desktopSidebarWidth }
+                        sidebarLiveWidth = min(sidebarMaximumWidth, max(220, (sidebarResizeStart ?? desktopSidebarWidth) + value.translation.width))
+                        NSCursor.resizeLeftRight.set()
+                    }
+                    .onEnded { _ in
+                        preferredSidebarWidth = desktopSidebarWidth
+                        sidebarLiveWidth = nil; sidebarResizeStart = nil
+                        if !sidebarResizeHovered { NSCursor.arrow.set() }
+                    })
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("navigation.resize_sidebar"))
+                .accessibilityValue(Text("\(Int(desktopSidebarWidth))"))
+                .accessibilityAdjustableAction { direction in
+                    let change: CGFloat = direction == .increment ? 10 : -10
+                    preferredSidebarWidth = min(sidebarMaximumWidth, max(220, desktopSidebarWidth + change))
+                }
+                .onDisappear { if sidebarResizeHovered || sidebarResizeStart != nil { NSCursor.arrow.set() } }
+        }
     }
 
     private func sidebarCategory(id: String, title: String, color: Color?, count: Int) -> some View {
@@ -818,45 +864,12 @@ struct MessageListView: View {
     }
 
     private func categoryAccentColor(for color: MessageCategoryColor) -> Color {
-        switch color {
-        case .sky:
-            return .blue
-        case .mint:
-            return .green
-        case .amber:
-            return .orange
-        case .coral:
-            return .red
-        case .violet:
-            return .purple
-        case .slate:
-            return .secondary
-        case .rose:
-            return .pink
-        case .ocean:
-            return .cyan
-        }
+        categoryDisplayColor(color, hex: nil)
     }
 
     private func backgroundColor(for color: MessageCategoryColor) -> Color {
-        switch color {
-        case .sky:
-            return Color.blue.opacity(0.16)
-        case .mint:
-            return Color.green.opacity(0.16)
-        case .amber:
-            return Color.orange.opacity(0.18)
-        case .coral:
-            return Color.red.opacity(0.16)
-        case .violet:
-            return Color.purple.opacity(0.18)
-        case .slate:
-            return Color.secondary.opacity(0.16)
-        case .rose:
-            return Color.pink.opacity(0.16)
-        case .ocean:
-            return Color.cyan.opacity(0.18)
-        }
+        categoryDisplayColor(color, hex: nil)
+            .opacity([.amber, .violet, .ocean].contains(color) ? 0.18 : 0.16)
     }
 
     @ViewBuilder
@@ -1853,24 +1866,8 @@ private struct TiledCategoryColumn: View {
     }
 
     private func backgroundColor(for color: MessageCategoryColor) -> Color {
-        switch color {
-        case .sky:
-            return Color.blue.opacity(0.16)
-        case .mint:
-            return Color.green.opacity(0.16)
-        case .amber:
-            return Color.orange.opacity(0.18)
-        case .coral:
-            return Color.red.opacity(0.16)
-        case .violet:
-            return Color.purple.opacity(0.18)
-        case .slate:
-            return Color.secondary.opacity(0.16)
-        case .rose:
-            return Color.pink.opacity(0.16)
-        case .ocean:
-            return Color.cyan.opacity(0.18)
-        }
+        categoryDisplayColor(color, hex: category.colorHex)
+            .opacity([.amber, .violet, .ocean].contains(color) ? 0.18 : 0.16)
     }
 
     private var supportedAttachmentTypes: [UTType] {
@@ -2845,7 +2842,7 @@ private struct CategoryPresetPicker: View {
         LazyVGrid(columns: Array(repeating: GridItem(expandsToFill ? .flexible(minimum: 44) : .fixed(44), spacing: 0), count: columnCount), spacing: expandsToFill ? 8 : 0) {
             ForEach(CategoryColorPreset.all) { preset in
                 let colorNameKey = "message_category.color.\(preset.name)"
-                let selected = selectedHex?.lowercased() == preset.hex || (selectedHex == nil && CategoryColorPreset.all.first(where: { $0.legacy == legacy })?.hex == preset.hex)
+                let selected = CategoryColorPreset.resolved(legacy: legacy, hex: selectedHex).hex == preset.hex
                 Button { onSelect(preset) } label: {
                     Circle().fill(categoryDisplayColor(preset.legacy, hex: preset.hex))
                         .frame(width: 28, height: 28)
@@ -2861,25 +2858,11 @@ private struct CategoryPresetPicker: View {
     }
 }
 
-/// Preserve the existing system tint for categories that predate explicit palette selection.
+/// Use the same explicit RGB value for legacy categories and palette selections.
 func categoryDisplayColor(_ legacy: MessageCategoryColor, hex: String?) -> Color {
-    if let preset = CategoryColorPreset.matching(hex), let rgb = UInt32(preset.hex.dropFirst(), radix: 16) {
-        return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
-    }
-    return categoryColorAccent(legacy)
-}
-
-private func categoryColorAccent(_ color: MessageCategoryColor) -> Color {
-    switch color {
-    case .sky: return .blue
-    case .mint: return .green
-    case .amber: return .orange
-    case .coral: return .red
-    case .violet: return .purple
-    case .slate: return .secondary
-    case .rose: return .pink
-    case .ocean: return .cyan
-    }
+    let preset = CategoryColorPreset.resolved(legacy: legacy, hex: hex)
+    guard let rgb = UInt32(preset.hex.dropFirst(), radix: 16) else { return .secondary }
+    return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
 }
 
 private struct AboutSyncaSheet: View {

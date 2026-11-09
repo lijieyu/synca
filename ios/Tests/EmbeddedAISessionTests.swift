@@ -8,8 +8,8 @@ struct EmbeddedAISessionTests {
             precondition(!EmbeddedAISession.isTrusted(URL(string: raw)!))
         }
         let token = "test-token-\"'\\\n</script>"
-        let script = EmbeddedAISession.bootstrap(token: token, email: "qa@example.invalid")
-        let result: [String: String] = ["script": script, "token": token]
+        let script = EmbeddedAISession.bootstrap(token: token, email: "qa@example.invalid", appearance: "dark", language: "zh-Hant")
+        let result: [String: String] = ["script": script, "token": token, "preferences": EmbeddedAISession.preferences(appearance: "light", language: "en")]
         print(String(data: try JSONSerialization.data(withJSONObject: result), encoding: .utf8)!)
     }
 }

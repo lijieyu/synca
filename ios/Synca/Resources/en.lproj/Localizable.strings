@@ -391,3 +391,5 @@
 
 "message_bubble.complete_action" = "Complete";
 "message_bubble.restore_action" = "Restore";
+
+"navigation.resize_sidebar" = "Resize sidebar";

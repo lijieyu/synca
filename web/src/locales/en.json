@@ -377,5 +377,21 @@
   "access.mainland_price_note": "Mainland China App Store price; confirm in app",
   "access.current_daily_rule": "Add {{count}} records per day",
   "storage.current_paid_files": "Unlock file transfers, up to {{size}} per file",
-  "ai_page.back_to_connections": "Back to connections"
+  "ai_page.back_to_connections": "Back to connections",
+  "ai_refined": {
+    "title": "Connect your AI",
+    "intro": "Find and organize records in an AI conversation, and save new ideas back to Synca.",
+    "step1": "Copy the connection instructions",
+    "detail1": "Send the instructions below to your AI app.",
+    "step2": "Follow the authorization steps",
+    "detail2": "Add Synca in your AI app and approve access.",
+    "step3": "Return to your conversation",
+    "detail3": "Try: “Organize my records from this week.”",
+    "copy": "Copy connection instructions",
+    "pro": "Synca Pro feature",
+    "show_prompt": "View instructions",
+    "hide_prompt": "Hide instructions",
+    "tip": "No keys to generate or copy. Direct connection depends on whether your AI app supports MCP."
+  },
+  "navigation.resize_sidebar": "Resize sidebar"
 }

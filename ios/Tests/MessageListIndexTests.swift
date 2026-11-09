@@ -33,6 +33,11 @@ struct MessageListIndexTests {
         let legacyCategory = Data(#"{"id":"category","userId":"test","name":"Work","color":"sky","isDefault":false,"createdAt":"2026-11-09T00:00:00Z","updatedAt":"2026-11-09T00:00:00Z"}"#.utf8)
         let legacy = try decoder.decode(SyncaMessageCategory.self, from: legacyCategory)
         precondition(legacy.color == .sky && legacy.colorHex == nil && legacy.sortOrder == 0)
+        for color in MessageCategoryColor.allCases {
+            let canonical = CategoryColorPreset.all.first { $0.legacy == color }!
+            precondition(CategoryColorPreset.resolved(legacy: color, hex: nil).hex == canonical.hex)
+            precondition(CategoryColorPreset.resolved(legacy: color, hex: "#not-a-color").hex == canonical.hex)
+        }
         for preset in CategoryColorPreset.all {
             var payload = try JSONSerialization.jsonObject(with: legacyCategory) as! [String: Any]
             payload["color"] = preset.legacy.rawValue
@@ -40,6 +45,9 @@ struct MessageListIndexTests {
             let decoded = try decoder.decode(SyncaMessageCategory.self, from: JSONSerialization.data(withJSONObject: payload))
             precondition(decoded.color == preset.legacy && decoded.colorHex == preset.hex)
             precondition(CategoryColorPreset.matching(preset.hex.uppercased())?.hex == preset.hex)
+            precondition(CategoryColorPreset.resolved(legacy: preset.legacy, hex: preset.hex.uppercased()).hex == preset.hex)
+            precondition(CategoryColorPreset.resolved(legacy: .slate, hex: preset.hex).hex == preset.hex,
+                         "An explicit shade must take precedence over the compatibility token")
             let roundtrip = try decoder.decode(SyncaMessageCategory.self, from: JSONEncoder().encode(decoded))
             precondition(roundtrip == decoded)
         }
