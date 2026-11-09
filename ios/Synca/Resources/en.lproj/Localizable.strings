@@ -237,9 +237,9 @@
 
 "common.send" = "Send";
 
-"storage.free_benefits" = "200 MB attachment storage; images kept for 3 days";
+"storage.free_benefits" = "100 MB attachment storage; images kept for 3 days";
 "storage.paid_files" = "Unlock file transfers, up to 200 MB per file";
-"storage.paid_capacity" = "2 GB attachment storage; images and files kept for 30 days";
+"storage.paid_capacity" = "1 GB attachment storage; images and files kept for 30 days";
 "storage.retention_notice" = "Attachments are removed when they expire. Download them in time. Text records are not subject to attachment retention limits.";
 "storage.paid_required" = "File transfers require a paid plan";
 "storage.full" = "Transfer storage is full. Delete attachments you no longer need, then try again.";

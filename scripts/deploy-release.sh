@@ -104,6 +104,14 @@ NODE
   test "$healthy" = 1
 fi
 if [ "$target" != backend ]; then
+  # Open tabs may still request a lazy chunk from the previous release.
+  # Keep content-addressed assets, never copy the old HTML or overwrite new assets.
+  for asset_dir in assets ai-static; do
+    if [ -d "$web/$asset_dir" ]; then
+      mkdir -p "$release/web/$asset_dir"
+      rsync -a --ignore-existing --exclude='*.html' "$web/$asset_dir/" "$release/web/$asset_dir/"
+    fi
+  done
   mv "$web" "$release/backup/web"
   web_switched=1
   ln -s "$release/web" "$web"
@@ -157,6 +165,25 @@ if 'location ^~ /files/' not in source:
     position=source.index('    # SPA fallback:')
     source=source[:position]+'''    # Documents are served exclusively by the authenticated API.
     location ^~ /files/ { return 404; }
+
+'''+source[position:]
+# HTML must revalidate; old hashed chunks remain available across releases.
+if 'location = /index.html {' not in source:
+    position=source.index('    # SPA fallback:')
+    source=source[:position]+'''    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+    location = /ai/index.html {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+    location ^~ /assets/ {
+        try_files $uri =404;
+    }
+    location ^~ /ai-static/ {
+        try_files $uri =404;
+    }
 
 '''+source[position:]
 Path(sys.argv[2]).write_text(source)

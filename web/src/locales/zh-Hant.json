@@ -142,9 +142,9 @@
   "image_preview.load_failed": "圖片加載失敗",
   "image_preview.tap_to_retry": "點擊重試",
   "common.send": "發送",
-  "storage.free_benefits": "200 MB 附件空間，圖片保留 3 天",
+  "storage.free_benefits": "100 MB 附件空間，圖片保留 3 天",
   "storage.paid_files": "解鎖檔案傳輸，單個最大 200 MB",
-  "storage.paid_capacity": "2 GB 附件空間，圖片和檔案保留 30 天",
+  "storage.paid_capacity": "1 GB 附件空間，圖片和檔案保留 30 天",
   "storage.retention_notice": "附件到期後清理，請及時下載。文字記錄不受附件保留期限限制。",
   "storage.paid_required": "檔案傳輸為付費功能",
   "storage.full": "中轉空間已滿，請刪除不需要的附件後重試。",
@@ -371,5 +371,10 @@
       "Lavender": "薰衣草"
     },
     "done": "完成"
-  }
+  },
+  "storage.current_free_capacity": "{{capacity}} 附件空間，圖片保留 {{days}} 天",
+  "storage.current_paid_capacity": "{{capacity}} 附件空間，圖片和檔案保留 {{days}} 天",
+  "access.mainland_price_note": "中國大陸 App Store 價格，以 App 內為準",
+  "access.current_daily_rule": "每日可新增 {{count}} 則記錄",
+  "storage.current_paid_files": "解鎖檔案傳輸，單個最大 {{size}}"
 }

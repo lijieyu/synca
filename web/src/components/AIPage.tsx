@@ -13,7 +13,7 @@ type Connection = { id: string; name: string; scopes: Scope[]; expires_at: strin
 type Operation = { id: string; kind: string; status: string; created_at: string; connectionName?: string };
 type Authorization = { aiEnabled: boolean; authorizationDays: number; autoRefresh: boolean; refreshIdleDays: number; clientName: string; scopes: Scope[]; redirectUri: string };
 
-export function AIPage() {
+export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dialog' } = {}) {
   const { token, isAuthenticated, accessStatus, refreshAccessStatus } = useAuth();
   const { t, i18n } = useTranslation();
   const zh = i18n.language.startsWith('zh');
@@ -26,10 +26,11 @@ export function AIPage() {
   };
   const statusLabels: Record<string, string> = { pending: t('ai_page.text_015'), completed: t('ai_page.text_016'), cancelled: t('ai_page.text_017'), expired: t('ai_page.text_018') };
   const params = new URLSearchParams(window.location.search);
-  const authorize = params.get('authorize');
-  const embedded = (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
+  const authorize = presentation === 'page' ? params.get('authorize') : null;
+  const embedded = presentation === 'dialog' || (window as Window & { __syncaEmbeddedAI?: boolean }).__syncaEmbeddedAI === true;
   const [guideVisible, setGuideVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [revokeTarget, setRevokeTarget] = useState<Connection | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -63,9 +64,10 @@ export function AIPage() {
     setConnections(c.connections); setOperations(o.operations);
   }, [request]);
   useEffect(() => {
+    if (presentation === 'dialog') return;
     document.title = `${t('ai.connect')} · Synca`;
     return () => { document.title = 'Synca'; };
-  }, [t]);
+  }, [t, presentation]);
   useEffect(() => {
     if (!token) return;
     let active = true;
@@ -79,7 +81,7 @@ export function AIPage() {
     };
     void load().catch(e => { if (active) setError(String(e.message)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token, request, authorize]);
+  }, [token, request, authorize, loadAttempt]);
   const act = async (fn: () => Promise<void>) => {
     if (actionPending.current) return;
     actionPending.current = true;
@@ -88,7 +90,7 @@ export function AIPage() {
   };
   const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  return <><main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
+  return <><main className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}${previewVisible ? ' ai-preview-open' : ''}`} inert={previewVisible || planVisible || Boolean(revokeTarget)}><div className="ai-content">
     {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
     {!authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible))) && <><div className="ai-intro-grid"><header className="ai-hero">
       <h1>{t('ai_page.text_021')}</h1>
@@ -108,7 +110,7 @@ export function AIPage() {
     </section>
     </>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
-    {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => window.location.reload()}>{t('ai_page.text_038')}</button></div>}
+    {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => { if (presentation === 'dialog') { setError(''); setLoaded(false); setLoadAttempt(value => value + 1); } else window.location.reload(); }}>{t('ai_page.text_038')}</button></div>}
     {isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('ai_page.text_039')}</h2><p>{t('ai_page.text_040')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button> <button disabled={busy} onClick={() => void act(async () => {
         await refreshAccessStatus();
         if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));

@@ -38,10 +38,57 @@ describe('Attachment storage contract', () => {
             const res = await request(app).get('/me/access-status').set('Authorization', user.auth);
             expect(res.body.accessStatus.storage).toEqual({ ...storagePolicy(paid), usedBytes: 0 });
         }
+        expect(storagePolicy(false).limitBytes).toBe(100 * 1024 * 1024);
+        expect(storagePolicy(true).limitBytes).toBe(1024 * 1024 * 1024);
         expect(storagePolicy(false).retentionDays).toBe(3);
         expect(storagePolicy(true).retentionDays).toBe(30);
         expect(IMAGE_LIMIT).toBe(50 * 1024 * 1024);
         expect(FILE_LIMIT).toBe(200 * 1024 * 1024);
+    });
+    it.each([false, true])('accepts exact remaining capacity and rejects one byte over (paid=%s)', async paid => {
+        const user = await account(paid);
+        const limit = storagePolicy(paid).limitBytes;
+        const uploaded = await request(app).post('/messages/image').set('Authorization', user.auth)
+            .set('X-Upload-Size', '4').attach('image', Buffer.from('test'), 'test.png');
+        remember(uploaded.body); expect(uploaded.status).toBe(201);
+        await db.updateTable('messages').set({ file_size: limit - 4 }).where('id', '=', uploaded.body.id).execute();
+        const exact = await reserveUpload(user.id, 4, limit, 'image');
+        expect(exact).not.toBeNull();
+        expect(await reserveUpload(user.id, 1, limit, 'image')).toBeNull();
+        await releaseUpload(exact!);
+        expect(await reserveUpload(user.id, 5, limit, 'image')).toBeNull();
+    });
+    it.each([false, true])('preserves legacy overquota attachments and allows download/delete/text (paid=%s)', async paid => {
+        const user = await account(paid);
+        const uploaded = await request(app).post('/messages/image').set('Authorization', user.auth)
+            .set('X-Upload-Size', '4').attach('image', Buffer.from('test'), 'test.png');
+        remember(uploaded.body); expect(uploaded.status).toBe(201);
+        const expiry = new Date(Date.now() + 2 * 86400000).toISOString();
+        const size = storagePolicy(paid).limitBytes + 1;
+        await db.updateTable('messages').set({ file_size: size, attachment_expires_at: expiry }).where('id', '=', uploaded.body.id).execute();
+        // Migration reruns and scheduled cleanup must never normalize old expiration or delete by capacity.
+        await runMigrations();
+        await cleanupExpiredAttachments();
+        const row = await db.selectFrom('messages').selectAll().where('id', '=', uploaded.body.id).executeTakeFirstOrThrow();
+        expect(row).toMatchObject({ attachment_expires_at: expiry, attachment_purged: 0, file_size: size });
+        const status = await request(app).get('/me/access-status').set('Authorization', user.auth);
+        expect(status.body.accessStatus.storage).toMatchObject({ usedBytes: size, limitBytes: storagePolicy(paid).limitBytes });
+        expect((await request(app).get(`/api/media/${uploaded.body.imagePath}`).set('Authorization', user.auth)).status).toBe(200);
+        const blocked = await request(app).post('/messages/image').set('Authorization', user.auth).set('X-Upload-Size', '1');
+        expect(blocked.status).toBe(413); expect(blocked.body.error).toBe('storage_limit_reached');
+        expect((await request(app).post('/messages').set('Authorization', user.auth).send({ textContent: 'still available' })).status).toBe(201);
+        expect((await request(app).delete(`/messages/${uploaded.body.id}`).set('Authorization', user.auth)).status).toBe(200);
+        expect(await storageUsage(user.id)).toBe(0);
+    });
+    it('keeps older clients without upload size headers working and gives new paid images 30 days', async () => {
+        const user = await account(true);
+        const res = await request(app).post('/messages/image').set('Authorization', user.auth)
+            .attach('image', Buffer.from('test'), 'test.png');
+        remember(res.body); expect(res.status).toBe(201);
+        const duration = Date.parse(res.body.attachmentExpiresAt) - Date.parse(res.body.createdAt);
+        expect(duration).toBeGreaterThanOrEqual(30 * 86400000 - 1000);
+        expect(duration).toBeLessThanOrEqual(30 * 86400000 + 1000);
+        expect(res.body).toMatchObject({ type: 'image', fileSize: 4, isDeleted: false });
     });
     it('rejects free file uploads before accepting a body', async () => {
         const user = await account();
