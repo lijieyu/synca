@@ -134,3 +134,5 @@
 .ai-page.ai-dialog .ai-initial-loading { min-height:200px; }
 
 .ai-page .ai-guide-back { margin-bottom:8px; gap:6px; }
+
+.ai-page.ai-dialog .ai-preview-trigger { border-radius:0; padding:14px 0 0; }
