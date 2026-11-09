@@ -91,6 +91,7 @@
 .calm-sidebar .category-chip { background:color-mix(in srgb, var(--category-accent) 12%, var(--sidebar-bg)); color:var(--text-main); }
 .calm-sidebar .category-chip.active { background:color-mix(in srgb, var(--category-accent) 30%, var(--sidebar-bg)); color:var(--text-main); }
 .calm-sidebar .category-chip::before { content:none; }
+@media(min-width:701px) { .calm-sidebar .category-chip:not(.category-all) { padding-left:20px; } }
 .calm-sidebar .category-todo-badge { min-width:24px; height:22px; padding:2px 7px; line-height:18px; background:color-mix(in srgb, var(--category-accent) 24%, var(--panel-bg-color)); color:var(--text-main); font-weight:650; }
 .category-manager-heading,.category-list-row { grid-template-columns:minmax(0,1fr) minmax(100px,160px) 38px 34px; }
 .category-manager-heading { padding-left:10px; }

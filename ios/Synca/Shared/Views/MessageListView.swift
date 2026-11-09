@@ -549,15 +549,15 @@ struct MessageListView: View {
             }
         } label: {
             HStack(spacing: 10) {
-                if let color { Circle().fill(color).frame(width: 8, height: 8) }
-                else { Image(systemName: "square.grid.2x2").font(.system(size: 14, weight: .regular)).frame(width: 16) }
+                if color == nil { Image(systemName: "square.grid.2x2").font(.system(size: 14, weight: .regular)).frame(width: 16) }
                 Text(title).lineLimit(2).multilineTextAlignment(.leading)
                 Spacer(minLength: 4)
                 if count > 0 { Text(count, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background((color ?? (selected ? Color.syncaPageBackground : Color.primary)).opacity(selected ? 0.24 : 0.12), in: Capsule()) }
             }
-            .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 44)
+            .padding(.leading, color == nil ? 12 : 20).padding(.trailing, 12)
+            .padding(.vertical, 8).frame(minHeight: 44)
             .foregroundStyle(color == nil && selected ? Color.syncaPageBackground : Color.primary)
             .background(color == nil ? Color.primary.opacity(selected ? 1 : 0.06) : color!.opacity(selected ? 0.22 : 0.08), in: RoundedRectangle(cornerRadius: 8))
             .overlay { if color == nil && !selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.1), lineWidth: 1) } }
