@@ -222,7 +222,7 @@
 
 .sidebar-resizer { position:absolute; z-index:20; top:0; bottom:0; right:-4px; width:8px; cursor:col-resize; touch-action:none; }
 .sidebar-resizer::after { content:''; position:absolute; top:0; bottom:0; left:3px; width:2px; background:transparent; }
-.sidebar-resizer:hover::after,.sidebar-resizer:focus-visible::after { background:var(--text-secondary); opacity:.45; }
-.sidebar-resizer:focus-visible { outline:2px solid var(--text-secondary); outline-offset:-2px; }
+.sidebar-resizer[data-active=true]::after,.sidebar-resizer:focus-visible::after { background:var(--text-secondary); opacity:.45; }
+.sidebar-resizer:focus,.sidebar-resizer:focus-visible { outline:none; }
 body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; user-select:none!important; }
 @media(max-width:700px) { .sidebar-resizer { display:none; } }
