@@ -18,8 +18,17 @@ struct MessageBubbleView: View {
     let onImageTap: () -> Void
     let onImageLoaded: () -> Void
 
+    var textExpansion: Binding<Bool>? = nil
+
     @State private var copied = false
-    @State private var isTextExpanded = false
+    @State private var localTextExpanded = false
+    private var isTextExpanded: Bool {
+        get { textExpansion?.wrappedValue ?? localTextExpanded }
+        nonmutating set {
+            if let textExpansion { textExpansion.wrappedValue = newValue }
+            else { localTextExpanded = newValue }
+        }
+    }
     @State private var saveStatus: SaveStatus = .none
     @State private var showDeleteConfirm = false
     @State private var photoSaveError: String?
@@ -100,13 +109,6 @@ struct MessageBubbleView: View {
             HStack {
                 Text(message.displayDate)
                     .font(.caption2)
-
-                if let device = message.sourceDevice, !device.isEmpty {
-                    Text("·")
-                        .font(.caption2)
-                    Text(device)
-                        .font(.caption2)
-                }
 
                 if let categoryName = message.categoryName, let categoryId = message.categoryId {
                     Text("·")

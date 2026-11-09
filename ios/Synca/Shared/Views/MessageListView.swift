@@ -96,6 +96,9 @@ struct MessageListView: View {
     @ObservedObject private var settings = SettingsManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrollTask: Task<Void, Never>?
+    @State private var expandedTextIDs: Set<String> = []
+    @State private var textLayoutRevision = 0
+    @State private var collapsedRowTarget: (category: String?, row: String)?
     @State private var inputText = ""
     @State private var composerFocusRequest = 0
     @FocusState private var sidebarCategoryFocus: String?
@@ -300,6 +303,12 @@ struct MessageListView: View {
             syncManager.startPolling()
             self.updateBadge()
         }
+        #if os(iOS)
+        .onChange(of: syncManager.selectedCategoryId) { _ in
+            collapsedRowTarget = nil
+            expandedTextIDs.removeAll()
+        }
+        #endif
         .onChange(of: syncManager.unclearedCount) { _ in
             self.updateBadge()
         }
@@ -940,11 +949,26 @@ struct MessageListView: View {
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onAppear {
+                    #if os(iOS)
+                    if let target = collapsedRowTarget, target.category == syncManager.selectedCategoryId { return }
+                    #endif
                     if syncManager.hasCompletedInitialLoad && !filteredMessages.isEmpty {
                         beginInitialLoadScrollWindow()
                         scrollToBottomAfterLayoutSettles(proxy: proxy)
                     }
                 }
+                #if os(iOS)
+                .task(id: textLayoutRevision) {
+                    guard let target = collapsedRowTarget,
+                          target.category == syncManager.selectedCategoryId else { return }
+                    // The replacement reader owns this task, so disappearance of
+                    // the old reader cannot cancel restoration of the new layout.
+                    try? await Task.sleep(nanoseconds: Timing.scrollCoalescingNanoseconds)
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(target.row, anchor: .top)
+                    collapsedRowTarget = nil
+                }
+                #endif
                 .onDisappear {
                     scrollTask?.cancel()
                     initialLoadScrollWindowID = UUID()
@@ -952,7 +976,7 @@ struct MessageListView: View {
                 }
             }
             // A new category must not inherit the previous list's scroll geometry.
-            .id(syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId)
+            .id("\(syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId)-\(textLayoutRevision)")
         }
     }
 
@@ -1331,6 +1355,12 @@ struct MessageListView: View {
         scrollTask?.cancel()
         shouldScrollToBottomAfterInitialLoad = false
         shouldScrollToBottomAfterSend = false
+        #if os(iOS)
+        // LazyVStack can retain the expanded row's estimated height after a large
+        // shrink. Rebuild its geometry; expanded states live above this identity.
+        collapsedRowTarget = (syncManager.selectedCategoryId, message.id)
+        textLayoutRevision += 1
+        #else
         let categoryID = syncManager.selectedCategoryId
         let rowID = "\(message.id)-\(message.isCleared)"
         scrollTask = Task { @MainActor in
@@ -1343,6 +1373,7 @@ struct MessageListView: View {
             guard !Task.isCancelled, categoryID == syncManager.selectedCategoryId else { return }
             proxy.scrollTo(rowID, anchor: .top)
         }
+        #endif
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
@@ -1491,9 +1522,21 @@ struct MessageListView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                     NotificationCenter.default.post(name: .syncaScrollToBottomAfterImageLoad, object: nil)
                 }
-            }
+            },
+            textExpansion: textExpansionBinding(for: message.id)
         )
         .id("\(message.id)-\(message.isCleared)")
+    }
+
+    private func textExpansionBinding(for id: String) -> Binding<Bool>? {
+        #if os(iOS)
+        return Binding(
+            get: { expandedTextIDs.contains(id) },
+            set: { if $0 { expandedTextIDs.insert(id) } else { expandedTextIDs.remove(id) } }
+        )
+        #else
+        return nil
+        #endif
     }
 
     @ViewBuilder
@@ -2388,7 +2431,7 @@ private struct NewMessageCategorySheet: View {
                 }
 
                 Section {
-                    CategoryPresetPicker(selectedHex: colorHex, legacy: color) { preset in
+                    CategoryPresetPicker(selectedHex: colorHex, legacy: color, expandsToFill: true) { preset in
                         color = preset.legacy
                         colorHex = preset.hex
                     }
@@ -2796,9 +2839,10 @@ private struct CategoryPresetPicker: View {
     let selectedHex: String?
     let legacy: MessageCategoryColor
     var columnCount: Int = 4
+    var expandsToFill = false
     let onSelect: (CategoryColorPreset) -> Void
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 0), count: columnCount), spacing: 0) {
+        LazyVGrid(columns: Array(repeating: GridItem(expandsToFill ? .flexible(minimum: 44) : .fixed(44), spacing: 0), count: columnCount), spacing: expandsToFill ? 8 : 0) {
             ForEach(CategoryColorPreset.all) { preset in
                 let colorNameKey = "message_category.color.\(preset.name)"
                 let selected = selectedHex?.lowercased() == preset.hex || (selectedHex == nil && CategoryColorPreset.all.first(where: { $0.legacy == legacy })?.hex == preset.hex)
@@ -2811,7 +2855,9 @@ private struct CategoryPresetPicker: View {
                     .accessibilityLabel(Text(verbatim: AppLocalization.string(colorNameKey)))
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
-        }.padding(10).frame(width: CGFloat(columnCount) * 44 + 20)
+        }.padding(10)
+            .frame(width: expandsToFill ? nil : CGFloat(columnCount) * 44 + 20)
+            .frame(maxWidth: expandsToFill ? .infinity : nil)
     }
 }
 
