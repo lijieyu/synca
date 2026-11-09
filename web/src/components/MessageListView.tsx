@@ -11,7 +11,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, ChevronUp, Lightbulb, GripVertical, Trash2, Plus, RotateCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -449,7 +449,8 @@ export const MessageListView: React.FC = () => {
 
         <div className="category-toolbar">
           <div className="category-switcher" ref={sidebarSort.containerRef}>
-            <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} category-all`} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
+            <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} category-all`} aria-pressed={selectedScopeIsAll} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
+              <LayoutGrid size={16} strokeWidth={1.6} aria-hidden="true" />
               {t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
