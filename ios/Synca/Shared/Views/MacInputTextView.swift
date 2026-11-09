@@ -8,6 +8,7 @@ struct MacInputTextView: NSViewRepresentable {
     @Binding var text: String
     @Binding var height: CGFloat
     let isSending: Bool
+    var placeholder: String = ""
     var focusRequest: Int = 0
     let onPasteImage: (Data) -> Void
     let onPasteFile: (PendingFileUpload) -> Void
@@ -32,6 +33,7 @@ struct MacInputTextView: NSViewRepresentable {
         let container = MacInputContainerView()
 
         let textView = PasteAwareMacTextView()
+        textView.placeholder = placeholder
         textView.delegate = context.coordinator
         textView.onPasteImage = onPasteImage
         textView.onPasteFile = onPasteFile
@@ -73,6 +75,7 @@ struct MacInputTextView: NSViewRepresentable {
 
     func updateNSView(_ container: MacInputContainerView, context: Context) {
         guard let textView = container.textView else { return }
+        textView.placeholder = placeholder
         context.coordinator.onSubmit = onSubmit
         textView.onSubmit = onSubmit
         textView.onPasteImage = onPasteImage
@@ -146,13 +149,17 @@ struct MacInputTextView: NSViewRepresentable {
             let font = textView.font ?? MacInputTextView.textFont
             let lineH = lm.defaultLineHeight(for: font)
             // Include the extra empty line after Return so its caret is not clipped.
-            let usedHeight = textView.string.isEmpty ? lineH : max(
+            let rawHeight = textView.string.isEmpty ? lineH : max(
                 lm.usedRect(for: tc).maxY, lm.extraLineFragmentRect.maxY)
+            let usedHeight = alignedTextHeight(rawHeight, in: textView)
             let minFieldH: CGFloat = 34
             let maxFieldH: CGFloat = 104
             // Derive the inset from the configured font, never from the current glyphs.
             // Re-centering each marked/committed run moves the entire line while typing.
-            let verticalPad = max(4, (minFieldH - lm.defaultLineHeight(for: MacInputTextView.textFont)) / 2)
+            // AppKit floors fractional textContainerInset values. In Chinese system
+            // language a nominal 16pt line can report 16.0063pt, producing an
+            // 8.9968pt inset that becomes 8pt instead of the intended 9pt.
+            let verticalPad = max(4, ((minFieldH - lm.defaultLineHeight(for: MacInputTextView.textFont)) / 2).rounded())
             let fieldH = min(maxFieldH, max(minFieldH, ceil(usedHeight + 2 * verticalPad)))
 
             textView.textContainerInset = NSSize(width: 0, height: verticalPad)
@@ -173,6 +180,14 @@ struct MacInputTextView: NSViewRepresentable {
             textView.updateInsertionPointStateAndRestartTimer(true)
         }
     }
+}
+
+/// Quantize subpixel font-metric noise consistently for the field and document.
+/// Otherwise ceil(16.0063) adds a spurious point and can trigger caret scrolling.
+@MainActor
+private func alignedTextHeight(_ height: CGFloat, in view: NSView) -> CGFloat {
+    let scale = view.window?.backingScaleFactor ?? 1
+    return (height * scale).rounded() / scale
 }
 
 /// A vertical-only scroll host: the document grows while SwiftUI caps the visible field.
@@ -212,11 +227,38 @@ final class MacInputContainerView: NSScrollView {
         // Width tracking owns wrapping; never manually set a competing container width.
         manager.ensureLayout(for: container)
         let bottom = max(manager.usedRect(for: container).maxY, manager.extraLineFragmentRect.maxY)
-        textView.setFrameSize(NSSize(width: width, height: max(contentSize.height, ceil(bottom + 2 * textView.textContainerInset.height))))
+        textView.setFrameSize(NSSize(width: width, height: max(contentSize.height, ceil(alignedTextHeight(bottom, in: textView) + 2 * textView.textContainerInset.height))))
     }
 }
 
 final class PasteAwareMacTextView: NSTextView {
+    // AppKit owns composition; a SwiftUI overlay can lag behind marked text.
+    var placeholder = "" { didSet { if oldValue != placeholder { needsDisplay = true } } }
+    var shouldDrawPlaceholder: Bool { string.isEmpty && !hasMarkedText() }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard shouldDrawPlaceholder else { return }
+        (placeholder as NSString).draw(at: NSPoint(x: textContainerOrigin.x + 2, y: textContainerOrigin.y),
+            withAttributes: [.font: font ?? NSFont.preferredFont(forTextStyle: .body),
+                             .foregroundColor: NSColor.secondaryLabelColor])
+    }
+
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        needsDisplay = true
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        needsDisplay = true
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        needsDisplay = true
+    }
+
     var onPasteImage: ((Data) -> Void)?
     var onPasteFile: ((PendingFileUpload) -> Void)?
     var onSubmit: (() -> Void)?

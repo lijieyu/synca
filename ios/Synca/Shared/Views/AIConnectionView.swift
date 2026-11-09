@@ -18,7 +18,7 @@ struct AIConnectionView: View {
         let screen = parent?.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
         let availableWidth = min(parent?.frame.width ?? 920, screen?.width ?? 920) - 40
         let availableHeight = (screen?.height ?? 800) - 100
-        return CGSize(width: min(600, max(320, availableWidth)), height: min(560, max(320, availableHeight)))
+        return CGSize(width: min(600, max(320, availableWidth)), height: min(max(320, (browser.contentHeight ?? 404) + 56), min(640, max(320, availableHeight))))
     }
     #endif
 
@@ -111,6 +111,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     @Published private(set) var isLoading = true
     @Published private(set) var failed = false
     @Published private(set) var hasLoadedDocument = false
+    @Published private(set) var contentHeight: CGFloat?
     let webView: WKWebView
     private var externalOpen: ((URL) -> Void)?
     private var observations: [NSKeyValueObservation] = []
@@ -126,6 +127,24 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         configuration.websiteDataStore = .nonPersistent()
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
+        #if os(macOS)
+        configuration.userContentController.add(AIContentHeightHandler { [weak self] height, scroll in
+            guard let self else { return }
+            if abs((self.contentHeight ?? 0) - height) > 1 { self.contentHeight = height }
+            if let scroll {
+                // Allow SwiftUI to resize the native sheet before positioning the H5 scroller.
+                DispatchQueue.main.async { [weak self] in
+                    self?.webView.evaluateJavaScript("""
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                      const page = document.querySelector('.ai-page');
+                      if (page) page.scrollTo({top: \(scroll == "end" ? "page.scrollHeight" : "0"),
+                        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+                    }));
+                    """, completionHandler: nil)
+                }
+            }
+        }, name: "syncaAIContentHeight")
+        #endif
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -158,10 +177,40 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
             source: EmbeddedAISession.bootstrap(token: sessionToken, email: sessionEmail, appearance: appearance, language: language),
             injectionTime: .atDocumentStart, forMainFrameOnly: true
         ))
+        #if os(macOS)
+        controller.addUserScript(WKUserScript(source: Self.contentHeightScript,
+            injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        #endif
         if let url = webView.url, EmbeddedAISession.isTrusted(url) {
             webView.evaluateJavaScript(EmbeddedAISession.preferences(appearance: appearance, language: language), completionHandler: nil)
         }
     }
+
+    #if os(macOS)
+    // Measure the content, not the viewport-sized .ai-page: shrinking the window
+    // must not feed its own previous height back into the next measurement.
+    private static let contentHeightScript = """
+    (() => {
+      if (window.top !== window || location.origin !== 'https://synca.haerth.cn' ||
+          !['/ai', '/ai/'].includes(location.pathname)) return;
+      let scheduled = false, observed, expanded = false;
+      const report = () => {
+        scheduled = false;
+        const content = document.querySelector('.ai-content');
+        if (!content || !content.querySelector('.ai-tutorial, .ai-connections, .ai-consent')) return;
+        if (observed !== content) { if (observed) sizeObserver.unobserve(observed); sizeObserver.observe(content); observed = content; }
+        const hasPrompt = !!content.querySelector('#ai-prompt-content');
+        const scroll = hasPrompt !== expanded ? (hasPrompt ? 'end' : 'start') : null;
+        expanded = hasPrompt;
+        window.webkit.messageHandlers.syncaAIContentHeight.postMessage({height: Math.ceil(content.offsetHeight), scroll});
+      };
+      const schedule = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(report); } };
+      const sizeObserver = new ResizeObserver(schedule);
+      new MutationObserver(schedule).observe(document.body, {childList:true, subtree:true, attributes:true});
+      schedule();
+    })();
+    """
+    #endif
 
     func retry() {
         failed = false
@@ -237,5 +286,25 @@ private struct AIWebContainer: UIViewRepresentable {
     let browser: AIConnectionBrowser
     func makeUIView(context: Context) -> WKWebView { browser.webView }
     func updateUIView(_ view: WKWebView, context: Context) {}
+}
+#endif
+
+#if os(macOS)
+/// The controller owns this proxy; its callback captures the browser weakly.
+@MainActor
+private final class AIContentHeightHandler: NSObject, WKScriptMessageHandler {
+    let onHeight: (CGFloat, String?) -> Void
+    init(onHeight: @escaping (CGFloat, String?) -> Void) { self.onHeight = onHeight }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              let url = message.frameInfo.request.url, EmbeddedAISession.isTrusted(url),
+              ["/ai", "/ai/"].contains(url.path),
+              let body = message.body as? [String: Any],
+              let number = body["height"] as? NSNumber else { return }
+        let height = CGFloat(number.doubleValue)
+        guard height.isFinite, height > 0 else { return }
+        let scroll = body["scroll"] as? String
+        onHeight(height, ["end", "start"].contains(scroll ?? "") ? scroll : nil)
+    }
 }
 #endif

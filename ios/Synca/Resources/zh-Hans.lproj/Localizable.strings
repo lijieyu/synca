@@ -30,9 +30,9 @@
 "message_list.clear_completed_all_categories" = "将删除所有分类中的已完成事项。";
 "message_list.clear_completed_category_format" = "将删除“%@”中的已完成事项。";
 "message_list.clear_completed_all_messages" = "将删除全部消息中的已完成事项。";
-"message_list.logout_confirm_title" = "确认退出";
-"message_list.logout_confirm_message" = "退出后需要重新登录";
-"message_list.logout" = "退出";
+"message_list.logout_confirm_title" = "要退出登录？";
+"message_list.logout_confirm_message" = "你需要重新登录才能继续使用 Synca";
+"message_list.logout" = "退出登录";
 "message_list.about" = "关于 Synca";
 "message_list.feedback" = "提交反馈";
 "message_list.sign_out" = "退出登录";
