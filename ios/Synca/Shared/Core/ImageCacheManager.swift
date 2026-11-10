@@ -13,6 +13,13 @@ enum ImageCache {
             .appendingPathComponent("SyncaImageCache", isDirectory: true),
         maximumBytes: 128 * 1024 * 1024, maximumAge: 7 * 24 * 60 * 60)
 
+    // NSCache is thread-safe and discards decoded pixels under memory pressure.
+    private final class DecodedCache: @unchecked Sendable {
+        let values = NSCache<NSString, CGImage>()
+        init() { values.totalCostLimit = 64 * 1024 * 1024; values.countLimit = 80 }
+    }
+    private static let decoded = DecodedCache()
+
     static var generation: UInt64 { cache.generation }
 
     /// Called before publishing an upload response. Keep original bytes, and reject
@@ -50,10 +57,33 @@ enum ImageCache {
         return data
     }
 
+    static func cachedThumbnail(for url: URL, authorizationToken: String?, maximumPixelSize: Int) -> CGImage? {
+        guard authorizationToken != nil else { return nil }
+        return decoded.values.object(forKey: thumbnailKey(url, authorizationToken, maximumPixelSize, cache.generation))
+    }
+
+    private static func thumbnailKey(_ url: URL, _ token: String?, _ size: Int, _ generation: UInt64) -> NSString {
+        "\(cacheKey(for: url, authorizationToken: token))-\(size)-\(generation)" as NSString
+    }
+
     static func thumbnail(for url: URL, authorizationToken: String?, maximumPixelSize: Int) async throws -> CGImage {
+        let session = try await APIClient.shared.attachmentSession(for: url)
+        guard authorizationToken == (await APIClient.shared.token) else { throw CancellationError() }
+        try Task.checkCancellation()
+        if let image = cachedThumbnail(for: url, authorizationToken: authorizationToken, maximumPixelSize: maximumPixelSize) {
+            guard await APIClient.shared.isCurrentSession(session) else { throw CancellationError() }
+            return image
+        }
+        let generation = cache.generation
         let data = try await loadData(for: url, authorizationToken: authorizationToken)
         try Task.checkCancellation()
-        return try thumbnail(from: data, maximumPixelSize: maximumPixelSize)
+        let image = try thumbnail(from: data, maximumPixelSize: maximumPixelSize)
+        guard await APIClient.shared.isCurrentSession(session) else { throw CancellationError() }
+        if generation == cache.generation {
+            decoded.values.setObject(image, forKey: thumbnailKey(url, authorizationToken, maximumPixelSize, generation),
+                                     cost: image.bytesPerRow * image.height)
+        }
+        return image
     }
 
     static func thumbnail(from data: Data, maximumPixelSize: Int) throws -> CGImage {
@@ -72,7 +102,7 @@ enum ImageCache {
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
-    static func clearCache() { cache.clear() }
+    static func clearCache() { cache.clear(); decoded.values.removeAllObjects() }
 
 }
 

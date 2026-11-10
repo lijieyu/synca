@@ -126,8 +126,8 @@ class APIClient {
     };
   }
 
-  private readonly imageCache = new Map<string, { blob: Blob; expiresAt: number }>();
-  private uploadedImage: { url: string; blob: Blob; expiresAt: number } | null = null;
+  private readonly imageCache = new Map<string, { blob: Blob; expiresAt: number; objectURL?: string }>();
+  private uploadedImage: { url: string; blob: Blob; expiresAt: number; objectURL?: string } | null = null;
   private sessionVersion = 0;
   private imageCacheToken: string | null = null;
   private readonly attachmentRequests = new Set<AbortController>();
@@ -136,8 +136,7 @@ class APIClient {
   // Never persist protected attachments: an old browser cache must not bypass expiry or sign-out.
   resetSession() {
     this.sessionVersion += 1;
-    this.uploadedImage = null;
-    this.imageCache.clear();
+    this.clearImageSources();
     this.imageCacheToken = this.token;
     this.attachmentRequests.forEach(controller => controller.abort());
     this.attachmentRequests.clear();
@@ -278,12 +277,39 @@ class APIClient {
     const expiresAt = message.attachmentExpiresAt ? Date.parse(message.attachmentExpiresAt) : Infinity;
     if (!(expiresAt > Date.now())) return;
     this.ensureImageCacheSession(requestToken);
+    if (this.uploadedImage?.objectURL) URL.revokeObjectURL(this.uploadedImage.objectURL);
     this.uploadedImage = { url: target.href, blob: file, expiresAt: Math.min(expiresAt, Date.now() + IMAGE_CACHE_TTL_MS) };
+  }
+
+  private evictImage(key: string) {
+    const source = this.imageCache.get(key)?.objectURL;
+    if (source) URL.revokeObjectURL(source);
+    this.imageCache.delete(key);
+  }
+
+  private clearImageSources() {
+    for (const key of this.imageCache.keys()) this.evictImage(key);
+    if (this.uploadedImage?.objectURL) URL.revokeObjectURL(this.uploadedImage.objectURL);
+    this.uploadedImage = null;
+  }
+
+  // Reuse the browser's decoded image on a warm category switch. Sources share
+  // the existing byte budget, TTL and account lifetime; never persist them.
+  cachedImageSource(url: string, attachmentExpiry?: string | null): string | null {
+    if (!this.token) return null;
+    this.ensureImageCacheSession(this.token);
+    let target: URL;
+    try { target = new URL(url, window.location.href); } catch { return null; }
+    if (target.origin !== window.location.origin || !target.pathname.startsWith('/api/media/')) return null;
+    const expiry = attachmentExpiry ? Date.parse(attachmentExpiry) : Infinity;
+    const entry = this.uploadedImage?.url === target.href ? this.uploadedImage : this.imageCache.get(target.href);
+    if (!entry || !(Math.min(expiry, entry.expiresAt) > Date.now())) return null;
+    return entry.objectURL ??= URL.createObjectURL(entry.blob);
   }
 
   private ensureImageCacheSession(requestToken: string) {
     if (this.imageCacheToken === requestToken) return;
-    this.imageCache.clear();
+    this.clearImageSources();
     this.uploadedImage = null;
     this.imageCacheToken = requestToken;
   }
@@ -339,7 +365,10 @@ class APIClient {
     if (expiresAt <= Date.now()) throw new StorageError('attachment_expired');
     if (options.signal?.aborted) throw new DOMException('Download cancelled', 'AbortError');
     this.ensureImageCacheSession(requestToken);
-    if (this.uploadedImage && this.uploadedImage.expiresAt <= Date.now()) this.uploadedImage = null;
+    if (this.uploadedImage && this.uploadedImage.expiresAt <= Date.now()) {
+      if (this.uploadedImage.objectURL) URL.revokeObjectURL(this.uploadedImage.objectURL);
+      this.uploadedImage = null;
+    }
     if (options.cacheImage && this.uploadedImage?.url === target.href
       && Math.min(this.uploadedImage.expiresAt, expiresAt) > Date.now()) return this.uploadedImage.blob;
     const cached = this.imageCache.get(target.href);
@@ -348,7 +377,7 @@ class APIClient {
       this.imageCache.set(target.href, cached);
       return cached.blob;
     }
-    this.imageCache.delete(target.href);
+    this.evictImage(target.href);
     const controller = new AbortController();
     const abort = () => controller.abort();
     options.signal?.addEventListener('abort', abort, { once: true });
@@ -364,12 +393,12 @@ class APIClient {
       if (requestToken !== this.token || controller.signal.aborted) throw new DOMException('Download cancelled', 'AbortError');
       if (expiresAt <= Date.now()) throw new StorageError('attachment_expired');
       if (options.cacheImage && blob.type.startsWith('image/') && blob.size <= IMAGE_CACHE_ITEM_LIMIT_BYTES) {
-        for (const [key, entry] of this.imageCache) if (entry.expiresAt <= Date.now()) this.imageCache.delete(key);
+        for (const [key, entry] of this.imageCache) if (entry.expiresAt <= Date.now()) this.evictImage(key);
         let size = [...this.imageCache.values()].reduce((sum, entry) => sum + entry.blob.size, 0);
         while (size + blob.size > IMAGE_CACHE_LIMIT_BYTES && this.imageCache.size) {
           const oldestKey = this.imageCache.keys().next().value!;
           size -= this.imageCache.get(oldestKey)!.blob.size;
-          this.imageCache.delete(oldestKey);
+          this.evictImage(oldestKey);
         }
         this.imageCache.set(target.href, { blob, expiresAt: Math.min(expiresAt, Date.now() + IMAGE_CACHE_TTL_MS) });
       }

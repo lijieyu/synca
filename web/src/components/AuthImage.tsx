@@ -10,7 +10,7 @@ interface AuthImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 export const AuthImage: React.FC<AuthImageProps> = ({ url, expiresAt, ...props }) => {
   const container = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(() => api.cachedImageSource(url, expiresAt));
   const [error, setError] = useState<'load' | 'expired' | null>(null);
   const [retry, setRetry] = useState(0);
   const { t } = useTranslation();
@@ -28,6 +28,8 @@ export const AuthImage: React.FC<AuthImageProps> = ({ url, expiresAt, ...props }
   }, []);
 
   useEffect(() => {
+    const cached = api.cachedImageSource(url, expiresAt);
+    if (cached) { setObjectUrl(cached); setError(null); return; }
     if (!visible && 'IntersectionObserver' in window) return;
     const controller = new AbortController();
     let currentObjectUrl: string | null = null;
@@ -35,8 +37,9 @@ export const AuthImage: React.FC<AuthImageProps> = ({ url, expiresAt, ...props }
     setError(null);
     void api.getProtectedFileBlob(url, { signal: controller.signal, expiresAt, cacheImage: true }).then(blob => {
       if (controller.signal.aborted) return;
-      currentObjectUrl = URL.createObjectURL(blob);
-      setObjectUrl(currentObjectUrl);
+      const shared = api.cachedImageSource(url, expiresAt);
+      if (shared) setObjectUrl(shared);
+      else { currentObjectUrl = URL.createObjectURL(blob); setObjectUrl(currentObjectUrl); }
     }).catch(err => {
       if (!controller.signal.aborted) setError(err instanceof StorageError && err.code === 'attachment_expired' ? 'expired' : 'load');
     });
