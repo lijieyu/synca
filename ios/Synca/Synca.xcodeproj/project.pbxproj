@@ -90,6 +90,10 @@
 		45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */; };
 		92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41D507A6341146B3525EAAA /* AIConnectionView.swift */; };
 		81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */; };
+		424F6054C2A0D22413708252 /* MessageMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */; };
+		88B18FF1179B124CE66ACFD9 /* MessageMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */; };
+		44E8481E7D0CED0BC9FE178A /* RichClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */; };
+		70B6BF0BA33B89BE97DF16BC /* RichClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -146,6 +150,8 @@
 		B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSheet.swift; sourceTree = "<group>"; };
 		72BE306B18C6241912B55FAF /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		CA2341AA42B6FC31B54360F1 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownRenderer.swift; sourceTree = "<group>"; };
+		F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Utilities/RichClipboardText.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -216,6 +222,8 @@
 				34076DDAB8A2E0C4E48AF5BA /* MacInputTextView.swift */,
 				A70000000000000000000003 /* MacPlainTextScrollView.swift */,
 				6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */,
+				F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */,
+				460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */,
 				FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */,
 				AD1E757E6D45FD90B41342C3 /* MessageListView.swift */,
 				529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */,
@@ -391,6 +399,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				424F6054C2A0D22413708252 /* MessageMarkdownRenderer.swift in Sources */,
+				44E8481E7D0CED0BC9FE178A /* RichClipboardText.swift in Sources */,
 				327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */,
 				7B65706CEA0F08B118AE81A0 /* AIConnectionView.swift in Sources */,
 				1B9E8569C64B852288CD04DA /* AccountSheet.swift in Sources */,
@@ -437,6 +447,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88B18FF1179B124CE66ACFD9 /* MessageMarkdownRenderer.swift in Sources */,
+				70B6BF0BA33B89BE97DF16BC /* RichClipboardText.swift in Sources */,
 				45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */,
 				92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */,
 				81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */,

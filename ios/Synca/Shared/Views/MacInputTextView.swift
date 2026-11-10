@@ -342,7 +342,11 @@ final class PasteAwareMacTextView: NSTextView {
     }
 
     override func paste(_ sender: Any?) {
-        let pb = NSPasteboard.general
+        if !pasteContents(from: .general) { super.paste(sender) }
+    }
+
+    @discardableResult
+    func pasteContents(from pb: NSPasteboard) -> Bool {
 
         if let fileURL = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?.first as? URL {
             if let imageData = PendingFileUpload.imageData(from: fileURL) {
@@ -352,30 +356,39 @@ final class PasteAwareMacTextView: NSTextView {
             } else {
                 NSSound.beep()
             }
-            return
+            return true
         }
 
         if let rawPngData = pb.data(forType: .png) {
             onPasteImage?(rawPngData)
-            return
+            return true
         }
         if let rawJpegData = pb.data(forType: NSPasteboard.PasteboardType("public.jpeg")) {
             onPasteImage?(rawJpegData)
-            return
+            return true
         }
         if let rawHeicData = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) {
             onPasteImage?(rawHeicData)
-            return
+            return true
         }
         if let image = pb.readObjects(forClasses: [NSImage.self], options: nil)?.first as? NSImage,
            let tiffData = image.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData),
            let pngData = bitmap.representation(using: .png, properties: [:]) {
             onPasteImage?(pngData)
-            return
+            return true
         }
 
-        super.paste(sender)
+        if let text = RichClipboardText.string(plainText: pb.string(forType: .string),
+                                                html: pb.data(forType: .html),
+                                                rtf: pb.data(forType: .rtf)) {
+            insertText(text, replacementRange: selectedRange())
+            return true
+        }
+
+        // Do not hand unsupported HTML to a system importer that may resolve resources.
+        if pb.availableType(from: [.html, .rtf]) != nil { return true }
+        return false
     }
 }
 #endif

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, MessageEditError, SessionExpiredError, type SyncaMessage } from '../api/client';
+import { pasteRichList } from '../utils/richListMarkdown';
 import { MESSAGE_TEXT_LIMIT, messageTextLength } from '../utils/messageText';
 import { Modal } from './Modal';
 
@@ -60,6 +61,7 @@ export const MessageTextEditor: React.FC<Props> = ({ message, onCancel, onSaved 
       className="message-text-editor" closeDisabled={isSaving}>
       <label className="message-editor-label" htmlFor={inputId}>{t('message_edit.content')}</label>
       <textarea ref={inputRef} id={inputId} className="message-editor-input" value={draft} disabled={isSaving}
+        onPaste={event => pasteRichList(event, setDraft)}
         onChange={event => setDraft(event.target.value)} data-initial-focus
         aria-invalid={characterCount > MESSAGE_TEXT_LIMIT || undefined} aria-describedby={`${inputId}-count`}
         onKeyDown={event => {

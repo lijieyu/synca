@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api, DailyLimitError, StorageError } from '../api/client';
 import { ImagePlus, Paperclip } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { pasteRichList } from '../utils/richListMarkdown';
 import { MESSAGE_TEXT_LIMIT, messageTextLength } from '../utils/messageText';
 import { Toast } from './Toast';
 import { PlanDialog } from './PlanDialog';
@@ -138,7 +139,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     }
   };
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (supportedImageMimeTypes.has(items[i].type)) {
@@ -156,7 +157,9 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     if (supportedFile) {
       e.preventDefault();
       await sendFile(supportedFile);
+      return;
     }
+    pasteRichList(e, setText, autoGrow);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

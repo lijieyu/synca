@@ -122,8 +122,10 @@ final class PasteAwareUITextView: UITextView {
     }
 
     override func paste(_ sender: Any?) {
-        if UIPasteboard.general.hasStrings {
-            super.paste(sender)
+        let pasteboard = UIPasteboard.general
+        if pasteboard.hasStrings {
+            if let text = pastedPlainText() { insertText(text) }
+            else if !pasteboard.types.contains(UTType.html.identifier) { super.paste(sender) }
             return
         }
 
@@ -150,7 +152,20 @@ final class PasteAwareUITextView: UITextView {
             }
             return
         }
+        if let text = pastedPlainText() {
+            insertText(text)
+            return
+        }
+        // Never fall through to HTML import and remote resource resolution.
+        if pasteboard.types.contains(UTType.html.identifier) || pasteboard.types.contains(UTType.rtf.identifier) { return }
         super.paste(sender)
+    }
+
+    private func pastedPlainText() -> String? {
+        let pasteboard = UIPasteboard.general
+        return RichClipboardText.string(plainText: pasteboard.string,
+                                        html: pasteboard.data(forPasteboardType: UTType.html.identifier),
+                                        rtf: pasteboard.data(forPasteboardType: UTType.rtf.identifier))
     }
 
     private func pastedImageData() -> Data? {
