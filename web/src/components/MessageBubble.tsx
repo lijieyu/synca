@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Toast } from './Toast';
 import { CategoryAssignmentMenu } from './CategoryAssignmentMenu';
+import { MessageMarkdown } from './MessageMarkdown';
 import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
 import { copyProtectedImage } from '../utils/clipboard';
@@ -73,27 +74,6 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     if (ext === 'zip') return <FileArchive size={22} />;
     return <FileType2 size={22} />;
   }, [fileExtension]);
-
-  const linkify = (text: string): React.ReactNode[] => {
-    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]，。！？；：、]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：、])/g;
-    const parts = text.split(urlPattern);
-    const isUrl = /^https?:\/\//;
-    return parts.map((part, i) =>
-      isUrl.test(part) ? (
-        <a
-          key={i}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="message-link"
-        >
-          {part}
-        </a>
-      ) : (
-        <React.Fragment key={i}>{part}</React.Fragment>
-      )
-    );
-  };
 
   const formatTime = (isoString: string) => {
     const d = new Date(isoString);
@@ -227,7 +207,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
         {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (
-          <ExpandableMessageText key={message.textContent} text={message.textContent ?? ''}>{linkify(message.textContent ?? '')}</ExpandableMessageText>
+          <ExpandableMessageText key={message.textContent} text={message.textContent ?? ''}><MessageMarkdown text={message.textContent ?? ''} /></ExpandableMessageText>
         )}
         
         {!expired && message.type === 'image' && message.imageUrl && (

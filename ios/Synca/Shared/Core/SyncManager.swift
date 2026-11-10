@@ -447,11 +447,6 @@ final class SyncManager: ObservableObject {
             return
         }
 
-        guard PendingFileUpload.supportedExtensions.contains(URL(fileURLWithPath: file.fileName).pathExtension.lowercased()) else {
-            errorMessage = String(syncaLocalized: "message_file.error_unsupported", bundle: .main)
-            return
-        }
-
         let sendGeneration = beginSending()
         let uploadID = beginUploadProgress()
         defer { endSending(sendGeneration); finishUploadProgress(uploadID) }

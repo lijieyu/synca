@@ -241,3 +241,18 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
   .calm-sidebar .category-toolbar:is(:hover,:focus-within) { scrollbar-color:color-mix(in srgb,var(--text-secondary) 55%,transparent) transparent; }
   .calm-sidebar .category-switcher { padding-right:14px; min-width:0; }
 }
+
+/* Basic Markdown stays inside the existing message typography and six-line fold. */
+.message-markdown { white-space: normal; overflow-wrap: anywhere; }
+.message-markdown p { margin: 0; white-space: pre-wrap; }
+.message-markdown > * + * { margin-block-start: 0.35em; }
+.message-markdown ul, .message-markdown ol { margin-block: 0; padding-inline-start: 1.5em; }
+.message-markdown li { margin: 0; white-space: normal; }
+.message-markdown li > ul, .message-markdown li > ol { white-space: normal; }
+.message-markdown blockquote { margin: 0; padding-inline-start: 0.75em; border-inline-start: 2px solid var(--border-color); color: var(--text-secondary); }
+.message-markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; padding: 0.08em 0.25em; border-radius: 4px; background: var(--selection-bg); }
+.message-markdown pre { margin: 0; white-space: pre-wrap; }
+.message-markdown pre code { padding: 0; }
+.message-content-collapsed:has(.message-markdown) { display: block; max-height: 6lh; }
+
+.message-content .message-link { color: var(--accent-color); }

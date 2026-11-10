@@ -1379,23 +1379,7 @@ struct MessageListView: View {
         }
     }
 
-    private var supportedAttachmentTypes: [UTType] {
-        [
-            .image,
-            .pdf,
-            .plainText,
-            .text,
-            .commaSeparatedText,
-            UTType(filenameExtension: "doc"),
-            UTType(filenameExtension: "docx"),
-            UTType(filenameExtension: "xls"),
-            UTType(filenameExtension: "xlsx"),
-            UTType(filenameExtension: "ppt"),
-            UTType(filenameExtension: "pptx"),
-            UTType(filenameExtension: "md"),
-            UTType(filenameExtension: "zip"),
-        ].compactMap { $0 }
-    }
+    private var supportedAttachmentTypes: [UTType] { [.data] }
 
     private func handleImportedFiles(_ result: Result<[URL], Error>) async {
         guard case .success(let urls) = result, !urls.isEmpty else { return }
@@ -1651,7 +1635,7 @@ private func unsupportedAttachmentMessage(for url: URL) -> String {
     if PendingFileUpload.supportedImageExtensions.contains(ext) {
         return String(syncaLocalized: "message_file.error_image_too_large", bundle: .main)
     }
-    if PendingFileUpload.supportedExtensions.contains(ext) {
+    if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > PendingFileUpload.maxFileSize {
         return String(syncaLocalized: "message_file.error_too_large", bundle: .main)
     }
     return String(syncaLocalized: "message_file.error_unsupported", bundle: .main)
@@ -1929,23 +1913,7 @@ private struct TiledCategoryColumn: View {
             .opacity([.amber, .violet, .ocean].contains(color) ? 0.18 : 0.16)
     }
 
-    private var supportedAttachmentTypes: [UTType] {
-        [
-            .image,
-            .pdf,
-            .plainText,
-            .text,
-            .commaSeparatedText,
-            UTType(filenameExtension: "doc"),
-            UTType(filenameExtension: "docx"),
-            UTType(filenameExtension: "xls"),
-            UTType(filenameExtension: "xlsx"),
-            UTType(filenameExtension: "ppt"),
-            UTType(filenameExtension: "pptx"),
-            UTType(filenameExtension: "md"),
-            .zip
-        ].compactMap { $0 }
-    }
+    private var supportedAttachmentTypes: [UTType] { [.data] }
 
     private func handleImportedFiles(_ result: Result<[URL], Error>) async {
         guard case .success(let urls) = result else { return }
@@ -2145,23 +2113,7 @@ private struct MacTiledComposerBar: NSViewRepresentable {
             completion(panel.urls)
         }
 
-        private static var supportedAttachmentTypes: [UTType] {
-            [
-                .image,
-                .pdf,
-                .plainText,
-                .text,
-                .commaSeparatedText,
-                UTType(filenameExtension: "doc"),
-                UTType(filenameExtension: "docx"),
-                UTType(filenameExtension: "xls"),
-                UTType(filenameExtension: "xlsx"),
-                UTType(filenameExtension: "ppt"),
-                UTType(filenameExtension: "pptx"),
-                UTType(filenameExtension: "md"),
-                .zip
-            ].compactMap { $0 }
-        }
+        private static var supportedAttachmentTypes: [UTType] { [.data] }
     }
 }
 

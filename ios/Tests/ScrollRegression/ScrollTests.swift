@@ -58,6 +58,23 @@ final class ScrollTests: XCTestCase {
         attach(app, name: "category-switch-images-ready")
     }
 
+    func testMarkdownCollapseRemainsVisible() {
+        let app = launch(["--qa-markdown"])
+        let expand = app.buttons["展开"].firstMatch
+        XCTAssertTrue(expand.waitForExistence(timeout: 5))
+        expand.tap()
+        let collapse = app.buttons["收起"].firstMatch
+        for _ in 0..<5 {
+            if collapse.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(collapse.isHittable)
+        attach(app, name: "markdown-expanded")
+        collapse.tap()
+        XCTAssertTrue(expand.isHittable)
+        attach(app, name: "markdown-collapsed")
+    }
+
     func testLastTextCollapseRemainsVisible() {
         checkCollapse(arguments: [], screenshot: "collapsed-last-text")
     }

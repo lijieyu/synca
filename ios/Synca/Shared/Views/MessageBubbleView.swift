@@ -54,30 +54,13 @@ struct MessageBubbleView: View {
         URL(fileURLWithPath: fileName).pathExtension.uppercased()
     }
 
-    #if os(iOS)
-    private var linkedAttributedText: AttributedString {
-        Self.makeLinkedAttributedText(
-            from: messageText,
-            baseColor: message.isCleared ? UIColor.secondaryLabel : UIColor.label
-        )
-    }
-
     private var linkedNSAttributedText: NSAttributedString {
-        Self.makeLinkedIOSAttributedText(
-            from: messageText,
-            baseColor: message.isCleared ? .secondaryLabel : .label
-        )
+        #if os(iOS)
+        MessageMarkdownRenderer.render(messageText, baseColor: message.isCleared ? .secondaryLabel : .label)
+        #else
+        MessageMarkdownRenderer.render(messageText, baseColor: message.isCleared ? .secondaryLabelColor : .labelColor)
+        #endif
     }
-    #endif
-
-    #if os(macOS)
-    private var linkedNSAttributedText: NSAttributedString {
-        Self.makeLinkedNSAttributedText(
-            from: messageText,
-            baseColor: message.isCleared ? .secondaryLabelColor : .labelColor
-        )
-    }
-    #endif
 
     enum SaveStatus {
         case none, saving, success, error
@@ -261,20 +244,14 @@ struct MessageBubbleView: View {
                         .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
                 })
             #else
-            if isTextExpanded {
-                LinkTextView(attributedText: linkedNSAttributedText)
-            } else {
-                Text(AttributedString(linkedNSAttributedText)).font(.body).lineLimit(6)
-                    .textSelection(.enabled)
-                    .foregroundStyle(message.isCleared ? .secondary : .primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(GeometryReader { geometry in
-                        Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
-                            .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
-                            .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
-                            .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
-                    })
-            }
+            LinkTextView(attributedText: linkedNSAttributedText, maximumNumberOfLines: isTextExpanded ? 0 : 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(GeometryReader { geometry in
+                    Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
+                        .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
+                })
             #endif
             if textOverflows || isTextExpanded {
                 Button {
@@ -301,13 +278,7 @@ struct MessageBubbleView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private func updateTextOverflow(width: CGFloat) {
         guard width > 0 else { return }
-        #if os(iOS)
-        let font = UIFont.preferredFont(forTextStyle: .body)
-        #else
-        let font = NSFont.preferredFont(forTextStyle: .body)
-        #endif
-        let size = (messageText as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font], context: nil)
-        textOverflows = size.height > (font.ascender - font.descender + font.leading) * 6 + 1
+        textOverflows = MessageMarkdownRenderer.overflows(linkedNSAttributedText, width: width, maximumLines: 6)
     }
 
     @ViewBuilder
@@ -1082,89 +1053,26 @@ private extension UIViewController {
 }
 #endif
 
-private extension MessageBubbleView {
-    #if os(iOS)
-    static func makeLinkedAttributedText(from text: String, baseColor: UIColor) -> AttributedString {
-        let mutable = makeLinkedIOSAttributedText(
-            from: text,
-            baseColor: baseColor
-        )
-        return (try? AttributedString(mutable, including: \.uiKit)) ?? AttributedString(text)
-    }
-    #endif
-
-    #if os(iOS)
-    static func makeLinkedIOSAttributedText(from text: String, baseColor: UIColor) -> NSAttributedString {
-        let mutable = NSMutableAttributedString(string: text)
-        mutable.addAttributes(
-            [
-                .foregroundColor: baseColor,
-                .font: UIFont.preferredFont(forTextStyle: .body)
-            ],
-            range: NSRange(location: 0, length: mutable.length)
-        )
-
-        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
-            let range = NSRange(location: 0, length: mutable.length)
-            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
-                guard let result, let url = result.url else { return }
-                mutable.addAttributes(
-                    [
-                        .link: url,
-                        .foregroundColor: UIColor.link,
-                        .underlineStyle: NSUnderlineStyle.single.rawValue
-                    ],
-                    range: result.range
-                )
-            }
-        }
-
-        return mutable
-    }
-    #endif
-
-    #if os(macOS)
-    static func makeLinkedNSAttributedText(from text: String, baseColor: NSColor) -> NSAttributedString {
-        let mutable = NSMutableAttributedString(string: text)
-        mutable.addAttributes(
-            [
-                .foregroundColor: baseColor,
-                .font: NSFont.preferredFont(forTextStyle: .body)
-            ],
-            range: NSRange(location: 0, length: mutable.length)
-        )
-
-        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
-            let range = NSRange(location: 0, length: mutable.length)
-            detector.enumerateMatches(in: text, options: [], range: range) { result, _, _ in
-                guard let result, let url = result.url else { return }
-                mutable.addAttributes(
-                    [
-                        .link: url,
-                        .foregroundColor: NSColor.linkColor,
-                        .underlineStyle: NSUnderlineStyle.single.rawValue
-                    ],
-                    range: result.range
-                )
-            }
-        }
-
-        return mutable
-    }
-    #endif
-}
 // MARK: - LinkTextView Implementation
 
 #if os(iOS)
 private struct InternalLinkTextView: UIViewRepresentable {
     let attributedText: NSAttributedString
+    let maximumNumberOfLines: Int
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        // Use TextKit 1 from creation, matching the layout manager used for sizing.
+        // Switching from TextKit 2 lazily during a measurement can defer long-text layout.
+        let storage = NSTextStorage()
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: .zero)
+        storage.addLayoutManager(manager)
+        manager.addTextContainer(container)
+        let textView = UITextView(frame: .zero, textContainer: container)
         textView.isEditable = false
         textView.isSelectable = true
         textView.isScrollEnabled = false
@@ -1182,16 +1090,28 @@ private struct InternalLinkTextView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.attributedText != attributedText {
-            uiView.attributedText = attributedText
-        }
+        configure(uiView)
+    }
+
+    private func configure(_ uiView: UITextView) {
+        let linesChanged = uiView.textContainer.maximumNumberOfLines != maximumNumberOfLines
+        let textChanged = uiView.attributedText != attributedText
+        guard linesChanged || textChanged else { return }
+        uiView.textContainer.maximumNumberOfLines = maximumNumberOfLines
+        uiView.textContainer.lineBreakMode = maximumNumberOfLines == 0 ? .byWordWrapping : .byTruncatingTail
+        if textChanged { uiView.attributedText = attributedText }
+        uiView.layoutManager.invalidateLayout(forCharacterRange: NSRange(location: 0, length: attributedText.length), actualCharacterRange: nil)
+        uiView.invalidateIntrinsicContentSize()
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let targetWidth = proposal.width ?? uiView.bounds.width
         guard targetWidth > 0 else { return nil }
-        let fittingSize = uiView.sizeThatFits(CGSize(width: targetWidth, height: .greatestFiniteMagnitude))
-        return CGSize(width: targetWidth, height: ceil(fittingSize.height))
+        // SwiftUI may measure before updateUIView; never return the previous line limit's height.
+        configure(uiView)
+        uiView.textContainer.size = CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
+        uiView.layoutManager.ensureLayout(for: uiView.textContainer)
+        return CGSize(width: targetWidth, height: ceil(uiView.layoutManager.usedRect(for: uiView.textContainer).maxY))
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -1213,10 +1133,11 @@ private struct InternalLinkTextView: UIViewRepresentable {
 /// A cross-platform wrapper for a linkable text view.
 struct LinkTextView: View {
     let attributedText: NSAttributedString
+    var maximumNumberOfLines: Int = 0
 
     var body: some View {
         #if os(iOS)
-        InternalLinkTextView(attributedText: attributedText)
+        InternalLinkTextView(attributedText: attributedText, maximumNumberOfLines: maximumNumberOfLines)
         #else
         EmptyView()
         #endif

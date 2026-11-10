@@ -367,13 +367,13 @@ describe('AI authorization and content contract', () => {
         expect((await call('create_attachment', args)).body.id).toBe(image.body.id);
         const read = await call('read_attachment', { recordId: image.body.id });
         expect(read.body.attachment.data).toBe(args.base64);
-        const file = { kind: 'file', fileName: 'notes.md', mimeType: 'text/markdown', idempotencyKey: randomUUID(), base64: Buffer.from('Test note').toString('base64') };
+        const file = { kind: 'file', fileName: 'firmware.bin', mimeType: 'application/octet-stream', idempotencyKey: randomUUID(), base64: Buffer.from('Test note').toString('base64') };
         await db.updateTable('users').set({ lifetime_purchased_at: null }).where('id', '=', userId).execute();
         expect((await call('create_attachment', file)).status).toBe(403);
         await db.updateTable('users').set({ lifetime_purchased_at: new Date().toISOString() }).where('id', '=', userId).execute();
         const created = await call('create_attachment', file);
         expect(created.status).toBe(200);
-        expect((await call('read_attachment', { recordId: created.body.id })).body.attachment.mimeType).toBe('text/markdown');
+        expect((await call('read_attachment', { recordId: created.body.id })).body.attachment.mimeType).toBe('application/octet-stream');
         expect((await call('create_attachment', { ...file, base64: '!!!!', idempotencyKey: randomUUID() })).status).toBe(400);
     });
     it('handles attachment transfer metadata and denies foreign media even when AI account is admin', async () => {

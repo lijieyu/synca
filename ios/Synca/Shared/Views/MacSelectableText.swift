@@ -44,13 +44,9 @@ struct MacSelectableText: NSViewRepresentable {
         nsView.contextMenuActions = contextMenuActions
         nsView.textContainer?.maximumNumberOfLines = maximumNumberOfLines
         nsView.textContainer?.lineBreakMode = maximumNumberOfLines == 0 ? .byWordWrapping : .byTruncatingTail
-        let textColor = NSColor(color)
-        guard context.coordinator.attributedText?.isEqual(to: attributedText) != true
-            || nsView.textColor != textColor else { return }
+        guard context.coordinator.attributedText?.isEqual(to: attributedText) != true else { return }
         context.coordinator.attributedText = attributedText.copy() as? NSAttributedString
         nsView.textStorage?.setAttributedString(attributedText)
-        nsView.textColor = textColor
-        nsView.font = NSFont.preferredFont(forTextStyle: .body)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: CustomContextMenuTextView, context: Context) -> CGSize? {
