@@ -1,3 +1,4 @@
+import { DeveloperSocialLink } from './DeveloperSocialLink';
 import { PersonIcon } from './PersonIcon';
 import { useState } from 'react';
 
@@ -52,6 +53,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
     {kind === 'about' && <div className="about-panel">
       <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={48} height={48} /><div><h4>Synca</h4><p>{t('navigation.web')} · {version}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
+      <DeveloperSocialLink purpose="follow" />
       <nav className="shell-links" aria-label={t('message_list.about')}><a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}</a><a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}</a></nav>
       <p className="about-registration">浙ICP备2026013056号-3A</p>
     </div>}
@@ -65,6 +67,7 @@ export function ShellPanel({ kind, email, onClose, onLogout }: {
       }} /></label><small>{t('navigation.feedback_images')}</small>
       {error && <p role="alert">{error}</p>}
     </form>)}
+    {kind === 'feedback' && !sent && <DeveloperSocialLink purpose="contact" />}
   </Modal>
     {discardConfirm && <Modal title={t('message_edit.discard_title')} message="" confirmText={t('message_edit.discard')} cancelText={t('common.cancel')} destructive onCancel={() => setDiscardConfirm(false)} onConfirm={onClose} />}
     {deleteConfirm && <Modal title={t('account.delete_confirm_title')} message={t('account.delete_confirm_message')} confirmText={t('account.delete_action')} cancelText={t('common.cancel')} destructive confirmDisabled={busy} closeDisabled={busy} cancelDisabled={busy}

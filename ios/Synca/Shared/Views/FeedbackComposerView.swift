@@ -85,6 +85,8 @@ struct FeedbackComposerView: View {
                     feedbackSectionTitle("feedback.email_title")
                     emailField
                 }
+                DeveloperSocialLink(title: "developer_social.contact")
+                    .padding(.top, 4)
                 if let errorMessage {
                     Text(errorMessage).font(.footnote).foregroundStyle(.red)
                 }
@@ -491,4 +493,40 @@ private func platformImageView(from image: PlatformImage) -> Image {
     #else
     return Image(nsImage: image)
     #endif
+}
+
+/// A secondary external contact route, shared by About and Feedback on both platforms.
+struct DeveloperSocialLink: View {
+    let title: LocalizedStringKey
+
+    var body: some View {
+        Link(destination: AppLinks.developerProfileURL) {
+            HStack(spacing: 12) {
+                Text(verbatim: "小红书")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Color(red: 237 / 255, green: 53 / 255, blue: 75 / 255), in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .background(Color.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(title))
+        .accessibilityHint(Text("developer_social.external"))
+    }
 }
