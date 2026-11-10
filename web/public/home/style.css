@@ -1,0 +1,594 @@
+:root{
+  color-scheme:light dark;
+  --page:#fbfaf8;
+  --ink:#252329;
+  --muted:#696570;
+  --paper:#fff;
+  --line:#e6e2e9;
+  --accent:#7045bd;
+  --wash:#efe9f7;
+  --shadow:0 24px 70px #31213b12;
+  --radius:16px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:var(--page);
+  font-synthesis:none;
+  text-rendering:optimizeLegibility}
+  *{
+    box-sizing:border-box}
+    body{
+      margin:0}
+      a{
+        color:inherit;
+        text-decoration:none}
+        a,button{
+          -webkit-tap-highlight-color:transparent}
+          a:focus-visible{
+            outline:3px solid var(--accent);
+            outline-offset:5px;
+            border-radius:4px}
+            a:hover{
+              color:var(--accent)}
+              img{
+                display:block;
+                max-width:100%;
+                height:auto}
+                h1,h2,p,figure{
+                  margin:0}
+                  h1,h2{
+                    text-wrap:balance}
+                    p{
+                      overflow-wrap:break-word}
+                      section[id]{
+                        scroll-margin-top:32px}
+                        .wrap{
+                          width:min(1120px,calc(100% - 96px));
+                          margin-inline:auto}
+                          .skip{
+                            position:fixed;
+                            top:12px;
+                            left:12px;
+                            padding:12px 20px;
+                            z-index:20;
+                            background:var(--ink);
+                            color:var(--page);
+                            transform:translateY(-180%)}
+                            .skip:focus{
+                              transform:none}
+                              .header{
+                                display:flex;
+                                align-items:center;
+                                gap:28px;
+                                min-height:96px;
+                                border-bottom:1px solid var(--line)}
+                                .brand{
+                                  display:flex;
+                                  align-items:center;
+                                  gap:10px;
+                                  font-size:24px;
+                                  font-weight:650;
+                                  letter-spacing:-.6px;
+                                  margin-right:auto}
+                                  .brand img{
+                                    border-radius:9px}
+                                    .sections{
+                                      display:flex;
+                                      gap:26px;
+                                      font-size:14px}
+                                      .languages{
+                                        display:flex;
+                                        align-items:center;
+                                        gap:2px;
+                                        font-size:12px}
+                                        .languages a{
+                                          display:grid;
+                                          place-items:center;
+                                          min-width:30px;
+                                          min-height:44px;
+                                          color:var(--muted)}
+                                          .languages a[aria-current]{
+                                            color:var(--accent);
+                                            font-weight:700}
+                                            .button{
+                                              display:inline-flex;
+                                              align-items:center;
+                                              justify-content:center;
+                                              gap:14px;
+                                              min-height:48px;
+                                              padding:12px 23px;
+                                              border:1px solid var(--line);
+                                              border-radius:11px;
+                                              background:var(--paper);
+                                              font-size:15px;
+                                              font-weight:550;
+                                              transition:background .15s ease,border-color .15s ease}
+                                              .button:hover{
+                                                border-color:var(--accent);
+                                                color:var(--accent)}
+                                                .button.primary{
+                                                  background:var(--ink);
+                                                  color:var(--page);
+                                                  border-color:var(--ink)}
+                                                  .button.primary:hover{
+                                                    background:var(--accent);
+                                                    border-color:var(--accent)}
+                                                    .nav-button{
+                                                      font-size:13px;
+                                                      min-height:44px;
+                                                      padding:10px 14px}
+                                                      .hero{
+                                                        text-align:center;
+                                                        padding-top:77px;
+                                                        padding-bottom:48px}
+                                                        .eyebrow{
+                                                          color:var(--accent);
+                                                          font-size:12px;
+                                                          letter-spacing:1.2px;
+                                                          font-weight:600;
+                                                          margin-bottom:22px;
+                                                          line-height:1.6}
+                                                          h1{
+                                                            font-size:clamp(38px,5.5vw,68px);
+                                                            font-weight:650;
+                                                            letter-spacing:-2.2px;
+                                                            line-height:1.19}
+                                                            h1 span{
+                                                              color:var(--accent)}
+                                                              .intro{
+                                                                font-size:17px;
+                                                                line-height:1.9;
+                                                                color:var(--muted);
+                                                                margin:25px auto 28px;
+                                                                max-width:650px}
+                                                                .actions{
+                                                                  display:flex;
+                                                                  justify-content:center;
+                                                                  gap:12px;
+                                                                  flex-wrap:wrap}
+                                                                  .platform{
+                                                                    font-size:12px;
+                                                                    color:var(--muted);
+                                                                    margin-top:20px;
+                                                                    letter-spacing:.6px}
+                                                                    .product{
+                                                                      padding-top:6px}
+                                                                      .device-stage{
+                                                                        position:relative;
+                                                                        padding:22px 100px 25px 14px;
+                                                                        background:radial-gradient(ellipse at 55% 75%,var(--wash),transparent 70%)}
+                                                                        .desktop{
+                                                                          border-radius:var(--radius);
+                                                                          overflow:hidden;
+                                                                          border:1px solid #d8d6dc;
+                                                                          background:#fff;
+                                                                          box-shadow:var(--shadow)}
+                                                                          .device-stage .desktop{
+                                                                            width:100%}
+                                                                            .phone{
+                                                                              border:5px solid #2a282e;
+                                                                              border-radius:30px;
+                                                                              overflow:hidden;
+                                                                              background:#f1f1f6;
+                                                                              box-shadow:0 18px 46px #1d152026}
+                                                                              .device-stage .phone{
+                                                                                position:absolute;
+                                                                                width:20%;
+                                                                                right:10px;
+                                                                                bottom:0}
+                                                                                .phone img{
+                                                                                  width:100%}
+                                                                                  figcaption{
+                                                                                    font-size:12px;
+                                                                                    line-height:1.7;
+                                                                                    color:var(--muted);
+                                                                                    text-align:center;
+                                                                                    margin-top:28px}
+                                                                                    .features{
+                                                                                      display:grid;
+                                                                                      grid-template-columns:repeat(3,minmax(0,1fr));
+                                                                                      gap:44px;
+                                                                                      padding:60px 0 72px}
+                                                                                      .features svg{
+                                                                                        width:26px;
+                                                                                        height:26px;
+                                                                                        stroke:var(--accent);
+                                                                                        stroke-width:1.5;
+                                                                                        fill:none;
+                                                                                        stroke-linecap:round;
+                                                                                        stroke-linejoin:round;
+                                                                                        margin-bottom:19px}
+                                                                                        .features h2{
+                                                                                          font-size:19px;
+                                                                                          line-height:1.45;
+                                                                                          letter-spacing:-.3px;
+                                                                                          font-weight:600;
+                                                                                          margin-bottom:12px}
+                                                                                          .features p{
+                                                                                            font-size:14px;
+                                                                                            line-height:1.9;
+                                                                                            color:var(--muted)}
+                                                                                            .transfer,.ai{
+                                                                                              border-top:1px solid var(--line);
+                                                                                              padding-top:70px;
+                                                                                              padding-bottom:66px}
+                                                                                              .section-heading{
+                                                                                                display:grid;
+                                                                                                grid-template-columns:1fr 1fr;
+                                                                                                gap:80px;
+                                                                                                align-items:center;
+                                                                                                margin-bottom:42px}
+                                                                                                .section-heading .eyebrow{
+                                                                                                  margin-bottom:16px}
+                                                                                                  h2{
+                                                                                                    font-size:clamp(30px,3.5vw,43px);
+                                                                                                    line-height:1.3;
+                                                                                                    letter-spacing:-1px;
+                                                                                                    font-weight:600}
+                                                                                                    .body-copy{
+                                                                                                      font-size:16px;
+                                                                                                      line-height:1.9;
+                                                                                                      color:var(--muted)}
+                                                                                                      .fine-print{
+                                                                                                        font-size:12px;
+                                                                                                        line-height:1.8;
+                                                                                                        color:var(--muted);
+                                                                                                        margin-top:18px}
+                                                                                                        .transfer-art{
+                                                                                                          position:relative;
+                                                                                                          display:grid;
+                                                                                                          grid-template-columns:minmax(0,1fr) 23%;
+                                                                                                          gap:22px;
+                                                                                                          align-items:center;
+                                                                                                          padding:34px 44px 24px;
+                                                                                                          background:var(--wash);
+                                                                                                          border-radius:24px}
+                                                                                                          .transfer-art .desktop{
+                                                                                                            width:100%}
+                                                                                                            .transfer-art .phone{
+                                                                                                              width:100%;
+                                                                                                              border-width:4px;
+                                                                                                              border-radius:25px}
+                                                                                                              .transfer-art figcaption{
+                                                                                                                grid-column:1/-1;
+                                                                                                                margin-top:0}
+                                                                                                                .pro{
+                                                                                                                  display:inline-block;
+                                                                                                                  background:var(--wash);
+                                                                                                                  color:var(--accent);
+                                                                                                                  font-size:10px;
+                                                                                                                  letter-spacing:.5px;
+                                                                                                                  padding:3px 8px;
+                                                                                                                  border-radius:6px;
+                                                                                                                  margin-left:8px}
+                                                                                                                  .text-link{
+                                                                                                                    display:inline-flex;
+                                                                                                                    gap:12px;
+                                                                                                                    color:var(--accent);
+                                                                                                                    padding-block:12px;
+                                                                                                                    margin-top:10px;
+                                                                                                                    font-size:14px;
+                                                                                                                    font-weight:550}
+                                                                                                                    .steps{
+                                                                                                                      display:flex;
+                                                                                                                      gap:48px;
+                                                                                                                      list-style:none;
+                                                                                                                      padding:0;
+                                                                                                                      margin:0 0 28px;
+                                                                                                                      font-size:14px}
+                                                                                                                      .steps li{
+                                                                                                                        display:flex;
+                                                                                                                        gap:12px;
+                                                                                                                        align-items:center}
+                                                                                                                        .steps span{
+                                                                                                                          font-size:11px;
+                                                                                                                          color:var(--accent);
+                                                                                                                          font-weight:600;
+                                                                                                                          border:1px solid var(--line);
+                                                                                                                          border-radius:50%;
+                                                                                                                          width:28px;
+                                                                                                                          height:28px;
+                                                                                                                          display:grid;
+                                                                                                                          place-items:center}
+                                                                                                                          .ai-art{
+                                                                                                                            display:grid;
+                                                                                                                            grid-template-columns:minmax(0,1fr) 21%;
+                                                                                                                            gap:24px;
+                                                                                                                            align-items:center}
+                                                                                                                            .chat-window{
+                                                                                                                              border:1px solid var(--line);
+                                                                                                                              border-radius:16px;
+                                                                                                                              overflow:hidden;
+                                                                                                                              background:#fcfcfc;
+                                                                                                                              box-shadow:var(--shadow)}
+                                                                                                                              .chat-label{
+                                                                                                                                display:flex;
+                                                                                                                                gap:9px;
+                                                                                                                                align-items:center;
+                                                                                                                                color:#252329;
+                                                                                                                                padding:16px 22px;
+                                                                                                                                font-size:14px;
+                                                                                                                                font-weight:600;
+                                                                                                                                border-bottom:1px solid #eceaec}
+                                                                                                                                .chat-label span{
+                                                                                                                                  color:#716879;
+                                                                                                                                  font-size:12px;
+                                                                                                                                  font-weight:400}
+                                                                                                                                  .ai-art .phone{
+                                                                                                                                    width:100%;
+                                                                                                                                    border-width:4px;
+                                                                                                                                    border-radius:25px}
+                                                                                                                                    .ai-art figcaption{
+                                                                                                                                      grid-column:1/-1;
+                                                                                                                                      margin-top:0}
+                                                                                                                                      .ai-note{
+                                                                                                                                        max-width:740px;
+                                                                                                                                        margin:18px auto 0;
+                                                                                                                                        text-align:center}
+                                                                                                                                        .download{
+                                                                                                                                          border-top:1px solid var(--line);
+                                                                                                                                          padding-block:68px;
+                                                                                                                                          text-align:center}
+                                                                                                                                          .download-icon{
+                                                                                                                                            margin:0 auto 25px;
+                                                                                                                                            border-radius:16px}
+                                                                                                                                            .download h2{
+                                                                                                                                              font-size:clamp(28px,3.2vw,38px)}
+                                                                                                                                              .download>p{
+                                                                                                                                                color:var(--muted);
+                                                                                                                                                font-size:15px;
+                                                                                                                                                margin:18px 0 27px}
+                                                                                                                                                .download>p.fine-print{
+                                                                                                                                                  font-size:12px;
+                                                                                                                                                  margin:20px 0 0}
+                                                                                                                                                  .footer{
+                                                                                                                                                    border-top:1px solid var(--line);
+                                                                                                                                                    padding-block:28px 32px;
+                                                                                                                                                    font-size:12px;
+                                                                                                                                                    color:var(--muted)}
+                                                                                                                                                    .footer-top{
+                                                                                                                                                      display:flex;
+                                                                                                                                                      justify-content:space-between;
+                                                                                                                                                      gap:20px;
+                                                                                                                                                      align-items:center}
+                                                                                                                                                      .footer nav{
+                                                                                                                                                        display:flex;
+                                                                                                                                                        gap:25px;
+                                                                                                                                                        flex-wrap:wrap}
+                                                                                                                                                        .footer nav a{
+                                                                                                                                                          padding-block:12px}
+                                                                                                                                                          .registration{
+                                                                                                                                                            display:flex;
+                                                                                                                                                            justify-content:flex-end;
+                                                                                                                                                            gap:20px;
+                                                                                                                                                            flex-wrap:wrap;
+                                                                                                                                                            margin-top:16px;
+                                                                                                                                                            font-size:11px}
+                                                                                                                                                            .registration a{
+                                                                                                                                                              display:flex;
+                                                                                                                                                              align-items:center;
+                                                                                                                                                              gap:5px;
+                                                                                                                                                              min-height:24px}
+                                                                                                                                                              .registration img{
+                                                                                                                                                                width:16px;
+                                                                                                                                                                height:16px}
+                                                                                                                                                                @media(prefers-color-scheme:dark){
+                                                                                                                                                                  :root{
+                                                                                                                                                                    --page:#18171b;
+                                                                                                                                                                    --ink:#f0edf4;
+                                                                                                                                                                    --muted:#b2acbb;
+                                                                                                                                                                    --paper:#232126;
+                                                                                                                                                                    --line:#39343f;
+                                                                                                                                                                    --accent:#bb9aee;
+                                                                                                                                                                    --wash:#2c2538;
+                                                                                                                                                                    --shadow:0 24px 70px #0003}
+                                                                                                                                                                    .desktop{
+                                                                                                                                                                      border-color:#4a434f}
+                                                                                                                                                                      .phone{
+                                                                                                                                                                        border-color:#504956}
+                                                                                                                                                                        .button.primary:hover{
+                                                                                                                                                                          color:#18171b}
+                                                                                                                                                                          .chat-window{
+                                                                                                                                                                            border-color:#514957}
+                                                                                                                                                                          }
+                                                                                                                                                                          @media(max-width:900px){
+                                                                                                                                                                            .wrap{
+                                                                                                                                                                              width:calc(100% - 56px)}
+                                                                                                                                                                              .header{
+                                                                                                                                                                                gap:18px}
+                                                                                                                                                                                .sections{
+                                                                                                                                                                                  gap:16px}
+                                                                                                                                                                                  .section-heading{
+                                                                                                                                                                                    gap:40px}
+                                                                                                                                                                                    .features{
+                                                                                                                                                                                      gap:25px}
+                                                                                                                                                                                      .transfer-art{
+                                                                                                                                                                                        padding:24px;
+                                                                                                                                                                                        gap:20px}
+                                                                                                                                                                                        .steps{
+                                                                                                                                                                                          gap:26px}
+                                                                                                                                                                                        }
+                                                                                                                                                                                        @media(max-width:640px){
+                                                                                                                                                                                          .wrap{
+                                                                                                                                                                                            width:calc(100% - 40px)}
+                                                                                                                                                                                            .header{
+                                                                                                                                                                                              gap:10px;
+                                                                                                                                                                                              min-height:78px}
+                                                                                                                                                                                              .brand{
+                                                                                                                                                                                                font-size:21px;
+                                                                                                                                                                                                gap:8px}
+                                                                                                                                                                                                .brand img{
+                                                                                                                                                                                                  width:31px;
+                                                                                                                                                                                                  height:31px}
+                                                                                                                                                                                                  .sections{
+                                                                                                                                                                                                    display:none}
+                                                                                                                                                                                                    .languages{
+                                                                                                                                                                                                      gap:0}
+                                                                                                                                                                                                      .languages a{
+                                                                                                                                                                                                        min-width:27px}
+                                                                                                                                                                                                        .nav-button{
+                                                                                                                                                                                                          padding:9px 10px;
+                                                                                                                                                                                                          font-size:12px;
+                                                                                                                                                                                                          gap:5px}
+                                                                                                                                                                                                          .hero{
+                                                                                                                                                                                                            padding-top:46px;
+                                                                                                                                                                                                            padding-bottom:30px}
+                                                                                                                                                                                                            .hero .eyebrow{
+                                                                                                                                                                                                              font-size:10px;
+                                                                                                                                                                                                              letter-spacing:.8px;
+                                                                                                                                                                                                              margin-bottom:20px}
+                                                                                                                                                                                                              h1{
+                                                                                                                                                                                                                font-size:clamp(34px,8.4vw,52px);
+                                                                                                                                                                                                                letter-spacing:-1.2px}
+                                                                                                                                                                                                                .intro{
+                                                                                                                                                                                                                  font-size:15px;
+                                                                                                                                                                                                                  line-height:1.85;
+                                                                                                                                                                                                                  margin:23px auto}
+                                                                                                                                                                                                                  .intro br{
+                                                                                                                                                                                                                    display:none}
+                                                                                                                                                                                                                    .button{
+                                                                                                                                                                                                                      font-size:14px;
+                                                                                                                                                                                                                      padding:12px 18px}
+                                                                                                                                                                                                                      .platform{
+                                                                                                                                                                                                                        font-size:11px}
+                                                                                                                                                                                                                        .device-stage{
+                                                                                                                                                                                                                          padding:16px 0 8px;
+                                                                                                                                                                                                                          display:flex;
+                                                                                                                                                                                                                          justify-content:center}
+                                                                                                                                                                                                                          .device-stage .desktop{
+                                                                                                                                                                                                                            display:none}
+                                                                                                                                                                                                                            .device-stage .phone{
+                                                                                                                                                                                                                              position:relative;
+                                                                                                                                                                                                                              width:58%;
+                                                                                                                                                                                                                              max-width:260px;
+                                                                                                                                                                                                                              right:auto;
+                                                                                                                                                                                                                              bottom:auto;
+                                                                                                                                                                                                                              border-width:4px;
+                                                                                                                                                                                                                              border-radius:25px}
+                                                                                                                                                                                                                              .product figcaption{
+                                                                                                                                                                                                                                font-size:11px;
+                                                                                                                                                                                                                                margin-top:20px}
+                                                                                                                                                                                                                                .features{
+                                                                                                                                                                                                                                  grid-template-columns:1fr;
+                                                                                                                                                                                                                                  gap:26px;
+                                                                                                                                                                                                                                  padding:37px 0 42px}
+                                                                                                                                                                                                                                  .features article{
+                                                                                                                                                                                                                                    display:grid;
+                                                                                                                                                                                                                                    grid-template-columns:28px 1fr;
+                                                                                                                                                                                                                                    column-gap:14px}
+                                                                                                                                                                                                                                    .features svg{
+                                                                                                                                                                                                                                      grid-row:1/3;
+                                                                                                                                                                                                                                      width:23px;
+                                                                                                                                                                                                                                      height:23px;
+                                                                                                                                                                                                                                      margin:2px 0 0}
+                                                                                                                                                                                                                                      .features h2{
+                                                                                                                                                                                                                                        font-size:18px;
+                                                                                                                                                                                                                                        margin-bottom:7px}
+                                                                                                                                                                                                                                        .features p{
+                                                                                                                                                                                                                                          font-size:14px}
+                                                                                                                                                                                                                                          .transfer,.ai{
+                                                                                                                                                                                                                                            padding-block:43px}
+                                                                                                                                                                                                                                            .section-heading{
+                                                                                                                                                                                                                                              grid-template-columns:1fr;
+                                                                                                                                                                                                                                              gap:20px;
+                                                                                                                                                                                                                                              margin-bottom:26px}
+                                                                                                                                                                                                                                              .section-heading .eyebrow{
+                                                                                                                                                                                                                                                font-size:11px;
+                                                                                                                                                                                                                                                margin-bottom:12px}
+                                                                                                                                                                                                                                                h2{
+                                                                                                                                                                                                                                                  font-size:32px}
+                                                                                                                                                                                                                                                  .body-copy{
+                                                                                                                                                                                                                                                    font-size:15px}
+                                                                                                                                                                                                                                                    .fine-print{
+                                                                                                                                                                                                                                                      font-size:11px;
+                                                                                                                                                                                                                                                      margin-top:12px}
+                                                                                                                                                                                                                                                      .transfer-art{
+                                                                                                                                                                                                                                                        padding:22px 16px 18px;
+                                                                                                                                                                                                                                                        grid-template-columns:1fr;
+                                                                                                                                                                                                                                                        gap:20px;
+                                                                                                                                                                                                                                                        border-radius:18px}
+                                                                                                                                                                                                                                                        .transfer-art .desktop{
+                                                                                                                                                                                                                                                          display:none}
+                                                                                                                                                                                                                                                          .transfer-art .phone{
+                                                                                                                                                                                                                                                            width:58%;
+                                                                                                                                                                                                                                                            max-width:260px;
+                                                                                                                                                                                                                                                            justify-self:center}
+                                                                                                                                                                                                                                                            .transfer-art figcaption{
+                                                                                                                                                                                                                                                              font-size:11px}
+                                                                                                                                                                                                                                                              .steps{
+                                                                                                                                                                                                                                                                gap:12px;
+                                                                                                                                                                                                                                                                justify-content:space-between;
+                                                                                                                                                                                                                                                                margin-bottom:24px;
+                                                                                                                                                                                                                                                                font-size:12px}
+                                                                                                                                                                                                                                                                .steps li{
+                                                                                                                                                                                                                                                                  gap:7px}
+                                                                                                                                                                                                                                                                  .steps span{
+                                                                                                                                                                                                                                                                    width:25px;
+                                                                                                                                                                                                                                                                    height:25px;
+                                                                                                                                                                                                                                                                    flex-shrink:0;
+                                                                                                                                                                                                                                                                    font-size:10px}
+                                                                                                                                                                                                                                                                    .ai-art{
+                                                                                                                                                                                                                                                                      grid-template-columns:1fr;
+                                                                                                                                                                                                                                                                      gap:20px}
+                                                                                                                                                                                                                                                                      .ai-art .phone{
+                                                                                                                                                                                                                                                                        width:58%;
+                                                                                                                                                                                                                                                                        max-width:260px;
+                                                                                                                                                                                                                                                                        justify-self:center}
+                                                                                                                                                                                                                                                                        .chat-label{
+                                                                                                                                                                                                                                                                          padding:12px 15px;
+                                                                                                                                                                                                                                                                          font-size:13px}
+                                                                                                                                                                                                                                                                          .ai-art figcaption{
+                                                                                                                                                                                                                                                                            font-size:11px}
+                                                                                                                                                                                                                                                                            .ai-note{
+                                                                                                                                                                                                                                                                              text-align:left}
+                                                                                                                                                                                                                                                                              .download{
+                                                                                                                                                                                                                                                                                padding-block:46px}
+                                                                                                                                                                                                                                                                                .download-icon{
+                                                                                                                                                                                                                                                                                  width:56px;
+                                                                                                                                                                                                                                                                                  height:56px;
+                                                                                                                                                                                                                                                                                  border-radius:14px}
+                                                                                                                                                                                                                                                                                  .footer-top{
+                                                                                                                                                                                                                                                                                    flex-direction:column;
+                                                                                                                                                                                                                                                                                    align-items:flex-start;
+                                                                                                                                                                                                                                                                                    gap:8px}
+                                                                                                                                                                                                                                                                                    .footer nav{
+                                                                                                                                                                                                                                                                                      gap:22px}
+                                                                                                                                                                                                                                                                                      .registration{
+                                                                                                                                                                                                                                                                                        justify-content:flex-start;
+                                                                                                                                                                                                                                                                                        gap:6px 18px;
+                                                                                                                                                                                                                                                                                        margin-top:13px}
+                                                                                                                                                                                                                                                                                        .registration a{
+                                                                                                                                                                                                                                                                                          min-height:32px}
+                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                        @media(max-width:360px){
+                                                                                                                                                                                                                                                                                          .wrap{
+                                                                                                                                                                                                                                                                                            width:calc(100% - 32px)}
+                                                                                                                                                                                                                                                                                            .brand{
+                                                                                                                                                                                                                                                                                              font-size:19px;
+                                                                                                                                                                                                                                                                                              gap:6px}
+                                                                                                                                                                                                                                                                                              .brand img{
+                                                                                                                                                                                                                                                                                                width:28px;
+                                                                                                                                                                                                                                                                                                height:28px}
+                                                                                                                                                                                                                                                                                                .header{
+                                                                                                                                                                                                                                                                                                  gap:5px}
+                                                                                                                                                                                                                                                                                                  .nav-button{
+                                                                                                                                                                                                                                                                                                    font-size:11px;
+                                                                                                                                                                                                                                                                                                    padding:9px 7px}
+                                                                                                                                                                                                                                                                                                    .nav-button span{
+                                                                                                                                                                                                                                                                                                      display:none}
+                                                                                                                                                                                                                                                                                                      .languages a{
+                                                                                                                                                                                                                                                                                                        min-width:25px}
+                                                                                                                                                                                                                                                                                                        .steps{
+                                                                                                                                                                                                                                                                                                          gap:6px;
+                                                                                                                                                                                                                                                                                                          font-size:11px}
+                                                                                                                                                                                                                                                                                                          .steps li{
+                                                                                                                                                                                                                                                                                                            gap:4px}
+                                                                                                                                                                                                                                                                                                            .steps span{
+                                                                                                                                                                                                                                                                                                              width:23px;
+                                                                                                                                                                                                                                                                                                              height:23px}
+                                                                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                                                                            @media(prefers-reduced-motion:reduce){
+                                                                                                                                                                                                                                                                                                              *,*::before,*::after{
+                                                                                                                                                                                                                                                                                                                animation:none!important;
+                                                                                                                                                                                                                                                                                                                transition:none!important;
+                                                                                                                                                                                                                                                                                                                scroll-behavior:auto!important}
+                                                                                                                                                                                                                                                                                                              }
