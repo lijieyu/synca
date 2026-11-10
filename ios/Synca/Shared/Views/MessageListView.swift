@@ -2540,10 +2540,7 @@ private struct NewMessageCategorySheet: View {
         }
         .disabled(isSaving)
         .interactiveDismissDisabled(hasChanges || isSaving)
-        .confirmationDialog("message_edit.discard_title", isPresented: $showDiscardConfirm, titleVisibility: .visible) {
-            Button("message_edit.discard", role: .destructive) { finishClose() }
-            Button("common.cancel", role: .cancel) {}
-        }
+        .modifier(DiscardChangesConfirmation(isPresented: $showDiscardConfirm, onDiscard: { finishClose() }))
         .alert("message_category.save_failed_title", isPresented: $showSaveError) {
             Button("common.ok", role: .cancel) {}
         } message: { Text("message_category.save_failed_message") }
@@ -2622,7 +2619,7 @@ private struct MessageCategoryManagerSheet: View {
                 perform { await syncManager.updateCategory(id: category.id, color: preset.legacy, colorHex: preset.hex) }
             },
             onDelete: { pendingDelete = category },
-            onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) })
+            onMoveUp: { move(category, by: -1) }, onMoveDown: { move(category, by: 1) }, onExit: finish)
     }
 
     private var addButton: some View {
@@ -2682,6 +2679,9 @@ private struct MessageCategoryManagerSheet: View {
                 busy = true
                 if !(await syncManager.reorderCategories(ids: ids)) { failed = true }
                 busy = false
+            }, onExit: {
+                guard !adding, pendingDelete == nil, !failed else { return }
+                finish()
             }) { category in
                 categoryRow(category)
             }
@@ -2753,6 +2753,7 @@ private struct InlineCategoryRow: View {
     let onDelete: () -> Void
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
+    var onExit: (() -> Void)? = nil
     @State private var name = ""
     @State private var palettePresented = false
     @FocusState private var editing: Bool
@@ -2789,6 +2790,9 @@ private struct InlineCategoryRow: View {
                     .onTapGesture { editing = true }
                     #endif
                     .disabled(category.isDefault)
+                    #if os(macOS)
+                    .onExitCommand { onExit?() }
+                    #endif
                     .onSubmit { editing = false }
                     .onChange(of: name) { onDraftName($0) }
                     .onChange(of: editing) { focused in if !focused { onRename(name) } }
@@ -3072,6 +3076,7 @@ private struct MacCategoryReorderStack<Row: View>: View {
     let handleOnly: Bool
     let disabled: Bool
     let onCommit: ([String]) async -> Void
+    var onExit: (() -> Void)? = nil
     @ViewBuilder let row: (SyncaMessageCategory) -> Row
     @State private var coordinateID = UUID()
     @State private var frames: [String: CGRect] = [:]
@@ -3126,7 +3131,15 @@ private struct MacCategoryReorderStack<Row: View>: View {
                 reset()
             }
         }
-        .onExitCommand { if !saving { gestureCancelled = gestureInFlight; reset() } }
+        .onExitCommand {
+            guard !saving, !disabled else { return }
+            if gestureInFlight || draggedID != nil {
+                gestureCancelled = gestureInFlight
+                reset()
+            } else {
+                onExit?()
+            }
+        }
         .onDisappear { if !saving { reset() } }
         .onChange(of: categories.map(\.id)) { _ in if !saving { gestureCancelled = gestureInFlight; reset() } }
     }

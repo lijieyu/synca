@@ -59,10 +59,7 @@ struct FeedbackComposerView: View {
         }
         .task { await seedEmailIfNeeded() }
         .interactiveDismissDisabled(hasChanges || isSubmitting)
-        .confirmationDialog("feedback.discard_title", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
-            Button("feedback.discard", role: .destructive) { dismiss() }
-            Button("feedback.keep_editing", role: .cancel) { }
-        }
+        .modifier(DiscardChangesConfirmation(isPresented: $showDiscardConfirmation, onDiscard: { dismiss() }))
         #if os(macOS)
         .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80), height: min(contentHeight + 125, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
         #else
