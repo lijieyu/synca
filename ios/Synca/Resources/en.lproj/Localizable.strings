@@ -398,3 +398,5 @@
 "developer_social.follow" = "Follow the developer on RedNote";
 "developer_social.contact" = "Contact the developer on RedNote";
 "developer_social.external" = "Opens in your browser";
+
+"message_category.modify" = "Edit";

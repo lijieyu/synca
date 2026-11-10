@@ -1,4 +1,5 @@
 {
+  "message_category.modify": "修改",
   "app.name": "Synca",
   "app.slogan": "灵感记录 即刻同步",
   "login.sign_in_with_apple": "通过 Apple 登录",

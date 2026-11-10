@@ -125,6 +125,8 @@ struct MessageListView: View {
     @State private var showCategoryManager = false
     @State private var sidebarDragPayload: String?
     @State private var sidebarReordering = false
+    @State private var sidebarEditTarget: SyncaMessageCategory?
+    @State private var sidebarDeleteTarget: SyncaMessageCategory?
     #if os(macOS)
     @AppStorage("synca.sidebarWidth") private var preferredSidebarWidth = 220.0
     @State private var sidebarLiveWidth: CGFloat?
@@ -247,6 +249,18 @@ struct MessageListView: View {
             #else
             .sheet(isPresented: $showCategoryManager) {
                 MessageCategoryManagerSheet().environmentObject(syncManager).syncaPreferences()
+            }
+            #endif
+            #if os(macOS)
+            .sheet(item: $sidebarEditTarget) { category in
+                NewMessageCategorySheet(category: category) {
+                    sidebarEditTarget = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        showCategoryManager = true
+                    }
+                }
+                .environmentObject(syncManager)
+                .syncaPreferences()
             }
             #endif
             .sheet(isPresented: $showCreateCategory) {
@@ -512,6 +526,17 @@ struct MessageListView: View {
                         sidebarReordering = false
                     }) { category in
                         sidebarCategory(id: category.id, title: category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name, color: categoryDisplayColor(category.color, hex: category.colorHex), count: todoCount(for: category.id))
+                            .contextMenu {
+                                Button("message_category.modify") { sidebarEditTarget = category }
+                                    .disabled(category.isDefault || sidebarReordering)
+                                Button("message_category.move_up") { moveSidebar(category, by: -1) }
+                                    .disabled(sidebarReordering || !canMoveSidebar(category, by: -1))
+                                Button("message_category.move_down") { moveSidebar(category, by: 1) }
+                                    .disabled(sidebarReordering || !canMoveSidebar(category, by: 1))
+                                Divider()
+                                Button("common.delete") { sidebarDeleteTarget = category }
+                                    .disabled(category.isDefault || sidebarReordering)
+                            }
                             .accessibilityAction(named: Text("message_category.move_up")) { moveSidebar(category, by: -1) }
                             .accessibilityAction(named: Text("message_category.move_down")) { moveSidebar(category, by: 1) }
                     }
@@ -562,6 +587,23 @@ struct MessageListView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 14)
         }
+        .alert("message_category.delete_confirm_title", isPresented: Binding(get: { sidebarDeleteTarget != nil }, set: { if !$0 { sidebarDeleteTarget = nil } })) {
+            Button("common.cancel", role: .cancel) { sidebarDeleteTarget = nil }
+            Button("common.delete", role: .destructive) {
+                guard let category = sidebarDeleteTarget, !category.isDefault, !sidebarReordering else { return }
+                sidebarDeleteTarget = nil
+                sidebarReordering = true
+                Task { @MainActor in
+                    _ = await syncManager.deleteCategory(id: category.id)
+                    sidebarReordering = false
+                }
+            }
+        } message: {
+            if let category = sidebarDeleteTarget,
+               syncManager.messages.contains(where: { !$0.isDeleted && $0.categoryId == category.id }) {
+                Text("message_category.delete_confirm_message")
+            }
+        }
         .frame(width: desktopSidebarWidth)
         .background(Color(nsColor: .controlBackgroundColor))
         .overlay(alignment: .trailing) {
@@ -597,8 +639,7 @@ struct MessageListView: View {
             syncManager.selectCategory(id)
             if NSApp.currentEvent?.clickCount == 2,
                let category = syncManager.categories.first(where: { $0.id == id }), !category.isDefault {
-                categoryToEdit = category
-                showCreateCategory = true
+                sidebarEditTarget = category
             } else {
                 composerFocusRequest += 1
             }
@@ -633,6 +674,12 @@ struct MessageListView: View {
                 syncManager.selectCategory(next)
                 sidebarCategoryFocus = next
             }
+    }
+
+    private func canMoveSidebar(_ category: SyncaMessageCategory, by offset: Int) -> Bool {
+        let custom = syncManager.categories.filter { !$0.isDefault }
+        guard !category.isDefault, let index = custom.firstIndex(where: { $0.id == category.id }) else { return false }
+        return custom.indices.contains(index + offset)
     }
 
     private func moveSidebar(_ category: SyncaMessageCategory, by offset: Int) {

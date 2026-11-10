@@ -1,3 +1,4 @@
+import { CategoryContextMenu, type CategoryMenuAnchor } from './CategoryContextMenu';
 import { SidebarFrame } from './SidebarFrame';
 import { AIPage } from './AIPage';
 import { moveItem, usePointerSort } from '../hooks/usePointerSort';
@@ -63,6 +64,7 @@ const EmptyMessageState: React.FC = () => {
 };
 
 export const MessageListView: React.FC = () => {
+  const [categoryMenu, setCategoryMenu] = useState<CategoryMenuAnchor | null>(null);
   const [editingMessage, setEditingMessage] = useState<SyncaMessage | null>(null);
   const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
   const [messages, setMessages] = useState<SyncaMessage[]>([]);
@@ -438,6 +440,10 @@ export const MessageListView: React.FC = () => {
     setSelectedCategoryId(buttons[next].dataset.categoryId!);
   };
 
+  const menuCategory = categories.find(category => category.id === categoryMenu?.id);
+  const customCategories = categories.filter(category => !category.isDefault);
+  const menuIndex = customCategories.findIndex(category => category.id === menuCategory?.id);
+
   const completed = filteredMessages.filter((message) => message.isCleared);
   const pending = filteredMessages.filter((message) => !message.isCleared);
 
@@ -445,6 +451,13 @@ export const MessageListView: React.FC = () => {
     <div className="app-container calm-shell">
       {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+      {categoryMenu && menuCategory && <CategoryContextMenu anchor={categoryMenu} name={menuCategory.name}
+        protectedCategory={menuCategory.isDefault} busy={categorySaving}
+        canMoveUp={menuIndex > 0} canMoveDown={menuIndex >= 0 && menuIndex < customCategories.length - 1}
+        onClose={() => setCategoryMenu(null)}
+        onEdit={() => { setCategoryManagerEditor(null); setEditingCategory(menuCategory); setNewCategoryHex(menuCategory.colorHex); setNewCategoryName(menuCategory.name); setNewCategoryColor(menuCategory.color); setShowCreateCategoryModal(true); }}
+        onMove={direction => { const target = customCategories[menuIndex + direction]; if (menuIndex >= 0 && target) void reorderSidebar(menuCategory.id, target.id); }}
+        onDelete={() => setCategoryManagerDeleteTarget({ ...menuCategory, clientId: menuCategory.id })} />}
       <SidebarFrame>
         <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span></div>
 
@@ -460,12 +473,13 @@ export const MessageListView: React.FC = () => {
                 key={category.id}
                 className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
                 data-category-id={category.id}
+                onContextMenu={event => { event.preventDefault(); setCategoryMenu({ id: category.id, x: event.clientX, y: event.clientY, trigger: event.currentTarget }); }}
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
                 style={categoryStyle(category.colorHex, category.color)}
                 data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false}
 
-                onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
+                onKeyDown={e => { if(e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const rect=e.currentTarget.getBoundingClientRect(); setCategoryMenu({id:category.id,x:rect.left+12,y:rect.bottom,trigger:e.currentTarget}); return; } if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
                 {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
@@ -651,14 +665,25 @@ export const MessageListView: React.FC = () => {
       {categoryManagerDeleteTarget && (
         <Modal
           title={t('message_category.delete_confirm_title', 'Delete Category?')}
-          message={t('message_category.delete_confirm_message', 'This category will be removed after you save.')}
+          message={messages.some(message => !message.isDeleted && message.categoryId === categoryManagerDeleteTarget.id) ? t('message_category.delete_confirm_message') : ''}
           confirmText={t('common.delete', 'Delete')}
           cancelText={t('common.cancel', 'Cancel')}
           confirmDisabled={categorySaving} cancelDisabled={categorySaving} closeDisabled={categorySaving}
           onConfirm={() => { void (async () => {
-            if (categoryWritePending.current) return;
+            if (categoryWritePending.current || categoryManagerDeleteTarget.isDefault) return;
             ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
-            try { if(categoryManagerDeleteTarget.id) await api.deleteMessageCategory(categoryManagerDeleteTarget.id); setCategoryManagerRows(rows => rows.filter(row => row.clientId !== categoryManagerDeleteTarget.clientId)); setCategoryManagerDeleteTarget(null); await fetchData(false); }
+            try {
+              const id = categoryManagerDeleteTarget.id;
+              if (id) await api.deleteMessageCategory(id);
+              setCategoryManagerRows(rows => rows.filter(row => row.clientId !== categoryManagerDeleteTarget.clientId));
+              setCategories(current => current.filter(category => category.id !== id));
+              if (defaultCategory) {
+                setMessages(current => current.map(message => message.categoryId === id ? { ...message, categoryId: defaultCategory.id, categoryName: defaultCategory.name, categoryColor: defaultCategory.color, categoryColorHex: defaultCategory.colorHex, categoryIsDefault: true } : message));
+                setSelectedCategoryId(current => current === id ? defaultCategory.id : current);
+                setDefaultSendCategoryId(current => current === id ? defaultCategory.id : current);
+              }
+              setCategoryManagerDeleteTarget(null); await fetchData(false);
+            }
             catch { setCategoryManagerError({title:t('common.error'),message:t('navigation.save_failed')}); }
             finally { categoryWritePending.current = false; setCategorySaving(false); }
           })(); }}
