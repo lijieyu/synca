@@ -31,3 +31,9 @@ User requested TF for the finished three-client search, refresh existing approve
 - Main slogan follows the approved “灵感记录，即刻同步”. Localized privacy-safe assets include updated search entries. Product, transfer and external-AI explanations remain concise.
 - 12 locale/viewport/appearance combinations passed with and without JavaScript. Independent review found preview-host assets/service links crossing its auth boundary; fixed by self-contained `/home/assets/` and absolute production service links. New test assertions pin both boundaries.
 - Preview-only deployment script `scripts/deploy-home-preview.sh` stores rollback backups outside the public directory and checks production app/config hashes.
+
+## Preview outcome
+- Public review URL: https://synca-preview.haerth.cn/home/ (three locales, no login required, noindex/nofollow/noarchive).
+- Preview artifact: `/opt/synca-preview/home-releases/20261110T184150Z-be0d67a`; production config and app index hashes unchanged.
+- Fresh anonymous browser verification: 12 locale/viewport/appearance cases with JavaScript enabled and the same 12 disabled, all passed; image loads, navigation, keyboard skip link, no horizontal overflow and zero cookies verified.
+- Online screenshots saved under the visualization workspace `website-20261111/`. No production website activation, App Store asset upload or review submission performed.

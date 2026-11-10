@@ -44,3 +44,7 @@ Latest local verification: all **12** combinations passed (1440 light, 390 light
 ## Deployment boundary
 
 No deployment or root-route change is part of these page files. Vite copies `web/public/home/` into `dist/home/`. The marketing directory can also be served independently at a `/home/` alias. Any server preview should remain noindex and must not replace the live app directory, change authentication, or touch user data. The coordinating agent owns release/preview integration and verifies those boundaries.
+
+## Verified hosted preview (2026-11-11)
+
+https://synca-preview.haerth.cn/home/ is live as an independent public, noindex preview. Anonymous browser verification passed all 24 cases (12 with JavaScript and 12 without), including resources and locale links. No cookies were set. The original production app index and nginx configuration remained byte-identical during this preview deployment. Activate `/home/` in production only as a separate release after review; the existing `/` app remains the default entry.
