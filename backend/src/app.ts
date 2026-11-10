@@ -1,6 +1,6 @@
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
-import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension, isSupportedDocument } from './attachmentPolicy.js';
+import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension } from './attachmentPolicy.js';
 import { createAIRouter, aiRateLimit } from './aiRoutes.js';
 import { authenticate as authenticateAI, requireScope as requireAIScope, AIError, assertActive, type Actor, publicOrigin } from './aiCore.js';
 import { prepareUpload, trackUpload, releaseUpload } from './storage.js';
@@ -549,13 +549,6 @@ app.post('/messages/file', auth, prepareUpload('file'), receiveAttachment('file'
     const file = (req as any).file as Express.Multer.File | undefined;
     if (!file) {
         return res.status(400).json({ error: 'no_file_provided' });
-    }
-
-    if (!isSupportedDocument(file)) {
-        if (file.path && fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-        }
-        return res.status(400).json({ error: 'unsupported_file_type' });
     }
 
     if (file.size > res.locals.upload.bytes) {

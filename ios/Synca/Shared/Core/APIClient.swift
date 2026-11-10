@@ -658,7 +658,7 @@ private extension APIClient {
 
     func multipartUploadFileName(for fileName: String) -> String {
         let ext = URL(fileURLWithPath: fileName).pathExtension.lowercased()
-        let safeExt = PendingFileUpload.supportedExtensions.contains(ext) ? ext : "bin"
+        let safeExt = !ext.isEmpty && ext.count <= 32 && ext.utf8.allSatisfy { (97...122).contains($0) || (48...57).contains($0) } ? ext : "bin"
         return "attachment.\(safeExt)"
     }
 

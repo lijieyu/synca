@@ -32,6 +32,19 @@ struct NativeTransferTests {
             try handle.truncate(atOffset: UInt64(size)); try handle.close()
             return PendingFileUpload.read(from: url)!
         }
+        for name in ["firmware.bin", "archive.7z", "settings.json", "README", "custom.unknown", "drawing.svg"] {
+            let item = try file(name, size: 32)
+            let uploadedFile = try await api.sendFileMessage(file: item, progress: { _ in })
+            precondition(uploadedFile.fileName == name && uploadedFile.fileSize == 32)
+        }
+        let oversizedImage = directory.appendingPathComponent("oversized.png")
+        FileManager.default.createFile(atPath: oversizedImage.path, contents: nil)
+        let imageHandle = try FileHandle(forWritingTo: oversizedImage)
+        try imageHandle.truncate(atOffset: UInt64(PendingFileUpload.maxImageSize + 1)); try imageHandle.close()
+        precondition(PendingFileUpload.imageData(from: oversizedImage) == nil)
+        precondition(PendingFileUpload.read(from: oversizedImage) == nil, "oversized images must not bypass the image limit via file uploads")
+        precondition(PendingFileUpload.read(from: directory) == nil, "directories are not file uploads")
+        print("PASS: arbitrary file types and extensionless files preserve original names; directories rejected")
         ImageCache.clearCache()
         let original = Data(repeating: 42, count: 1024 * 1024)
         let progress = ProgressProbe()

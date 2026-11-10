@@ -7,7 +7,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { reserveUpload, trackUpload, releaseUpload } from './storage.js';
 import { assertCanCreateMessage } from './access.js';
 import { storagePolicy } from './storagePolicy.js';
-import { allowedImageMimeTypes, imageExtensionForMimeType, isSupportedDocument, supportedFileExtension } from './attachmentPolicy.js';
+import { allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension } from './attachmentPolicy.js';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -284,7 +284,7 @@ export async function createAttachment(actor: Actor, args: z.infer<typeof attach
     if (data.toString('base64') !== args.base64) throw new AIError(400, 'invalid_base64');
     if (!data.length || data.length > 5 * 1024 * 1024) throw new AIError(413, 'use_attachment_transfer');
     const descriptor = { originalname: args.fileName, mimetype: args.mimeType };
-    if (args.kind === 'image' ? !allowedImageMimeTypes.includes(args.mimeType) : !isSupportedDocument(descriptor)) throw new AIError(400, 'unsupported_file_type');
+    if (args.kind === 'image' && !allowedImageMimeTypes.includes(args.mimeType)) throw new AIError(400, 'unsupported_file_type');
     const { base64: _, ...metadata } = args;
     const payload = { ...metadata, contentHash: hash(args.base64) };
     const previous = await db.selectFrom('ai_operations').selectAll().where('connection_id', '=', actor.id).where('request_key', '=', args.idempotencyKey).executeTakeFirst();

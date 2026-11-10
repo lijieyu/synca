@@ -5,7 +5,6 @@ struct PendingFileUpload: Equatable {
     static let maxImageSize = 50 * 1024 * 1024
     static let maxFileSize = 200 * 1024 * 1024
     static let supportedImageExtensions = Set(["jpg", "jpeg", "png", "webp", "heic", "heif", "gif"])
-    static let supportedExtensions = Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "zip"])
 
     let uploadID = UUID().uuidString
     let fileURL: URL
@@ -17,7 +16,8 @@ struct PendingFileUpload: Equatable {
     let mimeType: String?
 
     static func isSupportedFileURL(_ url: URL) -> Bool {
-        supportedExtensions.contains(url.pathExtension.lowercased())
+        // Known image formats keep their image-specific size limit and upload path.
+        url.isFileURL && !isSupportedImageURL(url)
     }
 
     static func isSupportedImageURL(_ url: URL) -> Bool {

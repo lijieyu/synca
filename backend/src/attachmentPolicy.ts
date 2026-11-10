@@ -14,11 +14,6 @@ export const supportedDocumentMimeTypeByExtension: Record<string, string> = {
     zip: 'application/zip',
 };
 const supportedDocumentExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
-const supportedDocumentMimeTypes = new Set([
-    ...Object.values(supportedDocumentMimeTypeByExtension),
-    'application/x-zip-compressed',
-]);
-
 export function imageExtensionForMimeType(mimeType: string): string {
     switch (mimeType) {
         case 'image/jpeg': return '.jpg';
@@ -47,10 +42,5 @@ export function supportedFileExtension(file: Express.Multer.File | Pick<Express.
     }
 
     return 'bin';
-}
-
-export function isSupportedDocument(file: Pick<Express.Multer.File, 'mimetype' | 'originalname'>): boolean {
-    const ext = supportedFileExtension(file);
-    return supportedDocumentExtensions.has(ext) || supportedDocumentMimeTypes.has(file.mimetype ?? '');
 }
 

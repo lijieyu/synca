@@ -39,8 +39,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
 
-  const supportedDocumentExtensions = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,image/*';
-  const supportedDocumentExtensionSet = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip']);
+  const supportedImageMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif']);
   const maxDocumentSize = 200 * 1024 * 1024;
   useEffect(() => {
     // Focus when not sending (initial mount and after message sent)
@@ -88,9 +87,6 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
   const sendAttachment = async (file: File, image: boolean, targetCategoryId = categoryId) => {
     if (isSending) return;
     if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null }); setShowLimitModal(true); return; }
-    if (!image && !supportedDocumentExtensionSet.has(file.name.split('.').pop()?.toLowerCase() ?? '')) {
-      setToastMsg(t('message_file.error_unsupported')); setShowToast(true); return;
-    }
     if (file.size > (image ? 50 * 1024 * 1024 : maxDocumentSize)) {
       setToastMsg(t(image ? 'storage.image_too_large' : 'message_file.error_too_large')); setShowToast(true); return;
     }
@@ -134,7 +130,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     const file = e.target.files?.[0];
     e.target.value = '';
     if (file) {
-      if (file.type.startsWith('image/')) {
+      if (supportedImageMimeTypes.has(file.type)) {
         await sendImage(file);
       } else {
         await sendFile(file);
@@ -145,7 +141,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
+      if (supportedImageMimeTypes.has(items[i].type)) {
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
@@ -156,7 +152,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     }
 
     const files = Array.from(e.clipboardData.files);
-    const supportedFile = files.find((file) => !file.type.startsWith('image/'));
+    const supportedFile = files.find((file) => !supportedImageMimeTypes.has(file.type));
     if (supportedFile) {
       e.preventDefault();
       await sendFile(supportedFile);
@@ -219,7 +215,6 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
             <Paperclip size={22} />
             <input
               type="file"
-              accept={supportedDocumentExtensions}
               aria-label={t('storage.choose_file')}
               onChange={handleDocumentChange}
               ref={documentInputRef}

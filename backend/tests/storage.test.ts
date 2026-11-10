@@ -192,6 +192,25 @@ describe('Attachment storage contract', () => {
         expect(download.headers['x-content-type-options']).toBe('nosniff');
         expect(download.headers['cache-control']).toBe('private, no-store');
     });
+    it.each(['firmware.bin', 'archive.7z', 'backup.sqlite', 'settings.json', 'README', 'custom.unknown', 'page.html', 'drawing.svg'])('round-trips unrestricted file %s without executing it', async fileName => {
+        const owner = await account(true), other = await account(true);
+        const payload = Buffer.from([0, 255, 1, 13, 10, 128, 42]);
+        const upload = await request(app).post('/messages/file').set('Authorization', owner.auth)
+            .set('X-Upload-Size', String(payload.length)).field('fileName', fileName)
+            .attach('file', payload, { filename: fileName, contentType: 'application/octet-stream' });
+        remember(upload.body);
+        expect(upload.status).toBe(201);
+        expect(upload.body).toMatchObject({ type: 'file', fileName, fileSize: payload.length });
+        const url = `/api/media/${upload.body.filePath}`;
+        expect((await request(app).get(url)).status).toBe(401);
+        expect((await request(app).get(url).set('Authorization', other.auth)).status).toBe(403);
+        const download = await request(app).get(url).set('Authorization', owner.auth);
+        expect(download.status).toBe(200);
+        expect(download.body).toEqual(payload);
+        expect(download.headers['content-disposition']).toMatch(/^attachment;/);
+        expect(download.headers['x-content-type-options']).toBe('nosniff');
+        expect(download.headers['content-security-policy']).toContain('sandbox');
+    });
     it('rejects malformed multipart metadata without retaining files or capacity', async () => {
         const user = await account(true);
         const result = await request(app).post('/messages/file').set('Authorization', user.auth)
