@@ -2963,9 +2963,12 @@ private struct AboutSyncaSheet: View {
                 }.frame(maxWidth: .infinity).padding(.top, 0)
                 Text(String(syncaLocalized: "app.slogan", bundle: .main))
                     .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                HStack(spacing: 12) {
-                    aboutLink("access.privacy_policy_link_title", destination: AppLinks.privacyPolicyURL)
-                    aboutLink("message_list.support", destination: AppLinks.supportURL)
+                VStack(spacing: 12) {
+                    DeveloperSocialLink(title: "developer_social.follow")
+                    HStack(spacing: 12) {
+                        aboutLink("access.privacy_policy_link_title", destination: AppLinks.privacyPolicyURL)
+                        aboutLink("message_list.support", destination: AppLinks.supportURL)
+                    }
                 }.padding(.top, 28)
 
                 Text(verbatim: "浙ICP备2026013056号-3A")
