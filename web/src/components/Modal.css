@@ -9,4 +9,4 @@
 
 @media (pointer: coarse) { .modal-content .modal-close { flex-basis: 44px; width: 44px; height: 44px; } }
 
-.modal-content button:focus-visible, .modal-content a:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
+.modal-content button:focus-visible, .modal-content a:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 3px; }

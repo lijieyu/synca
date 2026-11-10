@@ -14,7 +14,7 @@
 .category-manager-content button:hover:not(:disabled), .category-manager-more > summary:hover { background:var(--sidebar-bg); }
 .category-manager-content button:disabled { opacity:.3; cursor:default; }
 .category-manager-content:disabled .category-manager-more { pointer-events:none; opacity:.3; }
-.category-manager-content button:focus-visible, .category-manager-more > summary:focus-visible { outline:2px solid var(--synca-purple); outline-offset:2px; }
+.category-manager-content button:focus-visible, .category-manager-more > summary:focus-visible { outline:2px solid var(--accent-color); outline-offset:2px; }
 .category-manager-more[open] { position:relative; z-index:2; }
 .category-manager-menu { position:absolute; z-index:2; top:36px; right:0; min-width:150px; width:max-content; max-width:240px; padding:5px; border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg-color); box-shadow:0 8px 24px #0002; }
 .category-manager-menu button { display:block; width:100%; min-height:36px; border:0; border-radius:6px; background:transparent; color:var(--text-main); padding:6px 10px; text-align:left; }
