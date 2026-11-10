@@ -45,6 +45,47 @@ final class ScrollTests: XCTestCase {
         attach(app, name: screenshot)
     }
 
+    func testSearchLocatesCompletedLongAndImageRows() {
+        let app = launch(["--qa-search"])
+        let search = app.buttons["search-open"]
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        for (query, id) in [("ms", "search-completed"), ("长文", "search-long"), ("照片", "search-image")] {
+            search.tap()
+            let field = app.textFields["search-query"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            field.typeText(query)
+            let result = app.buttons["search-result-" + id]
+            XCTAssertTrue(result.waitForExistence(timeout: 10))
+            result.tap()
+            let target = app.otherElements["record-" + id].firstMatch
+            let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: target)
+            XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 8), .completed)
+            XCTAssertLessThan(target.frame.minY, app.frame.height - 140)
+            XCTAssertGreaterThanOrEqual(target.frame.minY, 0)
+            attach(app, name: "search-located-" + id)
+            // A stable delayed observation catches image-load/initial-bottom callbacks.
+            let stable = expectation(description: "No late jump")
+            let y = target.frame.minY
+            DispatchQueue.main.asyncAfter(deadline: .now() + 9) { stable.fulfill() }
+            wait(for: [stable], timeout: 12)
+            XCTAssertTrue(target.isHittable)
+            XCTAssertEqual(target.frame.minY, y, accuracy: 6)
+        }
+    }
+
+    func testCancelSearchPreservesVisibleRecord() {
+        let app = launch(["--qa-search"])
+        let row = app.otherElements["record-search-completed"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8))
+        let y = row.frame.minY
+        app.buttons["search-open"].tap()
+        XCTAssertTrue(app.textFields["search-query"].waitForExistence(timeout: 5))
+        app.buttons["取消"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertEqual(row.frame.minY, y, accuracy: 6)
+    }
+
     func testSwitchingKeepsImagesReady() {
         let app = launch(["--qa-images"])
         let mounts = app.staticTexts["qa-list-mounts"]

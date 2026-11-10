@@ -399,5 +399,19 @@
     "follow": "Follow the developer on RedNote",
     "contact": "Contact the developer on RedNote",
     "external": "Opens in your browser"
+  },
+  "search": {
+    "title": "Search records",
+    "placeholder": "Search content or filenames",
+    "scope": "Search scope",
+    "all": "All records",
+    "current": "Current category",
+    "hint": "Search text, pinyin or consecutive initials",
+    "loading": "Searching…",
+    "empty": "No matching records",
+    "count": "{{count}} records found",
+    "completed": "Completed",
+    "unavailable": "This record is no longer available",
+    "error": "Search is unavailable. Please reopen it."
   }
 }

@@ -400,3 +400,17 @@
 "developer_social.external" = "Opens in your browser";
 
 "message_category.modify" = "Edit";
+
+/* Record search */
+"search.title" = "Search records";
+"search.placeholder" = "Text, filename or pinyin";
+"search.clear" = "Clear search";
+"search.scope" = "Search scope";
+"search.all" = "All records";
+"search.current" = "Current category";
+"search.unavailable" = "This record is no longer available.";
+"search.prompt" = "Search text and filenames";
+"search.empty" = "No matching records";
+"search.completed" = "Completed";
+"search.open_hint" = "Go to the original record";
+"search.located" = "Record located";

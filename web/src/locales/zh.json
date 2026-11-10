@@ -399,5 +399,19 @@
     "follow": "去小红书关注开发者",
     "contact": "去小红书联系开发者",
     "external": "在浏览器中打开"
+  },
+  "search": {
+    "title": "搜索记录",
+    "placeholder": "搜索内容或文件名",
+    "scope": "搜索范围",
+    "all": "全部记录",
+    "current": "当前分类",
+    "hint": "支持文字、拼音和连续首字母",
+    "loading": "正在搜索…",
+    "empty": "没有找到匹配记录",
+    "count": "找到 {{count}} 条记录",
+    "completed": "已完成",
+    "unavailable": "这条记录已不存在",
+    "error": "搜索暂时不可用，请重新打开"
   }
 }
