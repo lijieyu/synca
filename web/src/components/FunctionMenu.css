@@ -51,8 +51,7 @@
 .about-panel .shell-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; text-underline-offset: 4px; }
 .shell-form > button { justify-self: end; min-width: 80px; }
 
-.about-panel .shell-links a { color: #6136d6; }
-@media (prefers-color-scheme: dark) { .about-panel .shell-links a { color: #bba2ff; } }
+.about-panel .shell-links a { color: var(--text-main); }
 
 .about-registration { margin-top: 20px; color: #626268; font-size: 13px; line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
 @media (prefers-color-scheme: dark) { .about-registration { color: #b1b1b8; } }

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { useTranslation } from 'react-i18next';
+import { AppLoading } from './components/AppLoading';
 import { AIPage } from './components/AIPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -8,11 +8,10 @@ const MessageListView = lazy(() => import('./components/MessageListView').then(m
 const AdminLayout = lazy(() => import('./components/AdminLayout').then(module => ({ default: module.AdminLayout })));
 
 function App() {
-  const { t } = useTranslation();
   const { isAuthenticated, isAdmin, token } = useAuth();
 
   return (
-    <Suspense fallback={<div className="ai-initial-loading" role="status">{t('message_list.loading')}</div>}><Routes>
+    <Suspense fallback={<AppLoading />}><Routes>
       <Route path="/ai" element={<AIPage key={token ?? "anonymous"} />} />
       <Route
         path="/"

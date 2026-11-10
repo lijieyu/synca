@@ -74,7 +74,7 @@
 .color-slate { --category-accent:#64748b; }.color-sky { --category-accent:#3b82f6; }.color-mint { --category-accent:#22c55e; }.color-amber { --category-accent:#f59e0b; }.color-coral { --category-accent:#ef4444; }.color-violet { --category-accent:#a855f7; }.color-rose { --category-accent:#ec4899; }.color-ocean { --category-accent:#06b6d4; }
 .calm-sidebar .category-chip.active { box-shadow:none; border:0; }
 .account-provider,.about-registration { color:var(--text-secondary); }
-.about-panel .shell-links a { color:var(--accent-color); }
+.about-panel .shell-links a { color:var(--text-main); }
 /* A single boundary around the composer, with category color carried by labels. */
 .calm-main .input-bar { padding:0; }
 .calm-main .input-shell { border:0; border-radius:inherit; box-shadow:none; background:transparent; }
