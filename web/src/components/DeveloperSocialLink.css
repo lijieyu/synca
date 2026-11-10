@@ -4,7 +4,7 @@
   border-radius:12px; text-decoration:none; text-align:left;
 }
 .developer-social-link:hover { background:color-mix(in srgb, var(--text-main) 5%, var(--card-bg-color)); }
-.developer-social-link:focus-visible { outline:2px solid var(--synca-purple); outline-offset:3px; }
+.developer-social-link:focus-visible { outline:2px solid var(--accent-color); outline-offset:3px; }
 .developer-social-mark {
   display:grid; place-items:center; flex-shrink:0; width:30px; height:30px;
   background:#ed354b; color:#fff; border-radius:8px; font-size:9px; font-weight:700; white-space:nowrap;

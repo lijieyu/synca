@@ -16,17 +16,17 @@
 .header-brand .header-plan.is-unlimited { min-height: 44px; padding: 0; border-radius: 999px; color: var(--synca-purple); background: transparent; font-weight: 600; }
 .header-plan.is-unlimited .header-plan-label { padding: 5px 10px; border-radius: inherit; background: var(--synca-mint-light); line-height: 18px; }
 .header-plan.is-unlimited:hover .header-plan-label { background: color-mix(in srgb, var(--text-main) 9%, var(--card-bg-color)); }
-.header-brand .header-plan:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 2px; }
+.header-brand .header-plan:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 @media (prefers-color-scheme: dark) { .header-brand .header-plan.is-unlimited { color: #bba2ff; } }
 .shell-form { display: grid; gap: 18px; margin: 20px 0; text-align: left; }
 .shell-form label { display: grid; gap: 8px; font-size: 14px; }
 .shell-form :is(input,textarea) { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-color); color: var(--text-main); font: inherit; }
 .shell-form textarea { min-height: 140px; resize: vertical; }
-.shell-form button { min-height: 44px; padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; font: inherit; background: var(--synca-purple); color: white; }
+.shell-form button { min-height: 44px; padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; font: inherit; background: var(--accent-button); color: white; }
 .shell-form button:disabled { opacity: .5; cursor: wait; }
 .shell-form p { overflow-wrap: anywhere; }
 .shell-links { display: flex; gap: 16px; flex-wrap: wrap; }
-.shell-links a { color: var(--synca-purple); }
+.shell-links a { color: var(--accent-color); }
 @media (max-width: 600px) { .app-container .header { padding: 8px 12px; gap: 4px 8px; } .header-brand { gap: 6px; } .header-actions { gap: 0; } .header-actions .header-btn { width: 36px; height: 44px; } .header-brand img { display: none; } }
 
 /* Account: compact identity panel with separate session and dismissal actions. */

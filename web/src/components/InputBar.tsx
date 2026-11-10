@@ -248,7 +248,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
             onClick={handleSendText}
             disabled={!text.trim() || isSending || overLimit}
           >
-            <SendIcon size={30} color={text.trim() && !isSending && !overLimit ? 'var(--synca-purple)' : 'var(--text-secondary)'} />
+            <SendIcon size={30} color={text.trim() && !isSending && !overLimit ? 'var(--accent-color)' : 'var(--text-secondary)'} />
           </button>
         </div>
       </div>

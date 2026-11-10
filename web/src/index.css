@@ -1,5 +1,7 @@
 :root {
   --synca-purple: #7d4dff;
+  --accent-color: #1266d6;
+  --accent-button: #1266d6;
   --synca-mint: #34c759;
   --synca-mint-light: rgba(28, 28, 30, 0.05);
   --cleared-border-color: rgba(60, 60, 67, 0.22);
@@ -15,6 +17,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --accent-color: #75b2ff;
+    --accent-button: #256dce;
     --bg-color: #000000; /* Deep black background */
     --card-bg-color: #1c1c1e; /* Grey cards */
     --panel-bg-color: #2c2c2e; /* Lighter secondary panels/inputs */
@@ -211,8 +215,8 @@ button.category-chip:hover {
 
 .category-add-btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(125, 77, 255, 0.26);
-  background: color-mix(in srgb, var(--panel-bg-color) 94%, rgba(125, 77, 255, 0.08));
+  border-color: color-mix(in srgb, var(--accent-color) 26%, transparent);
+  background: color-mix(in srgb, var(--panel-bg-color) 94%, color-mix(in srgb, var(--accent-color) 8%, transparent));
 }
 
 .category-chip.color-slate {
@@ -428,7 +432,7 @@ button.category-chip:hover {
 }
 
 .file-card:hover {
-  border-color: rgba(125, 77, 255, 0.22);
+  border-color: color-mix(in srgb, var(--accent-color) 22%, transparent);
 }
 
 .file-card-icon {
@@ -547,7 +551,7 @@ button.category-chip:hover {
 .input-bar .send-btn {
   background: none;
   border: none;
-  color: var(--synca-purple);
+  color: var(--accent-color);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -752,7 +756,7 @@ button.category-chip:hover {
 .modal-leading-action {
   border: none;
   background: transparent;
-  color: var(--synca-purple);
+  color: var(--accent-color);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -794,7 +798,7 @@ button.category-chip:hover {
 }
 
 .modal-btn-confirm {
-  background: var(--synca-purple);
+  background: var(--accent-button);
   color: #fff;
   box-shadow: none;
 }
@@ -839,7 +843,7 @@ button.category-chip:hover {
 }
 
 .admin-nav-item.active {
-  color: var(--synca-purple);
+  color: var(--accent-color);
 }
 
 .admin-nav-item.active::after {
@@ -849,7 +853,7 @@ button.category-chip:hover {
   left: 16px;
   right: 16px;
   height: 2px;
-  background-color: var(--synca-purple);
+  background-color: var(--accent-button);
 }
 
 .admin-content {
@@ -985,9 +989,9 @@ button.category-chip:hover {
 .category-add-action {
   min-height: 42px;
   padding: 0 16px;
-  border: 1px solid rgba(125, 77, 255, 0.26);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 26%, transparent);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(125, 77, 255, 0.18), rgba(125, 77, 255, 0.10));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 18%, transparent), color-mix(in srgb, var(--accent-color) 10%, transparent));
   color: var(--text-main);
   display: inline-flex;
   align-items: center;
@@ -1038,7 +1042,7 @@ button.category-chip:hover {
 
 .category-swatch.active {
   border-color: rgba(0, 0, 0, 0.28);
-  box-shadow: 0 0 0 3px rgba(125, 77, 255, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 12%, transparent);
 }
 
 .category-swatch.color-slate { background: rgba(120, 120, 128, 0.88); }
@@ -1334,11 +1338,11 @@ button.category-chip:hover {
 .storage-plans ul { padding-inline-start: 20px; }
 .storage-plans .storage-plan-paid { border-color: var(--synca-purple); }
 .storage-notice, .attachment-expiry { color: var(--text-secondary); font-size: .8rem; line-height: 1.5; }
-.storage-plans progress { display: block; width: 100%; margin-top: 8px; accent-color: var(--synca-purple); }
+.storage-plans progress { display: block; width: 100%; margin-top: 8px; accent-color: var(--accent-color); }
 .transfer-status { padding: 4px 16px 8px; text-align: center; font-size: .75rem; color: var(--text-secondary); }
 .transfer-progress { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
-.transfer-progress button { color: var(--synca-purple); background: transparent; border: 0; min-height: 36px; cursor: pointer; }
-.transfer-progress progress { min-width: 100px; max-width: 50%; accent-color: var(--synca-purple); }
+.transfer-progress button { color: var(--accent-color); background: transparent; border: 0; min-height: 36px; cursor: pointer; }
+.transfer-progress progress { min-width: 100px; max-width: 50%; accent-color: var(--accent-color); }
 .modal-content:has(.storage-plans) { width: min(480px, calc(100vw - 32px)); }
 
 @media (max-width: 600px) {
@@ -1369,8 +1373,8 @@ button.attachment-placeholder { cursor: pointer; }
 .storage-plans .plan-price { font-size: 2rem; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
 .storage-plans .plan-purchase-kind { font-size: .875rem; color: var(--text-secondary); }
 .storage-plans .plan-preview-notice { font-size: .75rem; color: var(--text-secondary); margin-top: 8px; }
-.storage-plans .plan-download-link { display: block; text-align: center; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--synca-purple); color: white; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
-.storage-plans .plan-download-link:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 3px; }
+.storage-plans .plan-download-link { display: block; text-align: center; margin-top: 16px; padding: 12px; border-radius: 12px; background: var(--accent-button); color: white; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.storage-plans .plan-download-link:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 3px; }
 .storage-plans .plan-upgrade { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
 
 /* Record actions stay reachable when metadata wraps on narrow screens. */
@@ -1378,7 +1382,7 @@ button.attachment-placeholder { cursor: pointer; }
 .message-metadata { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
 .message-header .actions { margin-left: auto; flex-shrink: 0; gap: 4px; }
 .message-header .action-btn { min-width: 32px; min-height: 32px; border-radius: 8px; }
-.message-header .action-btn:focus-visible { outline: 2px solid var(--synca-purple); outline-offset: 2px; }
+.message-header .action-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 .message-copy.is-copied { color: #18752c; }
 .copy-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (pointer: coarse) { .message-header .action-btn { min-width: 44px; min-height: 44px; } }
