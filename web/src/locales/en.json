@@ -393,5 +393,10 @@
     "hide_prompt": "Hide instructions",
     "tip": "No keys to generate or copy. Direct connection depends on whether your AI app supports MCP."
   },
-  "navigation.resize_sidebar": "Resize sidebar"
+  "navigation.resize_sidebar": "Resize sidebar",
+  "developer_social": {
+    "follow": "Follow the developer on RedNote",
+    "contact": "Contact the developer on RedNote",
+    "external": "Opens in your browser"
+  }
 }

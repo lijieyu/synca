@@ -393,5 +393,10 @@
     "hide_prompt": "收起指令",
     "tip": "無需產生或複製金鑰。能否直接連接，取決於 AI 應用程式是否支援 MCP。"
   },
-  "navigation.resize_sidebar": "調整側欄寬度"
+  "navigation.resize_sidebar": "調整側欄寬度",
+  "developer_social": {
+    "follow": "去小紅書關注開發者",
+    "contact": "去小紅書聯繫開發者",
+    "external": "在瀏覽器中開啟"
+  }
 }

@@ -393,5 +393,10 @@
     "hide_prompt": "收起指令",
     "tip": "无需生成或复制密钥。能否直接连接，取决于 AI 应用是否支持 MCP。"
   },
-  "navigation.resize_sidebar": "调整侧栏宽度"
+  "navigation.resize_sidebar": "调整侧栏宽度",
+  "developer_social": {
+    "follow": "去小红书关注开发者",
+    "contact": "去小红书联系开发者",
+    "external": "在浏览器中打开"
+  }
 }

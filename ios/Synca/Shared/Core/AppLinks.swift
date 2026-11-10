@@ -1,6 +1,7 @@
 import Foundation
 
 enum AppLinks {
+    static let developerProfileURL = URL(string: "https://www.xiaohongshu.com/user/profile/612f8178000000000201da34")!
     private static let baseURL = URL(string: "https://synca.haerth.cn")!
     private static let standardTermsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 

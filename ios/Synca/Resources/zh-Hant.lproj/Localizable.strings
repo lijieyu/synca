@@ -393,3 +393,8 @@
 "message_bubble.restore_action" = "恢復";
 
 "navigation.resize_sidebar" = "調整側欄寬度";
+
+// Developer social profile
+"developer_social.follow" = "去小紅書關注開發者";
+"developer_social.contact" = "去小紅書聯繫開發者";
+"developer_social.external" = "在瀏覽器中開啟";

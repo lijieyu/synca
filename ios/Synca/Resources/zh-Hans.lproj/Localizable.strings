@@ -393,3 +393,8 @@
 "message_bubble.restore_action" = "恢复";
 
 "navigation.resize_sidebar" = "调整侧栏宽度";
+
+// Developer social profile
+"developer_social.follow" = "去小红书关注开发者";
+"developer_social.contact" = "去小红书联系开发者";
+"developer_social.external" = "在浏览器中打开";

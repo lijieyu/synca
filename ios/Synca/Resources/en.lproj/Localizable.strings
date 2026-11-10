@@ -393,3 +393,8 @@
 "message_bubble.restore_action" = "Restore";
 
 "navigation.resize_sidebar" = "Resize sidebar";
+
+// Developer social profile
+"developer_social.follow" = "Follow the developer on RedNote";
+"developer_social.contact" = "Contact the developer on RedNote";
+"developer_social.external" = "Opens in your browser";
