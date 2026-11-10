@@ -113,7 +113,7 @@ struct MessageTextEditorView: View {
     }
 
     private var discardConfirmation: some ViewModifier {
-        TextEditDiscardConfirmation(isPresented: $showDiscardConfirmation, onDiscard: { dismiss() })
+        DiscardChangesConfirmation(isPresented: $showDiscardConfirmation, onDiscard: { dismiss() })
     }
 
     private func cancel() {
@@ -152,14 +152,21 @@ struct MessageTextEditorView: View {
     }
 }
 
-private struct TextEditDiscardConfirmation: ViewModifier {
+struct DiscardChangesConfirmation: ViewModifier {
     @Binding var isPresented: Bool
     let onDiscard: () -> Void
     func body(content: Content) -> some View {
+        #if os(macOS)
+        content.alert("message_edit.discard_title", isPresented: $isPresented) {
+            Button("message_edit.keep", role: .cancel) { }
+            Button("message_edit.discard", role: .destructive, action: onDiscard)
+        }
+        #else
         content.confirmationDialog("message_edit.discard_title", isPresented: $isPresented, titleVisibility: .visible) {
             Button("message_edit.discard", role: .destructive, action: onDiscard)
             Button("message_edit.keep", role: .cancel) { }
         }
+        #endif
     }
 }
 
