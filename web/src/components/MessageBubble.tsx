@@ -203,7 +203,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
 
   return (
     <>
-      <div className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
+      <div data-message-id={message.id} tabIndex={-1} className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
         {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (

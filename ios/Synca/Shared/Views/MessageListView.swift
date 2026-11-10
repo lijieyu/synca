@@ -95,6 +95,14 @@ struct MessageListView: View {
     @EnvironmentObject var purchaseManager: PurchaseManager
     @ObservedObject private var settings = SettingsManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showSearch = false
+    @State private var searchTarget: String?
+    @State private var searchTargetCategory: String?
+    @State private var searchPositionRevision = 0
+    @State private var searchImageRevision = 0
+    @State private var searchHighlight: String?
+    @State private var searchScrollSuppressed = false
+    @State private var searchPresentationSuppressesScroll = false
     @State private var scrollTask: Task<Void, Never>?
     @State private var expandedTextIDs: Set<String> = []
     @State private var textLayoutRevision = 0
@@ -218,6 +226,11 @@ struct MessageListView: View {
             } message: {
                 Text(deleteAccountErrorMessage ?? String(syncaLocalized: "account.delete_failed_message", bundle: .main))
             }
+            #if os(iOS)
+            .fullScreenCover(isPresented: $showSearch, onDismiss: finishSearchPresentation) { searchSheet }
+            #else
+            .sheet(isPresented: $showSearch, onDismiss: finishSearchPresentation) { searchSheet }
+            #endif
             .sheet(isPresented: $showAccountInfo) {
                 AccountSheet(
                     accountEmail: api.currentUserEmail,
@@ -288,6 +301,12 @@ struct MessageListView: View {
         .overlay(alignment: .top) { syncStatusOverlay }
         .overlay(alignment: .top) { feedbackToastOverlay }
         .overlay { loadingOverlay }
+        .task(id: searchHighlight) {
+            guard let id = searchHighlight else { return }
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            guard !Task.isCancelled, searchHighlight == id else { return }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) { searchHighlight = nil }
+        }
         .onChange(of: accessManager.showAccessCenter) { requested in
             if requested {
                 accessManager.showAccessCenter = false
@@ -311,7 +330,8 @@ struct MessageListView: View {
         }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
-            shouldScrollToBottomAfterInitialLoad = true
+            let isReturningFromSearch = searchPresentationSuppressesScroll
+            shouldScrollToBottomAfterInitialLoad = !isReturningFromSearch
             await syncManager.restoreCachedDataIfAvailable()
             
             let pm = purchaseManager
@@ -322,7 +342,7 @@ struct MessageListView: View {
             }
             
             await syncManager.fullSync(manual: true, showSuccessStatus: false)
-            if !syncManager.orderedMessages.isEmpty {
+            if !isReturningFromSearch, !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
             }
             syncManager.startPolling()
@@ -334,6 +354,18 @@ struct MessageListView: View {
             expandedTextIDs.removeAll()
         }
         #endif
+        .onChange(of: syncManager.selectedCategoryId) { category in
+            if category != searchTargetCategory {
+                interruptSearchPositioning()
+                searchScrollSuppressed = false
+            }
+        }
+        .onChange(of: inputText) { _ in
+            interruptSearchPositioning()
+        }
+        .onChange(of: syncManager.isSending) { sending in
+            if sending { searchScrollSuppressed = false; searchTarget = nil }
+        }
         .onChange(of: syncManager.unclearedCount) { _ in
             self.updateBadge()
         }
@@ -404,6 +436,70 @@ struct MessageListView: View {
         }
     }
 
+    private var searchButton: some View {
+        Button {
+            scrollTask?.cancel()
+            searchTarget = nil
+            searchHighlight = nil
+            // A full-screen presentation can recreate the iOS reader on dismissal.
+            // Preserve its offset instead of running initial-load bottom scrolling.
+            searchPresentationSuppressesScroll = true
+            shouldScrollToBottomAfterInitialLoad = false
+            shouldScrollToBottomAfterSend = false
+            showSearch = true
+        } label: { Image(systemName: "magnifyingglass") }
+            .accessibilityLabel(Text("search.title"))
+            .accessibilityIdentifier("search-open")
+            .help(Text("search.title"))
+            #if os(macOS)
+            .keyboardShortcut("f", modifiers: .command)
+            #endif
+    }
+
+    private func finishSearchPresentation() {
+        // Presentation suppression ends after the returning reader's appearance.
+        // Result navigation owns its independent suppression; cancellation restores
+        // exactly the remote-append behavior that existed before opening search.
+        searchPresentationSuppressesScroll = false
+    }
+
+    private var searchSheet: some View {
+        MessageSearchView(currentCategoryID: selectedFilterCategoryId, onSelect: selectSearchResult)
+            .environmentObject(syncManager).syncaPreferences()
+    }
+
+    private func selectSearchResult(_ id: String) -> Bool {
+        guard let message = syncManager.messages.first(where: { $0.id == id && !$0.isDeleted }) else { return false }
+        let category = message.categoryId.flatMap { id in syncManager.categories.first(where: { $0.id == id })?.id }
+        scrollTask?.cancel()
+        shouldScrollToBottomAfterSend = false
+        shouldScrollToBottomAfterInitialLoad = false
+        initialLoadScrollWindowID = UUID()
+        postSendScrollWindowID = UUID()
+        collapsedRowTarget = nil
+        searchScrollSuppressed = true
+        searchTarget = id
+        searchHighlight = nil
+        searchTargetCategory = category ?? syncManager.allCategoryPseudoId
+        showSearch = false
+        syncManager.selectCategory(searchTargetCategory)
+        searchPositionRevision += 1
+        #if os(iOS)
+        UISelectionFeedbackGenerator().selectionChanged()
+        #endif
+        return true
+    }
+
+    private func interruptSearchPositioning() {
+        guard searchTarget != nil else { return }
+        searchTarget = nil
+        searchHighlight = nil
+        // Keep remote append/image callbacks from immediately taking the viewport back.
+        scrollTask?.cancel()
+        shouldScrollToBottomAfterInitialLoad = false
+        shouldScrollToBottomAfterSend = false
+    }
+
     private var rootContent: some View {
         #if os(macOS)
         HStack(spacing: 0) {
@@ -420,6 +516,7 @@ struct MessageListView: View {
                     }
                     Spacer()
                     HStack(spacing: 24) {
+                        searchButton
                         refreshButton.help(Text("message_list.sync"))
                         clearAllButton.help(Text("message_list.clear_completed"))
                     }
@@ -721,6 +818,7 @@ struct MessageListView: View {
     #if os(iOS)
     @ToolbarContentBuilder
     private var actionToolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) { searchButton }
         ToolbarItem(placement: .topBarTrailing) {
             refreshButton
         }
@@ -929,7 +1027,7 @@ struct MessageListView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(completed) { message in
+                        ForEach(completed, id: \.listRowID) { message in
                             messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id),
                                         onTextCollapse: { restoreCollapsedMessage(message, proxy: proxy) })
                         }
@@ -948,7 +1046,7 @@ struct MessageListView: View {
                             .padding(.top, 8)
                             .id("uncompleted_header")
 
-                            ForEach(uncompleted) { message in
+                            ForEach(uncompleted, id: \.listRowID) { message in
                                 messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id),
                                         onTextCollapse: { restoreCollapsedMessage(message, proxy: proxy) })
                             }
@@ -973,6 +1071,47 @@ struct MessageListView: View {
                             }
                     )
                 }
+                .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in interruptSearchPositioning() })
+                #if os(macOS)
+                .background(SearchScrollInterruption(onScroll: interruptSearchPositioning))
+                #endif
+                .task(id: searchPositionRevision) {
+                    guard let id = searchTarget else { return }
+                    // Re-anchor as lazy rows resolve their heights; user input cancels immediately.
+                    for delay in [80, 120, 200, 300, 400] {
+                        try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
+                        guard !Task.isCancelled, searchTarget == id,
+                              searchTargetCategory == syncManager.selectedCategoryId,
+                              let message = filteredMessages.first(where: { $0.id == id }) else { return }
+                        var transaction = Transaction(animation: nil)
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) { proxy.scrollTo(message.listRowID, anchor: .top) }
+                    }
+                    guard searchTarget == id else { return }
+                    searchHighlight = id
+                    #if os(iOS)
+                    UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: "search.located"))
+                    #else
+                    NSAccessibility.post(element: NSApp.keyWindow as Any? ?? NSApp as Any,
+                        notification: .announcementRequested,
+                        userInfo: [.announcement: String(syncaLocalized: "search.located"), .priority: NSAccessibilityPriorityLevel.medium.rawValue])
+                    #endif
+                    // Keep the target for genuinely late image sizing. Its independent
+                    // highlight fades; any user navigation/scroll/edit cancels anchoring.
+                }
+                .onChange(of: searchImageRevision) { _ in
+                    guard let id = searchTarget else { return }
+                    scrollTask?.cancel()
+                    scrollTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: Timing.scrollCoalescingNanoseconds)
+                        guard !Task.isCancelled, searchTarget == id,
+                              searchTargetCategory == syncManager.selectedCategoryId,
+                              let message = filteredMessages.first(where: { $0.id == id }) else { return }
+                        var transaction = Transaction(animation: nil)
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) { proxy.scrollTo(message.listRowID, anchor: .top) }
+                    }
+                }
                 #if os(iOS)
                 .scrollDismissesKeyboard(.immediately)
                 .refreshable {
@@ -984,6 +1123,7 @@ struct MessageListView: View {
                 #endif
                 #if os(macOS)
                 .onChange(of: syncManager.selectedCategoryId) { _ in
+                    guard !searchScrollSuppressed, !searchPresentationSuppressesScroll else { return }
                     scrollTask?.cancel()
                     beginInitialLoadScrollWindow()
                     shouldScrollToBottomAfterSend = false
@@ -1414,11 +1554,11 @@ struct MessageListView: View {
         #if os(iOS)
         // LazyVStack can retain the expanded row's estimated height after a large
         // shrink. Rebuild its geometry; expanded states live above this identity.
-        collapsedRowTarget = (syncManager.selectedCategoryId, message.id)
+        collapsedRowTarget = (syncManager.selectedCategoryId, message.listRowID)
         textLayoutRevision += 1
         #else
         let categoryID = syncManager.selectedCategoryId
-        let rowID = "\(message.id)-\(message.isCleared)"
+        let rowID = message.listRowID
         scrollTask = Task { @MainActor in
             // A huge lazy row can shrink above the current viewport. Re-anchor after
             // SwiftUI commits the new height, rather than retaining the old offset.
@@ -1433,6 +1573,7 @@ struct MessageListView: View {
     }
 
     private func scrollToBottomAfterLayoutSettles(proxy: ScrollViewProxy) {
+        guard !searchScrollSuppressed, !searchPresentationSuppressesScroll, !showSearch else { return }
         scrollTask?.cancel()
         let categoryId = syncManager.selectedCategoryId
         scrollTask = Task { @MainActor in
@@ -1471,6 +1612,7 @@ struct MessageListView: View {
     }
 
     private func beginInitialLoadScrollWindow() {
+        guard !searchScrollSuppressed, !searchPresentationSuppressesScroll else { return }
         let windowID = UUID()
         initialLoadScrollWindowID = windowID
         shouldScrollToBottomAfterInitialLoad = true
@@ -1574,6 +1716,7 @@ struct MessageListView: View {
                 selectedImageMessage = message
             },
             onImageLoaded: {
+                if searchTarget != nil { searchImageRevision += 1 }
                 guard shouldScrollToBottomAfterSend || shouldScrollToBottomAfterInitialLoad else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
                     NotificationCenter.default.post(name: .syncaScrollToBottomAfterImageLoad, object: nil)
@@ -1581,7 +1724,9 @@ struct MessageListView: View {
             },
             textExpansion: textExpansionBinding(for: message.id)
         )
-        .id("\(message.id)-\(message.isCleared)")
+        .background(Color.blue.opacity(searchHighlight == message.id ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.blue.opacity(searchHighlight == message.id ? 0.5 : 0), lineWidth: 1).allowsHitTesting(false))
+        .id(message.listRowID)
     }
 
     private func textExpansionBinding(for id: String) -> Binding<Bool>? {
@@ -1759,7 +1904,7 @@ private struct TiledCategoryColumn: View {
                                 onImageTap: {},
                                 onImageLoaded: {}
                             )
-                            .id("\(message.id)-\(message.isCleared)")
+                            .id(message.listRowID)
                         }
 
                         if !pendingMessages.isEmpty {
@@ -1794,7 +1939,7 @@ private struct TiledCategoryColumn: View {
                                 onImageTap: {},
                                 onImageLoaded: {}
                             )
-                            .id("\(message.id)-\(message.isCleared)")
+                            .id(message.listRowID)
                         }
                     }
                     .padding(.horizontal, 14)
@@ -3205,3 +3350,9 @@ private struct MacCategoryReorderStack<Row: View>: View {
     private func reset() { draggedID = nil; translation = 0; previewIDs = []; originalIDs = []; originalFrames = [:] }
 }
 #endif
+
+// LazyVStack must know offscreen scroll targets through ForEach identity, before
+// messageView is materialized. Use the same identity for collapse and search.
+private extension SyncaMessage {
+    var listRowID: String { "\(id)-\(isCleared)" }
+}

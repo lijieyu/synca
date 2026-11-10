@@ -400,3 +400,17 @@
 "developer_social.external" = "在瀏覽器中開啟";
 
 "message_category.modify" = "修改";
+
+/* Record search */
+"search.title" = "搜尋記錄";
+"search.placeholder" = "文字、檔案名稱或拼音";
+"search.clear" = "清除搜尋";
+"search.scope" = "搜尋範圍";
+"search.all" = "全部記錄";
+"search.current" = "目前分類";
+"search.unavailable" = "這條記錄已無法使用。";
+"search.prompt" = "搜尋文字或檔案名稱";
+"search.empty" = "沒有找到相關記錄";
+"search.completed" = "已完成";
+"search.open_hint" = "前往原記錄";
+"search.located" = "已定位到原記錄";

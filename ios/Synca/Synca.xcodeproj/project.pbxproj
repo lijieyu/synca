@@ -94,6 +94,10 @@
 		88B18FF1179B124CE66ACFD9 /* MessageMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */; };
 		44E8481E7D0CED0BC9FE178A /* RichClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */; };
 		70B6BF0BA33B89BE97DF16BC /* RichClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */; };
+		A81200000000000000000000 /* MessageSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000000 /* MessageSearchView.swift */; };
+		A81300000000000000000000 /* MessageSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000000 /* MessageSearchView.swift */; };
+		A81200000000000000000001 /* MessageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000001 /* MessageSearchIndex.swift */; };
+		A81300000000000000000001 /* MessageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000001 /* MessageSearchIndex.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -152,6 +156,8 @@
 		CA2341AA42B6FC31B54360F1 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMarkdownRenderer.swift; sourceTree = "<group>"; };
 		F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Utilities/RichClipboardText.swift"; sourceTree = "<group>"; };
+		A81100000000000000000000 /* MessageSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MessageSearchView.swift"; sourceTree = "<group>"; };
+		A81100000000000000000001 /* MessageSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Utilities/MessageSearchIndex.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -225,6 +231,8 @@
 				F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */,
 				460793FEEF31B7A52796EAD7 /* MessageMarkdownRenderer.swift */,
 				FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */,
+				A81100000000000000000000 /* MessageSearchView.swift */,
+				A81100000000000000000001 /* MessageSearchIndex.swift */,
 				AD1E757E6D45FD90B41342C3 /* MessageListView.swift */,
 				529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */,
 				EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */,
@@ -426,6 +434,8 @@
 				7DF776164B048BEC8671A8D5 /* MacSelectableText.swift in Sources */,
 				852E10EA78CA4E0D820B8F20 /* MacWindowBehavior.swift in Sources */,
 				BEBB2397B1310C7B7D5E071B /* MessageBubbleView.swift in Sources */,
+				A81200000000000000000000 /* MessageSearchView.swift in Sources */,
+				A81200000000000000000001 /* MessageSearchIndex.swift in Sources */,
 				A65B9A694FE63B8BA0E32C34 /* MessageListView.swift in Sources */,
 				09621C97EC03D697DB2AFB49 /* MessageTextEditorView.swift in Sources */,
 				C1105A4EC87B2C1831162292 /* PhotoLibrarySaver.swift in Sources */,
@@ -473,6 +483,8 @@
 				A70000000000000000000002 /* MacPlainTextScrollView.swift in Sources */,
 				46C8499654425F9E7267E2E8 /* MacSelectableText.swift in Sources */,
 				9D5981AE189D76966823DB05 /* MessageBubbleView.swift in Sources */,
+				A81300000000000000000000 /* MessageSearchView.swift in Sources */,
+				A81300000000000000000001 /* MessageSearchIndex.swift in Sources */,
 				781D48CC7F1CDA86997E446D /* MessageListView.swift in Sources */,
 				9A4A9BFAAABC0C1C692A6CA2 /* MessageTextEditorView.swift in Sources */,
 				E99771777BDBD8CA06BE6858 /* PhotoLibrarySaver.swift in Sources */,

@@ -13,11 +13,13 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid } from 'lucide-react';
+import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
 import './CategoryManager.css';
+import { MessageSearch } from './MessageSearch';
+import { revealSearchTarget } from '../utils/revealSearchTarget';
 
 const ALL_CATEGORY_ID = '__all__';
 
@@ -64,6 +66,10 @@ const EmptyMessageState: React.FC = () => {
 };
 
 export const MessageListView: React.FC = () => {
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTarget, setSearchTarget] = useState<{id: string; nonce: number} | null>(null);
+  const scrollRevision = useRef(0);
+  const searchNavigation = useRef(false);
   const [categoryMenu, setCategoryMenu] = useState<CategoryMenuAnchor | null>(null);
   const [editingMessage, setEditingMessage] = useState<SyncaMessage | null>(null);
   const [panel, setPanel] = useState<'account' | 'feedback' | 'about' | null>(null);
@@ -105,6 +111,7 @@ export const MessageListView: React.FC = () => {
   const { t } = useTranslation();
 
   const fetchData = async (scrollToBottom = false) => {
+    const scrollVersion = scrollRevision.current;
     const revision = ++fetchRevision.current;
     const token = localStorage.getItem('authToken');
     pendingFetches.current += 1;
@@ -140,7 +147,7 @@ export const MessageListView: React.FC = () => {
 
       if (scrollToBottom) {
         requestAnimationFrame(() => {
-          if (listRef.current) {
+          if (listRef.current && scrollVersion === scrollRevision.current && !searchNavigation.current) {
             listRef.current.scrollTop = listRef.current.scrollHeight;
           }
         });
@@ -157,6 +164,8 @@ export const MessageListView: React.FC = () => {
 
   useEffect(() => {
     didRestorePreferencesRef.current = false;
+    setMessages([]); setShowSearch(false); setSearchTarget(null);
+    searchNavigation.current = false; ++scrollRevision.current;
     void fetchData(true);
     const poll = () => {
       if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
@@ -425,6 +434,7 @@ export const MessageListView: React.FC = () => {
   } });
 
   const activateCategory = (id: string) => {
+    setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
     setSelectedCategoryId(id);
     requestComposerFocus(value => value + 1);
   };
@@ -437,6 +447,7 @@ export const MessageListView: React.FC = () => {
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
       : Math.max(0, Math.min(buttons.length - 1, index + (['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1)));
     buttons[next].focus();
+    setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
     setSelectedCategoryId(buttons[next].dataset.categoryId!);
   };
 
@@ -444,6 +455,33 @@ export const MessageListView: React.FC = () => {
   useLayoutEffect(() => { fetchDataRef.current = fetchData; });
   const updateMessageList = useCallback(() => { void fetchDataRef.current(false); }, []);
   const editMessage = useCallback((message: SyncaMessage) => setEditingMessage({ ...message }), []);
+
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && !event.altKey) {
+        const searchInput = document.querySelector<HTMLInputElement>('.message-search-field input');
+        if (searchInput) { event.preventDefault(); searchInput.focus(); return; }
+        if (document.querySelector('[role="dialog"]')) return;
+        event.preventDefault(); setShowSearch(true);
+      }
+    };
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, []);
+  useLayoutEffect(() => {
+    if (!searchTarget || !listRef.current) return;
+    return revealSearchTarget(listRef.current, searchTarget.id, () => {
+      setToastMsg(t('search.unavailable')); setShowToast(true);
+    });
+  }, [searchTarget, t]);
+  const selectSearchResult = (id: string) => {
+    const live = messages.find(message => message.id === id && !message.isDeleted);
+    if (!live) { setToastMsg(t('search.unavailable')); setShowToast(true); return false; }
+    ++scrollRevision.current; searchNavigation.current = true;
+    setSelectedCategoryId(categories.some(category => category.id === live.categoryId) ? live.categoryId! : ALL_CATEGORY_ID);
+    setShowSearch(false); setSearchTarget({ id, nonce: Date.now() });
+    return true;
+  };
 
   const menuCategory = categories.find(category => category.id === categoryMenu?.id);
   const customCategories = categories.filter(category => !category.isDefault);
@@ -506,6 +544,7 @@ export const MessageListView: React.FC = () => {
           <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
           <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
           <div className="header-actions">
+            <button className="header-btn" onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RotateCw size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
@@ -538,8 +577,10 @@ export const MessageListView: React.FC = () => {
             )}
           </div>
 
-          <InputBar focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => void fetchData(true)} />
+          <InputBar focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
       </main>
+
+      {showSearch && <MessageSearch key={email} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
 
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
         onCancel={() => setEditingMessage(null)} onSaved={updated => {

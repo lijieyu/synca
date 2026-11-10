@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 interface Props {
+  restoreFocusRef?: React.RefObject<boolean>;
   title: string;
   message: string;
   confirmText?: string;
@@ -30,7 +31,7 @@ interface Props {
 }
 
 export const Modal: React.FC<Props> = ({
-  title, message, confirmText = 'OK', cancelText = 'Cancel',
+  restoreFocusRef, title, message, confirmText = 'OK', cancelText = 'Cancel',
   onConfirm, onCancel, leadingActionText, onLeadingAction, leadingActionDisabled = false, destructive = false, children, size, scrollBody = false, hideCancel = false, hideActions = false, className = '', secondaryAction, neutral = false, closeLabel, closeDisabled = false, confirmDisabled = false, cancelDisabled = false
 }) => {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export const Modal: React.FC<Props> = ({
 
   React.useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+    const restorationPolicy = restoreFocusRef;
     const initialFocus = dialogRef.current?.querySelector<HTMLElement>('[data-initial-focus]');
     if (initialFocus) initialFocus.focus(); else dialogRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -63,8 +65,8 @@ export const Modal: React.FC<Props> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => { window.removeEventListener('keydown', handleKeyDown); if (previous?.isConnected) previous.focus(); };
-  }, []);
+    return () => { window.removeEventListener('keydown', handleKeyDown); if (restorationPolicy?.current !== false && previous?.isConnected) previous.focus({ preventScroll: true }); };
+  }, [restoreFocusRef]);
 
   return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
