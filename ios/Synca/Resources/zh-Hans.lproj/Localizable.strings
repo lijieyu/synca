@@ -398,3 +398,5 @@
 "developer_social.follow" = "去小红书关注开发者";
 "developer_social.contact" = "去小红书联系开发者";
 "developer_social.external" = "在浏览器中打开";
+
+"message_category.modify" = "修改";
