@@ -18,6 +18,10 @@ final class ScrollTests: XCTestCase {
     private func checkCollapse(arguments: [String], screenshot: String) {
         let app = launch(arguments)
         let expand = app.buttons["展开"].firstMatch
+        // Let the initial lazy-list/image layout settle before asking XCTest for
+        // offscreen activation points (which can be invalid during layout).
+        app.swipeUp()
+        app.swipeUp()
         for _ in 0..<12 {
             if expand.exists && expand.isHittable { break }
             app.swipeUp()
@@ -39,6 +43,19 @@ final class ScrollTests: XCTestCase {
             XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed)
         }
         attach(app, name: screenshot)
+    }
+
+    func testSwitchingKeepsImagesReady() {
+        let app = launch(["--qa-images"])
+        let mounts = app.staticTexts["qa-list-mounts"]
+        XCTAssertTrue(mounts.waitForExistence(timeout: 5))
+        for _ in 0..<3 {
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "生活")).firstMatch.tap()
+            XCTAssertTrue(app.staticTexts["周末去看新展览，记得提前预约。"].waitForExistence(timeout: 3))
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "默认")).firstMatch.tap()
+        }
+        XCTAssertEqual(app.staticTexts["qa-image-resets"].value as? String, "0")
+        attach(app, name: "category-switch-images-ready")
     }
 
     func testLastTextCollapseRemainsVisible() {

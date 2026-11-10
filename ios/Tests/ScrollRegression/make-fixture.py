@@ -35,6 +35,12 @@ edit('Shared/Views/MessageListView.swift', 'Text("Synca")\n                    .
 edit('Shared/Core/SyncManager.swift', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async {', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async { return;')
 
 
+# Count scroll-container mounts while switching categories (fixture only).
+edit('Shared/Views/MessageListView.swift', 'struct MessageListView: View {', 'struct MessageListView: View {\n    @AppStorage("qaListMounts") private var qaListMounts = 0')
+edit('Shared/Core/SyncManager.swift', 'private init() {', 'private init() { UserDefaults.standard.set(0, forKey: "qaListMounts");')
+edit('Shared/Views/MessageListView.swift', '                .onAppear {\n                    #if os(iOS)\n                    if let target = collapsedRowTarget', '                .onAppear {\n                    qaListMounts += 1\n                    #if os(iOS)\n                    if let target = collapsedRowTarget')
+edit('Shared/Views/MessageListView.swift', '        .onChange(of: syncManager.unclearedCount)', '        .overlay(alignment: .topTrailing) { Text(String(qaListMounts)).font(.caption2).accessibilityIdentifier("qa-list-mounts").allowsHitTesting(false) }\n        .onChange(of: syncManager.unclearedCount)',1)
+
 # This fixture never reads the user's Keychain or contacts production.
 # A deterministic tall PNG exercises async image geometry without network timing.
 import struct,zlib,subprocess
@@ -42,9 +48,10 @@ w,h=320,700
 raw=b''.join(b'\x00'+bytes([90,110,170])*w for _ in range(h))
 def chunk(t,d): return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
 (dst/'Resources/scroll-fixture.png').write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b''))
-p=dst/'Shared/Core/ImageCacheManager.swift';s=p.read_text();a=s.index('        let data = try await loadData',s.index('    static func thumbnail(for'));b=s.index('\n    }',a)
-s=s[:a]+'''        let url = Bundle.main.url(forResource: "scroll-fixture", withExtension: "png")!
-        return try thumbnail(from: Data(contentsOf: url), maximumPixelSize: maximumPixelSize)'''+s[b:];p.write_text(s)
+# Replace only transport, preserving production decode/cache/session behavior.
+edit('Shared/Core/ImageCacheManager.swift',
+     '        let data = try await loadData(for: url, authorizationToken: authorizationToken)',
+     '        let data = try Data(contentsOf: Bundle.main.url(forResource: "scroll-fixture", withExtension: "png")!)')
 p=dst/'Shared/Views/MessageListView.swift';s=p.read_text().replace('@State private var showCreateCategory = false','@State private var showCreateCategory = ProcessInfo.processInfo.arguments.contains("--qa-new-category")')
 s=s.replace('.id("\\(message.id)-\\(message.isCleared)")','.id("\\(message.id)-\\(message.isCleared)")\n        .accessibilityElement(children: .contain)\n        .accessibilityIdentifier("record-" + message.id)')
 s=s.replace('.accessibilityLabel(Text(verbatim: AppLocalization.string(colorNameKey)))','.accessibilityLabel(Text(verbatim: AppLocalization.string(colorNameKey)))\n                    .accessibilityIdentifier("palette-" + preset.name)');p.write_text(s)

@@ -7,7 +7,7 @@ import { BroomIcon } from './BroomIcon';
 import { SettingsPanel } from './SettingsPanel';
 import { FunctionMenu } from './FunctionMenu';
 import { ShellPanel } from './ShellPanel';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api, type MessageCategory, type MessageCategoryColor, type SyncaMessage } from '../api/client';
 import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
@@ -440,6 +440,11 @@ export const MessageListView: React.FC = () => {
     setSelectedCategoryId(buttons[next].dataset.categoryId!);
   };
 
+  const fetchDataRef = useRef(fetchData);
+  useLayoutEffect(() => { fetchDataRef.current = fetchData; });
+  const updateMessageList = useCallback(() => { void fetchDataRef.current(false); }, []);
+  const editMessage = useCallback((message: SyncaMessage) => setEditingMessage({ ...message }), []);
+
   const menuCategory = categories.find(category => category.id === categoryMenu?.id);
   const customCategories = categories.filter(category => !category.isDefault);
   const menuIndex = customCategories.findIndex(category => category.id === menuCategory?.id);
@@ -515,7 +520,7 @@ export const MessageListView: React.FC = () => {
             {filteredMessages.length > 0 && (
               <>
                 {completed.map((message) => (
-                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onUpdate={updateMessageList} />
                 ))}
 
                 {pending.length > 0 && (
@@ -527,7 +532,7 @@ export const MessageListView: React.FC = () => {
                 )}
 
                 {pending.map((message) => (
-                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={message => setEditingMessage({ ...message })} onUpdate={() => void fetchData(false)} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onUpdate={updateMessageList} />
                 ))}
               </>
             )}

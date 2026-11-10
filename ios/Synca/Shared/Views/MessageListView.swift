@@ -982,6 +982,16 @@ struct MessageListView: View {
                     _ = await task.result
                 }
                 #endif
+                #if os(macOS)
+                .onChange(of: syncManager.selectedCategoryId) { _ in
+                    scrollTask?.cancel()
+                    beginInitialLoadScrollWindow()
+                    shouldScrollToBottomAfterSend = false
+                    var transaction = Transaction(animation: nil)
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                #endif
                 .onChange(of: syncManager.isSending) { isSending in
                     guard !isSending, shouldScrollToBottomAfterSend else { return }
                     beginPostSendScrollWindow()
@@ -1031,8 +1041,13 @@ struct MessageListView: View {
                     shouldScrollToBottomAfterInitialLoad = false
                 }
             }
-            // A new category must not inherit the previous list's scroll geometry.
+            #if os(macOS)
+            // Desktop filters reuse the scroll container and decoded thumbnails.
+            .id(textLayoutRevision)
+            #else
+            // Preserve iOS lazy-list geometry restoration when collapsing text.
             .id("\(syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId)-\(textLayoutRevision)")
+            #endif
         }
     }
 

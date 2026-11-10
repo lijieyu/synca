@@ -11,6 +11,31 @@ describe('protected attachment lifecycle', () => {
   });
   afterEach(() => { api.resetSession(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
+  it('reuses display sources and revokes them on account reset', async () => {
+    const revoke = vi.spyOn(URL, 'revokeObjectURL');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['pixels'], { type: 'image/png' }))));
+    await api.getProtectedFileBlob(url, { cacheImage: true });
+    const source = api.cachedImageSource(url);
+    expect(source).toMatch(/^blob:/);
+    expect(api.cachedImageSource(url)).toBe(source);
+    expect(api.cachedImageSource(url, '2000-01-01T00:00:00Z')).toBeNull();
+    token = 'account-b';
+    expect(api.cachedImageSource(url)).toBeNull();
+    expect(revoke).toHaveBeenCalledWith(source);
+    revoke.mockRestore();
+  });
+
+  it('never serves expired or invalid display sources', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['pixels'], { type: 'image/png' }))));
+    await api.getProtectedFileBlob(url, { cacheImage: true });
+    expect(api.cachedImageSource(url)).not.toBeNull();
+    vi.advanceTimersByTime(60001);
+    expect(api.cachedImageSource(url)).toBeNull();
+    expect(api.cachedImageSource('http://[')).toBeNull();
+    expect(api.cachedImageSource('https://other.test/api/media/a')).toBeNull();
+  });
+
   it('displays the exact original after a successful large image upload without downloading', async () => {
     const file = new File([new Uint8Array(10 * 1024 * 1024)], 'original.png', { type: 'image/png' });
     const fetch = vi.fn(async () => Response.json({ imageUrl: url, type: 'image' }));

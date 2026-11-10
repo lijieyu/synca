@@ -22,6 +22,9 @@ struct CachedAsyncImage<Content: View>: View {
         self.maximumPixelSize = maximumPixelSize
         self.onSuccess = onSuccess
         self.content = content
+        if let image = ImageCache.cachedThumbnail(for: url, authorizationToken: APIClient.shared.token, maximumPixelSize: maximumPixelSize) {
+            _phase = State(initialValue: .success(Image(decorative: image, scale: 1, orientation: .up)))
+        }
     }
 
     var body: some View {
@@ -38,6 +41,11 @@ struct CachedAsyncImage<Content: View>: View {
         // successful content instead of briefly shrinking back to the placeholder.
         if loadedRequestID == requestID, case .success = phase { return }
         loadedRequestID = nil
+        if let image = ImageCache.cachedThumbnail(for: url, authorizationToken: APIClient.shared.token, maximumPixelSize: maximumPixelSize) {
+            loadedRequestID = requestID
+            phase = .success(Image(decorative: image, scale: 1, orientation: .up))
+            return
+        }
         phase = .empty
         
         do {

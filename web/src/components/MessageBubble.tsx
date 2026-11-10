@@ -31,7 +31,7 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
   </svg>
 );
 
-export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, onEdit, showsSeparator = true }) => {
+export const MessageBubble: React.FC<Props> = React.memo(({ message, categories, onUpdate, onEdit, showsSeparator = true }) => {
   const [actionError, setActionError] = useState('');
   const canEditText = message.type === 'text' && !message.isDeleted && !message.imagePath && !message.imageUrl && !message.filePath && !message.fileUrl;
   const [copied, setCopied] = useState(false);
@@ -317,4 +317,4 @@ export const MessageBubble: React.FC<Props> = ({ message, categories, onUpdate, 
       )}
     </>
   );
-};
+});
