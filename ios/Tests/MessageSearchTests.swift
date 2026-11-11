@@ -15,8 +15,8 @@ struct MessageSearchTests {
         for localeID in ["en_US", "zh_Hans_CN", "zh_Hant_TW"] {
             let locale = Locale(identifier: localeID)
             let time = DateFormatter()
-            time.locale = locale; time.timeZone = calendar.timeZone
-            time.setLocalizedDateFormatFromTemplate("jm")
+            time.locale = Locale(identifier: "en_US_POSIX"); time.timeZone = calendar.timeZone
+            time.dateFormat = "HH:mm"
             precondition(SyncaMessage.formatRelativeDate(now, now: now, calendar: calendar, locale: locale) == time.string(from: now))
             let yesterday = parser.date(from: "2025-12-31T01:00:00Z")!
             let previous = SyncaMessage.formatRelativeDate(yesterday, now: now, calendar: calendar, locale: locale)
@@ -31,6 +31,11 @@ struct MessageSearchTests {
             }
             let localToday = parser.date(from: "2025-12-31T16:30:00Z")!
             precondition(SyncaMessage.formatRelativeDate(localToday, now: now, calendar: calendar, locale: locale) == time.string(from: localToday), "Day boundary uses local time zone")
+        }
+        for localeID in ["en_US", "en_GB", "ar_SA"] {
+            let afternoon = parser.date(from: "2026-01-01T05:07:00Z")!
+            precondition(SyncaMessage.formatRelativeDate(afternoon, now: afternoon, calendar: calendar,
+                locale: Locale(identifier: localeID)) == "13:07", "Time must remain ASCII 24h regardless of locale")
         }
         let index = MessageSearchIndex()
         let rows = [record("a", "准备周五的沟通提纲"), record("b", "面试准备清单", done: true),

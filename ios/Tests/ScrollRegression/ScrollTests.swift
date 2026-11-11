@@ -124,6 +124,24 @@ final class ScrollTests: XCTestCase {
         attach(app, name: "walkthrough-results")
     }
 
+    func testSearchRefinementTypingAndGlyphs() {
+        let app = launch(["--qa-search"])
+        XCTAssertTrue(app.buttons["search-open"].waitForExistence(timeout: 8))
+        attach(app, name: "round2-toolbar")
+        app.buttons["search-open"].tap()
+        let field = app.textFields["search-query"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.typeText("ms")
+        XCTAssertTrue(app.buttons["search-result-search-completed"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.progressIndicators.firstMatch.exists)
+        attach(app, name: "round2-results")
+        app.buttons["清除搜索"].tap()
+        field.typeText("playing")
+        XCTAssertTrue(app.buttons["search-result-search-completed"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.progressIndicators.firstMatch.exists)
+        attach(app, name: "round2-latin-marker")
+    }
+
     func testSearchWalkthroughDarkResults() {
         let app = launch(["--qa-search", "-appAppearance", "dark"])
         XCTAssertTrue(app.buttons["search-open"].waitForExistence(timeout: 8))

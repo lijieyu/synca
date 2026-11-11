@@ -22,6 +22,7 @@ export const MessageTextEditor: React.FC<Props> = ({ message, onCancel, onSaved 
   const saveInFlight = useRef(false);
   const inputId = React.useId();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const didPositionInitialCaret = useRef(false);
   useEffect(() => api.retainEditingDraft(() => setSessionExpired(true)), []);
   useEffect(() => {
     if (!isSaving && (errorMessage || sessionExpired)) inputRef.current?.focus();
@@ -61,6 +62,13 @@ export const MessageTextEditor: React.FC<Props> = ({ message, onCancel, onSaved 
       className="message-text-editor" closeDisabled={isSaving}>
       <label className="message-editor-label" htmlFor={inputId}>{t('message_edit.content')}</label>
       <textarea ref={inputRef} id={inputId} className="message-editor-input" value={draft} disabled={isSaving}
+        onFocus={event => {
+          if (didPositionInitialCaret.current) return;
+          didPositionInitialCaret.current = true;
+          const field = event.currentTarget;
+          field.setSelectionRange(field.value.length, field.value.length);
+          field.scrollTop = field.scrollHeight;
+        }}
         onPaste={event => pasteRichList(event, setDraft)}
         onChange={event => setDraft(event.target.value)} data-initial-focus
         aria-invalid={characterCount > MESSAGE_TEXT_LIMIT || undefined} aria-describedby={`${inputId}-count`}
