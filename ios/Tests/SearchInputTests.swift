@@ -100,4 +100,47 @@ final class SearchInputTests: XCTestCase {
         await settle()
         XCTAssertEqual(model.text, "面试")
     }
+    @MainActor func testDeferredAutofocusPreservesFirstCharacterAndComposition() async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        for marked in [false, true] {
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            let controller = UIViewController()
+            let field = SearchQueryField.Field(frame: CGRect(x: 20, y: 80, width: 320, height: 44))
+            controller.view.addSubview(field)
+            window.rootViewController = controller
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+            // Begin editing before didMoveToWindow's queued autofocus executes.
+            XCTAssertTrue(field.becomeFirstResponder())
+            if marked { field.setMarkedText("m", selectedRange: NSRange(location: 1, length: 0)) }
+            else { field.insertText("m") }
+            let selection = try XCTUnwrap(field.selectedTextRange)
+            let start = field.offset(from: field.beginningOfDocument, to: selection.start)
+            let end = field.offset(from: field.beginningOfDocument, to: selection.end)
+            await settle()
+            let after = try XCTUnwrap(field.selectedTextRange)
+            XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: after.start), start)
+            XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: after.end), end)
+            XCTAssertEqual(field.text, "m")
+            if marked { XCTAssertNotNil(field.markedTextRange, "Autofocus must not commit composition") }
+        }
+    }
+    @MainActor func testDeferredAutofocusSelectsUntouchedRetainedQuery() async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let controller = UIViewController()
+        let field = SearchQueryField.Field(frame: CGRect(x: 20, y: 80, width: 320, height: 44))
+        field.text = "面试"
+        controller.view.addSubview(field)
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        await settle()
+        let selection = try XCTUnwrap(field.selectedTextRange)
+        XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: selection.start), 0)
+        XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: selection.end), 2)
+    }
+
 }

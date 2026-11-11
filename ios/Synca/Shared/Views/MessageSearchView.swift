@@ -350,9 +350,12 @@ struct SearchQueryField: UIViewRepresentable {
             guard window != nil, !requestedFocus else { return }
             requestedFocus = true
             DispatchQueue.main.async { [weak self] in
-                guard let self, self.window != nil else { return }
+                guard let self, self.window != nil, !self.isFirstResponder,
+                      self.markedTextRange == nil else { return }
+                // A tap or hardware-keyboard event may already have begun editing.
+                // Do not let the queued focus request replace that live selection.
                 self.becomeFirstResponder()
-                self.selectAll(nil)
+                if !(self.text ?? "").isEmpty { self.selectAll(nil) }
             }
         }
     }
@@ -413,9 +416,12 @@ private struct SearchQueryField: NSViewRepresentable {
             guard window != nil, !requestedFocus else { return }
             requestedFocus = true
             DispatchQueue.main.async { [weak self] in
-                guard let self, let window = self.window else { return }
+                guard let self, let window = self.window,
+                      !self.hasUserEdited, self.currentEditor() == nil else { return }
+                // AppKit may already have focused this field before this deferred
+                // request runs. Never reselect live input (including marked text).
                 window.makeFirstResponder(self)
-                if !self.hasUserEdited { self.currentEditor()?.selectAll(nil) }
+                if !self.stringValue.isEmpty { self.currentEditor()?.selectAll(nil) }
             }
         }
     }
