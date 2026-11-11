@@ -38,7 +38,7 @@ export function MessageSearch({query,onQueryChange,messages,categories,currentCa
   useEffect(()=>{
     const next=++sequence.current; setRevision(next);
     const records=previousMessages.current===messages ? undefined : messages.map(({id,textContent,fileName,createdAt,categoryId,isDeleted})=>({id,textContent,fileName,createdAt,categoryId,isDeleted}));
-    const timer=window.setTimeout(()=>{ worker.current?.postMessage({records,query,categoryId:localScope ? currentCategoryId : undefined,revision:next}); previousMessages.current=messages; },80);
+    const timer=window.setTimeout(()=>{ worker.current?.postMessage({records,query,categoryId:localScope ? currentCategoryId : undefined,excerptTailContext:window.matchMedia('(min-width: 600px)').matches ? 96 : 48,revision:next}); previousMessages.current=messages; },80);
     return ()=>window.clearTimeout(timer);
   },[messages,query,localScope,currentCategoryId]);
   const currentCategory=categories.find(category=>category.id===currentCategoryId);

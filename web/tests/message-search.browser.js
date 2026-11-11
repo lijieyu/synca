@@ -56,7 +56,7 @@ async (page) => {
  assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','pending search removed completed results');
  await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='演示');
  await p.locator('.message-search-result').first().hover();
- assert(await p.locator('.message-search-result').first().evaluate(el=>getComputedStyle(el,'::before').bottom==='6px'),'hover background touches divider');
+ assert(await p.locator('.message-search-result').first().evaluate(el=>getComputedStyle(el,'::before').top==='3px' && getComputedStyle(el,'::before').bottom==='3px'),'hover background touches divider');
  await p.screenshot({path:'/tmp/synca-search-round2-hover-light.png'});await p.emulateMedia({colorScheme:'dark'});await p.screenshot({path:'/tmp/synca-search-round2-hover-dark.png'});await p.emulateMedia({colorScheme:'light'});
  await p.getByRole('searchbox').fill('牛奶');
  await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='牛奶');

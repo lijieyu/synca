@@ -127,11 +127,19 @@ struct MessageSearchView: View {
             }
             let requestedQuery = query
             let snapshot = syncManager.messages
-            let matches = await index.search(snapshot, query: query, categoryID: currentOnly ? currentCategoryID : nil)
+            let matches = await index.search(snapshot, query: query, categoryID: currentOnly ? currentCategoryID : nil, excerptTailContext: excerptTailContext)
             guard !Task.isCancelled else { return }
             results = matches
             displayedQuery = requestedQuery
         }
+    }
+
+    private var excerptTailContext: Int {
+        #if os(macOS)
+        96
+        #else
+        48
+        #endif
     }
 
     private func resultCategory(_ message: SyncaMessage) -> some View {
@@ -232,12 +240,13 @@ private struct SearchResultButtonBody: View {
                     .padding(.vertical, 6)
             }
             #if os(macOS)
-            .background {
-                GeometryReader { geometry in
-                    SearchResultHoverTracker(isHovered: $isHovered)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+            .onContinuousHover { phase in
+                switch phase {
+                case .active: isHovered = true
+                case .ended: isHovered = false
                 }
             }
+            .onDisappear { isHovered = false }
             #endif
     }
 }
@@ -261,73 +270,6 @@ private struct SearchMarkerRenderer: TextRenderer {
 }
 
 #if os(macOS)
-/// AppKit owns tracking independently of button style reconstruction and key-window status.
-private struct SearchResultHoverTracker: NSViewRepresentable {
-    @Binding var isHovered: Bool
-    func makeNSView(context: Context) -> TrackingView {
-        let view = TrackingView()
-        view.onHover = { isHovered = $0 }
-        return view
-    }
-    func updateNSView(_ view: TrackingView, context: Context) {
-        view.onHover = { isHovered = $0 }
-        view.refreshHover()
-    }
-    static func dismantleNSView(_ view: TrackingView, coordinator: ()) {
-        view.stopTracking()
-    }
-
-    final class TrackingView: NSView {
-        var onHover: ((Bool) -> Void)?
-        private var area: NSTrackingArea?
-        private var hovered = false
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            updateTrackingAreas()
-        }
-        override func updateTrackingAreas() {
-            super.updateTrackingAreas()
-            if let area { removeTrackingArea(area) }
-            let next = NSTrackingArea(rect: .zero,
-                options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved],
-                owner: self, userInfo: nil)
-            addTrackingArea(next)
-            area = next
-            refreshHover()
-        }
-        override func mouseEntered(with event: NSEvent) { refreshHover() }
-        override func mouseExited(with event: NSEvent) { setHovered(false) }
-        override func mouseMoved(with event: NSEvent) { refreshHover() }
-        override func layout() {
-            super.layout()
-            refreshHover()
-        }
-        func refreshHover() {
-            guard let window, window.isVisible, !isHiddenOrHasHiddenAncestor else {
-                setHovered(false)
-                return
-            }
-            let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-            setHovered(visibleRect.contains(point))
-        }
-        private func setHovered(_ value: Bool) {
-            guard hovered != value else { return }
-            hovered = value
-            // Layout/updateTrackingAreas can run inside SwiftUI's update transaction.
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.onHover?(self.hovered)
-            }
-        }
-        func stopTracking() {
-            if let area { removeTrackingArea(area) }
-            area = nil
-            onHover = nil
-        }
-    }
-}
-
 /// Observe user intent over the feed, including scrollbar drags, without consuming events.
 struct SearchScrollInterruption: NSViewRepresentable {
     let onScroll: () -> Void

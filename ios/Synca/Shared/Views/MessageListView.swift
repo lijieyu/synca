@@ -99,6 +99,8 @@ struct MessageListView: View {
     @State private var showSearch = false
     @State private var searchQuery = ""
     @State private var searchAnchorY: CGFloat?
+    @State private var searchRowHeight: CGFloat = 0
+    @State private var searchViewportHeight: CGFloat = 0
     @State private var searchMatchedText: String?
     @State private var searchTarget: String?
     @State private var searchTargetCategory: String?
@@ -491,6 +493,7 @@ struct MessageListView: View {
         collapsedRowTarget = nil
         searchScrollSuppressed = true
         searchAnchorY = nil
+        searchRowHeight = 0
         searchTarget = id
         searchMatchedText = result.matchedText
         searchHighlight = nil
@@ -1087,7 +1090,13 @@ struct MessageListView: View {
                     )
                 }
                 .coordinateSpace(name: "search-feed")
+                .accessibilityIdentifier("record-feed")
                 .onPreferenceChange(SearchAnchorPosition.self) { searchAnchorY = $0 }
+                .onPreferenceChange(SearchRowHeight.self) { searchRowHeight = $0 }
+                .background(GeometryReader { geometry in
+                    Color.clear.onAppear { searchViewportHeight = geometry.size.height }
+                        .onChange(of: geometry.size.height) { searchViewportHeight = $0 }
+                })
                 .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in interruptSearchPositioning() })
                 #if os(macOS)
                 .background(SearchScrollInterruption(onScroll: interruptSearchPositioning))
@@ -1102,10 +1111,11 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
-                        if delay == 80 || searchAnchorY.map({ abs($0) > 2 }) != false {
-                        withTransaction(transaction) {
-                            proxy.scrollTo(delay == 80 || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: .top)
-                        }
+                        let fits = searchRowHeight > 0 && searchRowHeight <= searchViewportHeight - 24
+                        if fits || delay == 80 || searchAnchorY.map({ abs($0) > 2 }) != false {
+                            withTransaction(transaction) {
+                                proxy.scrollTo(fits || delay == 80 || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: fits ? .center : .top)
+                            }
                         }
                         // Start feedback with the first positioning pass, not after
                         // all lazy-layout corrections (previously over a second).
@@ -1134,9 +1144,10 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
-                        guard searchAnchorY.map({ abs($0) > 2 }) != false else { return }
+                        let fits = searchRowHeight > 0 && searchRowHeight <= searchViewportHeight - 24
+                        guard fits || searchAnchorY.map({ abs($0) > 2 }) != false else { return }
                         withTransaction(transaction) {
-                            proxy.scrollTo(searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: .top)
+                            proxy.scrollTo(fits || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: fits ? .center : .top)
                         }
                     }
                 }
@@ -1579,6 +1590,7 @@ struct MessageListView: View {
     }
 
     private func restoreCollapsedMessage(_ message: SyncaMessage, proxy: ScrollViewProxy) {
+        interruptSearchPositioning()
         scrollTask?.cancel()
         shouldScrollToBottomAfterInitialLoad = false
         shouldScrollToBottomAfterSend = false
@@ -1730,7 +1742,7 @@ struct MessageListView: View {
         MessageBubbleView(
             message: message,
             categories: syncManager.categories,
-            showsSeparator: showsSeparator,
+            showsSeparator: false,
             isUpdatingCompletion: syncManager.completionUpdates.contains(message.id),
             onEdit: { editingMessage = message },
             onTextCollapse: onTextCollapse,
@@ -1762,9 +1774,22 @@ struct MessageListView: View {
                 .fill(colorScheme == .dark
                       ? Color(red: 35 / 255, green: 73 / 255, blue: 108 / 255)
                       : Color(red: 217 / 255, green: 235 / 255, blue: 1))
+                #if os(iOS)
+                // Preserve the row's full top padding; insetting by 6 left only
+                // 2pt above the text. Background-only change keeps scroll geometry stable.
+                .padding(.bottom, 6)
+                #else
                 .padding(.vertical, 6)
+                #endif
                 .opacity(searchHighlight == message.id ? 1 : 0)
         }
+        .overlay(alignment: .bottom) {
+            if showsSeparator { Divider().opacity(0.6).offset(y: 6) }
+        }
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: SearchRowHeight.self,
+                value: searchTarget == message.id ? geometry.size.height : 0)
+        })
         .id(message.listRowID)
     }
 
@@ -3399,4 +3424,10 @@ struct SearchAnchorPosition: PreferenceKey {
     static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
         if let next = nextValue() { value = next }
     }
+}
+
+/// The selected card's full bounds determine whether to reveal the whole card or a deep text hit.
+private struct SearchRowHeight: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

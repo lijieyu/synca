@@ -74,6 +74,30 @@ final class ScrollTests: XCTestCase {
         }
     }
 
+    func testLocatedCardIsFullyInsideFeed() {
+        for (query, id, name) in [("playing", "search-completed", "first"),
+                                  ("中间定位验收", "life-follow-5", "middle")] {
+            let app = launch(["--qa-search"])
+            app.buttons["search-open"].tap()
+            let field = app.textFields["search-query"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.typeText(query)
+            let result = app.buttons["search-result-" + id]
+            XCTAssertTrue(result.waitForExistence(timeout: 8))
+            result.tap()
+            let row = app.otherElements["record-" + id].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            let feed = app.scrollViews["record-feed"].firstMatch
+            let settled = expectation(description: "Positioning settles")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settled.fulfill() }
+            wait(for: [settled], timeout: 2)
+            attach(app, name: "located-complete-card-" + name)
+            XCTAssertGreaterThanOrEqual(row.frame.minY, feed.frame.minY + 6)
+            XCTAssertLessThanOrEqual(row.frame.maxY, feed.frame.maxY - 6)
+            app.terminate()
+        }
+    }
+
     func testSearchRetainsQuerySelectsAllAndResetsOnRelaunch() {
         let app = launch(["--qa-search"])
         let search = app.buttons["search-open"]
