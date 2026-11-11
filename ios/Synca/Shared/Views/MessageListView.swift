@@ -96,6 +96,7 @@ struct MessageListView: View {
     @ObservedObject private var settings = SettingsManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSearch = false
+    @State private var searchQuery = ""
     @State private var searchTarget: String?
     @State private var searchTargetCategory: String?
     @State private var searchPositionRevision = 0
@@ -298,14 +299,15 @@ struct MessageListView: View {
                 Text("message_list.session_expired_message")
             }
         }
+        .onChange(of: api.currentUserEmail) { _ in searchQuery = ""; showSearch = false }
         .overlay(alignment: .top) { syncStatusOverlay }
         .overlay(alignment: .top) { feedbackToastOverlay }
         .overlay { loadingOverlay }
         .task(id: searchHighlight) {
             guard let id = searchHighlight else { return }
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            try? await Task.sleep(nanoseconds: 900_000_000)
             guard !Task.isCancelled, searchHighlight == id else { return }
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) { searchHighlight = nil }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.4)) { searchHighlight = nil }
         }
         .onChange(of: accessManager.showAccessCenter) { requested in
             if requested {
@@ -452,6 +454,7 @@ struct MessageListView: View {
             .accessibilityIdentifier("search-open")
             .help(Text("search.title"))
             #if os(macOS)
+            .buttonStyle(.plain)
             .keyboardShortcut("f", modifiers: .command)
             #endif
     }
@@ -464,7 +467,7 @@ struct MessageListView: View {
     }
 
     private var searchSheet: some View {
-        MessageSearchView(currentCategoryID: selectedFilterCategoryId, onSelect: selectSearchResult)
+        MessageSearchView(currentCategoryID: selectedFilterCategoryId, query: $searchQuery, onSelect: selectSearchResult)
             .environmentObject(syncManager).syncaPreferences()
     }
 
@@ -742,7 +745,6 @@ struct MessageListView: View {
             }
         } label: {
             HStack(spacing: 10) {
-                if color == nil { Image(systemName: "square.grid.2x2").font(.system(size: 14, weight: .regular)).frame(width: 16) }
                 Text(title).lineLimit(2).multilineTextAlignment(.leading)
                 Spacer(minLength: 4)
                 if count > 0 { Text(count, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
@@ -818,7 +820,7 @@ struct MessageListView: View {
     #if os(iOS)
     @ToolbarContentBuilder
     private var actionToolbarItems: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) { searchButton }
+        ToolbarItem(placement: .topBarTrailing) { searchButton }
         ToolbarItem(placement: .topBarTrailing) {
             refreshButton
         }
@@ -958,7 +960,6 @@ struct MessageListView: View {
     private func categoryChip(title: String, color: Color, neutral: Bool = false, isSelected: Bool, badgeCount: Int = 0, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if neutral { Image(systemName: "square.grid.2x2").font(.system(size: 13)) }
                 Text(title).font(.subheadline.weight(isSelected ? .semibold : .regular))
                 if badgeCount > 0 { Text(badgeCount, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
                     .padding(.horizontal, 5).padding(.vertical, 2)
@@ -1086,9 +1087,13 @@ struct MessageListView: View {
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
                         withTransaction(transaction) { proxy.scrollTo(message.listRowID, anchor: .top) }
+                        // Start feedback with the first positioning pass, not after
+                        // all lazy-layout corrections (previously over a second).
+                        if delay == 80 {
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) { searchHighlight = id }
+                        }
                     }
                     guard searchTarget == id else { return }
-                    searchHighlight = id
                     #if os(iOS)
                     UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: "search.located"))
                     #else

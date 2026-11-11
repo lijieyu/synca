@@ -13,7 +13,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, LayoutGrid, Search } from 'lucide-react';
+import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -67,6 +67,13 @@ const EmptyMessageState: React.FC = () => {
 
 export const MessageListView: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  useEffect(() => {
+    const keyboardNavigation = (event: KeyboardEvent) => { if (event.key === 'Tab') setSearchPointerOpened(false); };
+    window.addEventListener('keydown', keyboardNavigation, true);
+    return () => window.removeEventListener('keydown', keyboardNavigation, true);
+  }, []);
+  const [searchPointerOpened, setSearchPointerOpened] = useState(false);
   const [searchTarget, setSearchTarget] = useState<{id: string; nonce: number} | null>(null);
   const scrollRevision = useRef(0);
   const searchNavigation = useRef(false);
@@ -164,7 +171,7 @@ export const MessageListView: React.FC = () => {
 
   useEffect(() => {
     didRestorePreferencesRef.current = false;
-    setMessages([]); setShowSearch(false); setSearchTarget(null);
+    setMessages([]); setShowSearch(false); setSearchTarget(null); setSearchQuery('');
     searchNavigation.current = false; ++scrollRevision.current;
     void fetchData(true);
     const poll = () => {
@@ -507,7 +514,6 @@ export const MessageListView: React.FC = () => {
         <div className="category-toolbar">
           <div className="category-switcher" ref={sidebarSort.containerRef}>
             <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} category-all`} aria-pressed={selectedScopeIsAll} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
-              <LayoutGrid size={16} strokeWidth={1.6} aria-hidden="true" />
               {t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
@@ -544,7 +550,7 @@ export const MessageListView: React.FC = () => {
           <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
           <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
           <div className="header-actions">
-            <button className="header-btn" onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
+            <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RotateCw size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
@@ -580,7 +586,7 @@ export const MessageListView: React.FC = () => {
           <InputBar focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
       </main>
 
-      {showSearch && <MessageSearch key={email} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
+      {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
 
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
         onCancel={() => setEditingMessage(null)} onSaved={updated => {
