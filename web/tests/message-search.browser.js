@@ -12,9 +12,38 @@ async (page) => {
  const search=async q=>{await p.getByRole('button',{name:'搜索记录',exact:true}).click();await p.getByRole('searchbox').fill(q);await p.locator('.message-search-result').first().waitFor();};
  try {
  await p.goto('http://127.0.0.1:5199/');await p.locator('[data-message-id="text74"]').waitFor();
+ const trigger=p.getByRole('button',{name:'搜索记录',exact:true});
+ await trigger.click();
+ await p.getByRole('searchbox').waitFor();
+ await p.waitForFunction(()=>{const el=document.querySelector('[role=dialog]');return el&&Math.abs(el.getBoundingClientRect().width-640)<0.1});
+ const bounds=await p.getByRole('dialog').boundingBox();
+ assert(bounds.width===640 && bounds.height===560,'desktop search dimensions');
+ assert(await p.getByRole('searchbox').getAttribute('placeholder')==='文字、文件名或拼音','placeholder not unified');
+ await p.getByText('搜索文字或文件名',{exact:true}).waitFor();
+ assert(await p.locator('.message-search-field').evaluate(el=>getComputedStyle(el).outlineStyle==='none' && getComputedStyle(el).borderTopWidth==='0px'),'search field has focus border');
+ await p.screenshot({path:'/tmp/synca-search-polish-web-empty.png'});
+ await p.getByRole('searchbox').fill('牛奶');
+ await p.locator('.message-search-result mark').first().waitFor();
+ assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','literal highlight');
+ await p.keyboard.press('Escape');
+ assert(await trigger.evaluate(el=>getComputedStyle(el).outlineStyle==='none'),'pointer trigger retained outline after Escape');
+ await p.keyboard.press('Tab');await p.keyboard.press('Shift+Tab');
+ assert(await trigger.evaluate(el=>document.activeElement===el&&getComputedStyle(el).outlineStyle!=='none'),'keyboard return has no focus indicator');
+ await trigger.click();
+ assert(await p.getByRole('searchbox').inputValue()==='牛奶','query not retained');
+ assert(await p.getByRole('searchbox').evaluate(el=>el.selectionStart===0&&el.selectionEnd===el.value.length),'reopened query not selected');
+ await p.getByRole('searchbox').pressSequentially('nn');
+ assert(await p.getByRole('searchbox').inputValue()==='nn','typing did not replace retained query');
+ await p.locator('.message-search-result mark').first().waitFor();
+ assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','initials highlight not mapped');
+ await p.screenshot({path:'/tmp/synca-search-polish-web-results.png'});
+ await p.keyboard.press('Escape');
+ await p.reload();await trigger.waitFor();await trigger.click();
+ assert(await p.getByRole('searchbox').inputValue()==='','query persisted across reload');
+ await p.keyboard.press('Escape');
  await p.locator('.message-list').evaluate(el=>el.scrollTop=300);const before=await p.locator('.message-list').evaluate(el=>el.scrollTop);
  await p.keyboard.press('Control+f');await p.getByRole('searchbox').waitFor();await p.keyboard.press('Escape');assert(await p.locator('.message-list').evaluate(el=>el.scrollTop)===before,'cancel moved scroll');
- await search('nn');await p.getByRole('button',{name:'当前分类 · 生活',exact:true}).click();await p.getByText('没有找到匹配记录',{exact:true}).waitFor();await p.getByRole('button',{name:'全部记录',exact:true}).click();await p.locator('.message-search-result').first().waitFor();await p.screenshot({path:'/tmp/synca-search-desktop.png'});await p.locator('.message-search-result').first().click();await p.locator('[data-message-id="text15"].search-target').waitFor();assert(await visible('text15'),'completed target invisible');assert(await p.locator('[data-message-id="text15"]').evaluate(el=>document.activeElement===el),'focus not on target');
+ await search('nn');await p.getByRole('button',{name:'当前分类 · 生活',exact:true}).click();await p.getByText('没有找到相关记录',{exact:true}).waitFor();await p.getByRole('button',{name:'全部记录',exact:true}).click();await p.locator('.message-search-result').first().waitFor();await p.screenshot({path:'/tmp/synca-search-desktop.png'});await p.locator('.message-search-result').first().click();await p.locator('[data-message-id="text15"].search-target').waitFor();assert(await visible('text15'),'completed target invisible');assert(await p.locator('[data-message-id="text15"]').evaluate(el=>document.activeElement===el),'focus not on target');
  await search('最后一条');await p.locator('.message-search-result').first().click();await p.locator('[data-message-id="text74"].search-target').waitFor();assert(await visible('text74'),'last target invisible');await p.locator('[data-message-id="late-image"] img').waitFor();await p.waitForTimeout(100);assert(await visible('text74'),'delayed image displaced target');
  await p.locator('[data-message-id="text72"]').evaluate(el=>el.style.height='900px');await p.waitForTimeout(100);assert(await visible('text74'),'late layout displaced target');
  await p.locator('.message-list').hover();await p.mouse.wheel(0,-500);await p.waitForTimeout(150);const manual=await p.locator('.message-list').evaluate(el=>el.scrollTop);await p.locator('[data-message-id="text72"]').evaluate(el=>el.style.height='1400px');await p.waitForTimeout(100);assert(!await visible('text74'),'manual scroll did not stop correction');
@@ -23,7 +52,7 @@ async (page) => {
  await search('牛奶');messages=messages.map(m=>m.id==='text15'?{...m,categoryId:'life'}:m);await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p.waitForTimeout(200);await p.locator('.message-search-result').first().click();await p.locator('[data-message-id="text15"].search-target').waitFor();assert(await p.locator('[data-category-id="life"]').getAttribute('class').then(c=>c.includes('active')),'live category not selected');
  await p.setViewportSize({width:390,height:844});await search('演示');await p.screenshot({path:'/tmp/synca-search-mobile.png'});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'mobile overflow');await p.keyboard.press('Escape');
  await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});await search('牛奶');await p.screenshot({path:'/tmp/synca-search-dark.png'});
- await p.getByRole('searchbox').fill('');assert(await p.locator('.message-search-result').count()===0,'empty query retained old results');await p.getByRole('searchbox').fill('牛奶');await p.locator('.message-search-result').first().waitFor();messages=messages.filter(m=>m.id!=='text15');await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p.getByText('没有找到匹配记录',{exact:true}).waitFor();
+ await p.getByRole('searchbox').fill('');assert(await p.locator('.message-search-result').count()===0,'empty query retained old results');await p.getByRole('searchbox').fill('牛奶');await p.locator('.message-search-result').first().waitFor();messages=messages.filter(m=>m.id!=='text15');await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p.getByText('没有找到相关记录',{exact:true}).waitFor();
  assert(errors.length===0,errors.join('\n'));return {passed:true,checks:['cancel preserves scroll','shortcut','scope filter','empty query','remote deletion','completed target','last target','delayed actual image','late layout','manual scroll cancels correction','tall target top','live category','mobile width','dark/reduced motion'],manualScroll:manual,screenshots:['/tmp/synca-search-desktop.png','/tmp/synca-search-target.png','/tmp/synca-search-mobile.png','/tmp/synca-search-dark.png']};
  }finally{await ctx.close();}
 }

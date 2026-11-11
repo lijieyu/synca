@@ -53,7 +53,7 @@ final class ScrollTests: XCTestCase {
             search.tap()
             let field = app.textFields["search-query"]
             XCTAssertTrue(field.waitForExistence(timeout: 5))
-            field.tap()
+            if app.buttons["清除搜索"].exists { app.buttons["清除搜索"].tap() }
             field.typeText(query)
             let result = app.buttons["search-result-" + id]
             XCTAssertTrue(result.waitForExistence(timeout: 10))
@@ -72,6 +72,36 @@ final class ScrollTests: XCTestCase {
             XCTAssertTrue(target.isHittable)
             XCTAssertEqual(target.frame.minY, y, accuracy: 6)
         }
+    }
+
+    func testSearchRetainsQuerySelectsAllAndResetsOnRelaunch() {
+        let app = launch(["--qa-search"])
+        let search = app.buttons["search-open"]
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        XCTAssertGreaterThan(search.frame.midX, app.frame.width * 0.4)
+        attach(app, name: "search-toolbar-trailing")
+        search.tap()
+        let field = app.textFields["search-query"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertLessThan(field.frame.height, 50)
+        attach(app, name: "search-empty-polished")
+        field.typeText("ms")
+        XCTAssertTrue(app.buttons["search-result-search-completed"].waitForExistence(timeout: 8))
+        attach(app, name: "search-phonetic-highlights")
+        app.buttons["取消"].tap()
+        search.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "ms")
+        // Do not tap again: focus on reopen must already select the previous query.
+        field.typeText("照片")
+        XCTAssertEqual(field.value as? String, "照片")
+        XCTAssertTrue(app.buttons["search-result-search-image"].waitForExistence(timeout: 8))
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        search.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertNotEqual(field.value as? String, "照片")
     }
 
     func testCancelSearchPreservesVisibleRecord() {

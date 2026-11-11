@@ -52,6 +52,18 @@ struct MessageSearchTests {
         }
         let mixedInitials = await index.search([record("m", "面试 Synca 准备")], query: "mssyncazb")
         precondition(mixedInitials.map(\.id) == ["m"], "Keep embedded Latin words in mixed initials")
+        for query in ["mianshi", "ms", "面试"] {
+            let highlighted = await index.search([record("h", String(repeating: "😀前文。", count: 200) + "面试安排，面试准备")], query: query)
+            let result = highlighted[0]
+            let hits = result.excerptRanges.map { (result.excerpt as NSString).substring(with: NSRange(location: $0.lowerBound, length: $0.count)) }
+            precondition(hits == ["面试", "面试"], "Late phonetic matches and repeated hits use original UTF16 offsets")
+            precondition(result.excerpt.hasPrefix("…"))
+        }
+        let accents = await index.search([record("a", "😀Cafe\u{0301} ＡＢＣ")], query: "cafe")
+        let accentRange = accents[0].excerptRanges[0]
+        precondition((accents[0].excerpt as NSString).substring(with: NSRange(location: accentRange.lowerBound, length: accentRange.count)) == "Cafe\u{0301}")
+        let named = await index.search([record("f", "caption", file: "😀会议纪要.pdf")], query: "hyjy")
+        precondition(named[0].filenameRanges == [2..<6])
         print("PASS native search: literal, pinyin, initials, scope, deleted/completed, stable rank, filename, edits/reset, traditional, accents/width, long excerpt, mixed Latin")
     }
 }

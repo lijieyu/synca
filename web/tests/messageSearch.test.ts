@@ -34,3 +34,44 @@ test('result excerpts expose late literal matches without rendering whole record
  const text='前文'.repeat(500)+'目标内容'+'后文'.repeat(500);
  const excerpt=searchExcerpt(text,'目标');assert.ok(excerpt.includes('目标内容'));assert.ok(excerpt.length<180);assert.ok(excerpt.startsWith('…'));
 });
+test('highlight ranges map phonetics, repeated hits and Unicode to original text', async () => {
+ const {searchMatchRanges}=await import('../src/utils/messageSearch');
+ const {searchPreview}=await import('../src/utils/searchExcerpt');
+ for(const query of ['mianshi','ms','面试']) {
+  const text='😀前文。'.repeat(200)+'面试安排，面试准备';
+  const preview=searchPreview(text,query);
+  assert.ok(preview.text.startsWith('…'));
+  assert.deepEqual(preview.ranges.map(r=>preview.text.slice(r.start,r.end)),['面试','面试']);
+ }
+ for(const [text,query,expected] of [['😀Cafe\u0301 ＡＢＣ','cafe','Cafe\u0301'],['😀Cafe\u0301 ＡＢＣ','abc','ＡＢＣ'],['会议纪要.pdf','hyjy','会议纪要']]) {
+  assert.deepEqual(searchMatchRanges(text,query).map(r=>text.slice(r.start,r.end)),[expected]);
+ }
+ assert.deepEqual(searchMatchRanges('苹果牛奶','pn'),[]);
+ const preview=searchPreview('😀\n\t面试   准备','mszb');
+ assert.deepEqual(preview.ranges.map(r=>preview.text.slice(r.start,r.end)),['面试 准备']);
+});
+test('worker returns mapped previews with revision and clears removed records', async () => {
+ const previousSelf=globalThis.self;
+ let response: {revision:number;ids:string[];results:{id:string;preview:{text:string;ranges:{start:number;end:number}[]};filenameRanges:{start:number;end:number}[]} };
+ const worker={postMessage(value: typeof response){response=value;},onmessage: null as unknown as (event:{data:unknown})=>void};
+ Object.assign(globalThis,{self:worker});
+ try {
+  await import('../src/utils/messageSearch.worker');
+  worker.onmessage({data:{records:[record('late','前文。'.repeat(200)+'面试准备'),record('file','caption',{fileName:'面试.pdf'})],query:'mianshi',revision:7}});
+  assert.equal(response!.revision,7);
+  assert.deepEqual(response!.ids,['late','file']);
+  const late=response!.results[0].preview;
+  assert.deepEqual(late.ranges.map(r=>late.text.slice(r.start,r.end)),['面试']);
+  assert.deepEqual(response!.results[1].filenameRanges,[{start:0,end:2}]);
+  worker.onmessage({data:{records:[],query:'mianshi',revision:8}});
+  assert.deepEqual(response!.results,[]);
+ } finally { Object.assign(globalThis,{self:previousSelf}); }
+});
+test('contextual Greek case folding matches original text and lowercase queries', async () => {
+ const {searchMatchRanges}=await import('../src/utils/messageSearch');
+ const index=new MessageSearchIndex();index.update([record('g','😀 ΟΣ notes')]);
+ for(const query of ['ΟΣ','ος','οσ']) {
+  assert.equal(index.search(query)[0]?.id,'g');
+  assert.deepEqual(searchMatchRanges('😀 ΟΣ notes',query),[{start:3,end:5}]);
+ }
+});

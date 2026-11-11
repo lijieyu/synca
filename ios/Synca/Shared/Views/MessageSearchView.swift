@@ -10,15 +10,15 @@ struct MessageSearchView: View {
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
     let currentCategoryID: String?
+    @Binding var query: String
     let onSelect: (String) -> Bool
-    @State private var query = ""
     @State private var currentOnly = false
     @State private var results: [MessageSearchResult] = []
     @State private var searching = false
     @State private var unavailable = false
     @State private var revision = 0
     @State private var index = MessageSearchIndex()
-    @FocusState private var searchFocused: Bool
+    @ScaledMetric(relativeTo: .body) private var queryFieldHeight = 22.0
 
     var body: some View {
         #if os(macOS)
@@ -27,7 +27,7 @@ struct MessageSearchView: View {
             Divider()
             content
         }
-        .frame(width: 560, height: min(600, max(320, 170 + CGFloat(results.count) * 92)))
+        .frame(width: 640, height: 560)
         #else
         NavigationStack {
             content
@@ -42,12 +42,9 @@ struct MessageSearchView: View {
         VStack(spacing: 16) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
-                TextField("search.placeholder", text: $query)
-                    .textFieldStyle(.plain).focused($searchFocused)
-                    .accessibilityIdentifier("search-query")
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    #endif
+                SearchQueryField(text: $query, placeholder: String(syncaLocalized: "search.placeholder"))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: queryFieldHeight)
                 if !query.isEmpty {
                     Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
                         .buttonStyle(.plain).accessibilityLabel(Text("search.clear"))
@@ -86,19 +83,20 @@ struct MessageSearchView: View {
                                 }
                             } label: {
                                 VStack(alignment: .leading, spacing: 7) {
-                                    Text(result.excerpt).font(.body).foregroundStyle(.primary).lineLimit(3)
+                                    highlightedText(result.excerpt, ranges: result.excerptRanges).font(.body).foregroundStyle(.primary).lineLimit(3)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     if let filename = result.message.fileName, !filename.isEmpty, filename != result.excerpt {
-                                        Label(filename, systemImage: "doc").font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                                        Label { highlightedText(filename, ranges: result.filenameRanges, font: .subheadline) } icon: { Image(systemName: "doc") }.font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                                     }
                                     HStack(spacing: 8) {
-                                        if result.message.isCleared { Image(systemName: "checkmark.circle").accessibilityLabel(Text("search.completed")) }
+                                        if result.message.isCleared { Image(systemName: "checkmark.circle.fill").accessibilityLabel(Text("search.completed")) }
+                                        Circle().fill(categoryColor(result.message)).frame(width: 8, height: 8).accessibilityHidden(true)
                                         Text(categoryName(result.message))
                                         Spacer(minLength: 4)
                                         Text(String(result.message.createdAt.prefix(10))).monospacedDigit()
                                     }.font(.caption).foregroundStyle(.secondary)
                                 }.padding(.vertical, 14).padding(.horizontal, 6).contentShape(Rectangle())
-                            }.buttonStyle(.plain).accessibilityHint(Text("search.open_hint"))
+                            }.buttonStyle(SearchResultButtonStyle()).accessibilityHint(Text("search.open_hint"))
                                 .accessibilityIdentifier("search-result-\(result.id)")
                             Divider()
                         }
@@ -108,7 +106,6 @@ struct MessageSearchView: View {
         }
         .padding(20)
         .background(Color.syncaPageBackground)
-        .task { searchFocused = true }
         .onReceive(syncManager.$messages) { _ in revision += 1 }
         .task(id: SearchRequest(query: query, currentOnly: currentOnly, revision: revision)) {
             searching = true
@@ -128,12 +125,30 @@ struct MessageSearchView: View {
         return category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name
     }
 
+    private func categoryColor(_ message: SyncaMessage) -> Color {
+        let category = syncManager.categories.first { $0.id == message.categoryId }
+        return categoryDisplayColor(category?.color ?? message.categoryColor ?? .slate,
+                                    hex: category?.colorHex ?? message.categoryColorHex)
+    }
+
     private func categoryName(_ message: SyncaMessage) -> String {
         if let category = syncManager.categories.first(where: { $0.id == message.categoryId }) {
             return category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name
         }
         return message.categoryIsDefault == true ? String(syncaLocalized: "message_category.default_badge")
             : message.categoryName ?? String(syncaLocalized: "message_category.default_badge")
+    }
+
+    private func highlightedText(_ text: String, ranges: [Range<Int>], font: Font = .body) -> Text {
+        var attributed = AttributedString(text)
+        for range in ranges {
+            guard let sourceRange = Range(NSRange(location: range.lowerBound, length: range.count), in: text),
+                  let start = AttributedString.Index(sourceRange.lowerBound, within: attributed),
+                  let end = AttributedString.Index(sourceRange.upperBound, within: attributed) else { continue }
+            attributed[start..<end].backgroundColor = Color.accentColor.opacity(0.18)
+            attributed[start..<end].font = font.weight(.semibold)
+        }
+        return Text(attributed)
     }
 
     private func emptyState(_ title: LocalizedStringKey, symbol: String) -> some View {
@@ -147,6 +162,16 @@ struct MessageSearchView: View {
         let query: String
         let currentOnly: Bool
         let revision: Int
+    }
+}
+
+private struct SearchResultButtonStyle: ButtonStyle {
+    @State private var isHovered = false
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(Color.primary.opacity(configuration.isPressed ? 0.14 : isHovered ? 0.08 : 0),
+                        in: RoundedRectangle(cornerRadius: 8))
+            .onHover { isHovered = $0 }
     }
 }
 
@@ -172,6 +197,107 @@ struct SearchScrollInterruption: NSViewRepresentable {
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
         func removeMonitor() { if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil }
+    }
+}
+#endif
+
+// Own the initial selection along with focus: SwiftUI's TextField can reset a
+// notification-based selectAll to a trailing caret during sheet presentation.
+#if os(iOS)
+private struct SearchQueryField: UIViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> Field {
+        let field = Field()
+        field.borderStyle = .none
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textColor = .label
+        field.autocorrectionType = .no
+        field.autocapitalizationType = .none
+        field.returnKeyType = .search
+        field.accessibilityIdentifier = "search-query"
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        return field
+    }
+    func updateUIView(_ field: Field, context: Context) {
+        context.coordinator.parent = self
+        field.placeholder = placeholder
+        field.accessibilityLabel = placeholder
+        if field.text != text {
+            // A differing binding is an external clear, not the editing event.
+            // Cancel marked text too so an IME cannot restore the old query.
+            field.unmarkText()
+            field.text = text
+        }
+    }
+    final class Field: UITextField {
+        private var requestedFocus = false
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil, !requestedFocus else { return }
+            requestedFocus = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.becomeFirstResponder()
+                self.selectAll(nil)
+            }
+        }
+    }
+    final class Coordinator: NSObject {
+        var parent: SearchQueryField
+        init(_ parent: SearchQueryField) { self.parent = parent }
+        @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
+    }
+}
+#elseif os(macOS)
+private struct SearchQueryField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> Field {
+        let field = Field()
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = .preferredFont(forTextStyle: .body)
+        field.textColor = .labelColor
+        field.delegate = context.coordinator
+        field.setAccessibilityIdentifier("search-query")
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return field
+    }
+    func updateNSView(_ field: Field, context: Context) {
+        context.coordinator.parent = self
+        field.placeholderString = placeholder
+        field.setAccessibilityLabel(placeholder)
+        if field.stringValue != text {
+            (field.currentEditor() as? NSTextView)?.unmarkText()
+            field.stringValue = text
+        }
+    }
+    final class Field: NSTextField {
+        private var requestedFocus = false
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil, !requestedFocus else { return }
+            requestedFocus = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let window = self.window else { return }
+                window.makeFirstResponder(self)
+                self.currentEditor()?.selectAll(nil)
+            }
+        }
+    }
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: SearchQueryField
+        init(_ parent: SearchQueryField) { self.parent = parent }
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
     }
 }
 #endif

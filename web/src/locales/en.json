@@ -402,16 +402,16 @@
   },
   "search": {
     "title": "Search records",
-    "placeholder": "Search content or filenames",
+    "placeholder": "Text, filename or pinyin",
     "scope": "Search scope",
     "all": "All records",
     "current": "Current category",
-    "hint": "Search text, pinyin or consecutive initials",
     "loading": "Searching…",
     "empty": "No matching records",
     "count": "{{count}} records found",
     "completed": "Completed",
-    "unavailable": "This record is no longer available",
-    "error": "Search is unavailable. Please reopen it."
+    "unavailable": "This record is no longer available.",
+    "error": "Search is unavailable. Please reopen it.",
+    "prompt": "Search text and filenames"
   }
 }

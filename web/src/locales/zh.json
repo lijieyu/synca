@@ -402,16 +402,16 @@
   },
   "search": {
     "title": "搜索记录",
-    "placeholder": "搜索内容或文件名",
+    "placeholder": "文字、文件名或拼音",
     "scope": "搜索范围",
     "all": "全部记录",
     "current": "当前分类",
-    "hint": "支持文字、拼音和连续首字母",
     "loading": "正在搜索…",
-    "empty": "没有找到匹配记录",
+    "empty": "没有找到相关记录",
     "count": "找到 {{count}} 条记录",
     "completed": "已完成",
-    "unavailable": "这条记录已不存在",
-    "error": "搜索暂时不可用，请重新打开"
+    "unavailable": "这条记录已不可用。",
+    "error": "搜索暂时不可用，请重新打开",
+    "prompt": "搜索文字或文件名"
   }
 }

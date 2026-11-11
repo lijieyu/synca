@@ -402,16 +402,16 @@
   },
   "search": {
     "title": "搜尋記錄",
-    "placeholder": "搜尋內容或檔案名稱",
+    "placeholder": "文字、檔案名稱或拼音",
     "scope": "搜尋範圍",
     "all": "全部記錄",
     "current": "目前分類",
-    "hint": "支援文字、拼音和連續首字母",
     "loading": "正在搜尋…",
-    "empty": "找不到符合的記錄",
+    "empty": "沒有找到相關記錄",
     "count": "找到 {{count}} 條記錄",
     "completed": "已完成",
-    "unavailable": "這條記錄已不存在",
-    "error": "搜尋暫時無法使用，請重新開啟"
+    "unavailable": "這條記錄已無法使用。",
+    "error": "搜尋暫時無法使用，請重新開啟",
+    "prompt": "搜尋文字或檔案名稱"
   }
 }
