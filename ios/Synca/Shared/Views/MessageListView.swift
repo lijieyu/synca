@@ -1775,9 +1775,10 @@ struct MessageListView: View {
                       ? Color(red: 35 / 255, green: 73 / 255, blue: 108 / 255)
                       : Color(red: 217 / 255, green: 235 / 255, blue: 1))
                 #if os(iOS)
-                // Preserve the row's full top padding; insetting by 6 left only
-                // 2pt above the text. Background-only change keeps scroll geometry stable.
-                .padding(.bottom, 6)
+                // Balance visible content, not the 44pt action hit area: its
+                // 20pt glyph leaves 12pt of invisible space below. Keep the
+                // full top padding and all row/hit-target geometry unchanged.
+                .padding(.bottom, (44 - 20) / 2)
                 #else
                 .padding(.vertical, 6)
                 #endif
