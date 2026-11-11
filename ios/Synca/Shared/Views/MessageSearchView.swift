@@ -8,13 +8,16 @@ import UIKit
 /// Search owns its index and scope so dismissing it cannot mutate the feed.
 struct MessageSearchView: View {
     @EnvironmentObject private var syncManager: SyncManager
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     let currentCategoryID: String?
     @Binding var query: String
-    let onSelect: (String) -> Bool
+    let onSelect: (MessageSearchResult) -> Bool
     @State private var currentOnly = false
     @State private var results: [MessageSearchResult] = []
     @State private var searching = false
+    @State private var displayedQuery = ""
+    @State private var displayedScope = false
     @State private var unavailable = false
     @State private var revision = 0
     @State private var index = MessageSearchIndex()
@@ -58,18 +61,21 @@ struct MessageSearchView: View {
                 }.pickerStyle(.segmented).labelsHidden()
             }
             if unavailable { Text("search.unavailable").font(.callout).foregroundStyle(.secondary) }
-            if searching {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 emptyState("search.prompt", symbol: "magnifyingglass")
+            } else if searching {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if results.isEmpty {
                 emptyState("search.empty", symbol: "doc.text.magnifyingglass")
             } else {
+                Text(String(format: String(syncaLocalized: "search.count"), results.count))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(results) { result in
                             Button {
-                                unavailable = !onSelect(result.id)
+                                unavailable = !onSelect(result)
                                 if unavailable {
                                     let announcement = String(syncaLocalized: "search.unavailable")
                                     #if os(iOS)
@@ -88,19 +94,25 @@ struct MessageSearchView: View {
                                     if let filename = result.message.fileName, !filename.isEmpty, filename != result.excerpt {
                                         Label { highlightedText(filename, ranges: result.filenameRanges, font: .subheadline) } icon: { Image(systemName: "doc") }.font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                                     }
-                                    HStack(spacing: 8) {
-                                        if result.message.isCleared { Image(systemName: "checkmark.circle.fill").accessibilityLabel(Text("search.completed")) }
-                                        Circle().fill(categoryColor(result.message)).frame(width: 8, height: 8).accessibilityHidden(true)
-                                        Text(categoryName(result.message))
-                                        Spacer(minLength: 4)
-                                        Text(String(result.message.createdAt.prefix(10))).monospacedDigit()
+                                    ViewThatFits(in: .horizontal) {
+                                        HStack(spacing: 8) {
+                                            resultCategory(result.message).fixedSize()
+                                            Spacer(minLength: 8)
+                                            Text(result.message.displayDate).monospacedDigit().fixedSize()
+                                        }
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            resultCategory(result.message)
+                                            Text(result.message.displayDate).monospacedDigit()
+                                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                        }
                                     }.font(.caption).foregroundStyle(.secondary)
                                 }.padding(.vertical, 14).padding(.horizontal, 6).contentShape(Rectangle())
                             }.buttonStyle(SearchResultButtonStyle()).accessibilityHint(Text("search.open_hint"))
                                 .accessibilityIdentifier("search-result-\(result.id)")
-                            Divider()
+                            if result.id != results.last?.id { Divider() }
                         }
                     }
+                    .padding(.trailing, 12)
                 }
             }
         }
@@ -108,13 +120,33 @@ struct MessageSearchView: View {
         .background(Color.syncaPageBackground)
         .onReceive(syncManager.$messages) { _ in revision += 1 }
         .task(id: SearchRequest(query: query, currentOnly: currentOnly, revision: revision)) {
-            searching = true
             unavailable = false
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                results = []
+                displayedQuery = ""
+                searching = false
+                return
+            }
+            searching = displayedQuery != query || displayedScope != currentOnly
+            let requestedQuery = query
+            let requestedScope = currentOnly
             let snapshot = syncManager.messages
             let matches = await index.search(snapshot, query: query, categoryID: currentOnly ? currentCategoryID : nil)
             guard !Task.isCancelled else { return }
             results = matches
+            displayedQuery = requestedQuery
+            displayedScope = requestedScope
             searching = false
+        }
+    }
+
+    private func resultCategory(_ message: SyncaMessage) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(categoryColor(message)).frame(width: 8, height: 8).accessibilityHidden(true)
+            Text(categoryName(message)).lineLimit(1)
+            if message.isCleared {
+                Image(systemName: "checkmark.circle.fill").accessibilityLabel(Text("search.completed"))
+            }
         }
     }
 
@@ -145,7 +177,7 @@ struct MessageSearchView: View {
             guard let sourceRange = Range(NSRange(location: range.lowerBound, length: range.count), in: text),
                   let start = AttributedString.Index(sourceRange.lowerBound, within: attributed),
                   let end = AttributedString.Index(sourceRange.upperBound, within: attributed) else { continue }
-            attributed[start..<end].backgroundColor = Color.accentColor.opacity(0.18)
+            attributed[start..<end].backgroundColor = Color(red: 0.25, green: 0.65, blue: 1).opacity(colorScheme == .dark ? 0.28 : 0.20)
             attributed[start..<end].font = font.weight(.semibold)
         }
         return Text(attributed)

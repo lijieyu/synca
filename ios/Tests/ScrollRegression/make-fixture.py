@@ -29,7 +29,7 @@ seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-markd
 # Search navigation uses the real feed and a larger account-local synthetic dataset.
 search_messages = [dict(messages[0], id=f'search-{i:03}', textContent=f'工作记录 {i}：跟进日常事项。', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt=f'2026-11-07T10:{i:02}:00.000Z', updatedAt=f'2026-11-07T10:{i:02}:00.000Z') for i in range(35)]
 search_messages += [dict(messages[0], id='search-completed', textContent='面试已完成记录', categoryId='2', categoryName='生活', categoryIsDefault=False, isCleared=True),
-                    dict(messages[0], id='search-long', textContent='面试长文定位\n' + ('长文本滚动测试。\n' * 180), categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T10:00:00.000Z'),
+                    dict(messages[0], id='search-long', textContent='面试长文定位\n' + ('长文本滚动测试。\n' * 180) + '尾部定位验收：准备沟通提纲。', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T10:00:00.000Z'),
                     dict(messages[0], id='search-image', type='image', textContent=None, fileName='面试照片.png', imageUrl='http://127.0.0.1:54671/logo.png', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T09:00:00.000Z')]
 seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-search") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps(search_messages, ensure_ascii=False) + '"#.utf8)); selectedCategoryId = "2" }\n }'
 edit('Shared/Core/SyncManager.swift','private init() {}',seed)

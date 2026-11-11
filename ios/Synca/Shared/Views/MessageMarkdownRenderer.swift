@@ -138,6 +138,21 @@ enum MessageMarkdownRenderer {
     }
 
     /// Count actual rendered TextKit fragments, including list indentation and inline font traits.
+    /// Match the rendered TextKit layout so a search hit can be anchored without changing row geometry.
+    static func matchOffset(_ attributed: NSAttributedString, text: String, width: CGFloat) -> CGFloat {
+        let range = (attributed.string as NSString).range(of: text, options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive])
+        guard range.location != NSNotFound, width > 0 else { return 0 }
+        let storage = NSTextStorage(attributedString: attributed)
+        let manager = NSLayoutManager()
+        let container = NSTextContainer(size: CGSize(width: width, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        storage.addLayoutManager(manager)
+        manager.addTextContainer(container)
+        manager.ensureLayout(for: container)
+        let glyph = manager.glyphIndexForCharacter(at: range.location)
+        return max(0, manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).minY - 8)
+    }
+
     static func overflows(_ text: NSAttributedString, width: CGFloat, maximumLines: Int) -> Bool {
         guard width > 0, text.length > 0 else { return false }
         let storage = NSTextStorage(attributedString: text)

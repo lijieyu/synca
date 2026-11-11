@@ -19,6 +19,9 @@ struct MessageBubbleView: View {
     let onImageLoaded: () -> Void
 
     var textExpansion: Binding<Bool>? = nil
+    var revealSearchText = false
+    var searchMatchedText: String? = nil
+    @State private var searchTextOffset: CGFloat = 0
 
     @State private var copied = false
     @State private var localTextExpanded = false
@@ -242,6 +245,7 @@ struct MessageBubbleView: View {
                         .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
                         .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
                         .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: searchMatchedText) { _ in updateTextOverflow(width: geometry.size.width) }
                 })
             #else
             LinkTextView(attributedText: linkedNSAttributedText, maximumNumberOfLines: isTextExpanded ? 0 : 6)
@@ -251,6 +255,7 @@ struct MessageBubbleView: View {
                         .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
                         .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
                         .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
+                        .onChange(of: searchMatchedText) { _ in updateTextOverflow(width: geometry.size.width) }
                 })
             #endif
             if textOverflows || isTextExpanded {
@@ -272,6 +277,21 @@ struct MessageBubbleView: View {
                 #endif
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topLeading) {
+            if revealSearchText && searchMatchedText != nil {
+                VStack(spacing: 0) {
+                    Color.clear.frame(width: 1, height: searchTextOffset)
+                    Color.clear.frame(width: 1, height: 1)
+                        .background(GeometryReader { geometry in
+                            Color.clear.preference(key: SearchAnchorPosition.self, value: geometry.frame(in: .named("search-feed")).minY)
+                        })
+                        .id("search-hit-\(message.id)")
+                }.allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
+        .onChange(of: revealSearchText) { reveal in
+            if reveal && textOverflows { isTextExpanded = true }
+        }
     }
 
     @State private var textOverflows = false
@@ -279,6 +299,10 @@ struct MessageBubbleView: View {
     private func updateTextOverflow(width: CGFloat) {
         guard width > 0 else { return }
         textOverflows = MessageMarkdownRenderer.overflows(linkedNSAttributedText, width: width, maximumLines: 6)
+        if revealSearchText && textOverflows { isTextExpanded = true }
+        if let searchMatchedText {
+            searchTextOffset = MessageMarkdownRenderer.matchOffset(linkedNSAttributedText, text: searchMatchedText, width: width)
+        }
     }
 
     @ViewBuilder

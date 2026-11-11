@@ -5,7 +5,7 @@ export function searchPreview(text: string, query: string, limit = 140): { text:
   const segments = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text));
   const hit = matches[0]?.start ?? 0;
   const hitIndex = Math.max(0, segments.findIndex(s => s.index >= hit));
-  const first = hitIndex > 36 ? hitIndex - 24 : 0;
+  const first = segments.length > limit && hitIndex > 36 ? hitIndex - 24 : 0;
   const last = Math.min(segments.length, first + Math.max(1, limit));
   const start = segments[first]?.index ?? 0, end = segments[last]?.index ?? text.length;
   let output = first ? '…' : '';

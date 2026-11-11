@@ -13,7 +13,7 @@ import { MessageBubble } from './MessageBubble';
 import { MessageTextEditor } from './MessageTextEditor';
 import { InputBar } from './InputBar';
 import { useAuth } from '../contexts/AuthContext';
-import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, Search } from 'lucide-react';
+import { Lightbulb, GripVertical, Trash2, Plus, RotateCw, Search, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
 import { Modal } from './Modal';
@@ -74,7 +74,7 @@ export const MessageListView: React.FC = () => {
     return () => window.removeEventListener('keydown', keyboardNavigation, true);
   }, []);
   const [searchPointerOpened, setSearchPointerOpened] = useState(false);
-  const [searchTarget, setSearchTarget] = useState<{id: string; nonce: number} | null>(null);
+  const [searchTarget, setSearchTarget] = useState<{id: string; nonce: number; matchedText?: string} | null>(null);
   const scrollRevision = useRef(0);
   const searchNavigation = useRef(false);
   const [categoryMenu, setCategoryMenu] = useState<CategoryMenuAnchor | null>(null);
@@ -479,14 +479,14 @@ export const MessageListView: React.FC = () => {
     if (!searchTarget || !listRef.current) return;
     return revealSearchTarget(listRef.current, searchTarget.id, () => {
       setToastMsg(t('search.unavailable')); setShowToast(true);
-    });
+    }, searchTarget.matchedText);
   }, [searchTarget, t]);
-  const selectSearchResult = (id: string) => {
+  const selectSearchResult = (id: string, matchedText?: string) => {
     const live = messages.find(message => message.id === id && !message.isDeleted);
     if (!live) { setToastMsg(t('search.unavailable')); setShowToast(true); return false; }
     ++scrollRevision.current; searchNavigation.current = true;
     setSelectedCategoryId(categories.some(category => category.id === live.categoryId) ? live.categoryId! : ALL_CATEGORY_ID);
-    setShowSearch(false); setSearchTarget({ id, nonce: Date.now() });
+    setShowSearch(false); setSearchTarget({ id, matchedText, nonce: Date.now() });
     return true;
   };
 
@@ -514,7 +514,7 @@ export const MessageListView: React.FC = () => {
         <div className="category-toolbar">
           <div className="category-switcher" ref={sidebarSort.containerRef}>
             <button className={`category-chip has-badge ${selectedScopeIsAll ? 'active' : ''} category-all`} aria-pressed={selectedScopeIsAll} data-category-id={ALL_CATEGORY_ID} onKeyDown={navigateCategories} onClick={() => activateCategory(ALL_CATEGORY_ID)}>
-              {t('common.all', 'All')}
+              <LayoutGrid size={16} aria-hidden="true" />{t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
             {visibleSingleModeCategories.map((category) => (
