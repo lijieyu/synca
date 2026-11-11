@@ -125,7 +125,7 @@ actor MessageSearchIndex {
         fractionalDate.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     }
 
-    func search(_ messages: [SyncaMessage], query: String, categoryID: String? = nil) -> [MessageSearchResult] {
+    func search(_ messages: [SyncaMessage], query: String, categoryID: String? = nil, excerptTailContext: Int = 48) -> [MessageSearchResult] {
         let liveIDs = Set(messages.filter { !$0.isDeleted }.map(\.id))
         entries = entries.filter { liveIDs.contains($0.key) }
         let liveText = Set(messages.filter { !$0.isDeleted }.flatMap { [$0.textContent ?? "", $0.fileName ?? ""] })
@@ -160,7 +160,7 @@ actor MessageSearchIndex {
             else { continue }
             let textRanges = mappedField(text).matches(raw: normalizedQuery, latin: latinQuery, phonetic: usePinyin)
             let filenameRanges = mappedField(filename).matches(raw: normalizedQuery, latin: latinQuery, phonetic: usePinyin)
-            let preview = Self.excerpt(text.isEmpty ? filename : text, ranges: text.isEmpty ? filenameRanges : textRanges)
+            let preview = Self.excerpt(text.isEmpty ? filename : text, ranges: text.isEmpty ? filenameRanges : textRanges, tailContext: excerptTailContext)
             matches.append((MessageSearchResult(message: message, rank: rank, excerpt: preview.text,
                                                 excerptRanges: preview.ranges, filenameRanges: filenameRanges,
                                                 matchedText: textRanges.first.flatMap { Range(NSRange(location: $0.lowerBound, length: $0.count), in: text) }.map { String(text[$0]) }), entry.createdAt))
@@ -189,7 +189,7 @@ actor MessageSearchIndex {
                       locale: Locale(identifier: "en_US_POSIX")).lowercased()
     }
 
-    private static func excerpt(_ source: String, ranges sourceRanges: [Range<Int>]) -> (text: String, ranges: [Range<Int>]) {
+    private static func excerpt(_ source: String, ranges sourceRanges: [Range<Int>], tailContext: Int) -> (text: String, ranges: [Range<Int>]) {
         // Compact line breaks before slicing, retaining offsets into the displayed text.
         var value = ""
         var offsets = [Int](repeating: 0, count: source.utf16.count + 1)
@@ -216,7 +216,13 @@ actor MessageSearchIndex {
 
         if value.count <= 160 { return (value, ranges) }
         let match = ranges.first.flatMap { Range(NSRange(location: $0.lowerBound, length: $0.count), in: value) }
-        let start = match.map { value.index($0.lowerBound, offsetBy: -12, limitedBy: value.startIndex) ?? value.startIndex } ?? value.startIndex
+        // Recover preceding context at the tail without pushing the hit below
+        // the three-line preview. Desktop callers can afford a larger budget.
+        let hit = match.map { value.distance(from: value.startIndex, to: $0.lowerBound) } ?? 0
+        let before = 32
+        let tailBudget = min(159, max(before, tailContext))
+        let first = max(0, max(hit - tailBudget, min(hit - before, value.count - 160)))
+        let start = value.index(value.startIndex, offsetBy: first)
         let end = value.index(start, offsetBy: 160, limitedBy: value.endIndex) ?? value.endIndex
         let offset = start.utf16Offset(in: value), endOffset = end.utf16Offset(in: value)
         let prefix = start == value.startIndex ? "" : "…"

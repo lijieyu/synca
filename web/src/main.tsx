@@ -6,6 +6,10 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import './i18n';
 import './index.css';
 import './calm.css';
+import './focus.css';
+import { installFocusModality } from './utils/focusModality';
+
+installFocusModality();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

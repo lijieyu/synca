@@ -80,3 +80,25 @@ test('short excerpts retain their beginning even when the hit occurs late', asyn
  const text='开头上下文。'.repeat(8)+'牛奶';
  for(const query of ['牛奶','niunai','nn']) {const preview=searchPreview(text,query);assert.equal(preview.text,text);assert.equal(preview.text.slice(preview.ranges[0].start,preview.ranges[0].end),'牛奶');}
 });
+
+test('tail previews recover readable context after compacting paragraph whitespace', async () => {
+ const {searchPreview}=await import('../src/utils/searchExcerpt');
+ for (const separator of ['', '\n\t'.repeat(80)]) {
+  const text='前文。'.repeat(200)+separator+'面试安排';
+  const preview=searchPreview(text,'mianshi');
+  assert.ok(Array.from(preview.text).length >= 50, 'Tail hit must include useful preceding context');
+  assert.ok(preview.ranges[0].start <= 65, 'Tail hit must remain inside the three-line preview');
+  assert.equal(preview.text.slice(preview.ranges[0].start,preview.ranges[0].end),'面试');
+  assert.ok(!preview.text.includes('\n'));
+ }
+});
+
+test('desktop tail budget fills context without splitting graphemes or losing hits', async () => {
+ const {searchPreview}=await import('../src/utils/searchExcerpt');
+ const text='😀Cafe\u0301前文。'.repeat(100)+'面试准备';
+ const preview=searchPreview(text,'ms',160,96);
+ const graphemes=Array.from(new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(preview.text));
+ assert.equal(graphemes.length,101);
+ assert.equal(preview.text.slice(preview.ranges[0].start,preview.ranges[0].end),'面试');
+ assert.ok(!preview.text.includes('�'));
+});

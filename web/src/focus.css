@@ -1,0 +1,17 @@
+/* Shared by the app shell and dialogs rendered into document.body. */
+html[data-focus-modality] :is(.calm-shell, .modal-content) :focus-visible {
+  outline: 1.5px solid var(--text-secondary);
+  outline-offset: 2px;
+}
+html[data-focus-modality] .calm-sidebar .category-chip:focus-visible { outline-offset: -3px; }
+html[data-focus-modality] .modal-content:focus { outline: none; }
+html[data-focus-modality=pointer] :is(.calm-shell, .modal-content) :focus-visible { outline: none; }
+/* Text editing retains the existing field boundary; keyboard navigation subtly emphasizes it. */
+html[data-focus-modality] .modal-content .message-editor-input:focus-visible { outline: none; }
+html[data-focus-modality=keyboard] .modal-content .message-editor-input:focus-visible { border-color: var(--text-secondary); }
+@media (forced-colors: active) {
+  html[data-focus-modality=keyboard] :is(.calm-shell, .modal-content) :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

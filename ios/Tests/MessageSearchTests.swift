@@ -74,10 +74,16 @@ struct MessageSearchTests {
         let short = await index.search([record("short", shortText)], query: "关键词")
         precondition(short.first?.excerpt == shortText, "Short excerpts retain their full beginning")
         let multiline = await index.search([record("multiline", String(repeating: "前文\n", count: 80) + "目标关键词")], query: "关键词")
-        precondition(multiline[0].excerptRanges[0].lowerBound <= 13, "Long excerpt hit stays close to the beginning of the three-line preview")
+        precondition(multiline[0].excerptRanges[0].lowerBound <= 65, "Long excerpt hit stays close to the beginning of the three-line preview")
         precondition(!multiline[0].excerpt.contains("\n"), "Multiline previews keep compact context")
         let multilineRange = multiline[0].excerptRanges[0]
         precondition((multiline[0].excerpt as NSString).substring(with: NSRange(location: multilineRange.lowerBound, length: multilineRange.count)) == "关键词", "Compacted whitespace retains Unicode highlight offsets")
+        precondition(multiline[0].excerpt.count >= 50, "Tail hit must retain useful preceding context")
+        let desktopText = String(repeating: "😀Cafe\u{0301}前文。", count: 100) + "面试准备"
+        let desktop = await index.search([record("desktop", desktopText)], query: "ms", excerptTailContext: 96)
+        precondition(desktop[0].excerpt.count == 101, "Desktop tail budget recovers context in graphemes")
+        let desktopRange = desktop[0].excerptRanges[0]
+        precondition((desktop[0].excerpt as NSString).substring(with: NSRange(location: desktopRange.lowerBound, length: desktopRange.count)) == "面试")
         let many = await index.search((0..<600).map { record("count-\($0)", "match") }, query: "match")
         precondition(many.count == 600, "Result count includes every match")
         let tail = await index.search([record("long", String(repeating: "记录。", count: 3000) + "目标关键词")], query: "关键词")
