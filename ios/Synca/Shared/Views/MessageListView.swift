@@ -95,6 +95,7 @@ struct MessageListView: View {
     @EnvironmentObject var purchaseManager: PurchaseManager
     @ObservedObject private var settings = SettingsManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showSearch = false
     @State private var searchQuery = ""
     @State private var searchAnchorY: CGFloat?
@@ -1314,7 +1315,7 @@ struct MessageListView: View {
                 #if os(macOS)
                 .frame(width: 18, height: 18)
                 #else
-                .frame(width: 24, height: 24)
+                .frame(width: 26, height: 26)
                 #endif
                 .frame(width: 44, height: 44)
         }
@@ -1756,7 +1757,14 @@ struct MessageListView: View {
             revealSearchText: searchTarget == message.id,
             searchMatchedText: searchTarget == message.id ? searchMatchedText : nil
         )
-        .background(Color.blue.opacity(searchHighlight == message.id ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 12))
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(colorScheme == .dark
+                      ? Color(red: 35 / 255, green: 73 / 255, blue: 108 / 255)
+                      : Color(red: 217 / 255, green: 235 / 255, blue: 1))
+                .padding(.vertical, 6)
+                .opacity(searchHighlight == message.id ? 1 : 0)
+        }
         .id(message.listRowID)
     }
 
@@ -3276,6 +3284,7 @@ private struct MacCategoryReorderStack<Row: View>: View {
     @State private var translation: CGFloat = 0
     @State private var saving = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     private var ordered: [SyncaMessageCategory] {
         guard !previewIDs.isEmpty else { return categories }

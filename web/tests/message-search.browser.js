@@ -3,7 +3,7 @@ async (page) => {
  p.on('pageerror',e=>errors.push(e.message));
  const stamp='2026-11-10T08:00:00Z';
  const categories=['default','work','life'].map((id,i)=>({id,name:id==='work'?'工作':'生活',isDefault:i===0,color:'sky',sortOrder:i,createdAt:stamp,updatedAt:stamp}));
- let messages=Array.from({length:75},(_,i)=>({id:'text'+i,type:'text',textContent:i===15?'牛奶采购清单':i===74?'最后一条记录':i===10?'超长记录\n'+('测试长段落。\n'.repeat(250)+'隐藏命中段落'):'演示记录 '+i+' '+('普通文本。'.repeat(12)),categoryId:i%2?'work':'life',isCleared:i===15,isDeleted:false,createdAt:new Date(Date.parse(stamp)+i*1000).toISOString(),updatedAt:stamp}));
+ let messages=Array.from({length:75},(_,i)=>({id:'text'+i,type:'text',textContent:i===15?'牛奶采购清单 · glyph typography gy pq 中文':i===74?'最后一条记录':i===10?'超长记录\n'+('测试长段落。\n'.repeat(250)+'隐藏命中段落'):'演示记录 '+i+' '+('普通文本。'.repeat(12)),categoryId:i%2?'work':'life',isCleared:i===15,isDeleted:false,createdAt:new Date(Date.parse(stamp)+i*1000).toISOString(),updatedAt:stamp}));
  messages.push({id:'late-image',type:'image',imageUrl:'/api/media/late.svg',fileName:'延迟图片.svg',categoryId:'life',isCleared:false,isDeleted:false,createdAt:new Date(Date.parse(stamp)+73500).toISOString(),updatedAt:stamp});
  await ctx.addInitScript(()=>{localStorage.setItem('authToken','isolated-search');localStorage.setItem('userEmail','demo@example.com');localStorage.setItem('synca.language','zh-Hans');localStorage.setItem('synca.selectedCategory.demo@example.com','life');});
  await ctx.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname!=='127.0.0.1')return route.abort();const reply=json=>route.fulfill({json});if(u.pathname==='/me/access-status')return reply({email:'demo@example.com',accessStatus:{plan:'pro',isUnlimited:true,todayUsed:0}});if(u.pathname==='/messages')return reply({messages});if(u.pathname==='/message-categories')return reply({categories});if(u.pathname==='/api/media/late.svg'){await new Promise(resolve=>setTimeout(resolve,500));return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="#b9d7ed"/></svg>'});}return route.continue();});
@@ -12,6 +12,18 @@ async (page) => {
  const search=async q=>{await p.getByRole('button',{name:'搜索记录',exact:true}).click();await p.getByRole('searchbox').fill(q);await p.locator('.message-search-result').first().waitFor();};
  try {
  await p.goto('http://127.0.0.1:5199/');await p.locator('[data-message-id="text74"]').waitFor();
+ // Short and long editors initialize once at the end, including visible final line.
+ for(const id of ['text74','text10']) {
+  await p.locator('[data-message-id="'+id+'"] button[aria-label="编辑文本"]').click();
+  const editor=p.locator('.message-editor-input');await editor.waitFor();
+  assert(await editor.evaluate(el=>el.selectionStart===el.value.length&&el.selectionEnd===el.value.length),'editor caret did not open at end');
+  assert(await editor.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop<2),'editor final line is hidden');
+  await p.waitForTimeout(300);await p.screenshot({path:'/tmp/synca-round2-editor-'+id+'.png'});
+  await editor.press('Home');const caret=await editor.evaluate(el=>el.selectionStart);
+  await editor.dispatchEvent('compositionstart');await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p.waitForTimeout(150);
+  assert(await editor.evaluate(el=>el.selectionStart)===caret,'editor rerender stole composing caret');
+  await editor.dispatchEvent('compositionend');await p.getByRole('button',{name:'取消',exact:true}).click();
+ }
  const trigger=p.getByRole('button',{name:'搜索记录',exact:true});
  await trigger.click();
  await p.getByRole('searchbox').waitFor();
@@ -21,10 +33,48 @@ async (page) => {
  assert(await p.getByRole('searchbox').getAttribute('placeholder')==='文字、文件名或拼音','placeholder not unified');
  await p.getByText('输入关键词，查找你的记录',{exact:true}).waitFor();
  assert(await p.locator('.message-search-field').evaluate(el=>getComputedStyle(el).outlineStyle==='none' && getComputedStyle(el).borderTopWidth==='0px'),'search field has focus border');
+ const emptyHeight=await p.locator('.message-search-field').evaluate(el=>el.getBoundingClientRect().height);
  await p.screenshot({path:'/tmp/synca-search-polish-web-empty.png'});
  await p.getByRole('searchbox').fill('牛奶');
  await p.locator('.message-search-result mark').first().waitFor();
  assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','literal highlight');
+ const textHeight=await p.locator('.message-search-field').evaluate(el=>el.getBoundingClientRect().height);
+ assert(textHeight===emptyHeight,'field changed height '+emptyHeight+' -> '+textHeight);
+ const countBefore=await p.locator('.message-search-status').innerText();
+ await p.getByRole('searchbox').dispatchEvent('compositionstart');
+ await p.getByRole('searchbox').fill('niun');
+ await p.getByRole('searchbox').dispatchEvent('keydown',{key:'Escape',isComposing:true});
+ assert(await p.getByRole('dialog').count()===1,'IME Escape closed search dialog');
+ await p.getByRole('searchbox').dispatchEvent('keydown',{key:'Escape',keyCode:229});
+ assert(await p.getByRole('dialog').count()===1,'IME legacy Escape closed search dialog');
+ await p.waitForTimeout(200);
+ assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','IME draft replaced committed results');
+ assert(await p.locator('.message-search-status').innerText()===countBefore,'IME draft changed count');
+ await p.getByRole('searchbox').fill('牛奶');
+ await p.getByRole('searchbox').dispatchEvent('compositionend',{data:'牛奶'});
+ await p.getByRole('searchbox').fill('演示');
+ assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','pending search removed completed results');
+ await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='演示');
+ await p.locator('.message-search-result').first().hover();
+ assert(await p.locator('.message-search-result').first().evaluate(el=>getComputedStyle(el,'::before').bottom==='6px'),'hover background touches divider');
+ await p.screenshot({path:'/tmp/synca-search-round2-hover-light.png'});await p.emulateMedia({colorScheme:'dark'});await p.screenshot({path:'/tmp/synca-search-round2-hover-dark.png'});await p.emulateMedia({colorScheme:'light'});
+ await p.getByRole('searchbox').fill('牛奶');
+ await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='牛奶');
+ assert(await p.locator('.message-search-result mark').first().evaluate(el=>getComputedStyle(el).fontWeight===getComputedStyle(el.parentElement).fontWeight),'marker changed original font weight');
+ await p.getByRole('searchbox').dispatchEvent('compositionstart');await p.getByRole('searchbox').fill('');await p.waitForTimeout(120);
+ assert(await p.locator('.message-search-result mark').first().innerText()==='牛奶','empty marked replacement cleared committed results');
+ await p.getByRole('searchbox').fill('牛奶');await p.getByRole('searchbox').dispatchEvent('compositionend',{data:''});
+ await p.getByRole('searchbox').dispatchEvent('compositionstart');await p.getByRole('searchbox').fill('ni');
+ await p.getByRole('button',{name:'清除搜索',exact:true}).click();await p.getByRole('searchbox').dispatchEvent('compositionend',{data:'ni'});await p.waitForTimeout(200);
+ assert(await p.getByRole('searchbox').inputValue()==='' && await p.locator('.message-search-result').count()===0,'clear during composition restored stale draft');
+ assert(await p.locator('.message-search-field').evaluate(el=>el.getBoundingClientRect().height)===emptyHeight,'clear changed field height');
+ await p.getByRole('searchbox').fill('演示');await p.waitForTimeout(90);await p.getByRole('searchbox').fill('不存在');await p.getByRole('searchbox').fill('牛奶');
+ await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='牛奶');await p.waitForTimeout(200);
+ assert(await p.locator('.message-search-result').count()===1,'rapid query accepted stale result');
+ await p.getByRole('searchbox').fill('gy');await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='gy');
+ await p.screenshot({path:'/tmp/synca-search-round2-glyph-light.png'});await p.emulateMedia({colorScheme:'dark'});await p.screenshot({path:'/tmp/synca-search-round2-glyph-dark.png'});await p.emulateMedia({colorScheme:'light'});
+ await p.getByRole('searchbox').fill('牛奶');await p.waitForFunction(()=>document.querySelector('.message-search-result mark')?.textContent==='牛奶');
+
  await p.keyboard.press('Escape');
  assert(await trigger.evaluate(el=>getComputedStyle(el).outlineStyle==='none'),'pointer trigger retained outline after Escape');
  await p.keyboard.press('Tab');await p.keyboard.press('Shift+Tab');
@@ -56,6 +106,6 @@ async (page) => {
  await p.getByRole('searchbox').fill('');assert(await p.locator('.message-search-result').count()===0,'empty query retained old results');await p.getByRole('searchbox').fill('牛奶');await p.locator('.message-search-result').first().waitFor();messages=messages.filter(m=>m.id!=='text15');await p.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await p.getByText('没有找到相关记录',{exact:true}).waitFor();
  await p.keyboard.press('Escape');await p.setViewportSize({width:1200,height:850});await p.emulateMedia({colorScheme:'light',reducedMotion:'reduce'});
  const all=p.locator('.category-all');await all.focus();assert(await all.locator('svg').count()===1,'All overview icon missing');assert(await all.evaluate(el=>getComputedStyle(el).outlineOffset==='-3px'),'focus ring clips at scroll edge');await p.screenshot({path:'/tmp/synca-search-focus-first.png'});const last=p.locator('.category-switcher .category-chip').last();await last.focus();assert(await last.evaluate(el=>getComputedStyle(el).outlineOffset==='-3px'),'last category ring clips');await p.screenshot({path:'/tmp/synca-search-focus-last.png'});
- assert(errors.length===0,errors.join('\n'));return {passed:true,checks:['cancel preserves scroll','shortcut','scope filter','empty query','remote deletion','completed target','last target','delayed actual image','late layout','manual scroll cancels correction','folded late hit expands and locates','live category','mobile width','dark/reduced motion','unchanged background refresh preserves rows and scroll','centered zero results','neutral clear','overview icon and inset keyboard focus'],manualScroll:manual,screenshots:['/tmp/synca-search-desktop.png','/tmp/synca-search-target.png','/tmp/synca-search-mobile.png','/tmp/synca-search-dark.png']};
+ assert(errors.length===0,errors.join('\n'));return {passed:true,fieldHeight:emptyHeight,checks:['fixed field height','IME candidate and empty replacement retain committed results/count','cancel composition','IME Escape preserves modal (modern and legacy)','clear during composition','rapid stale query','no font-weight change','pending worker keeps rows','editor initial end caret short and long','editor end scrolled visible','editor composing caret survives rerender','cancel preserves scroll','shortcut','scope filter','empty query','remote deletion','completed target','last target','delayed actual image','late layout','manual scroll cancels correction','folded late hit expands and locates','live category','mobile width','dark/reduced motion','unchanged background refresh preserves rows and scroll','centered zero results','neutral clear','overview icon and inset keyboard focus'],manualScroll:manual,screenshots:['/tmp/synca-search-desktop.png','/tmp/synca-search-target.png','/tmp/synca-search-mobile.png','/tmp/synca-search-dark.png']};
  }finally{await ctx.close();}
 }

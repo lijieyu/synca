@@ -3,6 +3,10 @@
     {
       "filename": "BroomOutline.svg",
       "idiom": "universal"
+    },
+    {
+      "filename": "BroomOutlineMac.svg",
+      "idiom": "mac"
     }
   ],
   "info": {

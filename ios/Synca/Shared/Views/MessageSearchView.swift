@@ -13,11 +13,11 @@ struct MessageSearchView: View {
     let currentCategoryID: String?
     @Binding var query: String
     let onSelect: (MessageSearchResult) -> Bool
+    @State private var hasDraft = false
+    @State private var clearRevision = 0
     @State private var currentOnly = false
     @State private var results: [MessageSearchResult] = []
-    @State private var searching = false
     @State private var displayedQuery = ""
-    @State private var displayedScope = false
     @State private var unavailable = false
     @State private var revision = 0
     @State private var index = MessageSearchIndex()
@@ -45,11 +45,12 @@ struct MessageSearchView: View {
         VStack(spacing: 16) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
-                SearchQueryField(text: $query, placeholder: String(syncaLocalized: "search.placeholder"))
+                SearchQueryField(text: $query, placeholder: String(syncaLocalized: "search.placeholder"),
+                                 clearRevision: clearRevision, onDraftChange: { hasDraft = $0 })
                     .frame(maxWidth: .infinity)
                     .frame(height: queryFieldHeight)
-                if !query.isEmpty {
-                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                if !query.isEmpty || hasDraft {
+                    Button { query = ""; hasDraft = false; clearRevision += 1 } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
                         .buttonStyle(.plain).accessibilityLabel(Text("search.clear"))
                 }
             }
@@ -61,10 +62,8 @@ struct MessageSearchView: View {
                 }.pickerStyle(.segmented).labelsHidden()
             }
             if unavailable { Text("search.unavailable").font(.callout).foregroundStyle(.secondary) }
-            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || displayedQuery.isEmpty {
                 emptyState("search.prompt", symbol: "magnifyingglass")
-            } else if searching {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if results.isEmpty {
                 emptyState("search.empty", symbol: "doc.text.magnifyingglass")
             } else {
@@ -124,19 +123,14 @@ struct MessageSearchView: View {
             guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 results = []
                 displayedQuery = ""
-                searching = false
                 return
             }
-            searching = displayedQuery != query || displayedScope != currentOnly
             let requestedQuery = query
-            let requestedScope = currentOnly
             let snapshot = syncManager.messages
             let matches = await index.search(snapshot, query: query, categoryID: currentOnly ? currentCategoryID : nil)
             guard !Task.isCancelled else { return }
             results = matches
             displayedQuery = requestedQuery
-            displayedScope = requestedScope
-            searching = false
         }
     }
 
@@ -171,16 +165,40 @@ struct MessageSearchView: View {
             : message.categoryName ?? String(syncaLocalized: "message_category.default_badge")
     }
 
-    private func highlightedText(_ text: String, ranges: [Range<Int>], font: Font = .body) -> Text {
+    private func highlightedText(_ text: String, ranges: [Range<Int>], font: Font = .body) -> some View {
         var attributed = AttributedString(text)
         for range in ranges {
             guard let sourceRange = Range(NSRange(location: range.lowerBound, length: range.count), in: text),
                   let start = AttributedString.Index(sourceRange.lowerBound, within: attributed),
                   let end = AttributedString.Index(sourceRange.upperBound, within: attributed) else { continue }
-            attributed[start..<end].backgroundColor = Color(red: 0.25, green: 0.65, blue: 1).opacity(colorScheme == .dark ? 0.28 : 0.20)
-            attributed[start..<end].font = font.weight(.semibold)
+            attributed[start..<end].backgroundColor = markerColor
         }
-        return Text(attributed)
+        return Group {
+            if #available(iOS 18.0, macOS 15.0, *) {
+                markedText(text, ranges: ranges).textRenderer(SearchMarkerRenderer(color: markerColor))
+            } else {
+                Text(attributed)
+            }
+        }
+    }
+
+    private var markerColor: Color {
+        colorScheme == .dark ? Color(red: 36/255, green: 87/255, blue: 136/255)
+            : Color(red: 197/255, green: 227/255, blue: 1)
+    }
+
+    @available(iOS 18.0, macOS 15.0, *)
+    private func markedText(_ text: String, ranges: [Range<Int>]) -> Text {
+        var output = Text("")
+        var cursor = text.startIndex
+        for range in ranges.sorted(by: { $0.lowerBound < $1.lowerBound }) {
+            guard let span = Range(NSRange(location: range.lowerBound, length: range.count), in: text),
+                  span.lowerBound >= cursor else { continue }
+            output = output + Text(String(text[cursor..<span.lowerBound]))
+                + Text(String(text[span])).customAttribute(SearchMarkerAttribute())
+            cursor = span.upperBound
+        }
+        return output + Text(String(text[cursor...]))
     }
 
     private func emptyState(_ title: LocalizedStringKey, symbol: String) -> some View {
@@ -198,16 +216,118 @@ struct MessageSearchView: View {
 }
 
 private struct SearchResultButtonStyle: ButtonStyle {
-    @State private var isHovered = false
     func makeBody(configuration: Configuration) -> some View {
+        SearchResultButtonBody(configuration: configuration)
+    }
+}
+
+private struct SearchResultButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    @State private var isHovered = false
+    var body: some View {
         configuration.label
-            .background(Color.primary.opacity(configuration.isPressed ? 0.14 : isHovered ? 0.08 : 0),
-                        in: RoundedRectangle(cornerRadius: 8))
-            .onHover { isHovered = $0 }
+            .background {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(configuration.isPressed ? 0.14 : isHovered ? 0.06 : 0))
+                    .padding(.vertical, 6)
+            }
+            #if os(macOS)
+            .background {
+                GeometryReader { geometry in
+                    SearchResultHoverTracker(isHovered: $isHovered)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+            }
+            #endif
+    }
+}
+
+@available(iOS 18.0, macOS 15.0, *)
+private struct SearchMarkerAttribute: TextAttribute {}
+
+@available(iOS 18.0, macOS 15.0, *)
+private struct SearchMarkerRenderer: TextRenderer {
+    let color: Color
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        for line in layout {
+            for run in line {
+                if run[SearchMarkerAttribute.self] != nil {
+                    context.fill(Path(roundedRect: run.typographicBounds.rect, cornerRadius: 2), with: .color(color))
+                }
+                context.draw(run)
+            }
+        }
     }
 }
 
 #if os(macOS)
+/// AppKit owns tracking independently of button style reconstruction and key-window status.
+private struct SearchResultHoverTracker: NSViewRepresentable {
+    @Binding var isHovered: Bool
+    func makeNSView(context: Context) -> TrackingView {
+        let view = TrackingView()
+        view.onHover = { isHovered = $0 }
+        return view
+    }
+    func updateNSView(_ view: TrackingView, context: Context) {
+        view.onHover = { isHovered = $0 }
+        view.refreshHover()
+    }
+    static func dismantleNSView(_ view: TrackingView, coordinator: ()) {
+        view.stopTracking()
+    }
+
+    final class TrackingView: NSView {
+        var onHover: ((Bool) -> Void)?
+        private var area: NSTrackingArea?
+        private var hovered = false
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateTrackingAreas()
+        }
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            if let area { removeTrackingArea(area) }
+            let next = NSTrackingArea(rect: .zero,
+                options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved],
+                owner: self, userInfo: nil)
+            addTrackingArea(next)
+            area = next
+            refreshHover()
+        }
+        override func mouseEntered(with event: NSEvent) { refreshHover() }
+        override func mouseExited(with event: NSEvent) { setHovered(false) }
+        override func mouseMoved(with event: NSEvent) { refreshHover() }
+        override func layout() {
+            super.layout()
+            refreshHover()
+        }
+        func refreshHover() {
+            guard let window, window.isVisible, !isHiddenOrHasHiddenAncestor else {
+                setHovered(false)
+                return
+            }
+            let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            setHovered(visibleRect.contains(point))
+        }
+        private func setHovered(_ value: Bool) {
+            guard hovered != value else { return }
+            hovered = value
+            // Layout/updateTrackingAreas can run inside SwiftUI's update transaction.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onHover?(self.hovered)
+            }
+        }
+        func stopTracking() {
+            if let area { removeTrackingArea(area) }
+            area = nil
+            onHover = nil
+        }
+    }
+}
+
 /// Observe user intent over the feed, including scrollbar drags, without consuming events.
 struct SearchScrollInterruption: NSViewRepresentable {
     let onScroll: () -> Void
@@ -236,12 +356,17 @@ struct SearchScrollInterruption: NSViewRepresentable {
 // Own the initial selection along with focus: SwiftUI's TextField can reset a
 // notification-based selectAll to a trailing caret during sheet presentation.
 #if os(iOS)
-private struct SearchQueryField: UIViewRepresentable {
+struct SearchQueryField: UIViewRepresentable {
     @Binding var text: String
     let placeholder: String
+    var clearRevision = 0
+    var onDraftChange: (Bool) -> Void = { _ in }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> Field {
         let field = Field()
+        field.onCompositionEnded = { [weak field, weak coordinator = context.coordinator] in
+            guard let field else { return }; coordinator?.changed(field)
+        }
         field.borderStyle = .none
         field.font = .preferredFont(forTextStyle: .body)
         field.adjustsFontForContentSizeCategory = true
@@ -258,14 +383,25 @@ private struct SearchQueryField: UIViewRepresentable {
         context.coordinator.parent = self
         field.placeholder = placeholder
         field.accessibilityLabel = placeholder
-        if field.text != text {
+        if context.coordinator.clearRevision != clearRevision || context.coordinator.lastCommitted != text || (field.markedTextRange == nil && field.text != text) {
+            context.coordinator.clearRevision = clearRevision
+            let externalText = text
+            context.coordinator.applyingExternal = true
+            defer { context.coordinator.applyingExternal = false }
+            context.coordinator.lastCommitted = externalText
             // A differing binding is an external clear, not the editing event.
             // Cancel marked text too so an IME cannot restore the old query.
             field.unmarkText()
-            field.text = text
+            field.text = externalText
         }
     }
     final class Field: UITextField {
+        var onCompositionEnded: (() -> Void)?
+        override func unmarkText() {
+            super.unmarkText()
+            // Input methods can end composition without an editingChanged event.
+            DispatchQueue.main.async { [weak self] in self?.onCompositionEnded?() }
+        }
         private var requestedFocus = false
         override func didMoveToWindow() {
             super.didMoveToWindow()
@@ -280,14 +416,26 @@ private struct SearchQueryField: UIViewRepresentable {
     }
     final class Coordinator: NSObject {
         var parent: SearchQueryField
-        init(_ parent: SearchQueryField) { self.parent = parent }
-        @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
+        var clearRevision = 0
+        var lastCommitted: String
+        var applyingExternal = false
+        init(_ parent: SearchQueryField) { self.parent = parent; lastCommitted = parent.text }
+        @objc func changed(_ field: UITextField) {
+            guard !applyingExternal else { return }
+            if field.markedTextRange == nil {
+                lastCommitted = field.text ?? ""
+                parent.text = lastCommitted
+            }
+            parent.onDraftChange(!(field.text ?? "").isEmpty)
+        }
     }
 }
 #elseif os(macOS)
 private struct SearchQueryField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
+    var clearRevision = 0
+    var onDraftChange: (Bool) -> Void = { _ in }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> Field {
         let field = Field()
@@ -305,12 +453,18 @@ private struct SearchQueryField: NSViewRepresentable {
         context.coordinator.parent = self
         field.placeholderString = placeholder
         field.setAccessibilityLabel(placeholder)
-        if field.stringValue != text {
+        if context.coordinator.clearRevision != clearRevision || context.coordinator.lastCommitted != text || ((field.currentEditor() as? NSTextView)?.hasMarkedText() != true && field.stringValue != text) {
+            let externalText = text
+            context.coordinator.applyingExternal = true
+            defer { context.coordinator.applyingExternal = false }
+            context.coordinator.clearRevision = clearRevision
+            context.coordinator.lastCommitted = externalText
             (field.currentEditor() as? NSTextView)?.unmarkText()
-            field.stringValue = text
+            field.stringValue = externalText
         }
     }
     final class Field: NSTextField {
+        var hasUserEdited = false
         private var requestedFocus = false
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -319,16 +473,24 @@ private struct SearchQueryField: NSViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, let window = self.window else { return }
                 window.makeFirstResponder(self)
-                self.currentEditor()?.selectAll(nil)
+                if !self.hasUserEdited { self.currentEditor()?.selectAll(nil) }
             }
         }
     }
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: SearchQueryField
-        init(_ parent: SearchQueryField) { self.parent = parent }
+        var applyingExternal = false
+        var clearRevision = 0
+        var lastCommitted: String
+        init(_ parent: SearchQueryField) { self.parent = parent; lastCommitted = parent.text }
         func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NSTextField else { return }
-            parent.text = field.stringValue
+            guard !applyingExternal, let field = notification.object as? NSTextField else { return }
+            (field as? Field)?.hasUserEdited = true
+            if (field.currentEditor() as? NSTextView)?.hasMarkedText() != true {
+                lastCommitted = field.stringValue
+                parent.text = lastCommitted
+            }
+            parent.onDraftChange(!field.stringValue.isEmpty)
         }
     }
 }

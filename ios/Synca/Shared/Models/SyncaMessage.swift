@@ -131,9 +131,9 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
         
         // Time format
         let timeFormatter = DateFormatter()
-        timeFormatter.locale = locale
+        timeFormatter.locale = Locale(identifier: "en_US_POSIX")
         timeFormatter.timeZone = calendar.timeZone
-        timeFormatter.setLocalizedDateFormatFromTemplate("jm")
+        timeFormatter.dateFormat = "HH:mm"
         let timeString = timeFormatter.string(from: date)
 
         if calendar.isDate(date, inSameDayAs: now) {

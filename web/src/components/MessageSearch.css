@@ -1,21 +1,25 @@
 .modal-content.message-search-modal { width:640px; max-width:calc(100vw - 32px); height:min(560px, calc(100dvh - 32px)); max-height:calc(100dvh - 32px); display:flex; flex-direction:column; }
-.message-search-field { display:flex; align-items:center; gap:10px; border:0; background:var(--bg-color); border-radius:12px; padding:12px; color:var(--text-secondary); }
+.message-search-field { display:flex; align-items:center; gap:10px; box-sizing:border-box; min-height:52px; flex-shrink:0; border:0; background:var(--bg-color); border-radius:12px; padding:12px; color:var(--text-secondary); }
 
-.message-search-field input { width:100%; min-width:0; border:0; outline:0; background:transparent; color:var(--text-primary); font:inherit; }
+.message-search-field input { width:100%; min-width:0; border:0; outline:0; background:transparent; color:var(--text-primary); font:inherit; line-height:28px; padding:0; }
 .message-search-scopes { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
 .message-search-scopes button { max-width:100%; overflow-wrap:anywhere; font:inherit; font-size:13px; border:1px solid var(--border-color); border-radius:20px; padding:7px 13px; color:var(--text-secondary); background:transparent; }
 .message-search-scopes button[aria-pressed=true] { color:var(--text-primary); background:var(--border-color); }
 .message-search-status { color:var(--text-secondary); font-size:13px; margin:16px 0 8px; }
 .modal-content.message-search-modal .message-search-results { flex:1 1 auto; overflow:auto; min-height:0; overscroll-behavior:contain; }
 .message-search-result { display:block; width:100%; text-align:start; border:0; position:relative; border-radius:8px; background:transparent; color:var(--text-primary); padding:13px 10px; font:inherit; cursor:pointer; }
-.message-search-result:hover { background:var(--border-color); }
+.message-search-result { isolation:isolate; }
+.message-search-result::before { content:""; position:absolute; inset:0 0 6px; border-radius:8px; z-index:-1; pointer-events:none; }
+.message-search-result:hover::before { background:light-dark(#f0f2f5,#30333a); }
 .message-search-preview { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; white-space:pre-wrap; line-height:1.5; }
 .message-search-file { display:block; font-size:13px; overflow-wrap:anywhere; }
 .message-search-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:12px; color:var(--text-secondary); margin-top:7px; }
 .message-search-meta > span { display:inline-flex; align-items:center; gap:3px; }
-.message-bubble.search-target { animation:search-target 1.3s ease-out forwards;  }
-@keyframes search-target { 0% { background:transparent; } 9%,69% { background:rgba(56,131,232,.11); } 100% { background:transparent; } }
-@media(prefers-reduced-motion:reduce) { .message-bubble.search-target { animation:none; background:rgba(56,131,232,.11); } }
+/* Paint inside the row so the separator remains clear without moving content. */
+.message-bubble.search-target { position:relative; isolation:isolate; }
+.message-bubble.search-target::before { content:''; position:absolute; inset:6px 0; border-radius:8px; background:light-dark(#d9ebff,#23496c); z-index:-1; pointer-events:none; animation:search-target 1.3s ease-out forwards; }
+@keyframes search-target { 0% { opacity:0; } 9%,69% { opacity:1; } 100% { opacity:0; } }
+@media(prefers-reduced-motion:reduce) { .message-bubble.search-target::before { animation:none; } }
 
 /* The row is a programmatic reading target; its child actions retain keyboard rings. */
 .message-bubble[data-message-id]:focus { outline:none; }
@@ -23,7 +27,7 @@
 .calm-shell .search-trigger[data-pointer-opened=true]:focus-visible { outline:none; }
 .message-search-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--text-secondary); text-align:center; }
 .message-search-empty p { margin:0; }
-.message-search-result mark { color:inherit; font-weight:600; background:light-dark(#e0efff,#24476b); border-radius:3px; }
+.message-search-result mark { color:inherit; font-weight:inherit; background:light-dark(#c5e3ff,#245788); border-radius:2px; box-decoration-break:clone; -webkit-box-decoration-break:clone; padding:1px 0; }
 
 .message-search-field input::-webkit-search-cancel-button { display:none; }
 .message-search-clear { display:flex; align-items:center; justify-content:center; flex:0 0 28px; height:28px; border:0; border-radius:50%; background:transparent; color:var(--text-secondary); cursor:pointer; }

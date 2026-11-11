@@ -28,7 +28,7 @@ markdown_record = dict(messages[0], id='qa-markdown', textContent=markdown_sampl
 seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-markdown") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps([markdown_record], ensure_ascii=False) + '"#.utf8)) }\n }'
 # Search navigation uses the real feed and a larger account-local synthetic dataset.
 search_messages = [dict(messages[0], id=f'search-{i:03}', textContent=f'工作记录 {i}：跟进日常事项。', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt=f'2026-11-07T10:{i:02}:00.000Z', updatedAt=f'2026-11-07T10:{i:02}:00.000Z') for i in range(35)]
-search_messages += [dict(messages[0], id='search-completed', textContent='面试已完成记录', categoryId='2', categoryName='生活', categoryIsDefault=False, isCleared=True),
+search_messages += [dict(messages[0], id='search-completed', textContent='面试已完成记录：Synca playing，沟通安排', categoryId='2', categoryName='生活', categoryIsDefault=False, isCleared=True),
                     dict(messages[0], id='search-long', textContent='面试长文定位\n' + ('长文本滚动测试。\n' * 180) + '尾部定位验收：准备沟通提纲。', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T10:00:00.000Z'),
                     dict(messages[0], id='search-image', type='image', textContent=None, fileName='面试照片.png', imageUrl='http://127.0.0.1:54671/logo.png', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T09:00:00.000Z')]
 seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-search") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps(search_messages, ensure_ascii=False) + '"#.utf8)); selectedCategoryId = "2" }\n }'
@@ -70,3 +70,13 @@ s=s.replace('schemes:\n','  ScrollUITests:\n    type: bundle.ui-testing\n    pla
 s=s.replace('    test:\n      config: Production','    test:\n      config: Production\n      targets: [ScrollUITests]',1);p.write_text(s)
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)
 print('Fixture ready:',dst)
+
+# Host the real UIKit input for composition/clear regressions.
+(dst/'InputTests').mkdir()
+shutil.copy(Path(__file__).parents[1]/'SearchInputTests.swift', dst/'InputTests/SearchInputTests.swift')
+p=dst/'project.yml'; s=p.read_text()
+s=s.replace('schemes:\n', '  SearchInputTests:\n    type: bundle.unit-test\n    platform: iOS\n    sources: [InputTests]\n    dependencies:\n      - target: Synca\n    settings:\n      base:\n        GENERATE_INFOPLIST_FILE: YES\n        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Synca.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Synca"\n        BUNDLE_LOADER: "$(TEST_HOST)"\nschemes:\n')
+s=s.replace('SWIFT_VERSION: 6.0', 'SWIFT_VERSION: 6.0\n    ENABLE_TESTABILITY: YES')
+s=s.replace('targets: [ScrollUITests]', 'targets: [ScrollUITests, SearchInputTests]')
+p.write_text(s)
+subprocess.run(['xcodegen','generate'],cwd=dst,check=True)
