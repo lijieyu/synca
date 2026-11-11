@@ -1,3 +1,4 @@
+import { formatMessageTime } from '../utils/messageTime';
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
 import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Pencil, Trash2 } from 'lucide-react';
@@ -74,11 +75,6 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     if (ext === 'zip') return <FileArchive size={22} />;
     return <FileType2 size={22} />;
   }, [fileExtension]);
-
-  const formatTime = (isoString: string) => {
-    const d = new Date(isoString);
-    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
-  };
 
   const handleClear = async () => {
     if (isProcessing) return;
@@ -240,7 +236,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
 
         <div className="message-header">
           <div className="message-metadata">
-            <span>{formatTime(message.createdAt)}</span>
+            <span>{formatMessageTime(message.createdAt, i18n.language, t('message.date.yesterday'))}</span>
             {message.categoryName && (
               <>
                 <span>·</span>

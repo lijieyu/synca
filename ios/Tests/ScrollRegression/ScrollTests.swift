@@ -104,6 +104,59 @@ final class ScrollTests: XCTestCase {
         XCTAssertNotEqual(field.value as? String, "照片")
     }
 
+    func testSearchWalkthroughStates() {
+        let app = launch(["--qa-search"])
+        let search = app.buttons["search-open"]
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        search.tap()
+        let field = app.textFields["search-query"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["输入关键词，查找你的记录"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.progressIndicators.firstMatch.exists)
+        attach(app, name: "walkthrough-empty")
+        field.typeText("zzzznotfound")
+        XCTAssertTrue(app.staticTexts["没有找到相关记录"].waitForExistence(timeout: 8))
+        attach(app, name: "walkthrough-no-results")
+        app.buttons["清除搜索"].tap()
+        field.typeText("ms")
+        XCTAssertTrue(app.buttons["search-result-search-completed"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "找到 3 条记录")).firstMatch.waitForExistence(timeout: 5))
+        attach(app, name: "walkthrough-results")
+    }
+
+    func testSearchWalkthroughDarkResults() {
+        let app = launch(["--qa-search", "-appAppearance", "dark"])
+        XCTAssertTrue(app.buttons["search-open"].waitForExistence(timeout: 8))
+        app.buttons["search-open"].tap()
+        let field = app.textFields["search-query"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.typeText("ms")
+        XCTAssertTrue(app.buttons["search-result-search-completed"].waitForExistence(timeout: 8))
+        attach(app, name: "walkthrough-dark-results")
+    }
+
+    func testSearchRevealsFoldedTail() {
+        let app = launch(["--qa-search"])
+        XCTAssertTrue(app.buttons["search-open"].waitForExistence(timeout: 8))
+        app.buttons["search-open"].tap()
+        let field = app.textFields["search-query"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.typeText("尾部定位验收")
+        let result = app.buttons["search-result-search-long"]
+        XCTAssertTrue(result.waitForExistence(timeout: 8))
+        attach(app, name: "walkthrough-tail-excerpt")
+        result.tap()
+        let collapse = app.buttons["收起"].firstMatch
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: collapse)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 8), .completed)
+        attach(app, name: "walkthrough-tail-located")
+        let y = collapse.frame.minY
+        let settled = expectation(description: "Tail anchor stays stable")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { settled.fulfill() }
+        wait(for: [settled], timeout: 4)
+        XCTAssertEqual(collapse.frame.minY, y, accuracy: 6)
+    }
+
     func testCancelSearchPreservesVisibleRecord() {
         let app = launch(["--qa-search"])
         let row = app.otherElements["record-search-completed"].firstMatch

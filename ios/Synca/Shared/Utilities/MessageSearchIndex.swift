@@ -7,6 +7,7 @@ struct MessageSearchResult: Identifiable, Sendable {
     /// Half-open UTF-16 offsets into excerpt and message.fileName, respectively.
     let excerptRanges: [Range<Int>]
     let filenameRanges: [Range<Int>]
+    let matchedText: String?
     var id: String { message.id }
 }
 
@@ -161,7 +162,8 @@ actor MessageSearchIndex {
             let filenameRanges = mappedField(filename).matches(raw: normalizedQuery, latin: latinQuery, phonetic: usePinyin)
             let preview = Self.excerpt(text.isEmpty ? filename : text, ranges: text.isEmpty ? filenameRanges : textRanges)
             matches.append((MessageSearchResult(message: message, rank: rank, excerpt: preview.text,
-                                                excerptRanges: preview.ranges, filenameRanges: filenameRanges), entry.createdAt))
+                                                excerptRanges: preview.ranges, filenameRanges: filenameRanges,
+                                                matchedText: textRanges.first.flatMap { Range(NSRange(location: $0.lowerBound, length: $0.count), in: text) }.map { String(text[$0]) }), entry.createdAt))
         }
         return matches.sorted {
             if $0.0.rank != $1.0.rank { return $0.0.rank < $1.0.rank }
@@ -187,9 +189,34 @@ actor MessageSearchIndex {
                       locale: Locale(identifier: "en_US_POSIX")).lowercased()
     }
 
-    private static func excerpt(_ value: String, ranges: [Range<Int>]) -> (text: String, ranges: [Range<Int>]) {
+    private static func excerpt(_ source: String, ranges sourceRanges: [Range<Int>]) -> (text: String, ranges: [Range<Int>]) {
+        // Compact line breaks before slicing, retaining offsets into the displayed text.
+        var value = ""
+        var offsets = [Int](repeating: 0, count: source.utf16.count + 1)
+        var sourceOffset = 0
+        var outputOffset = 0
+        var previousWhitespace = false
+        for character in source {
+            let original = String(character)
+            let whitespace = character.isWhitespace
+            let replacement = whitespace ? (previousWhitespace ? "" : " ") : original
+            for unit in 0..<original.utf16.count {
+                offsets[sourceOffset + unit] = outputOffset + min(unit, replacement.utf16.count)
+            }
+            value += replacement
+            sourceOffset += original.utf16.count
+            outputOffset += replacement.utf16.count
+            offsets[sourceOffset] = outputOffset
+            previousWhitespace = whitespace
+        }
+        let ranges = sourceRanges.compactMap { range -> Range<Int>? in
+            let lower = offsets[range.lowerBound], upper = offsets[range.upperBound]
+            return lower < upper ? lower..<upper : nil
+        }
+
+        if value.count <= 160 { return (value, ranges) }
         let match = ranges.first.flatMap { Range(NSRange(location: $0.lowerBound, length: $0.count), in: value) }
-        let start = match.map { value.index($0.lowerBound, offsetBy: -32, limitedBy: value.startIndex) ?? value.startIndex } ?? value.startIndex
+        let start = match.map { value.index($0.lowerBound, offsetBy: -12, limitedBy: value.startIndex) ?? value.startIndex } ?? value.startIndex
         let end = value.index(start, offsetBy: 160, limitedBy: value.endIndex) ?? value.endIndex
         let offset = start.utf16Offset(in: value), endOffset = end.utf16Offset(in: value)
         let prefix = start == value.startIndex ? "" : "…"

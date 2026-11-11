@@ -58,6 +58,10 @@ struct MessageMarkdownTests {
             fragments += 1
         }
         precondition(fragments > 1)
+        let tail = MessageMarkdownRenderer.render(String(repeating: "前面的段落\n", count: 100) + "**目标关键词**", baseColor: .labelColor)
+        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "目标关键词", width: 300) > 1000, "Deep rendered hit anchors beyond collapsed text")
+        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "不存在", width: 300) == 0, "Missing rendered text safely falls back to top")
+        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "前面的段落", width: 300) == 0, "Beginning hit requires no offset")
         print("PASS: native Markdown styles, nested lists, links, plain text, incomplete markup and rendered six-line overflow")
     }
 }

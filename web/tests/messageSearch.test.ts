@@ -75,3 +75,8 @@ test('contextual Greek case folding matches original text and lowercase queries'
   assert.deepEqual(searchMatchRanges('😀 ΟΣ notes',query),[{start:3,end:5}]);
  }
 });
+test('short excerpts retain their beginning even when the hit occurs late', async () => {
+ const {searchPreview}=await import('../src/utils/searchExcerpt');
+ const text='开头上下文。'.repeat(8)+'牛奶';
+ for(const query of ['牛奶','niunai','nn']) {const preview=searchPreview(text,query);assert.equal(preview.text,text);assert.equal(preview.text.slice(preview.ranges[0].start,preview.ranges[0].end),'牛奶');}
+});

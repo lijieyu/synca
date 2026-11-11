@@ -409,8 +409,10 @@
 "search.all" = "全部记录";
 "search.current" = "当前分类";
 "search.unavailable" = "这条记录已不可用。";
-"search.prompt" = "搜索文字或文件名";
+"search.prompt" = "输入关键词，查找你的记录";
 "search.empty" = "没有找到相关记录";
 "search.completed" = "已完成";
 "search.open_hint" = "前往原记录";
 "search.located" = "已定位到原记录";
+
+"search.count" = "找到 %ld 条记录";

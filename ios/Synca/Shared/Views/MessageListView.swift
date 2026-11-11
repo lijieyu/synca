@@ -97,6 +97,8 @@ struct MessageListView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSearch = false
     @State private var searchQuery = ""
+    @State private var searchAnchorY: CGFloat?
+    @State private var searchMatchedText: String?
     @State private var searchTarget: String?
     @State private var searchTargetCategory: String?
     @State private var searchPositionRevision = 0
@@ -449,7 +451,12 @@ struct MessageListView: View {
             shouldScrollToBottomAfterInitialLoad = false
             shouldScrollToBottomAfterSend = false
             showSearch = true
-        } label: { Image(systemName: "magnifyingglass") }
+        } label: {
+            Image(systemName: "magnifyingglass")
+                #if os(macOS)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+                #endif
+        }
             .accessibilityLabel(Text("search.title"))
             .accessibilityIdentifier("search-open")
             .help(Text("search.title"))
@@ -471,7 +478,8 @@ struct MessageListView: View {
             .environmentObject(syncManager).syncaPreferences()
     }
 
-    private func selectSearchResult(_ id: String) -> Bool {
+    private func selectSearchResult(_ result: MessageSearchResult) -> Bool {
+        let id = result.id
         guard let message = syncManager.messages.first(where: { $0.id == id && !$0.isDeleted }) else { return false }
         let category = message.categoryId.flatMap { id in syncManager.categories.first(where: { $0.id == id })?.id }
         scrollTask?.cancel()
@@ -481,7 +489,9 @@ struct MessageListView: View {
         postSendScrollWindowID = UUID()
         collapsedRowTarget = nil
         searchScrollSuppressed = true
+        searchAnchorY = nil
         searchTarget = id
+        searchMatchedText = result.matchedText
         searchHighlight = nil
         searchTargetCategory = category ?? syncManager.allCategoryPseudoId
         showSearch = false
@@ -518,7 +528,7 @@ struct MessageListView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    HStack(spacing: 24) {
+                    HStack(spacing: 8) {
                         searchButton
                         refreshButton.help(Text("message_list.sync"))
                         clearAllButton.help(Text("message_list.clear_completed"))
@@ -745,6 +755,9 @@ struct MessageListView: View {
             }
         } label: {
             HStack(spacing: 10) {
+                if id == syncManager.allCategoryPseudoId {
+                    Image(systemName: "square.grid.2x2").frame(width: 16).accessibilityHidden(true)
+                }
                 Text(title).lineLimit(2).multilineTextAlignment(.leading)
                 Spacer(minLength: 4)
                 if count > 0 { Text(count, format: .number).font(.caption2.weight(.semibold)).monospacedDigit()
@@ -1072,6 +1085,8 @@ struct MessageListView: View {
                             }
                     )
                 }
+                .coordinateSpace(name: "search-feed")
+                .onPreferenceChange(SearchAnchorPosition.self) { searchAnchorY = $0 }
                 .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in interruptSearchPositioning() })
                 #if os(macOS)
                 .background(SearchScrollInterruption(onScroll: interruptSearchPositioning))
@@ -1086,7 +1101,11 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
-                        withTransaction(transaction) { proxy.scrollTo(message.listRowID, anchor: .top) }
+                        if delay == 80 || searchAnchorY.map({ abs($0) > 2 }) != false {
+                        withTransaction(transaction) {
+                            proxy.scrollTo(delay == 80 || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: .top)
+                        }
+                        }
                         // Start feedback with the first positioning pass, not after
                         // all lazy-layout corrections (previously over a second).
                         if delay == 80 {
@@ -1114,7 +1133,10 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
-                        withTransaction(transaction) { proxy.scrollTo(message.listRowID, anchor: .top) }
+                        guard searchAnchorY.map({ abs($0) > 2 }) != false else { return }
+                        withTransaction(transaction) {
+                            proxy.scrollTo(searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: .top)
+                        }
                     }
                 }
                 #if os(iOS)
@@ -1276,6 +1298,9 @@ struct MessageListView: View {
             Task { await self.syncManager.refresh() }
         } label: {
             Image(systemName: "arrow.clockwise")
+                #if os(macOS)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+                #endif
         }
         .buttonStyle(.plain)
         .disabled(self.syncManager.isRefreshing)
@@ -1727,22 +1752,19 @@ struct MessageListView: View {
                     NotificationCenter.default.post(name: .syncaScrollToBottomAfterImageLoad, object: nil)
                 }
             },
-            textExpansion: textExpansionBinding(for: message.id)
+            textExpansion: textExpansionBinding(for: message.id),
+            revealSearchText: searchTarget == message.id,
+            searchMatchedText: searchTarget == message.id ? searchMatchedText : nil
         )
         .background(Color.blue.opacity(searchHighlight == message.id ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.blue.opacity(searchHighlight == message.id ? 0.5 : 0), lineWidth: 1).allowsHitTesting(false))
         .id(message.listRowID)
     }
 
     private func textExpansionBinding(for id: String) -> Binding<Bool>? {
-        #if os(iOS)
         return Binding(
             get: { expandedTextIDs.contains(id) },
             set: { if $0 { expandedTextIDs.insert(id) } else { expandedTextIDs.remove(id) } }
         )
-        #else
-        return nil
-        #endif
     }
 
     @ViewBuilder
@@ -3360,4 +3382,12 @@ private struct MacCategoryReorderStack<Row: View>: View {
 // messageView is materialized. Use the same identity for collapse and search.
 private extension SyncaMessage {
     var listRowID: String { "\(id)-\(isCleared)" }
+}
+
+/// Read-only geometry; emphasis never inserts padding or affects measurement.
+struct SearchAnchorPosition: PreferenceKey {
+    static var defaultValue: CGFloat? { nil }
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        if let next = nextValue() { value = next }
+    }
 }

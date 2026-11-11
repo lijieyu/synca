@@ -126,34 +126,30 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
         return Self.formatRelativeDate(date)
     }
 
-    private static func formatRelativeDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let now = Date()
+    static func formatRelativeDate(_ date: Date, now: Date = Date(), calendar: Calendar = .current,
+                                   locale: Locale = AppLocalization.locale) -> String {
         
         // Time format
         let timeFormatter = DateFormatter()
-        timeFormatter.locale = AppLocalization.locale
-        timeFormatter.setLocalizedDateFormatFromTemplate("Hm")
+        timeFormatter.locale = locale
+        timeFormatter.timeZone = calendar.timeZone
+        timeFormatter.setLocalizedDateFormatFromTemplate("jm")
         let timeString = timeFormatter.string(from: date)
 
-        if calendar.isDateInToday(date) {
+        if calendar.isDate(date, inSameDayAs: now) {
             return timeString
-        } else if calendar.isDateInYesterday(date) {
+        } else if calendar.date(byAdding: .day, value: -1, to: now).map({ calendar.isDate(date, inSameDayAs: $0) }) == true {
             return String(format: String(syncaLocalized: "message.date.yesterday", bundle: .main), timeString)
-        } else if let days = calendar.dateComponents([.day], from: date, to: now).day, days < 7 {
-            // Within a week, show weekday
-            let f = DateFormatter()
-            f.locale = AppLocalization.locale
-            f.setLocalizedDateFormatFromTemplate("EEEE")
-            return "\(f.string(from: date)) \(timeString)"
         } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
             let f = DateFormatter()
-            f.locale = AppLocalization.locale
+            f.locale = locale
+            f.timeZone = calendar.timeZone
             f.setLocalizedDateFormatFromTemplate("Md")
             return "\(f.string(from: date)) \(timeString)"
         } else {
             let f = DateFormatter()
-            f.locale = AppLocalization.locale
+            f.locale = locale
+            f.timeZone = calendar.timeZone
             f.setLocalizedDateFormatFromTemplate("yMd")
             return "\(f.string(from: date)) \(timeString)"
         }

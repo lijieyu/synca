@@ -409,8 +409,10 @@
 "search.all" = "All records";
 "search.current" = "Current category";
 "search.unavailable" = "This record is no longer available.";
-"search.prompt" = "Search text and filenames";
+"search.prompt" = "Enter keywords to find your records";
 "search.empty" = "No matching records";
 "search.completed" = "Completed";
 "search.open_hint" = "Go to the original record";
 "search.located" = "Record located";
+
+"search.count" = "%ld records found";

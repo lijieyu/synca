@@ -256,3 +256,7 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 .message-content-collapsed:has(.message-markdown) { display: block; max-height: 6lh; }
 
 .message-content .message-link { color: var(--accent-color); }
+
+/* Inset rings stay complete at every scroll boundary. */
+.calm-sidebar .category-chip:focus-visible { outline-offset:-3px; }
+@media(min-width:701px) { .calm-sidebar .category-all { padding-left:16px; } }

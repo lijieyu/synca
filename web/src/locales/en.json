@@ -412,6 +412,7 @@
     "completed": "Completed",
     "unavailable": "This record is no longer available.",
     "error": "Search is unavailable. Please reopen it.",
-    "prompt": "Search text and filenames"
+    "prompt": "Enter keywords to find your records",
+    "clear": "Clear search"
   }
 }
