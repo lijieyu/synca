@@ -13,6 +13,9 @@ async (page) => {
  try {
  await p.goto('http://127.0.0.1:5199/');await p.locator('[data-message-id="text74"]').waitFor();
  const composer=p.locator('.input-bar textarea');
+ const composerBorder=await p.locator('.input-bar').evaluate(el=>{document.activeElement?.blur();return getComputedStyle(el).borderColor;});
+ await p.reload();await composer.waitFor();await composer.focus();
+ if(await p.locator('.input-bar').evaluate(el=>getComputedStyle(el).borderColor)!==composerBorder)throw Error('refresh autofocus darkened composer border');
  await composer.focus();
  if(await composer.evaluate(el=>getComputedStyle(el).outlineStyle!=='none'))throw Error('composer initial focus has inner ring');
  await composer.press('Tab');await p.keyboard.press('Shift+Tab');
