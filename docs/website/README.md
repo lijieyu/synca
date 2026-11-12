@@ -60,3 +60,7 @@ Latest verification after this update: 12 locale/viewport/appearance combination
 `bash scripts/deploy-home.sh` publishes only `/home/` and its locales through an independent nginx alias and immutable static release. It checks the existing app index hash before and after; it never replaces the root app, changes authentication/storage, or deploys backend/native code. The production homepage remains an explicit `/home/` URL; no visitor or session redirect is used.
 
 All links to other pages (download, Web app, AI guide, legal/support, registrations and locale pages) open a new tab with `noopener noreferrer`. The top download link goes directly to App Store. Product-section and skip anchors remain within the page.
+
+## Public tutorial and navigation refinement (2026-11-12)
+
+Language links switch within the same tab. Download, Web app and footer page links retain new-tab behavior. The product navigation link and marketing search section are removed (App Store search artwork remains). The AI link opens a localized native HTML dialog with static instructions, copy feedback, expandable instruction text, Escape dismissal and focus restoration. It performs no authentication or connection-state requests. `/home/guide.js` is the only runtime script.
