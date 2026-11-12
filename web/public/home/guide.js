@@ -5,6 +5,12 @@ const closeButton = guide.querySelector('.guide-close');
 const copyButton = guide.querySelector('.guide-copy');
 const status = guide.querySelector('.guide-status');
 let toastTimer;
+let copiedTimer;
+const copyLabel = copyButton.textContent;
+function resetCopy() {
+  clearTimeout(copiedTimer);
+  copyButton.textContent = copyLabel;
+}
 function showToast(message) {
   clearTimeout(toastTimer);
   status.textContent = message;
@@ -12,14 +18,17 @@ function showToast(message) {
 }
 trigger.addEventListener('click', () => {
   status.textContent = '';
+  resetCopy();
   guide.showModal();
 });
 closeButton.addEventListener('click', () => guide.close());
-guide.addEventListener('close', () => trigger.focus({ preventScroll: true }));
+guide.addEventListener('close', () => { resetCopy(); trigger.focus({ preventScroll: true }); });
 copyButton.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(guide.querySelector('.guide-prompt').textContent);
-    showToast(copyButton.dataset.copied);
+    clearTimeout(copiedTimer);
+    copyButton.textContent = '✓ ' + copyButton.dataset.copied;
+    copiedTimer = setTimeout(resetCopy, 2500);
   } catch {
     showToast(copyButton.dataset.failed);
   }

@@ -12,6 +12,11 @@ async (page) => {
  const search=async q=>{await p.getByRole('button',{name:'搜索记录',exact:true}).click();await p.getByRole('searchbox').fill(q);await p.locator('.message-search-result').first().waitFor();};
  try {
  await p.goto('http://127.0.0.1:5199/');await p.locator('[data-message-id="text74"]').waitFor();
+ const composer=p.locator('.input-bar textarea');
+ await composer.focus();
+ if(await composer.evaluate(el=>getComputedStyle(el).outlineStyle!=='none'))throw Error('composer initial focus has inner ring');
+ await composer.press('Tab');await p.keyboard.press('Shift+Tab');
+ if(await composer.evaluate(el=>getComputedStyle(el).outlineStyle!=='none'))throw Error('composer keyboard focus has inner ring');
  const failures=[];
  const check=(ok,label)=>{if(!ok)failures.push(label);};
  const shots=async name=>{for(const theme of ['light','dark']){await p.emulateMedia({colorScheme:theme});await p.screenshot({animations:'disabled',path:'/tmp/synca-round3-'+name+'-'+theme+'.png'});}await p.emulateMedia({colorScheme:'light'});};

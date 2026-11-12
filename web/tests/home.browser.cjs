@@ -44,9 +44,13 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
   if (!await page.locator('dialog').isVisible()) failures.push('Tutorial did not open');
   // Stub only the OS clipboard so geometry assertions remain deterministic.
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => {} } }));
+  const originalCopyLabel = await page.locator('.guide-copy').textContent();
   const beforeCopy = await page.locator('dialog').boundingBox();
   await page.locator('.guide-copy').click();
   const afterCopy = await page.locator('dialog').boundingBox();
+  if (!(await page.locator('.guide-copy').textContent()).startsWith('✓')) failures.push('Missing button copy confirmation');
+  if (await page.locator('.guide-status').textContent()) failures.push('Success must not use toast');
+  await page.waitForFunction(label => document.querySelector('.guide-copy').textContent === label, originalCopyLabel);
   if (JSON.stringify(beforeCopy) !== JSON.stringify(afterCopy)) failures.push('Copy feedback moved dialog');
   const closeCentered = await page.locator('.guide-close').evaluate(button => {
     const b = button.getBoundingClientRect(), icon = button.querySelector('svg').getBoundingClientRect();
