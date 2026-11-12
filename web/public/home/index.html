@@ -147,6 +147,12 @@
 </figure>
 <p class="fine-print ai-note">连接 AI 是 Synca Pro 权益。需使用支持 MCP 的外部 AI 应用并完成授权；Synca 不提供内置 AI 模型。</p>
 </section>
+<section class="search-feature wrap" id="search">
+<div class="section-heading"><div><p class="eyebrow">SYNCA · SEARCH</p><h2>记得一点，就能找到。</h2></div><p class="body-copy">文字、文件名、拼音，都能搜。找到那条记录，接着行动。</p></div>
+<figure class="transfer-art search-devices">
+<div class="desktop"><img src="/home/assets/mac-search-zh-Hans.webp" alt="Synca Mac · Search" width="1280" height="1120" loading="lazy" decoding="async"></div>
+<div class="phone"><img src="/home/assets/ios-search-zh-Hans.webp" alt="Synca iPhone · Search" width="600" height="1304" loading="lazy" decoding="async"></div>
+<figcaption>在 Mac 和 iPhone 上，找回需要的记录。</figcaption></figure></section>
 <section class="download wrap" id="download">
 <img class="download-icon" src="/home/assets/icon-192.png" width="64" height="64" alt="">
 <h2>给下一次灵感，留个位置。</h2>
@@ -176,12 +182,12 @@
 </div>
 </footer>
 <dialog class="connection-guide" id="connection-guide" aria-labelledby="guide-title">
-<button class="guide-close" type="button" aria-label="关闭" autofocus>×</button>
+<button class="guide-close" type="button" aria-label="关闭" autofocus><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
 <div class="guide-heading"><h2 id="guide-title">连接你的 AI</h2><span class="pro">Synca Pro 权益</span></div>
 <p class="guide-intro">在 AI 对话中查找、整理记录，也能把新想法保存回来。</p>
 <ol class="guide-steps"><li><strong>复制连接指令</strong><p>把下面的指令发送给你使用的 AI。</p></li><li><strong>按提示完成授权</strong><p>在 AI 应用内添加 Synca，并确认允许访问。</p></li><li><strong>回到对话，开始使用</strong><p>试试：“帮我整理本周的记录”。</p></li></ol>
 <button class="button guide-copy" type="button" data-copied="已复制" data-failed="复制失败，请展开指令手动复制。">复制连接指令</button>
-<p class="guide-status" role="status"></p>
+<p class="guide-status" role="status" aria-live="polite" aria-atomic="true"></p>
 <details class="guide-details"><summary>查看指令</summary><p class="guide-prompt">请帮我连接 Synca，使用远程 MCP 服务 https://synca.haerth.cn/mcp（Streamable HTTP），通过 OAuth 登录授权。请使用你所在应用提供的 MCP 安装和连接能力；若已安装请直接连接，不要重复添加。请引导我在当前软件内完成 MCP 配置和 OAuth 授权：名称 Synca，服务器地址 https://synca.haerth.cn/mcp，传输方式 Streamable HTTP，身份验证 OAuth。若无法直接添加，请明确说明，并根据当前软件实际界面逐步告诉我在哪里添加、每项填什么、如何点击连接，再引导我打开官方 Synca 登录授权页，亲自登录并确认所需权限。不要编造菜单路径；不确定时请先询问软件版本或让我提供当前界面。不要让我把密码、验证码或访问令牌发到对话里。不要把提供配置说明当作安装成功。连接成功后，读取最近 5 条 Synca 记录验证连接，不要修改或删除内容。</p></details>
 </dialog>
 <script src="/home/guide.js" defer></script>
