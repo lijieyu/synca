@@ -42,6 +42,17 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
   page.on('request', request => { if (/\/api\//.test(request.url())) apiRequests.push(request.url()); });
   await page.locator('.guide-trigger').click();
   if (!await page.locator('dialog').isVisible()) failures.push('Tutorial did not open');
+  // Stub only the OS clipboard so geometry assertions remain deterministic.
+  await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => {} } }));
+  const beforeCopy = await page.locator('dialog').boundingBox();
+  await page.locator('.guide-copy').click();
+  const afterCopy = await page.locator('dialog').boundingBox();
+  if (JSON.stringify(beforeCopy) !== JSON.stringify(afterCopy)) failures.push('Copy feedback moved dialog');
+  const closeCentered = await page.locator('.guide-close').evaluate(button => {
+    const b = button.getBoundingClientRect(), icon = button.querySelector('svg').getBoundingClientRect();
+    return Math.abs(b.x + b.width / 2 - icon.x - icon.width / 2) < 0.1 && Math.abs(b.y + b.height / 2 - icon.y - icon.height / 2) < 0.1;
+  });
+  if (!closeCentered) failures.push('Close icon is not centered');
   await page.locator('.guide-details summary').click();
   if (!await page.locator('.guide-prompt').isVisible()) failures.push('Instructions did not expand');
   await page.keyboard.press('Escape');
