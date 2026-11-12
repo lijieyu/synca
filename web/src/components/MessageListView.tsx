@@ -1,3 +1,4 @@
+import { AppLoading } from './AppLoading';
 import { CategoryContextMenu, type CategoryMenuAnchor } from './CategoryContextMenu';
 import { SidebarFrame } from './SidebarFrame';
 import { AIPage } from './AIPage';
@@ -556,7 +557,7 @@ export const MessageListView: React.FC = () => {
           </div>
         </header>
           <div className="message-list" ref={listRef}>
-            {isLoading && messages.length === 0 && <p style={{ textAlign: 'center', opacity: 0.5, marginTop: '20px' }}>{t('message_list.loading', 'Loading...')}</p>}
+            {isLoading && messages.length === 0 && <AppLoading overlay />}
 
             {!isLoading && filteredMessages.length === 0 && (
               <EmptyMessageState />

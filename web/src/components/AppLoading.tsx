@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './AppLoading.css';
 
 const LOADING_DELAY_MS = 250;
 
 /** Keep fast route loads quiet; announce genuinely slow loads without layout jumps. */
-export function AppLoading() {
+export function AppLoading({ overlay = false }: { overlay?: boolean }) {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
@@ -14,12 +15,12 @@ export function AppLoading() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  return (
-    <div className="app-loading" role="status" aria-live="polite">
+  const indicator = (
+    <div className={`app-loading${overlay ? ' app-loading-overlay' : ''}`} role="status" aria-label={visible ? t('message_list.loading') : undefined}>
       {visible && <div className="app-loading-indicator">
         <span className="app-loading-spinner" aria-hidden="true" />
-        <span>{t('message_list.loading')}</span>
       </div>}
     </div>
   );
+  return overlay ? createPortal(indicator, document.body) : indicator;
 }
