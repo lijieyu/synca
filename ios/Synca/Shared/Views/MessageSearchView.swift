@@ -355,7 +355,7 @@ struct SearchQueryField: UIViewRepresentable {
                 // A tap or hardware-keyboard event may already have begun editing.
                 // Do not let the queued focus request replace that live selection.
                 self.becomeFirstResponder()
-                if !(self.text ?? "").isEmpty { self.selectAll(nil) }
+                // iOS starts a fresh search and never auto-selects user input.
             }
         }
     }
@@ -383,7 +383,7 @@ private struct SearchQueryField: NSViewRepresentable {
     var onDraftChange: (Bool) -> Void = { _ in }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> Field {
-        let field = Field()
+        let field = Field(initialQuery: text)
         field.isBezeled = false
         field.drawsBackground = false
         field.focusRingType = .none
@@ -398,19 +398,19 @@ private struct SearchQueryField: NSViewRepresentable {
         context.coordinator.parent = self
         field.placeholderString = placeholder
         field.setAccessibilityLabel(placeholder)
-        if context.coordinator.clearRevision != clearRevision || context.coordinator.lastCommitted != text || ((field.currentEditor() as? NSTextView)?.hasMarkedText() != true && field.stringValue != text) {
-            let externalText = text
-            context.coordinator.applyingExternal = true
-            defer { context.coordinator.applyingExternal = false }
-            context.coordinator.clearRevision = clearRevision
-            context.coordinator.lastCommitted = externalText
-            (field.currentEditor() as? NSTextView)?.unmarkText()
-            field.stringValue = externalText
-        }
+        context.coordinator.applyBinding(to: field, text: text, clearRevision: clearRevision)
     }
+
     final class Field: NSTextField {
         var hasUserEdited = false
+        private let initialQuery: String
         private var requestedFocus = false
+        init(initialQuery: String = "") {
+            self.initialQuery = initialQuery
+            super.init(frame: .zero)
+            stringValue = initialQuery
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil, !requestedFocus else { return }
@@ -421,16 +421,50 @@ private struct SearchQueryField: NSViewRepresentable {
                 // AppKit may already have focused this field before this deferred
                 // request runs. Never reselect live input (including marked text).
                 window.makeFirstResponder(self)
-                if !self.stringValue.isEmpty { self.currentEditor()?.selectAll(nil) }
+                // Only the value present when this field was created is eligible
+                // for replacement selection. A fresh query can never select a
+                // character that arrived while AppKit established the editor.
+                if !self.initialQuery.isEmpty, !self.hasUserEdited,
+                   self.stringValue == self.initialQuery,
+                   let editor = self.currentEditor() as? NSTextView,
+                   !editor.hasMarkedText(), editor.string == self.initialQuery {
+                    editor.setSelectedRange(NSRange(location: 0, length: (self.initialQuery as NSString).length))
+                } else if self.initialQuery.isEmpty, let editor = self.currentEditor() as? NSTextView,
+                          !editor.hasMarkedText() {
+                    // NSTextField may select on becoming first responder itself.
+                    // Fresh searches always finish focus with an insertion caret.
+                    editor.setSelectedRange(NSRange(location: (editor.string as NSString).length, length: 0))
+                }
             }
         }
     }
+    @MainActor
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: SearchQueryField
         var applyingExternal = false
         var clearRevision = 0
         var lastCommitted: String
         init(_ parent: SearchQueryField) { self.parent = parent; lastCommitted = parent.text }
+        func applyBinding(to field: Field, text: String, clearRevision: Int) {
+            let shouldClear = self.clearRevision != clearRevision
+            self.clearRevision = clearRevision
+            // While editing, AppKit owns the draft and selection. SwiftUI can
+            // render an older binding value before processing the delegate's
+            // latest input; writing that echo back would replace live input.
+            // The explicit clear command is the only external edit in this view.
+            guard shouldClear || field.currentEditor() == nil else { return }
+            guard shouldClear || field.stringValue != text else { return }
+            applyingExternal = true
+            defer { applyingExternal = false }
+            lastCommitted = text
+            let editor = field.currentEditor() as? NSTextView
+            if shouldClear { editor?.unmarkText() }
+            field.stringValue = text
+            if shouldClear {
+                editor?.string = text
+                editor?.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+            }
+        }
         func controlTextDidChange(_ notification: Notification) {
             guard !applyingExternal, let field = notification.object as? NSTextField else { return }
             (field as? Field)?.hasUserEdited = true

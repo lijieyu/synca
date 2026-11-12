@@ -100,6 +100,8 @@ struct MessageListView: View {
     @State private var searchQuery = ""
     @State private var searchAnchorY: CGFloat?
     @State private var searchRowHeight: CGFloat = 0
+    @State private var searchRowFrame: CGRect?
+    @State private var searchPositionedTextAnchor = false
     @State private var searchViewportHeight: CGFloat = 0
     @State private var searchMatchedText: String?
     @State private var searchTarget: String?
@@ -356,9 +358,16 @@ struct MessageListView: View {
             self.updateBadge()
         }
         #if os(iOS)
-        .onChange(of: syncManager.selectedCategoryId) { _ in
+        .onChange(of: syncManager.selectedCategoryId) { category in
             collapsedRowTarget = nil
-            expandedTextIDs.removeAll()
+            // The destination row can expand before this category callback runs.
+            // Preserve that search target instead of collapsing it underneath
+            // the in-flight jump and forcing a second expansion/layout pass.
+            if category == searchTargetCategory, let target = searchTarget {
+                expandedTextIDs.formIntersection([target])
+            } else {
+                expandedTextIDs.removeAll()
+            }
         }
         #endif
         .onChange(of: syncManager.selectedCategoryId) { category in
@@ -453,6 +462,9 @@ struct MessageListView: View {
             searchPresentationSuppressesScroll = true
             shouldScrollToBottomAfterInitialLoad = false
             shouldScrollToBottomAfterSend = false
+            #if os(iOS)
+            searchQuery = ""
+            #endif
             showSearch = true
         } label: {
             Image(systemName: "magnifyingglass")
@@ -494,6 +506,8 @@ struct MessageListView: View {
         searchScrollSuppressed = true
         searchAnchorY = nil
         searchRowHeight = 0
+        searchRowFrame = nil
+        searchPositionedTextAnchor = false
         searchTarget = id
         searchMatchedText = result.matchedText
         searchHighlight = nil
@@ -1093,6 +1107,9 @@ struct MessageListView: View {
                 .accessibilityIdentifier("record-feed")
                 .onPreferenceChange(SearchAnchorPosition.self) { searchAnchorY = $0 }
                 .onPreferenceChange(SearchRowHeight.self) { searchRowHeight = $0 }
+                #if os(iOS)
+                .onPreferenceChange(SearchRowFrame.self) { searchRowFrame = $0 }
+                #endif
                 .background(GeometryReader { geometry in
                     Color.clear.onAppear { searchViewportHeight = geometry.size.height }
                         .onChange(of: geometry.size.height) { searchViewportHeight = $0 }
@@ -1111,12 +1128,16 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
+                        #if os(iOS)
+                        positionSearchResult(message, proxy: proxy, transaction: transaction)
+                        #else
                         let fits = searchRowHeight > 0 && searchRowHeight <= searchViewportHeight - 24
                         if fits || delay == 80 || searchAnchorY.map({ abs($0) > 2 }) != false {
                             withTransaction(transaction) {
                                 proxy.scrollTo(fits || delay == 80 || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: fits ? .center : .top)
                             }
                         }
+                        #endif
                         // Start feedback with the first positioning pass, not after
                         // all lazy-layout corrections (previously over a second).
                         if delay == 80 {
@@ -1144,11 +1165,15 @@ struct MessageListView: View {
                               let message = filteredMessages.first(where: { $0.id == id }) else { return }
                         var transaction = Transaction(animation: nil)
                         transaction.disablesAnimations = true
+                        #if os(iOS)
+                        positionSearchResult(message, proxy: proxy, transaction: transaction)
+                        #else
                         let fits = searchRowHeight > 0 && searchRowHeight <= searchViewportHeight - 24
                         guard fits || searchAnchorY.map({ abs($0) > 2 }) != false else { return }
                         withTransaction(transaction) {
                             proxy.scrollTo(fits || searchMatchedText == nil ? message.listRowID : "search-hit-\(id)", anchor: fits ? .center : .top)
                         }
+                        #endif
                     }
                 }
                 #if os(iOS)
@@ -1783,9 +1808,40 @@ struct MessageListView: View {
         .background(GeometryReader { geometry in
             Color.clear.preference(key: SearchRowHeight.self,
                 value: searchTarget == message.id ? geometry.size.height : 0)
+                #if os(iOS)
+                .preference(key: SearchRowFrame.self,
+                    value: searchTarget == message.id ? geometry.frame(in: .named("search-feed")) : nil)
+                #endif
         })
         .id(message.listRowID)
     }
+
+    #if os(iOS)
+    private func positionSearchResult(_ message: SyncaMessage, proxy: ScrollViewProxy, transaction: Transaction) {
+        let viewportInset: CGFloat = 12
+        if let frame = searchRowFrame,
+           frame.minY >= 0, frame.maxY <= searchViewportHeight {
+            // A visible result needs emphasis, not another scroll. In particular,
+            // centering the last row repeatedly fights the scroll view's bottom clamp.
+            return
+        }
+        let fits = searchRowHeight > 0 && searchRowHeight <= searchViewportHeight - 2 * viewportInset
+        let lastMessage = filteredMessages.last(where: { !$0.isCleared }) ?? filteredMessages.last
+        withTransaction(transaction) {
+            if !searchPositionedTextAnchor && (searchRowHeight == 0 || fits) {
+                // Use the same anchor before and after lazy measurement resolves.
+                proxy.scrollTo(message.listRowID, anchor: message.id == lastMessage?.id ? .bottom : .center)
+            } else if let anchor = searchAnchorY, abs(anchor) <= 2 {
+                return
+            } else {
+                // Expansion/lazy layout may temporarily report the collapsed height
+                // again. Once navigating deep text, never jump back to the row anchor.
+                searchPositionedTextAnchor = true
+                proxy.scrollTo(searchMatchedText == nil ? message.listRowID : "search-hit-\(message.id)", anchor: .top)
+            }
+        }
+    }
+    #endif
 
     private func textExpansionBinding(for id: String) -> Binding<Bool>? {
         return Binding(
@@ -3424,4 +3480,11 @@ struct SearchAnchorPosition: PreferenceKey {
 private struct SearchRowHeight: PreferenceKey {
     static var defaultValue: CGFloat { 0 }
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct SearchRowFrame: PreferenceKey {
+    static var defaultValue: CGRect? { nil }
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        if let next = nextValue() { value = next }
+    }
 }

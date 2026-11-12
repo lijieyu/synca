@@ -126,7 +126,7 @@ final class SearchInputTests: XCTestCase {
             if marked { XCTAssertNotNil(field.markedTextRange, "Autofocus must not commit composition") }
         }
     }
-    @MainActor func testDeferredAutofocusSelectsUntouchedRetainedQuery() async throws {
+    @MainActor func testDeferredAutofocusDoesNotSelectRetainedText() async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
@@ -139,7 +139,7 @@ final class SearchInputTests: XCTestCase {
         defer { window.isHidden = true }
         await settle()
         let selection = try XCTUnwrap(field.selectedTextRange)
-        XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: selection.start), 0)
+        XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: selection.start), 2)
         XCTAssertEqual(field.offset(from: field.beginningOfDocument, to: selection.end), 2)
     }
 

@@ -1,6 +1,46 @@
 import XCTest
 
 final class ScrollTests: XCTestCase {
+    func testTailPositionAndFreshSearch() {
+        for mode in ["--qa-four", "--qa-forty", "--qa-search"] {
+            let app = XCUIApplication(); app.launchArguments = [mode, "-AppleLanguages", "(zh-Hans)"]; app.launch()
+            let open = app.buttons["search-open"]; XCTAssertTrue(open.waitForExistence(timeout: 8))
+            open.tap()
+            let field = app.textFields["search-query"]; XCTAssertTrue(field.waitForExistence(timeout: 5)); field.typeText(mode == "--qa-search" ? "提纲" : "尾条定位验收")
+            let targetID = mode == "--qa-search" ? "search-long" : "tail-39"
+            let result = app.buttons["search-result-" + targetID]; XCTAssertTrue(result.waitForExistence(timeout: 10)); result.tap()
+            let row = app.otherElements["record-" + targetID].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            let initial = row.frame
+            Thread.sleep(forTimeInterval: 0.35)
+            let early = row.frame
+            Thread.sleep(forTimeInterval: 1.2)
+            let settled = row.frame
+            let positionTrace = app.scrollViews["record-feed"].value as? String ?? ""
+            let positions = positionTrace.split(separator: ",").compactMap { Int($0) }
+            XCTAssertFalse(positions.isEmpty)
+            if mode == "--qa-search" {
+                // Preferences include intermediate layout passes that never
+                // reach the display. Assert the settled deep position here;
+                // verify the visible transition with the recorded frames.
+                XCTAssertLessThan(positions.last ?? 0, 0, "The long tail's deep match was not reached")
+            } else {
+                XCTAssertLessThanOrEqual(Set(positions).count, 1)
+            }
+            print("TAIL-ALL-POSITIONS \(mode): \(positionTrace)")
+            print("TAIL-GEOMETRY \(mode): initial \(initial), early \(early), settled \(settled)")
+            XCTAssertEqual(early.minY, settled.minY, accuracy: 2)
+            if mode != "--qa-search" {
+                XCTAssertGreaterThan(settled.minY, 150)
+                XCTAssertLessThan(settled.maxY, app.frame.height - 60)
+            }
+            let shot = XCTAttachment(screenshot: app.screenshot()); shot.name=mode; shot.lifetime = .keepAlways; add(shot)
+            open.tap(); XCTAssertTrue(field.waitForExistence(timeout: 5))
+            XCTAssertEqual(field.value as? String, field.placeholderValue)
+            let fresh = XCTAttachment(screenshot: app.screenshot()); fresh.name="fresh-"+mode; fresh.lifetime = .keepAlways; add(fresh)
+            app.terminate()
+        }
+    }
     private func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + ["-AppleLanguages", "(zh-Hans)"]
