@@ -54,3 +54,9 @@ https://synca-preview.haerth.cn/home/ is live as an independent public, noindex 
 Added a localized search section and real Mac search screenshots in all three locales. Search captures and notes captures are from current production native views in an isolated fictional-data fixture, without accessing a real account. Other accepted app captures only received current toolbar pixels; composition provenance is recorded in `release-1.1.0-five/capture-evidence-20261111.json`. Current marketing artwork contains 45 exports: five scenes for three platforms and three locales.
 
 Latest verification after this update: 12 locale/viewport/appearance combinations passed with zero page errors. Preview deployment remains separate from the production root application. Asset-size statement above describes the earlier set, not this expanded set.
+
+## Production publication and link behavior (2026-11-12)
+
+`bash scripts/deploy-home.sh` publishes only `/home/` and its locales through an independent nginx alias and immutable static release. It checks the existing app index hash before and after; it never replaces the root app, changes authentication/storage, or deploys backend/native code. The production homepage remains an explicit `/home/` URL; no visitor or session redirect is used.
+
+All links to other pages (download, Web app, AI guide, legal/support, registrations and locale pages) open a new tab with `noopener noreferrer`. The top download link goes directly to App Store. Product-section and skip anchors remain within the page.
