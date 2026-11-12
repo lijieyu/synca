@@ -337,14 +337,14 @@ export const MessageListView: React.FC = () => {
       finally { categoryWritePending.current = false; setCategorySaving(false); }
       return;
     }
-    const duplicated = categories.some((category) => category.id !== editingCategory?.id && category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
+    const duplicated = !editingCategory?.isDefault && categories.some((category) => category.id !== editingCategory?.id && category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
     if (duplicated) {
       setShowDuplicateCategoryModal(true);
       return;
     }
     setCategorySaving(true);
     try {
-      if (editingCategory) await api.updateMessageCategory(editingCategory.id, { name: trimmedName, ...(newCategoryHex !== editingCategory.colorHex || newCategoryColor !== editingCategory.color ? { color: newCategoryColor, colorHex: newCategoryHex } : {}) });
+      if (editingCategory) await api.updateMessageCategory(editingCategory.id, { ...(!editingCategory.isDefault ? { name: trimmedName } : {}), ...(newCategoryHex !== editingCategory.colorHex || newCategoryColor !== editingCategory.color ? { color: newCategoryColor, colorHex: newCategoryHex } : {}) });
       else await api.createMessageCategory(trimmedName, newCategoryColor, newCategoryHex);
       setEditingCategory(null);
       setNewCategoryName('');
@@ -525,11 +525,11 @@ export const MessageListView: React.FC = () => {
                 data-category-id={category.id}
                 onContextMenu={event => { event.preventDefault(); setCategoryMenu({ id: category.id, x: event.clientX, y: event.clientY, trigger: event.currentTarget }); }}
                 onClick={() => activateCategory(category.id)}
-                onDoubleClick={() => { if (category.isDefault) return; setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
+                onDoubleClick={() => { setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
                 style={categoryStyle(category.colorHex, category.color)}
                 data-sort-id={category.isDefault ? undefined : category.id} onPointerDown={e => { if (!category.isDefault) sidebarSort.begin(e, category.id); }} draggable={false}
 
-                onKeyDown={e => { if(e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const rect=e.currentTarget.getBoundingClientRect(); setCategoryMenu({id:category.id,x:rect.left+12,y:rect.bottom,trigger:e.currentTarget}); return; } if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2' && !category.isDefault) { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
+                onKeyDown={e => { if(e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const rect=e.currentTarget.getBoundingClientRect(); setCategoryMenu({id:category.id,x:rect.left+12,y:rect.bottom,trigger:e.currentTarget}); return; } if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2') { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
                 {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
@@ -652,7 +652,7 @@ export const MessageListView: React.FC = () => {
                 {categoryManagerRows.map((row, index) => (
                   <div key={row.clientId} className="category-manager-row" data-sort-id={row.isDefault ? undefined : row.clientId}>
                     <CategoryPalette showChevron color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
-                    <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />
+                    {row.isDefault ? <span className="category-manager-name category-name-readonly">{t('message_category.default_badge')}</span> : <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />}
                     <div className="category-manager-row-actions">
                       <button type="button" className="category-sort-handle" disabled={row.isDefault} aria-label={`${t('polish.reorder')} ${row.name}`} onPointerDown={e => {
                         // Avoid blur starting an independent save before drag activation.
@@ -687,7 +687,7 @@ export const MessageListView: React.FC = () => {
           size="compact"
         >
           <div className="category-create-stack">
-            <input
+            {(editingCategory?.isDefault || categoryManagerEditor?.isDefault) ? <div className="category-name-input category-name-readonly">{t('message_category.default_badge')}</div> : <input
               className="category-name-input"
               data-initial-focus
               value={newCategoryName}
@@ -695,7 +695,7 @@ export const MessageListView: React.FC = () => {
               aria-label={t('message_category.name_placeholder')}
               placeholder={t('message_category.name_placeholder', 'Category name')}
               autoFocus
-            />
+            />}
 
             <CategoryPalette expanded color={newCategoryColor} colorHex={newCategoryHex} onChange={(color, hex) => { setNewCategoryColor(color); setNewCategoryHex(hex); }} />
           </div>

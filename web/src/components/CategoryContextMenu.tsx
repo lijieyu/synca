@@ -45,7 +45,7 @@ export function CategoryContextMenu({ anchor, name, protectedCategory, busy, can
         items[event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
       }
     }}>
-    <button role="menuitem" tabIndex={-1} disabled={busy || protectedCategory} onClick={() => act(onEdit)}>{t('message_category.modify')}</button>
+    <button role="menuitem" tabIndex={-1} disabled={busy} onClick={() => act(onEdit)}>{t('message_category.modify')}</button>
     <button role="menuitem" tabIndex={-1} disabled={busy || !canMoveUp} onClick={() => act(() => onMove(-1))}>{t('message_category.move_up')}</button>
     <button role="menuitem" tabIndex={-1} disabled={busy || !canMoveDown} onClick={() => act(() => onMove(1))}>{t('message_category.move_down')}</button>
     <div role="separator" />

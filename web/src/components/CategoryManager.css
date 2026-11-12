@@ -26,3 +26,5 @@
 .category-manager-modal .modal-leading-action { color:var(--text-secondary); font-weight:500; }
 .category-manager-modal .modal-leading-action:hover:not(:disabled) { color:var(--text-main); filter:none; }
 .category-manager-modal .modal-leading-action:disabled { opacity:.4; cursor:default; }
+
+.category-name-readonly { color:var(--text-secondary); cursor:default; user-select:none; }

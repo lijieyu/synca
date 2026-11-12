@@ -656,7 +656,7 @@ struct MessageListView: View {
                         sidebarCategory(id: category.id, title: category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name, color: categoryDisplayColor(category.color, hex: category.colorHex), count: todoCount(for: category.id))
                             .contextMenu {
                                 Button("message_category.modify") { sidebarEditTarget = category }
-                                    .disabled(category.isDefault || sidebarReordering)
+                                    .disabled(sidebarReordering)
                                 Button("message_category.move_up") { moveSidebar(category, by: -1) }
                                     .disabled(sidebarReordering || !canMoveSidebar(category, by: -1))
                                 Button("message_category.move_down") { moveSidebar(category, by: 1) }
@@ -766,7 +766,7 @@ struct MessageListView: View {
         return Button {
             syncManager.selectCategory(id)
             if NSApp.currentEvent?.clickCount == 2,
-               let category = syncManager.categories.first(where: { $0.id == id }), !category.isDefault {
+               let category = syncManager.categories.first(where: { $0.id == id }) {
                 sidebarEditTarget = category
             } else {
                 composerFocusRequest += 1
@@ -2656,7 +2656,7 @@ private struct NewMessageCategorySheet: View {
         guard !isSaving else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        guard !isDuplicateCategoryName(trimmed) else {
+        guard category?.isDefault == true || !isDuplicateCategoryName(trimmed) else {
             showDuplicateNameAlert = true
             return
         }
@@ -2665,7 +2665,9 @@ private struct NewMessageCategorySheet: View {
         Task {
             let saved: Bool
             if let category {
-                if category.isDefault { saved = false }
+                if category.isDefault {
+                    saved = await syncManager.updateCategory(id: category.id, color: color, colorHex: colorHex)
+                }
                 else {
                     let paletteChanged = color != category.color || colorHex != category.colorHex
                     saved = await syncManager.updateCategory(id: category.id, name: trimmed,
@@ -2753,8 +2755,16 @@ private struct NewMessageCategorySheet: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 18) {
-                TextField(String(syncaLocalized: "message_category.name_placeholder", bundle: .main), text: $name)
-                    .textFieldStyle(.plain)
+                Group {
+                    if category?.isDefault == true {
+                        Text("message_category.default_badge")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        TextField(String(syncaLocalized: "message_category.name_placeholder", bundle: .main), text: $name)
+                            .textFieldStyle(.plain)
+                    }
+                }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(Color.syncaInputFieldBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
