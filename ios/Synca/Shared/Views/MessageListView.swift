@@ -1774,14 +1774,7 @@ struct MessageListView: View {
                 .fill(colorScheme == .dark
                       ? Color(red: 35 / 255, green: 73 / 255, blue: 108 / 255)
                       : Color(red: 217 / 255, green: 235 / 255, blue: 1))
-                #if os(iOS)
-                // Balance visible content, not the 44pt action hit area: its
-                // 20pt glyph leaves 12pt of invisible space below. Keep the
-                // full top padding and all row/hit-target geometry unchanged.
-                .padding(.bottom, (44 - 20) / 2)
-                #else
                 .padding(.vertical, 6)
-                #endif
                 .opacity(searchHighlight == message.id ? 1 : 0)
         }
         .overlay(alignment: .bottom) {
