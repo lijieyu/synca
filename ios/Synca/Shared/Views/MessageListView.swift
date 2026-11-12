@@ -1340,6 +1340,9 @@ struct MessageListView: View {
                 #endif
         }
         .buttonStyle(.plain)
+        #if os(macOS)
+        .keyboardShortcut("r", modifiers: .command)
+        #endif
         .disabled(self.syncManager.isRefreshing)
     }
 

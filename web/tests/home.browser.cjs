@@ -16,6 +16,7 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
         overflow: document.documentElement.scrollWidth > innerWidth,
         brokenImages: [...document.images].filter(image => !image.complete || !image.naturalWidth).map(image => image.src),
         headings: document.querySelectorAll('h1').length,
+        macDownloads: document.querySelectorAll('a[href*="platform=mac"]').length,
         outsideAssets: [...document.querySelectorAll('img[src],link[rel=stylesheet],link[rel=icon],link[rel=apple-touch-icon]')].map(el => el.getAttribute('src') || el.getAttribute('href')).filter(path => !path.startsWith('/home/')),
         relativeServiceLinks: [...document.querySelectorAll('a[href]')].map(el => el.getAttribute('href')).filter(href => href.startsWith('/') && !href.startsWith('/home/')),
         scripts: document.querySelectorAll('script').length,
@@ -28,7 +29,7 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
         registrations: [...document.querySelectorAll('.registration a')].map(a => a.textContent.trim()),
       }));
       const label = `${language} ${width}px ${scheme}`;
-      if (response.status() !== 200 || result.language !== language || result.overflow || result.brokenImages.length || result.headings !== 1 || result.scripts !== 1 || result.outsideAssets.length || result.relativeServiceLinks.length || result.webLinks !== 3 || result.unsafePageLinks.length || result.missingAnchors.length || result.missingAlt || result.horizontalActions || result.canonical !== 'https://synca.haerth.cn' + path || result.registrations.join('|') !== '浙ICP备2026013056号|浙公网安备33010602014403号') failures.push({ label, result });
+      if (response.status() !== 200 || result.language !== language || result.overflow || result.brokenImages.length || result.headings !== 1 || result.macDownloads !== 2 || result.scripts !== 1 || result.outsideAssets.length || result.relativeServiceLinks.length || result.webLinks !== 3 || result.unsafePageLinks.length || result.missingAnchors.length || result.missingAlt || result.horizontalActions || result.canonical !== 'https://synca.haerth.cn' + path || result.registrations.join('|') !== '浙ICP备2026013056号|浙公网安备33010602014403号') failures.push({ label, result });
       await page.evaluate(() => scrollTo(0, 0));
       if (screenshotDir && ((width === 1440 && language === 'zh-Hans') || (width === 390 && language === 'zh-Hans') || (width === 320 && language === 'en'))) await page.screenshot({ path: `${screenshotDir}/home-${language}-${width}-${scheme}.png`, fullPage: true });
       checks.push(label);
