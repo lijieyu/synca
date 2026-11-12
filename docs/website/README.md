@@ -68,3 +68,7 @@ Language links switch within the same tab. Download, Web app and footer page lin
 ## Copy feedback and paired search showcase (2026-11-12)
 
 Copy feedback is a temporary fixed-position toast with a live region; it must never insert an in-flow message, resize the dialog or move its contents. The close control uses a centered SVG rather than a font glyph. The search section now pairs localized Mac and iPhone captures and keeps both visible on narrow screens. Regression checks measure dialog bounds before/after copying and the SVG center.
+
+## Follow-up copy feedback (2026-11-12)
+
+Per updated review, successful copying changes the primary button label to a check and localized “Copied” for 2.5 seconds, then restores it, matching the in-app tutorial. It must not add text to document flow or show a success toast. Failure feedback retains the non-layout-changing error toast.
