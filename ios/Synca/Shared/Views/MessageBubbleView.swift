@@ -137,7 +137,8 @@ struct MessageBubbleView: View {
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, verticalPadding)
+        .padding(.top, verticalPadding + actionVisualCenterOffset)
+        .padding(.bottom, verticalPadding - actionVisualCenterOffset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) { if showsSeparator { Divider().opacity(0.6) } }
         #if os(macOS)
@@ -165,6 +166,17 @@ struct MessageBubbleView: View {
         4
         #else
         6
+        #endif
+    }
+
+    // Optical correction for the invisible padding around iOS action glyphs.
+    // Moving content within the same row balances it with the centered highlight
+    // without shrinking the 44pt touch targets or changing scroll geometry.
+    private var actionVisualCenterOffset: CGFloat {
+        #if os(iOS)
+        6
+        #else
+        0
         #endif
     }
 
