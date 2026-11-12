@@ -19,7 +19,7 @@ async (page) => {
    categories=[categories[0],...ids.map(id=>categories.find(c=>c.id===id))];return reply({ok:true});
   }
   if(path.startsWith('/message-categories/')){
-   const id=path.split('/').pop();writes.push({method,id});
+   const id=path.split('/').pop();writes.push({method,id,body:method==='PATCH'?req.postDataJSON():undefined});
    if(method==='DELETE'){categories=categories.filter(c=>c.id!==id);messages=messages.map(m=>m.categoryId===id?{...m,categoryId:'default',categoryName:'默认',categoryIsDefault:true}:m);return reply({ok:true});}
    if(method==='PATCH'){const patch=req.postDataJSON();categories=categories.map(c=>c.id===id?{...c,...patch}:c);return reply(categories.find(c=>c.id===id));}
   }
@@ -37,7 +37,15 @@ async (page) => {
   await menu().getByRole('menuitem',{name:'下移',exact:true}).click();await p.waitForFunction(()=>[...document.querySelectorAll('[data-sort-id]')][0]?.getAttribute('data-sort-id')==='life');
   await row('work').click({button:'right'});await menu().getByRole('menuitem',{name:'修改',exact:true}).click();
   const dlg=p.getByRole('dialog');await dlg.getByRole('textbox').fill('工作修改');await dlg.getByRole('button',{name:'保存',exact:true}).click();await row('work').getByText('工作修改').waitFor();
-  await row('default').click({button:'right'});assert(await menu().locator('button:disabled').count()===4,'Default category must be protected');await p.keyboard.press('Escape');assert(await menu().count()===0,'Esc close');
+  await row('default').click({button:'right'});assert(await menu().locator('button:disabled').count()===3,'Default movement/deletion must be protected');
+  await menu().getByRole('menuitem',{name:'修改',exact:true}).click();
+  assert(await dlg.getByRole('textbox').count()===0,'Default name must not be an input');
+  await dlg.locator('.category-name-readonly').click();assert(await dlg.locator('.category-name-readonly').evaluate(e=>document.activeElement!==e),'Default name gained focus');
+  await dlg.locator('.palette-grid button').nth(1).click();await dlg.getByRole('button',{name:'保存',exact:true}).click();await dlg.waitFor({state:'detached'});
+  const patch=writes.findLast(w=>w.id==='default'&&w.method==='PATCH').body;assert(!('name' in patch)&&patch.color==='mint','Default save must change color only');
+  await row('default').dblclick();await dlg.waitFor();assert(await dlg.getByRole('textbox').count()===0,'Double click default name editable');await p.screenshot({animations:'disabled',path:'/tmp/synca-category-context/web-default-editor.png'});await p.keyboard.press('Escape');
+  await p.locator('.account-entry').click();await p.getByRole('menuitem',{name:'分类管理',exact:true}).click();
+  const defaultName=p.locator('.category-manager-row').first().locator('.category-name-readonly');await defaultName.click();assert(await defaultName.evaluate(e=>document.activeElement!==e&&e.tagName==='SPAN'),'Manager default name focus');await p.screenshot({path:'/tmp/synca-category-context/web-default-manager.png'});await p.keyboard.press('Escape');
   await row('empty').focus();await p.keyboard.press('Shift+F10');assert(await menu().getByRole('menuitem',{name:'下移',exact:true}).isDisabled(),'Last item move down');await menu().getByRole('menuitem',{name:'删除',exact:true}).click();
   assert(await dlg.locator('.modal-message').count()===0,'Empty delete has unnecessary explanation');const prior=writes.length;await dlg.getByRole('button',{name:'取消',exact:true}).click();assert(writes.length===prior,'Cancel wrote data');
   await row('work').click();await row('work').click({button:'right'});await menu().getByRole('menuitem',{name:'删除',exact:true}).click();
