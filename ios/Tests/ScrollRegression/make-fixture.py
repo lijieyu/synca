@@ -33,6 +33,9 @@ search_messages += [dict(messages[0], id='search-completed', textContent='面试
                     dict(messages[0], id='search-image', type='image', textContent=None, fileName='面试照片.png', imageUrl='http://127.0.0.1:54671/logo.png', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt='2026-11-08T09:00:00.000Z')]
 search_messages += [dict(messages[0], id=f'life-follow-{i}', textContent=('中间定位验收：整理沟通事项，确认后续安排。' if i == 5 else f'生活记录 {i}：待办安排与进度。'), categoryId='2', categoryName='生活', categoryIsDefault=False) for i in range(12)]
 seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-search") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps(search_messages, ensure_ascii=False) + '"#.utf8)); selectedCategoryId = "2" }\n }'
+# Tail navigation regressions use deterministic local-only short and long lists.
+tail_records = [dict(messages[0], id=f'tail-{i:02}', textContent=('尾条定位验收' if i == 39 else f'普通记录 {i}'), categoryId='2', categoryName='生活', categoryIsDefault=False, createdAt=f'2026-11-07T10:{i:02}:00.000Z') for i in range(40)]
+seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-four") || ProcessInfo.processInfo.arguments.contains("--qa-forty") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps(tail_records, ensure_ascii=False) + '"#.utf8)); if ProcessInfo.processInfo.arguments.contains("--qa-four") { messages = Array(messages.suffix(4)) }; selectedCategoryId = "2" }\n }'
 edit('Shared/Core/SyncManager.swift','private init() {}',seed)
 edit('Shared/Core/AccessManager.swift','private init() {}','private init() { status = AccessStatus(plan: "free", isUnlimited: false, isTrial: false, unlimitedSource: nil, trialEndsAt: nil, daysLeft: nil, todayUsed: 7, todayLimit: 20, dailyResetAt: "2026-11-08T00:00:00Z", purchaseDate: nil, subscriptionExpiresAt: nil, storeProductId: nil, lifetimeUpgradeOffer: nil) }')
 # UserDefaults remains isolated by bundle identifier; no live credentials or cache used.
@@ -81,3 +84,11 @@ s=s.replace('SWIFT_VERSION: 6.0', 'SWIFT_VERSION: 6.0\n    ENABLE_TESTABILITY: Y
 s=s.replace('targets: [ScrollUITests]', 'targets: [ScrollUITests, SearchInputTests]')
 p.write_text(s)
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)
+
+# Capture every target-row layout, including the first positioning passes.
+p = dst/'Shared/Views/MessageListView.swift'; s = p.read_text()
+s = s.replace('struct MessageListView: View {', 'struct MessageListView: View {\n    @State private var qaTargetPositions: [Int] = []')
+s = s.replace('.onPreferenceChange(SearchRowFrame.self) { searchRowFrame = $0 }', '.onPreferenceChange(SearchRowFrame.self) { searchRowFrame = $0; if let frame = $0 { let y = Int(frame.minY.rounded()); if qaTargetPositions.last != y { qaTargetPositions.append(y) } } }')
+s = s.replace('        searchRowFrame = nil', '        searchRowFrame = nil\n        qaTargetPositions = []')
+s = s.replace('.accessibilityIdentifier("record-feed")', '.accessibilityIdentifier("record-feed")\n                .accessibilityValue(qaTargetPositions.map(String.init).joined(separator: ","))')
+p.write_text(s)
