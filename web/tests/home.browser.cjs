@@ -20,30 +20,37 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
         relativeServiceLinks: [...document.querySelectorAll('a[href]')].map(el => el.getAttribute('href')).filter(href => href.startsWith('/') && !href.startsWith('/home/')),
         scripts: document.querySelectorAll('script').length,
         webLinks: [...document.querySelectorAll('.button')].filter(a => a.getAttribute('href') === 'https://synca.haerth.cn/').length,
-        unsafePageLinks: [...document.querySelectorAll('a[href]')].filter(a => !a.getAttribute('href').startsWith('#') && (a.target !== '_blank' || !a.relList.contains('noopener') || !a.relList.contains('noreferrer'))).map(a => a.href),
+        unsafePageLinks: [...document.querySelectorAll('a[href]')].filter(a => !a.closest('.languages') && !a.getAttribute('href').startsWith('#') && (a.target !== '_blank' || !a.relList.contains('noopener') || !a.relList.contains('noreferrer'))).map(a => a.href),
         missingAnchors: [...document.querySelectorAll('a[href^="#"]')].filter(a => !document.querySelector(a.getAttribute('href'))).map(a => a.href),
         missingAlt: document.querySelectorAll('img:not([alt])').length,
-        horizontalActions: [...document.querySelectorAll('.button,.languages a')].filter(a => a.getBoundingClientRect().height < 44).length,
+        horizontalActions: [...document.querySelectorAll('.button,.languages a')].filter(a => a.getClientRects().length && a.getBoundingClientRect().height < 44).length,
         canonical: document.querySelector('link[rel="canonical"]')?.href,
         registrations: [...document.querySelectorAll('.registration a')].map(a => a.textContent.trim()),
       }));
       const label = `${language} ${width}px ${scheme}`;
-      if (response.status() !== 200 || result.language !== language || result.overflow || result.brokenImages.length || result.headings !== 1 || result.scripts || result.outsideAssets.length || result.relativeServiceLinks.length || result.webLinks !== 3 || result.unsafePageLinks.length || result.missingAnchors.length || result.missingAlt || result.horizontalActions || result.canonical !== 'https://synca.haerth.cn' + path || result.registrations.join('|') !== '浙ICP备2026013056号|浙公网安备33010602014403号') failures.push({ label, result });
+      if (response.status() !== 200 || result.language !== language || result.overflow || result.brokenImages.length || result.headings !== 1 || result.scripts !== 1 || result.outsideAssets.length || result.relativeServiceLinks.length || result.webLinks !== 3 || result.unsafePageLinks.length || result.missingAnchors.length || result.missingAlt || result.horizontalActions || result.canonical !== 'https://synca.haerth.cn' + path || result.registrations.join('|') !== '浙ICP备2026013056号|浙公网安备33010602014403号') failures.push({ label, result });
       await page.evaluate(() => scrollTo(0, 0));
       if (screenshotDir && ((width === 1440 && language === 'zh-Hans') || (width === 390 && language === 'zh-Hans') || (width === 320 && language === 'en'))) await page.screenshot({ path: `${screenshotDir}/home-${language}-${width}-${scheme}.png`, fullPage: true });
       checks.push(label);
     }
   }
-  // Locale links open a new tab and preserve the marketing page.
+  // Locale changes stay in this tab; the public tutorial never loads account state.
   await page.goto(baseURL + '/home/');
-  const [localePage] = await Promise.all([page.waitForEvent('popup'), page.getByRole('link', { name: 'EN', exact: true }).click()]);
-  await localePage.waitForLoadState('domcontentloaded');
-  if (await localePage.locator('html').getAttribute('lang') !== 'en' || !page.url().endsWith('/home/')) failures.push('English new-tab navigation failed');
-  await localePage.close();
+  await page.getByRole('link', { name: 'EN', exact: true }).click();
+  if (await page.locator('html').getAttribute('lang') !== 'en') failures.push('Locale navigation failed');
+  const apiRequests = [];
+  page.on('request', request => { if (/\/api\//.test(request.url())) apiRequests.push(request.url()); });
+  await page.locator('.guide-trigger').click();
+  if (!await page.locator('dialog').isVisible()) failures.push('Tutorial did not open');
+  await page.locator('.guide-details summary').click();
+  if (!await page.locator('.guide-prompt').isVisible()) failures.push('Instructions did not expand');
+  await page.keyboard.press('Escape');
+  if (await page.locator('dialog').isVisible() || !await page.locator('.guide-trigger').evaluate(el => el === document.activeElement)) failures.push('Dialog close/focus failed');
+  if (apiRequests.length) failures.push({ apiRequests });
   await page.goto(baseURL + '/home/');
   await page.keyboard.press('Tab');
   if (await page.locator(':focus').getAttribute('href') !== '#main') failures.push('Skip link is not first keyboard target');
   if (errors.length) failures.push({ errors });
   if (failures.length) throw new Error(JSON.stringify(failures, null, 2));
-  return { passed: checks.length, checks, keyboard: 'skip link first', localeNavigation: 'passed', javascript: 'not required', pageErrors: errors };
+  return { passed: checks.length, checks, keyboard: 'skip link first', localeNavigation: 'passed', tutorial: 'local only', pageErrors: errors };
 };
