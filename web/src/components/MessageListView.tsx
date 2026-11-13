@@ -1,3 +1,4 @@
+import { categoryEditPatch } from '../utils/categoryEdit';
 import { AppLoading } from './AppLoading';
 import { CategoryContextMenu, type CategoryMenuAnchor } from './CategoryContextMenu';
 import { SidebarFrame } from './SidebarFrame';
@@ -324,11 +325,13 @@ export const MessageListView: React.FC = () => {
     const trimmedName = newCategoryName.trim();
     if (!trimmedName || categorySaving) return;
     if (categoryManagerEditor) {
-      const duplicated = categoryManagerRows.some(row => row.clientId !== categoryManagerEditor.clientId && row.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
+      const duplicated = !categoryManagerEditor.isDefault && categoryManagerRows.some(row => row.clientId !== categoryManagerEditor.clientId && row.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
       if (duplicated) { setShowDuplicateCategoryModal(true); return; }
+      const patch = categoryEditPatch(categoryManagerEditor, { name: trimmedName, color: newCategoryColor, colorHex: newCategoryHex });
+      if (categoryManagerEditor.id && !patch) { closeCategoryEditor(); return; }
       ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
       try {
-        const saved = categoryManagerEditor.id ? await api.updateMessageCategory(categoryManagerEditor.id,{name:trimmedName,color:newCategoryColor,colorHex:newCategoryHex}) : await api.createMessageCategory(trimmedName,newCategoryColor,newCategoryHex);
+        const saved = categoryManagerEditor.id ? await api.updateMessageCategory(categoryManagerEditor.id, patch!) : await api.createMessageCategory(trimmedName,newCategoryColor,newCategoryHex);
         const updated = { ...categoryManagerEditor, ...saved, colorHex:saved.colorHex };
         setCategoryManagerRows(rows => rows.some(row => row.clientId === updated.clientId) ? rows.map(row => row.clientId === updated.clientId ? updated : row) : [...rows, updated]);
         setCategories(current => current.some(row => row.id === saved.id) ? current.map(row => row.id === saved.id ? saved : row) : [...current,saved]);
@@ -342,9 +345,11 @@ export const MessageListView: React.FC = () => {
       setShowDuplicateCategoryModal(true);
       return;
     }
+    const patch = editingCategory ? categoryEditPatch(editingCategory, { name: trimmedName, color: newCategoryColor, colorHex: newCategoryHex }) : null;
+    if (editingCategory && !patch) { setEditingCategory(null); closeCategoryEditor(); return; }
     setCategorySaving(true);
     try {
-      if (editingCategory) await api.updateMessageCategory(editingCategory.id, { ...(!editingCategory.isDefault ? { name: trimmedName } : {}), ...(newCategoryHex !== editingCategory.colorHex || newCategoryColor !== editingCategory.color ? { color: newCategoryColor, colorHex: newCategoryHex } : {}) });
+      if (editingCategory) await api.updateMessageCategory(editingCategory.id, patch!);
       else await api.createMessageCategory(trimmedName, newCategoryColor, newCategoryHex);
       setEditingCategory(null);
       setNewCategoryName('');
@@ -750,6 +755,7 @@ export const MessageListView: React.FC = () => {
         <Modal
           title={categoryManagerError.title}
           message={categoryManagerError.message}
+          hideCancel
           confirmText={t('common.ok', 'OK')}
           onConfirm={() => setCategoryManagerError(null)}
           onCancel={() => setCategoryManagerError(null)}

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { categoryEditPatch } from '../src/utils/categoryEdit.ts';
+const original={name:'Default',isDefault:true,color:'slate'};
+assert.equal(categoryEditPatch(original,{...original}),null);
+assert.equal(categoryEditPatch(original,{...original,colorHex:null}),null);
+assert.equal(categoryEditPatch(original,{...original,name:'默认'}),null);
+assert.deepEqual(categoryEditPatch(original,{...original,color:'mint'}),{color:'mint',colorHex:null});
+assert.deepEqual(categoryEditPatch({...original,colorHex:'#123456'},{...original}),{color:'slate',colorHex:null});
+assert.equal(categoryEditPatch({...original,isDefault:false},{...original,name:' Default '}),null);
+assert.deepEqual(categoryEditPatch({...original,isDefault:false},{...original,name:'Work'}),{name:'Work'});
+assert.deepEqual(categoryEditPatch(original,{...original,colorHex:'#123456'}),{color:'slate',colorHex:'#123456'});
+console.log('PASS: unchanged saves, protected names, legacy null shades, rename and color edits');

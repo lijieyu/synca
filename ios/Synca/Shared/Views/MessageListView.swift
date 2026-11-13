@@ -1185,17 +1185,6 @@ struct MessageListView: View {
                     _ = await task.result
                 }
                 #endif
-                #if os(macOS)
-                .onChange(of: syncManager.selectedCategoryId) { _ in
-                    guard !searchScrollSuppressed, !searchPresentationSuppressesScroll else { return }
-                    scrollTask?.cancel()
-                    beginInitialLoadScrollWindow()
-                    shouldScrollToBottomAfterSend = false
-                    var transaction = Transaction(animation: nil)
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) { proxy.scrollTo("bottom", anchor: .bottom) }
-                }
-                #endif
                 .onChange(of: syncManager.isSending) { isSending in
                     guard !isSending, shouldScrollToBottomAfterSend else { return }
                     beginPostSendScrollWindow()
@@ -1245,13 +1234,10 @@ struct MessageListView: View {
                     shouldScrollToBottomAfterInitialLoad = false
                 }
             }
-            #if os(macOS)
-            // Desktop filters reuse the scroll container and decoded thumbnails.
-            .id(textLayoutRevision)
-            #else
-            // Preserve iOS lazy-list geometry restoration when collapsing text.
+            // A filtered list must not inherit the previous category's lazy-row
+            // estimates or scroll offset. Decoded thumbnails remain shared in
+            // ImageCacheManager; only the feed's layout lifetime changes.
             .id("\(syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId)-\(textLayoutRevision)")
-            #endif
         }
     }
 
