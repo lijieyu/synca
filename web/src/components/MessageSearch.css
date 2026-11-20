@@ -34,7 +34,7 @@
 .message-search-clear { display:flex; align-items:center; justify-content:center; flex:0 0 28px; height:28px; border:0; border-radius:50%; background:transparent; color:var(--text-secondary); cursor:pointer; }
 .message-search-clear:hover { background:var(--border-color); }
 .message-search-result:not(:last-child)::after { content:''; position:absolute; inset:auto 10px 0; height:1px; background:var(--border-color); }
-.modal-content.message-search-modal .message-search-results { padding-right:8px; scrollbar-width:thin; }
+.modal-content.message-search-modal .message-search-results { padding-right:8px; }
 .modal-content.message-search-modal .message-search-results.is-empty { flex:0; }
 .message-search-meta { flex-wrap:wrap; justify-content:space-between; gap:6px 12px; }
 .message-search-meta .message-search-meta-left { display:flex; align-items:center; min-width:0; flex:1; gap:8px; }

@@ -1,0 +1,102 @@
+--- a/src/components/MessageListView.tsx
++++ b/src/components/MessageListView.tsx
+@@ -178,11 +178,13 @@
+     const poll = () => {
+       if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
+     };
++    const unsubscribe = window.syncaDesktop?.subscribe('refresh', poll);
+     const timer = setInterval(poll, 10000);
+     document.addEventListener('visibilitychange', poll);
+     return () => {
+       ++fetchRevision.current;
+       clearInterval(timer);
++      unsubscribe?.();
+       document.removeEventListener('visibilitychange', poll);
+     };
+   }, [email]);
+@@ -499,6 +501,7 @@
+   const customCategories = categories.filter(category => !category.isDefault);
+   const menuIndex = customCategories.findIndex(category => category.id === menuCategory?.id);
+ 
++  useEffect(() => {window.syncaDesktop?.count(allTodoCount)},[allTodoCount]);
+   const completed = filteredMessages.filter((message) => message.isCleared && !message.isDeleted);
+   const pending = filteredMessages.filter((message) => !message.isCleared);
+ 
+--- a/src/components/InputBar.tsx
++++ b/src/components/InputBar.tsx
+@@ -1,4 +1,4 @@
+-import { createComposerDrafts } from '../utils/composerDrafts';
++import { createDesktopDrafts as createComposerDrafts } from '../desktop/snapshot';
+ import React, { useState, useRef, useCallback, useEffect } from 'react';
+ import { api, DailyLimitError, StorageError } from '../api/client';
+ import { ImagePlus, Paperclip } from 'lucide-react';
+--- a/src/api/client.ts
++++ b/src/api/client.ts
+@@ -1,3 +1,4 @@
++import { cachedList, clearSnapshots } from '../desktop/snapshot';
+ import { saveDownload } from '../utils/downloads';
+ export class SessionExpiredError extends Error {}
+ 
+@@ -135,6 +136,9 @@
+ 
+   // Never persist protected attachments: an old browser cache must not bypass expiry or sign-out.
+   resetSession() {
++    void clearSnapshots().catch(()=>{});
++    for(const key of Object.keys(localStorage)) if(key.startsWith('synca.desktop.draft.')) localStorage.removeItem(key);
++    window.syncaDesktop?.session(this.token);
+     this.sessionVersion += 1;
+     this.clearImageSources();
+     this.imageCacheToken = this.token;
+@@ -211,11 +215,11 @@
+   }
+ 
+   async listMessages(): Promise<{ messages: SyncaMessage[] }> {
+-    return this.fetch<{ messages: SyncaMessage[] }>('/messages');
++    return cachedList('messages', () => this.fetch<{ messages: SyncaMessage[] }>('/messages'));
+   }
+ 
+   async listMessageCategories(): Promise<{ categories: MessageCategory[] }> {
+-    return this.fetch<{ categories: MessageCategory[] }>('/message-categories');
++    return cachedList('message-categories', () => this.fetch<{ categories: MessageCategory[] }>('/message-categories'));
+   }
+ 
+   async createMessageCategory(name: string, color: MessageCategoryColor, colorHex?: string | null): Promise<MessageCategory> {
+@@ -246,14 +250,14 @@
+   async sendTextMessage(text: string, categoryId?: string | null): Promise<SyncaMessage> {
+     return this.fetch<SyncaMessage>('/messages', {
+       method: 'POST',
+-      body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null }),
++      body: JSON.stringify({ textContent: text, sourceDevice: window.syncaDesktop?.platform ?? 'Web', categoryId: categoryId ?? null }),
+     });
+   }
+ 
+   async sendImageMessage(file: File, categoryId?: string | null, options?: UploadOptions): Promise<SyncaMessage> {
+     const formData = new FormData();
+     formData.append('image', file);
+-    formData.append('sourceDevice', 'Web');
++    formData.append('sourceDevice', window.syncaDesktop?.platform ?? 'Web');
+     if (categoryId) {
+       formData.append('categoryId', categoryId);
+     }
+@@ -318,7 +322,7 @@
+     const formData = new FormData();
+     formData.append('file', file);
+     formData.append('fileName', file.name);
+-    formData.append('sourceDevice', 'Web');
++    formData.append('sourceDevice', window.syncaDesktop?.platform ?? 'Web');
+     if (categoryId) {
+       formData.append('categoryId', categoryId);
+     }
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -10,6 +10,10 @@
+ import './calm.css';
+ import './focus.css';
+ import { installFocusModality } from './utils/focusModality';
++import './desktop/window.css';
++
++if (window.syncaDesktop?.platform === 'macOS')
++  document.documentElement.classList.add('mac-window');
+ 
+ installFocusModality();
+ 

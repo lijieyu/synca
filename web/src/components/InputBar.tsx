@@ -1,3 +1,4 @@
+import { createComposerDrafts } from '../utils/composerDrafts';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { api, DailyLimitError, StorageError } from '../api/client';
 import { ImagePlus, Paperclip } from 'lucide-react';
@@ -12,6 +13,7 @@ interface Props {
   onSent: () => void;
   categoryId?: string | null;
   focusRequest?: number;
+  scopeId?: string;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -22,19 +24,21 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0 }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, focusRequest = 0 }) => {
   const { accessStatus } = useAuth();
   const uploadController = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [retryAttachment, setRetryAttachment] = useState<{ file: File; image: boolean; categoryId?: string | null } | null>(null);
   useEffect(() => () => uploadController.current?.abort(), []);
-  const [text, setText] = useState('');
+  const [drafts] = useState(() => createComposerDrafts());
+  const scope = scopeId ?? categoryId ?? 'default';
+  const { text } = React.useSyncExternalStore(drafts.subscribe, () => drafts.get(scope));
   const characterCount = messageTextLength(text);
   const overLimit = characterCount > MESSAGE_TEXT_LIMIT;
   const [isSending, setIsSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitReason, setLimitReason] = useState<'upload' | 'quota' | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -60,6 +64,16 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }, []);
 
+  React.useLayoutEffect(() => {
+    const draft = drafts.get(scope);
+    textareaRef.current?.setSelectionRange(draft.start, draft.end, draft.direction);
+  }, [drafts, scope]);
+  React.useLayoutEffect(autoGrow, [text, scope, autoGrow]);
+
+  const rememberDraft = (field: HTMLTextAreaElement) => {
+    drafts.set(scope, field.value, field.selectionStart, field.selectionEnd, field.selectionDirection);
+  };
+
   const handleSendText = async () => {
     const trimmed = text.trim();
     if (!trimmed || isSending || overLimit) return;
@@ -67,16 +81,12 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
     setIsSending(true);
     try {
       await api.sendTextMessage(trimmed, categoryId);
-      setText('');
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
+      if (drafts.get(scope).text === text) drafts.set(scope, '', 0, 0);
       onSent();
     } catch (e) {
       console.error(e);
       if (e instanceof DailyLimitError) {
-        setShowLimitModal(true);
+        setLimitReason('quota');
       } else {
         setToastMsg(t('storage.text_send_failed'));
         setShowToast(true);
@@ -87,7 +97,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
 
   const sendAttachment = async (file: File, image: boolean, targetCategoryId = categoryId) => {
     if (isSending) return;
-    if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null }); setShowLimitModal(true); return; }
+    if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null }); setLimitReason('upload'); return; }
     if (file.size > (image ? 50 * 1024 * 1024 : maxDocumentSize)) {
       setToastMsg(t(image ? 'storage.image_too_large' : 'message_file.error_too_large')); setShowToast(true); return;
     }
@@ -103,7 +113,8 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
       onSent();
     } catch (error) {
       setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null });
-      if (error instanceof DailyLimitError || (error instanceof StorageError && error.code === 'file_upload_requires_paid')) setShowLimitModal(true);
+      if (error instanceof DailyLimitError) setLimitReason('quota');
+      else if (error instanceof StorageError && error.code === 'file_upload_requires_paid') setLimitReason('upload');
       else if (!(error instanceof DOMException && error.name === 'AbortError')) {
         setToastMsg(t(error instanceof StorageError && error.code === 'storage_limit_reached' ? 'storage.full' : image ? 'storage.image_send_failed' : 'storage.file_send_failed'));
         setShowToast(true);
@@ -159,7 +170,11 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
       await sendFile(supportedFile);
       return;
     }
-    pasteRichList(e, setText, autoGrow);
+    const input = e.currentTarget;
+    pasteRichList(e, value => {
+      const caret = input.selectionEnd + value.length - input.value.length;
+      drafts.set(scope, value, caret, caret);
+    }, autoGrow);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -182,19 +197,12 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
       
       // Update text state with newline at cursor
       const newText = value.substring(0, start) + "\n" + value.substring(end);
-      setText(newText);
-      
-      // We need to set selection after React re-renders, but for a quick fix 
-      // we can rely on the onChange and autoGrow.
-      // However, to be precise:
-      setTimeout(() => {
-        el.selectionStart = el.selectionEnd = start + 1;
-        autoGrow();
-        // Only scroll if we have actually hit the max-height limit (160px)
-        if (el.scrollHeight > 160) {
-          el.scrollTop = el.scrollHeight;
-        }
-      }, 0);
+      drafts.set(scope, newText, start + 1, start + 1);
+      requestAnimationFrame(() => {
+        if (el !== textareaRef.current || el.dataset.scope !== scope || el.value !== newText) return;
+        el.setSelectionRange(start + 1, start + 1);
+        if (el.scrollHeight > 160) el.scrollTop = el.scrollHeight;
+      });
     }
   };
 
@@ -227,10 +235,14 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
 
           <textarea
             ref={textareaRef}
+            key={scope}
+            data-scope={scope}
             className={isSending ? 'sending' : ''}
             placeholder={isSending ? t('message_list.sending_placeholder', 'Sending...') : t('message_list.input_placeholder', 'Capture your thoughts...')}
             value={text}
-            onChange={(e) => { setText(e.target.value); autoGrow(); }}
+            onSelect={e => rememberDraft(e.currentTarget)}
+            onBlur={e => rememberDraft(e.currentTarget)}
+            onChange={e => rememberDraft(e.currentTarget)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             disabled={isSending}
@@ -267,7 +279,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, focusRequest = 0
       </div>}
       <Toast variant="error" duration={6000} message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 
-      {showLimitModal && <PlanDialog onClose={() => setShowLimitModal(false)} />}
+      {limitReason && <PlanDialog reason={limitReason} onClose={() => setLimitReason(null)} />}
 
     </>
   );

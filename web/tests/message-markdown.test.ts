@@ -28,10 +28,9 @@ describe('message Markdown presentation', () => {
 });
 
 describe('source fidelity', () => {
-  it('preserves ordinary whitespace and leaves unsupported Markdown literal', () => {
+  it('preserves ordinary whitespace and keeps image syntax literal', () => {
     expect(render('first\n\n\nlast')).toContain('first\n\n\nlast');
     expect(render('![photo](https://example.com/p.png)').replace(/<[^>]+>/g, '')).toContain('![photo](https://example.com/p.png)');
-    expect(render('```swift\nlet value = 1\n```')).toContain('```swift\nlet value = 1\n```');
   });
 });
 
@@ -41,10 +40,46 @@ it('renders standalone italic emphasis while preserving literal underscores in o
   expect(render('some_long_identifier\n\n\nnext')).toContain('some_long_identifier\n\n\nnext');
 });
 
-it('preserves unsupported syntax mixed with supported Markdown', () => {
-  const text = '**bold**\n\n![photo](https://example.com/p.png)\n\n```swift\nlet value = 1\n```\n\n# heading\n\n~~deleted~~';
-  const html = render(text);
-  expect(html).toContain('<strong>bold</strong>');
-  const visible = html.replace(/<[^>]+>/g, '');
-  for (const literal of ['![photo](https://example.com/p.png)', '```swift\nlet value = 1\n```', '# heading', '~~deleted~~']) expect(visible).toContain(literal);
+it('renders each extended format on its own', () => {
+  for (let level = 1; level <= 6; level++) {
+    expect(render('#'.repeat(level) + ' 标题')).toContain(`<h${level}>标题</h${level}>`);
+  }
+  expect(render('章节\n===')).toContain('<h1>章节</h1>');
+  expect(render('---')).toMatch(/<hr\s*\/?>/);
+  expect(render('~~旧稿~~')).toContain('<del>旧稿</del>');
+  expect(render('~~~js\n  a < b\n~~~')).toContain('<pre><code class="language-js">  a &lt; b\n</code></pre>');
+  const table = render('阶段 | 状态\n:--- | ---:\n复核 | **完成**');
+  expect(table).toContain('<table>'); expect(table).toContain('<strong>完成</strong>');
+  expect(table.match(/<th[ >]/g)).toHaveLength(2);
+  const tasks = render('- [x] 已完成\n- [ ] 待办');
+  expect(tasks.match(/type="checkbox"/g)).toHaveLength(2);
+  expect(tasks.match(/disabled/g)).toHaveLength(2);
+  expect(tasks.match(/checked=/g)).toHaveLength(1);
+});
+
+it('leaves remote images literal inside formatted documents and code untouched', () => {
+  const html = render('# 标题\n\n![photo](https://example.com/p.png)\n\n```md\n~~literal~~\n# literal\n```');
+  expect(html).toContain('![photo](https://example.com/p.png)');
+  expect(html).not.toContain('<img'); expect(html).not.toContain('<del>');
+  expect(html).toContain('~~literal~~\n# literal');
+});
+
+it('makes only parsed task checkboxes actionable, including quoted, loose and ordered items', () => {
+  const source = ['> 1. [X] 任务', '>    - [ ] **子项**', '', '-','  [ ] continuation', '', '`- [ ] literal`', '', '\\- [ ] ordinary'].join('\r\n');
+  const html = renderToStaticMarkup(createElement(MessageMarkdown, { text: source, onTaskToggle: () => {} }));
+  expect(html.match(/type="checkbox"/g)).toHaveLength(3);
+  expect(html).not.toContain('disabled');
+  expect(render('-\t[ ] tab')).toContain('aria-label="tab"');
+  expect(render('-\n  [ ] next line')).toContain('aria-label="next line"');
+  for (const label of ['任务', '子项', 'continuation']) expect(html).toContain('aria-label="' + label + '"');
+});
+
+it('underlines only explicit paired inline tags, leaves code, attributes and escaped tags literal', () => {
+  expect(render('<u>标注</u>')).toContain('<u>标注</u>');
+  const html = render('**<u>yes</u>** and `<u>code</u>` and \\<u>escaped</u> and <u title="ignored">attributes</u> and <u>unclosed');
+  expect(html.match(/<u>/g)).toHaveLength(1);
+  expect(html).toContain('<strong><u>yes</u></strong>');
+  expect(html).toContain('<code>&lt;u&gt;code&lt;/u&gt;</code>');
+  expect(html).toContain('&lt;u title=');
+  expect(render('```\n<u>verbatim</u>\n```')).not.toContain('<u>');
 });

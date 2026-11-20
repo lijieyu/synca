@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.3.2",
+    "playwright-core": "1.65.1"
+  },
+  "name": "synca-electron-build",
+  "version": "1.2.0",
+  "scripts": {
+    "build": "node build-ui.mjs && node build.mjs",
+    "build:mac": "node build-ui.mjs && node build.mjs darwin",
+    "build:ui": "node build-ui.mjs"
+  }
+}

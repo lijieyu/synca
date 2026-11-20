@@ -1,3 +1,4 @@
+import { SettingsSurface } from './SettingsSurface';
 import React from 'react';
 import './Modal.css';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,10 @@ export const Modal: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   closeLabel = closeLabel ?? t('navigation.close');
+  const surface = React.useContext(SettingsSurface);
+  const embedded = surface?.host && surface.action && className === ({
+    categories: 'category-manager-modal', ai: 'ai-management-modal', feedback: 'feedback-modal'
+  })[surface.action] ? surface.host : null;
   const titleID = React.useId();
   const dialogRef = React.useRef<HTMLDivElement>(null);
   const cancelRef = React.useRef(onCancel);
@@ -43,6 +48,7 @@ export const Modal: React.FC<Props> = ({
   const contentSizeClass = `modal-content-${size ?? (children ? 'standard' : 'compact')}`;
 
   React.useEffect(() => {
+    if (embedded) return;
     const previous = document.activeElement as HTMLElement | null;
     const restorationPolicy = restoreFocusRef;
     const initialFocus = dialogRef.current?.querySelector<HTMLElement>('[data-initial-focus]');
@@ -66,8 +72,16 @@ export const Modal: React.FC<Props> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => { window.removeEventListener('keydown', handleKeyDown); if (restorationPolicy?.current !== false && previous?.isConnected) previous.focus({ preventScroll: true }); };
-  }, [restoreFocusRef]);
+  }, [restoreFocusRef, embedded]);
 
+  if (embedded) return createPortal(<div className={'settings-embedded '+className}>
+    <button type="button" data-leave-section hidden onClick={onCancel} disabled={closeDisabled}/>
+    {children}
+    {(!hideActions || leadingActionText) && <div className="settings-actions">
+      {leadingActionText && <button className="modal-leading-action" disabled={leadingActionDisabled} onClick={onLeadingAction}>{leadingActionText}</button>}
+      {!hideActions && <button className="modal-btn modal-btn-confirm" disabled={confirmDisabled} onClick={onConfirm}>{confirmText}</button>}
+    </div>}
+  </div>, embedded);
   return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
       <div ref={dialogRef} tabIndex={-1} className={`modal-content ${contentSizeClass} ${scrollBody ? 'modal-scrollable' : ''} ${className}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleID}>

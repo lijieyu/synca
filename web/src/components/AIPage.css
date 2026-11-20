@@ -95,3 +95,23 @@
 }
 /* Reserve the scrollbar before revealing the prompt so the action row stays put. */
 .ai-management-modal .modal-scroll-body { scrollbar-gutter:stable; }
+
+.ai-page .ai-copy { margin-top: 16px; }
+.ai-page .ai-tutorial-steps {
+  margin-top: 12px;
+  border-top: 1px solid var(--ai-line);
+}
+.ai-page .ai-tutorial-steps summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.ai-tutorial-steps summary::-webkit-details-marker { display: none; }
+.ai-tutorial-steps[open] summary > svg { transform: rotate(180deg); }
+.ai-page .ai-tutorial-steps .ai-steps { margin: 8px 0 18px; }

@@ -1,3 +1,6 @@
+import { MobileCategoryDrawer } from './MobileCategoryDrawer';
+import { SettingsSurface } from './SettingsSurface';
+import { PanelLeft, X, Tags } from 'lucide-react';
 import { categoryEditPatch } from '../utils/categoryEdit';
 import { AppLoading } from './AppLoading';
 import { CategoryContextMenu, type CategoryMenuAnchor } from './CategoryContextMenu';
@@ -6,7 +9,7 @@ import { AIPage } from './AIPage';
 import { moveItem, usePointerSort } from '../hooks/usePointerSort';
 import { CategoryPalette, categoryStyle } from './CategoryPalette';
 import { BroomIcon } from './BroomIcon';
-import { SettingsPanel } from './SettingsPanel';
+import { openSettings } from './SettingsPanel';
 import { FunctionMenu } from './FunctionMenu';
 import { ShellPanel } from './ShellPanel';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -68,6 +71,32 @@ const EmptyMessageState: React.FC = () => {
 };
 
 export const MessageListView: React.FC = () => {
+  const [compact, setCompact] = useState(() => matchMedia('(width < 640px)').matches);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => {
+    const media=matchMedia('(width < 640px)');
+    const resize=()=>{setCompact(media.matches);setDrawerOpen(false)};
+    media.addEventListener('change',resize);
+    return ()=>media.removeEventListener('change',resize);
+  }, []);
+  useEffect(() => {
+    if (!compact || drawerOpen) return;
+    let origin: Touch | undefined;
+    const begin=(e:TouchEvent)=>{
+      const t=e.touches[0];
+      origin=e.touches.length===1 && t.clientX<=36 && e.target instanceof Element &&
+        e.target.closest('.calm-main') && !e.target.closest('input,textarea,button,a') &&
+        !document.querySelector('[aria-modal=true],dialog[open]') ? t : undefined;
+    };
+    const end=(e:TouchEvent)=>{
+      const t=e.changedTouches[0];
+      if(origin && t.clientX-origin.clientX>60 && t.clientX-origin.clientX>2*Math.abs(t.clientY-origin.clientY))setDrawerOpen(true);
+      origin=undefined;
+    };
+    const cancel=()=>{origin=undefined};
+    document.addEventListener('touchstart',begin,{passive:true});document.addEventListener('touchend',end,{passive:true});document.addEventListener('touchcancel',cancel);
+    return ()=>{document.removeEventListener('touchstart',begin);document.removeEventListener('touchend',end);document.removeEventListener('touchcancel',cancel)};
+  }, [compact,drawerOpen]);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   useEffect(() => {
@@ -87,7 +116,6 @@ export const MessageListView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [composerFocusRequest, requestComposerFocus] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(ALL_CATEGORY_ID);
-  const [showSettings, setShowSettings] = useState(false);
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -95,7 +123,14 @@ export const MessageListView: React.FC = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
-  const [showDuplicateCategoryModal, setShowDuplicateCategoryModal] = useState(false);
+  const [duplicateName, setDuplicateName] = useState(false);
+  const categoryNameInput = useRef<HTMLInputElement>(null);
+  const managerNames = useRef(new Map<string, HTMLInputElement>());
+  const [managerInvalid, setManagerInvalid] = useState<{id: string; message: string} | null>(null);
+  const [managerEditing, setManagerEditing] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState(false);
+  useEffect(() => { if (!showCreateCategoryModal) setDuplicateName(false); }, [showCreateCategoryModal]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryManagerEditor, setCategoryManagerEditor] = useState<CategoryManagerDraftRow | null>(null);
   const [categoryManagerRows, setCategoryManagerRows] = useState<CategoryManagerDraftRow[]>([]);
@@ -116,7 +151,7 @@ export const MessageListView: React.FC = () => {
   const managerBaseline = useRef(new Map<string, MessageCategory>());
   useEffect(() => { categoryWritePending.current = categorySaving; }, [categorySaving]);
 
-  const { logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
+  const { token, logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
 
   const fetchData = async (scrollToBottom = false) => {
@@ -207,6 +242,8 @@ export const MessageListView: React.FC = () => {
 
   const effectiveDefaultSendCategoryId = defaultSendCategoryId ?? defaultCategory?.id ?? null;
   const selectedScopeIsAll = selectedCategoryId === ALL_CATEGORY_ID;
+  const selectedCategory = categories.find(category => category.id === selectedCategoryId);
+  const heading = selectedScopeIsAll ? t('common.all') : selectedCategory?.isDefault ? t('message_category.default_badge') : selectedCategory?.name;
   const activeSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
 
   const filteredMessages = useMemo(() => {
@@ -241,7 +278,18 @@ export const MessageListView: React.FC = () => {
         isDefault: category.isDefault,
       }));
 
+  const settingsSurface = React.useContext(SettingsSurface);
+  const priorAction = useRef(settingsSurface?.action);
+  useEffect(() => {
+    if (priorAction.current && !settingsSurface?.host) {
+      setPanel(null); setShowAI(false); setShowCategoryModal(false);
+      settingsSurface?.finish();
+    }
+    priorAction.current = settingsSurface?.action;
+  }, [settingsSurface?.host, settingsSurface?.action]);
+  function finishManager() { setShowCategoryModal(false); if (settingsSurface?.action === 'categories') settingsSurface.finish(); }
   const openCategoryManager = () => {
+    setManagerInvalid(null); setManagerEditing(false);
     managerBaseline.current = new Map(categories.map(category => [category.id,category]));
     setCategoryManagerRows(buildCategoryManagerRows());
     setCategoryManagerEditor(null);
@@ -249,6 +297,18 @@ export const MessageListView: React.FC = () => {
     setCategoryManagerError(null);
     setShowCategoryModal(true);
   };
+
+  useEffect(() => {
+    const show = (event: Event) => {
+      switch ((event as CustomEvent).detail) {
+        case 'categories': openCategoryManager(); break;
+        case 'ai': setShowAI(true); break;
+        case 'feedback': setPanel('feedback'); break;
+      }
+    };
+    window.addEventListener('synca-settings-action', show);
+    return () => window.removeEventListener('synca-settings-action', show);
+  }, [categories]);
 
   useEffect(() => {
     if (!showCategoryModal) return;
@@ -263,8 +323,19 @@ export const MessageListView: React.FC = () => {
     managerBaseline.current = new Map(categories.map(category => [category.id,category]));
   }, [categories,showCategoryModal]);
 
+  function validateManagerName(row: CategoryManagerDraftRow) {
+    if (row.isDefault) return true;
+    const name = row.name.trim().toLocaleLowerCase();
+    const duplicate = categoryManagerRows.some(item => item.clientId !== row.clientId && item.name.trim().toLocaleLowerCase() === name);
+    if (name && !duplicate) return true;
+    settingsSurface?.continueEditing();
+    setManagerInvalid({ id: row.clientId, message: t(name ? 'review.action.duplicate' : 'message_category.invalid_message') });
+    managerNames.current.get(row.clientId)?.focus();
+    return false;
+  }
+
   const saveCategoryRow = async (row: CategoryManagerDraftRow, patch: Partial<Pick<MessageCategory, 'name' | 'color' | 'colorHex'>>) => {
-    if (!row.id || categoryWritePending.current) return;
+    if (!row.id || categoryWritePending.current || (patch.name !== undefined && !validateManagerName(row))) return;
     if (patch.name !== undefined) { const name = patch.name.trim(); if (!name || name === categories.find(c => c.id === row.id)?.name) return; patch = {...patch,name}; }
     ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
     try {
@@ -277,6 +348,7 @@ export const MessageListView: React.FC = () => {
   };
   const reorderManager = async (next: CategoryManagerDraftRow[]) => {
     if (categoryWritePending.current) return;
+    if (!next.every(validateManagerName)) return;
     const previous = categoryManagerRows; setCategoryManagerRows(next);
     if (next.some(row => !row.id)) return;
     ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
@@ -317,8 +389,15 @@ export const MessageListView: React.FC = () => {
   };
 
   const handleScopedClear = async (categoryId?: string | null) => {
-    await api.deleteCompletedMessages(categoryId ?? null);
-    await fetchData(false);
+    if (clearing) return;
+    setClearing(true); setClearError(false);
+    try {
+      await api.deleteCompletedMessages(categoryId ?? null);
+      setShowClearModal(false);
+      await fetchData(false);
+    } catch {
+      setClearError(true);
+    } finally { setClearing(false); }
   };
 
   const handleCreateCategory = async () => {
@@ -326,7 +405,7 @@ export const MessageListView: React.FC = () => {
     if (!trimmedName || categorySaving) return;
     if (categoryManagerEditor) {
       const duplicated = !categoryManagerEditor.isDefault && categoryManagerRows.some(row => row.clientId !== categoryManagerEditor.clientId && row.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
-      if (duplicated) { setShowDuplicateCategoryModal(true); return; }
+      if (duplicated) { setDuplicateName(true); categoryNameInput.current?.focus(); return; }
       const patch = categoryEditPatch(categoryManagerEditor, { name: trimmedName, color: newCategoryColor, colorHex: newCategoryHex });
       if (categoryManagerEditor.id && !patch) { closeCategoryEditor(); return; }
       ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
@@ -342,7 +421,7 @@ export const MessageListView: React.FC = () => {
     }
     const duplicated = !editingCategory?.isDefault && categories.some((category) => category.id !== editingCategory?.id && category.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase());
     if (duplicated) {
-      setShowDuplicateCategoryModal(true);
+      setDuplicateName(true); categoryNameInput.current?.focus();
       return;
     }
     const patch = editingCategory ? categoryEditPatch(editingCategory, { name: trimmedName, color: newCategoryColor, colorHex: newCategoryHex }) : null;
@@ -364,27 +443,7 @@ export const MessageListView: React.FC = () => {
 
   const handleCategoryManagerSave = async () => {
     if (categorySaving) return;
-    const normalizedNames = categoryManagerRows.map((row) => row.name.trim());
-    if (normalizedNames.some((name) => !name)) {
-      setCategoryManagerError({
-        title: t('message_category.invalid_title', 'Category Name Required'),
-        message: t('message_category.invalid_message', 'Each category needs a name before saving.'),
-      });
-      return;
-    }
-
-    const seenNames = new Set<string>();
-    for (const name of normalizedNames) {
-      const key = name.toLocaleLowerCase();
-      if (seenNames.has(key)) {
-        setCategoryManagerError({
-          title: t('message_category.duplicate_title', 'Category Already Exists'),
-          message: t('message_category.duplicate_message', 'Use a different category name.'),
-        });
-        return;
-      }
-      seenNames.add(key);
-    }
+    if (!categoryManagerRows.every(validateManagerName)) return;
 
     const baselineById = managerBaseline.current;
     ++fetchRevision.current; categoryWritePending.current = true; setCategorySaving(true);
@@ -415,7 +474,7 @@ export const MessageListView: React.FC = () => {
         }
       }
 
-      setShowCategoryModal(false);
+      finishManager();
       await fetchData(false);
     } catch (error) {
       console.error(error);
@@ -447,6 +506,7 @@ export const MessageListView: React.FC = () => {
   } });
 
   const activateCategory = (id: string) => {
+    setDrawerOpen(false);
     setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
     setSelectedCategoryId(id);
     requestComposerFocus(value => value + 1);
@@ -467,6 +527,11 @@ export const MessageListView: React.FC = () => {
   const fetchDataRef = useRef(fetchData);
   useLayoutEffect(() => { fetchDataRef.current = fetchData; });
   const updateMessageList = useCallback(() => { void fetchDataRef.current(false); }, []);
+  const applySavedText = useCallback((updated: SyncaMessage) => {
+    ++fetchRevision.current;
+    setMessages(current => sortMessages(current.map(item => item.id === updated.id && Date.parse(updated.updatedAt) >= Date.parse(item.updatedAt) ? updated : item)));
+    void fetchDataRef.current(false);
+  }, []);
   const editMessage = useCallback((message: SyncaMessage) => setEditingMessage({ ...message }), []);
 
   useEffect(() => {
@@ -500,22 +565,12 @@ export const MessageListView: React.FC = () => {
   const customCategories = categories.filter(category => !category.isDefault);
   const menuIndex = customCategories.findIndex(category => category.id === menuCategory?.id);
 
-  const completed = filteredMessages.filter((message) => message.isCleared);
+  const completed = filteredMessages.filter((message) => message.isCleared && !message.isDeleted);
   const pending = filteredMessages.filter((message) => !message.isCleared);
 
-  return (
-    <div className="app-container calm-shell">
-      {panel && <ShellPanel kind={panel} email={email} onClose={() => setPanel(null)} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
-      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-      {categoryMenu && menuCategory && <CategoryContextMenu anchor={categoryMenu} name={menuCategory.name}
-        protectedCategory={menuCategory.isDefault} busy={categorySaving}
-        canMoveUp={menuIndex > 0} canMoveDown={menuIndex >= 0 && menuIndex < customCategories.length - 1}
-        onClose={() => setCategoryMenu(null)}
-        onEdit={() => { setCategoryManagerEditor(null); setEditingCategory(menuCategory); setNewCategoryHex(menuCategory.colorHex); setNewCategoryName(menuCategory.name); setNewCategoryColor(menuCategory.color); setShowCreateCategoryModal(true); }}
-        onMove={direction => { const target = customCategories[menuIndex + direction]; if (menuIndex >= 0 && target) void reorderSidebar(menuCategory.id, target.id); }}
-        onDelete={() => setCategoryManagerDeleteTarget({ ...menuCategory, clientId: menuCategory.id })} />}
+  const sidebar=(
       <SidebarFrame>
-        <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span></div>
+        <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span>{compact && <button type="button" className="close-categories" aria-label={t('navigation.close')} onClick={()=>setDrawerOpen(false)}><X size={18}/></button>}</div>
 
         <div className="category-toolbar">
           <div className="category-switcher" ref={sidebarSort.containerRef}>
@@ -523,11 +578,18 @@ export const MessageListView: React.FC = () => {
               <LayoutGrid size={16} aria-hidden="true" />{t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
+            <div className="category-section-heading">
+              <span>{t('message_category.section_title')}</span>
+              <button type="button" onClick={()=>{setDrawerOpen(false);openSettings('categories')}} aria-label={t('message_list.manage_categories')} title={t('message_list.manage_categories')}>
+                <Tags size={16} aria-hidden="true" />
+              </button>
+            </div>
             {visibleSingleModeCategories.map((category) => (
               <button
                 key={category.id}
                 className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
                 data-category-id={category.id}
+                aria-pressed={selectedCategoryId === category.id}
                 onContextMenu={event => { event.preventDefault(); setCategoryMenu({ id: category.id, x: event.clientX, y: event.clientY, trigger: event.currentTarget }); }}
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
@@ -536,29 +598,45 @@ export const MessageListView: React.FC = () => {
 
                 onKeyDown={e => { if(e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); const rect=e.currentTarget.getBoundingClientRect(); setCategoryMenu({id:category.id,x:rect.left+12,y:rect.bottom,trigger:e.currentTarget}); return; } if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); const custom=categories.filter(c => !c.isDefault); const target=custom[custom.findIndex(c => c.id === category.id)+(e.key === 'ArrowUp' ? -1 : 1)]; if(target) void reorderSidebar(category.id,target.id); return; } navigateCategories(e); if (e.key === 'F2') { e.preventDefault(); setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); } }}
               >
-                {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
+                <span className="category-name" title={category.isDefault ? undefined : category.name}>
+                  {category.isDefault ? t('message_category.default_badge', 'Default') : category.name}
+                </span>
                 <CategoryTodoBadge count={todoCountByCategoryId[category.id] ?? 0} />
               </button>
             ))}
-            <button className="category-add-btn" onClick={() => { setEditingCategory(null); setNewCategoryHex(undefined); setNewCategoryName(''); setNewCategoryColor('sky'); setShowCreateCategoryModal(true); }} title={t('message_category.new_section')}>
-              <Plus size={15} /><span>{t('message_category.add_action')}</span>
+            <button className="category-add-btn" aria-label={t('message_category.add_action')} onClick={() => { setDrawerOpen(false); setEditingCategory(null); setNewCategoryHex(undefined); setNewCategoryName(''); setNewCategoryColor('sky'); setShowCreateCategoryModal(true); }} title={t('message_category.new_section')}>
+              <Plus size={18} aria-hidden="true" />
             </button>
           </div>
 
         </div>
       <FunctionMenu onAI={() => setShowAI(true)} email={email} planLabel={t(!accessStatus ? 'message_list.loading' : accessStatus.isUnlimited ? 'access.purchased_lifetime' : 'access.free_title')}
         usage={plan === 'free' && accessStatus ? { used: accessStatus.todayUsed, limit: accessStatus.todayLimit ?? 20 } : null}
-        onAccount={() => setPanel('account')} onSettings={() => setShowSettings(true)} onCategories={openCategoryManager}
-        onFeedback={() => setPanel('feedback')} onAbout={() => setPanel('about')} onLogout={() => setShowLogoutModal(true)} />
+        onAccount={() => openSettings('account')} onSettings={() => {setDrawerOpen(false);openSettings()}} onCategories={openCategoryManager}
+        onFeedback={() => openSettings('feedback')} onAbout={() => openSettings('about')} onLogout={() => setShowLogoutModal(true)} />
       </SidebarFrame>
+  );
+  return (
+    <div className="app-container calm-shell">
+      {panel && <ShellPanel kind={panel} email={email} onClose={() => {setPanel(null); if(settingsSurface?.action==='feedback') settingsSurface.finish();}} onLogout={() => { setPanel(null); setShowLogoutModal(true); }} />}
+      {categoryMenu && menuCategory && <CategoryContextMenu anchor={categoryMenu} name={menuCategory.name}
+        protectedCategory={menuCategory.isDefault} busy={categorySaving}
+        canMoveUp={menuIndex > 0} canMoveDown={menuIndex >= 0 && menuIndex < customCategories.length - 1}
+        onClose={() => setCategoryMenu(null)}
+        onEdit={() => { setCategoryManagerEditor(null); setEditingCategory(menuCategory); setNewCategoryHex(menuCategory.colorHex); setNewCategoryName(menuCategory.name); setNewCategoryColor(menuCategory.color); setShowCreateCategoryModal(true); }}
+        onMove={direction => { const target = customCategories[menuIndex + direction]; if (menuIndex >= 0 && target) void reorderSidebar(menuCategory.id, target.id); }}
+        onDelete={() => setCategoryManagerDeleteTarget({ ...menuCategory, clientId: menuCategory.id })} />}
+      {compact ? <MobileCategoryDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)}>{sidebar}</MobileCategoryDrawer> : sidebar}
       <main className="calm-main">
         <header className="header">
-          <div className="stream-heading"><h1>{selectedScopeIsAll ? t('common.all') : categories.find(c => c.id === selectedCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c => c.id === selectedCategoryId)?.name}</h1>
-          <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>
+          {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+' · '+pending.length}>
+            <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong><span>{pending.length}</span>
+          </button> : <div className="stream-heading"><h1 title={heading}>{heading}</h1>
+          <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>}
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RotateCw size={18} strokeWidth={1.7} /></button>
-            <button className="header-btn" disabled={!completed.length} onClick={() => setShowClearModal(true)} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
+            <button className="header-btn" disabled={!completed.length} onClick={() => { setClearError(false); setShowClearModal(true); }} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
         </header>
           <div className="message-list" ref={listRef}>
@@ -571,7 +649,7 @@ export const MessageListView: React.FC = () => {
             {filteredMessages.length > 0 && (
               <>
                 {completed.map((message) => (
-                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onUpdate={updateMessageList} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onTextSaved={applySavedText} onUpdate={updateMessageList} />
                 ))}
 
                 {pending.length > 0 && (
@@ -583,13 +661,13 @@ export const MessageListView: React.FC = () => {
                 )}
 
                 {pending.map((message) => (
-                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onUpdate={updateMessageList} />
+                  <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onTextSaved={applySavedText} onUpdate={updateMessageList} />
                 ))}
               </>
             )}
           </div>
 
-          <InputBar focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
+          <InputBar key={token} scopeId={selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
       </main>
 
       {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
@@ -597,15 +675,13 @@ export const MessageListView: React.FC = () => {
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
         onCancel={() => setEditingMessage(null)} onSaved={updated => {
           setEditingMessage(null);
-          ++fetchRevision.current;
-          setMessages(current => sortMessages(current.map(item => item.id === updated.id && Date.parse(updated.updatedAt) >= Date.parse(item.updatedAt) ? updated : item)));
+          applySavedText(updated);
           setToastMsg(t('message_edit.saved')); setShowToast(true);
-          void fetchData(false);
         }} />}
 
       <Toast message={toastMsg} visible={showToast} onClose={() => setShowToast(false)} />
 
-      {showAI && <Modal title={t('ai.connect')} message="" size="large" className="ai-management-modal" scrollBody hideActions onCancel={() => setShowAI(false)} onConfirm={() => setShowAI(false)}><AIPage presentation="dialog" /></Modal>}
+      {showAI && <Modal title={t('ai.connect')} message="" size="large" className="ai-management-modal" scrollBody hideActions onCancel={() => {setShowAI(false); if(settingsSurface?.action==='ai') settingsSurface.finish();}} onConfirm={() => {setShowAI(false); if(settingsSurface?.action==='ai') settingsSurface.finish();}}><AIPage presentation="dialog" /></Modal>}
 
       {showLogoutModal && (
         <Modal
@@ -622,17 +698,13 @@ export const MessageListView: React.FC = () => {
 
       {showClearModal && (
         <Modal
-          title={t('message_list.clear_all_confirm_title', 'Confirm Delete')}
-          message={!selectedScopeIsAll
-            ? t('message_list.clear_current_category_confirm', 'This will delete completed items in the current category')
-            : t('message_list.clear_all_categories_confirm', 'This will delete completed items in all categories')}
-          confirmText={t('common.delete', 'Delete')}
-          cancelText={t('common.cancel', 'Cancel')}
-          onConfirm={async () => {
-            setShowClearModal(false);
-            await handleScopedClear(!selectedScopeIsAll ? selectedCategoryId : null);
-          }}
-          onCancel={() => setShowClearModal(false)}
+          title={t(selectedScopeIsAll ? 'review.action.clear_all' : 'review.action.clear_category', { count: completed.length, name: heading })}
+          message={clearError ? t('review.action.clear_failed') : ''}
+          confirmText={t('review.action.clear_count', { count: completed.length })}
+          confirmDisabled={clearing || !completed.length} cancelDisabled={clearing} closeDisabled={clearing}
+          cancelText={t('common.cancel')}
+          onConfirm={() => void handleScopedClear(selectedScopeIsAll ? null : selectedCategoryId)}
+          onCancel={() => { if (!clearing) setShowClearModal(false); }}
           destructive
         />
       )}
@@ -643,32 +715,53 @@ export const MessageListView: React.FC = () => {
           title={t('message_list.manage_categories', 'Manage Categories')}
           closeLabel={t('navigation.close')}
           message=""
+          hideActions={Boolean(settingsSurface?.host && settingsSurface.action === 'categories')}
           hideCancel confirmText={t('polish.done')}
-          leadingActionText={t('message_category.add_action')}
-          onLeadingAction={() => { if (!categorySaving) editCategoryManagerRow(); }}
-          leadingActionDisabled={categorySaving}
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCategoryManagerSave()}
-          onCancel={() => { if (categorySaving) return; if (JSON.stringify(categoryManagerRows) !== JSON.stringify(buildCategoryManagerRows())) void handleCategoryManagerSave(); else setShowCategoryModal(false); }}
+          onCancel={() => { if (categorySaving) return; if (JSON.stringify(categoryManagerRows) !== JSON.stringify(buildCategoryManagerRows())) void handleCategoryManagerSave(); else finishManager(); }}
         >
           <fieldset className="category-manager-content" disabled={categorySaving}>
+            {compact && <div className="category-manager-tools">
+              <button type="button" aria-pressed={managerEditing} onClick={() => setManagerEditing(value => !value)}>
+                {t(managerEditing ? 'review.action.finish_editing' : 'review.action.edit')}
+              </button>
+            </div>}
             <div className="category-manager-scroll">
               <div className="category-manager-rows" ref={managerSort.containerRef}>
                 {categoryManagerRows.map((row, index) => (
                   <div key={row.clientId} className="category-manager-row" data-sort-id={row.isDefault ? undefined : row.clientId}>
-                    <CategoryPalette showChevron color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
-                    {row.isDefault ? <span className="category-manager-name category-name-readonly">{t('message_category.default_badge')}</span> : <input className="category-manager-name" aria-label={t('message_category.edit_title')} disabled={row.isDefault} onBlur={() => { if (!row.isDefault) window.setTimeout(() => { if (!categoryWritePending.current) void saveCategoryRow(row,{name:row.name}); }, 0); }} value={row.isDefault ? t('message_category.default_badge') : row.name} onChange={e => setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item))} />}
-                    <div className="category-manager-row-actions">
-                      <button type="button" className="category-sort-handle" disabled={row.isDefault} aria-label={`${t('polish.reorder')} ${row.name}`} onPointerDown={e => {
-                        // Avoid blur starting an independent save before drag activation.
+                    {compact ? <>
+                      <span aria-hidden="true" className="category-manager-dot" style={categoryStyle(row.colorHex, row.color)} />
+                      {managerEditing ? <button type="button" className="category-manager-mobile-name" onClick={() => editCategoryManagerRow(row)}>
+                        {row.isDefault ? t('message_category.default_badge') : row.name}
+                      </button> : <span className="category-manager-static-name">{row.isDefault ? t('message_category.default_badge') : row.name}</span>}
+                    </> : <>
+                      <CategoryPalette color={row.color} colorHex={row.colorHex} onChange={(color, colorHex) => { setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,color,colorHex} : item)); void saveCategoryRow(row,{color,colorHex}); }} />
+                      {row.isDefault ? <span className="category-manager-name category-name-readonly">{t('message_category.default_badge')}</span> : <input
+                        className="category-manager-name" aria-label={t('message_category.edit_title')}
+                        ref={el => { if (el) managerNames.current.set(row.clientId, el); else managerNames.current.delete(row.clientId); }}
+                        aria-invalid={managerInvalid?.id === row.clientId || undefined}
+                        aria-describedby={managerInvalid?.id === row.clientId ? 'category-manager-invalid' : undefined}
+                        onBlur={() => window.setTimeout(() => { if (!categoryWritePending.current && managerNames.current.has(row.clientId)) void saveCategoryRow(row,{name:row.name}); }, 0)}
+                        onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); event.currentTarget.blur(); } }}
+                        value={row.name} onChange={e => { setManagerInvalid(null); setCategoryManagerRows(rows => rows.map(item => item.clientId === row.clientId ? {...item,name:e.target.value} : item)); }} />}
+                    </>}
+                    {!row.isDefault && (!compact || managerEditing) && <div className="category-manager-row-actions">
+                      <button type="button" className="category-sort-handle" aria-label={t('polish.reorder') + ' ' + row.name} onPointerDown={e => {
                         if (document.activeElement?.classList.contains('category-manager-name')) e.preventDefault();
-                        if (!row.isDefault) managerSort.begin(e, row.clientId, true);
-                      }} onKeyDown={e => { if(!row.isDefault && e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
-                      <button type="button" className="category-manager-delete" disabled={row.isDefault} onClick={() => setCategoryManagerDeleteTarget(row)} aria-label={`${t('message_category.delete_action')} ${row.name}`}><Trash2 size={17}/></button>
-                    </div>
+                        managerSort.begin(e, row.clientId, true);
+                      }} onKeyDown={e => { if(e.altKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveCategoryManagerRow(index,e.key === 'ArrowUp' ? -1 : 1); } }}><GripVertical size={17}/></button>
+                      <button type="button" className="category-manager-delete" onClick={() => {
+                        const saved = categories.find(category => category.id === row.id);
+                        if (saved) setCategoryManagerDeleteTarget({ ...saved, clientId: row.clientId });
+                      }} aria-label={t('message_category.delete_action') + ' ' + row.name}><Trash2 size={17}/></button>
+                    </div>}
+                    {managerInvalid?.id === row.clientId && <p className="category-validation" id="category-manager-invalid" role="alert">{managerInvalid.message}</p>}
                   </div>
                 ))}
               </div>
+              <button type="button" className="category-manager-add" onClick={() => editCategoryManagerRow()}><Plus size={17} aria-hidden="true" />{t('message_category.new_section')}</button>
             </div>
           </fieldset>
         </Modal>
@@ -684,11 +777,6 @@ export const MessageListView: React.FC = () => {
           cancelText={t('common.cancel', 'Cancel')}
           onConfirm={() => void handleCreateCategory()}
           onCancel={() => { if (categorySaving) return; const original = categoryManagerEditor ?? editingCategory; const changed = original ? newCategoryName !== original.name || newCategoryColor !== original.color || newCategoryHex !== original.colorHex : !!newCategoryName.trim() || newCategoryColor !== 'sky'; if (changed) setDiscardCategoryAction(() => () => closeCategoryEditor()); else closeCategoryEditor(); }}
-          leadingActionText={editingCategory || categoryManagerEditor ? undefined : t('message_list.manage_categories', 'Categories')}
-          onLeadingAction={() => {
-            const open = () => { closeCategoryEditor(); openCategoryManager(); };
-            if (newCategoryName.trim() || newCategoryColor !== 'sky') setDiscardCategoryAction(() => open); else open();
-          }}
           size="compact"
         >
           <div className="category-create-stack">
@@ -696,33 +784,26 @@ export const MessageListView: React.FC = () => {
               className="category-name-input"
               data-initial-focus
               value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
+              ref={categoryNameInput}
+              aria-invalid={duplicateName || undefined} aria-describedby={duplicateName ? 'category-name-error' : undefined}
+              onChange={e => { setDuplicateName(false); setNewCategoryName(e.target.value); }}
+              onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) { event.preventDefault(); void handleCreateCategory(); } }}
               aria-label={t('message_category.name_placeholder')}
               placeholder={t('message_category.name_placeholder', 'Category name')}
               autoFocus
             />}
 
+            {duplicateName && <p id="category-name-error" className="category-validation" role="alert">{t('review.action.duplicate')}</p>}
             <CategoryPalette expanded color={newCategoryColor} colorHex={newCategoryHex} onChange={(color, hex) => { setNewCategoryColor(color); setNewCategoryHex(hex); }} />
           </div>
         </Modal>
       )}
 
-      {discardCategoryAction && <Modal title={t('message_edit.discard_title')} message="" confirmText={t('message_edit.discard')} cancelText={t('common.cancel')} destructive onCancel={() => setDiscardCategoryAction(null)} onConfirm={() => { discardCategoryAction(); setDiscardCategoryAction(null); }} />}
-
-      {showDuplicateCategoryModal && (
-        <Modal
-          title={t('message_category.duplicate_title', 'Category Already Exists')}
-          message={t('message_category.duplicate_message', 'Use a different category name.')}
-          confirmText={t('common.ok', 'OK')}
-          onConfirm={() => setShowDuplicateCategoryModal(false)}
-          onCancel={() => setShowDuplicateCategoryModal(false)}
-          size="compact"
-        />
-      )}
+      {discardCategoryAction && <Modal title={t('message_edit.discard_title')} message="" confirmText={t('message_edit.discard')} cancelText={t('message_edit.keep')} destructive onCancel={() => setDiscardCategoryAction(null)} onConfirm={() => { discardCategoryAction(); setDiscardCategoryAction(null); }} />}
 
       {categoryManagerDeleteTarget && (
         <Modal
-          title={t('message_category.delete_confirm_title', 'Delete Category?')}
+          title={t('review.action.delete_category', { name: categoryManagerDeleteTarget.name })}
           message={messages.some(message => !message.isDeleted && message.categoryId === categoryManagerDeleteTarget.id) ? t('message_category.delete_confirm_message') : ''}
           confirmText={t('common.delete', 'Delete')}
           cancelText={t('common.cancel', 'Cancel')}
