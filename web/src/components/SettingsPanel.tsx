@@ -46,7 +46,7 @@ declare global {
       preferences: () => Promise<Preferences>;
       change: (key: 'ask' | 'badge', value: boolean) => Promise<Preferences>;
       directory: () => Promise<Preferences>;
-      subscribe: (event: 'settings' | 'refresh', listener: () => void) => () => void;
+      subscribe: (event: 'settings' | 'refresh' | 'sync', listener: () => void) => () => void;
       session: (token: string | null) => void;
       count: (count: number) => void;
     };
@@ -106,6 +106,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const pendingNavigation = useRef<(() => void) | null>(null);
   const directAction = useRef(false);
+  const actionParent = useRef<Section>('account');
   const runAfterLeaving = (next: () => void) => {
     if (!action) { next(); return; }
     pendingNavigation.current = next;
@@ -120,6 +121,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   function openAction(key: SettingsAction) {
     if (key === action) { pendingNavigation.current = null; return; }
     runAfterLeaving(() => {
+      if (!action) actionParent.current = section ?? 'account';
       setAction(key);
       window.dispatchEvent(new CustomEvent('synca-settings-action', {detail:key}));
     });
@@ -186,6 +188,12 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
     }
     if (compact && mobileDetail) { setMobileDetail(false); setSection('account'); }
     else setSection(null);
+  }
+  function backFromAction() {
+    runAfterLeaving(() => {
+      setSection(actionParent.current);
+      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.desk-settings nav [aria-current="page"]')?.focus());
+    });
   }
   function detail(next: Section) { setMobileDetail(true); setSection(next); }
   const actionKeys = {categories: 'message_list.manage_categories', ai: 'ai.connect', feedback: 'message_list.feedback'} as const;
@@ -262,7 +270,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                     onClick={() => runAfterLeaving(() => setSection(key))}
                   >
                     <Icon size={17} />
-                    {t('settings_page.' + key)}
+                    <span className="settings-nav-label">{t(key === 'account' ? 'preferences.account_plan' : 'settings_page.' + key)}{key === 'account' && token && <small><AccountPlanLabel /></small>}</span>
                   </button>
                 );
               })}
@@ -271,7 +279,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
             </nav>
           </aside>}
           <section className="desk-detail" key={section}>
-            <header className={"settings-title"+(compact && (mobileDetail || action) ? " is-child" : "")}><h2>{t(action ? actionKeys[action] : mobileHome ? 'preferences.title' : 'settings_page.' + section)}</h2><button ref={back} onClick={close} aria-label={t(mobileHome && !action ? 'polish.done' : compact && (mobileDetail || action) ? 'settings_page.back' : 'navigation.close')}>{compact ? ((mobileDetail || action) ? <ArrowLeft/> : t('polish.done')) : <X size={20}/>}</button></header>
+            <header className={"settings-title"+(compact && (mobileDetail || action) ? " is-child" : "")}>{!compact && action && <button className="settings-back" onClick={backFromAction} aria-label={t('settings_page.back')} title={t('settings_page.back')}><ArrowLeft size={19}/></button>}<h2>{t(action ? actionKeys[action] : mobileHome ? 'preferences.title' : !compact && section === 'account' ? 'preferences.account_plan' : 'settings_page.' + section)}</h2><button ref={back} className="settings-close" onClick={close} aria-label={t(mobileHome && !action ? 'polish.done' : compact && (mobileDetail || action) ? 'settings_page.back' : 'navigation.close')}>{compact ? ((mobileDetail || action) ? <ArrowLeft/> : t('polish.done')) : <X size={20}/>}</button></header>
             <div className="desk-detail-body" data-settings-action={action ?? undefined} ref={setHost} hidden={!action} />
             <div className="desk-detail-body" hidden={!!action}>
               {mobileHome && <button className="settings-identity" onClick={()=>detail('account')}><CircleUserRound size={34} aria-hidden="true"/><span>{email || t('navigation.account')}<small>{token ? <AccountPlanLabel /> : t('settings_page.signIn')}</small></span><ChevronRight className="settings-disclosure" size={17} aria-hidden="true"/></button>}

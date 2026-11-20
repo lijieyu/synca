@@ -9,7 +9,7 @@ if (process.isMainFrame && location.origin === 'https://synca.haerth.cn') {
     count:n=>ipcRenderer.send('desktop:count',n),
     session:token=>ipcRenderer.send('desktop:session',token),
     subscribe:(name,fn)=>{
-      if (!['settings','refresh'].includes(name)) throw Error('Unknown desktop event')
+      if (!['settings','refresh','sync'].includes(name)) throw Error('Unknown desktop event')
       const listener=()=>fn()
       ipcRenderer.on('desktop:'+name,listener)
       return ()=>ipcRenderer.removeListener('desktop:'+name,listener)

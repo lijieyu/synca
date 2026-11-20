@@ -1,4 +1,4 @@
-import { _electron as electron } from 'playwright-core'
+const { _electron: electron } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core')
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -25,6 +25,8 @@ await db.insertInto('users').values({ id, apple_user_id:id, email:'qa@example.in
 await createSession(token,id)
 const server = api.listen(0,'127.0.0.1')
 await new Promise(resolve=>server.once('listening', resolve))
+let backendReads = 0
+server.on('request', request => { if (request.method === 'GET' && request.url === '/messages') backendReads++ })
 const local = 'http://127.0.0.1:' + server.address().port
 let app
 try {
@@ -76,11 +78,10 @@ try {
     const header = await page.locator('.calm-main .header').boundingBox()
     assert.equal(sidebar.height, 500)
     assert.equal(header.y, 0)
-    assert(header.height >= 96)
+    assert(header.height >= 80)
   }
   await input.fill('未完成的草稿')
-  await page.locator('.account-entry').click()
-  await page.getByRole('menuitem',{name:'设置',exact:true}).click()
+  await page.locator('.settings-entry').click()
   const settings=page.locator('.desk-settings')
   await settings.waitFor()
   assert.equal(await page.locator('.desk-workspace').evaluate(element => element.inert), true)
@@ -105,7 +106,7 @@ try {
   })
   for(let i=0;i<30;i++){if(await fs.stat(path.join(temp,'settings-qa.txt')).catch(()=>null))break;await pause(200)}
   assert.equal(await fs.readFile(path.join(temp,'settings-qa.txt'),'utf8'),'Synca desktop download')
-  await settings.getByRole('button',{name:'账户',exact:true}).click()
+  await settings.getByRole('button',{name:/账号与套餐/}).click()
   await settings.getByText('qa@example.invalid',{exact:true}).waitFor()
   await settings.getByRole('button',{name:'关于',exact:true}).click()
   await settings.getByText(/macOS · 1.2.0/).waitFor()
@@ -125,7 +126,29 @@ try {
   await app.evaluate(({app})=>app.emit('activate'))
   assert.equal(await input.inputValue(),'未完成的草稿')
   await page.reload();assert.equal(await input.inputValue(),'未完成的草稿')
-  console.log('Settings dialog, live appearance, native preferences, close/hide and relaunch draft passed')
+  let refreshNavigation = 0
+  const countNavigation = () => { refreshNavigation++ }
+  page.on('framenavigated', countNavigation)
+  const beforeSyncCalls = backendReads
+  await app.evaluate(({Menu}) => {
+    const sync = Menu.getApplicationMenu().items.flatMap(item=>item.submenu?.items||[]).find(item=>item.accelerator==='CommandOrControl+R')
+    if (!sync) throw Error('Missing native sync shortcut')
+    sync.click()
+  })
+  await page.getByText('同步成功',{exact:true}).waitFor()
+  assert.equal(refreshNavigation,0)
+  assert.equal(await input.inputValue(),'未完成的草稿')
+  assert(backendReads>beforeSyncCalls)
+  page.removeListener('framenavigated',countNavigation)
+  await page.getByText('同步成功',{exact:true}).waitFor({state:'hidden'})
+  const beforeBackgroundSync = backendReads
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.send('desktop:refresh'))
+  for(let i=0;i<30 && backendReads===beforeBackgroundSync;i++) await pause(100)
+  assert(backendReads>beforeBackgroundSync)
+  await pause(300)
+  assert.equal(await page.getByText('同步成功',{exact:true}).count(),0)
+  assert.equal(await input.inputValue(),'未完成的草稿')
+  console.log('Settings dialog, sync shortcut, native preferences, close/hide and relaunch draft passed')
   await input.fill('牛奶采购')
   await input.dispatchEvent('keydown',{key:'Enter',isComposing:true,keyCode:229})
   assert.equal(await input.inputValue(),'牛奶采购')

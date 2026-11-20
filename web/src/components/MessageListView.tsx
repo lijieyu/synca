@@ -214,11 +214,13 @@ export const MessageListView: React.FC = () => {
     const poll = () => {
       if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
     };
+    const unsubscribe = window.syncaDesktop?.subscribe('refresh', poll);
     const timer = setInterval(poll, 10000);
     document.addEventListener('visibilitychange', poll);
     return () => {
       ++fetchRevision.current;
       clearInterval(timer);
+      unsubscribe?.();
       document.removeEventListener('visibilitychange', poll);
     };
   }, [email]);
@@ -262,10 +264,27 @@ export const MessageListView: React.FC = () => {
   const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
   const visibleSingleModeCategories = useMemo(() => categories, [categories]);
   const handleRefresh = async () => {
+    // Keep in-flight category edits/order and concurrent sync responses authoritative.
+    if (pendingFetches.current || categoryWritePending.current || categoryDragPending.current) return;
     if (!await fetchData(false)) return;
     setToastMsg(t('message_list.sync_success', 'Synced'));
     setShowToast(true);
   };
+
+  const refreshRef = useRef(handleRefresh);
+  useLayoutEffect(() => { refreshRef.current = handleRefresh; });
+  useEffect(() => {
+    const refresh = () => { void refreshRef.current(); };
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'r' && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        if (!event.isComposing && event.keyCode !== 229) refresh();
+      }
+    };
+    window.addEventListener('keydown', shortcut);
+    const unsubscribe = window.syncaDesktop?.subscribe('sync', refresh);
+    return () => { window.removeEventListener('keydown', shortcut); unsubscribe?.(); };
+  }, []);
 
   const buildCategoryManagerRows = () =>
     categories
@@ -635,7 +654,7 @@ export const MessageListView: React.FC = () => {
           <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>}
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
-            <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')}><RotateCw size={18} strokeWidth={1.7} /></button>
+            <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')} aria-keyshortcuts="Meta+r Control+r"><RotateCw size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" disabled={!completed.length} onClick={() => { setClearError(false); setShowClearModal(true); }} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
           </div>
         </header>

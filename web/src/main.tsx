@@ -8,6 +8,7 @@ import './i18n';
 import './index.css';
 import './calm.css';
 import './focus.css';
+import './DesktopDesign.css';
 import { installFocusModality } from './utils/focusModality';
 
 installFocusModality();

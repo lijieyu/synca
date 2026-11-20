@@ -75,7 +75,7 @@ else {
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
         {type:'separator'},{role:'quit'}]},
-      {role:'editMenu'}, {label:'View', submenu:[{role:'reload'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}, {role:'windowMenu'}
+      {role:'editMenu'}, {label:'View', submenu:[{label:app.getLocale().startsWith('zh')?'同步':'Sync',accelerator:'CommandOrControl+R',click:()=>mainWindow?.webContents.send('desktop:sync')},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}, {role:'windowMenu'}
     ]))
     createWindow()
     app.on('activate', () => { if (!mainWindow) createWindow();else restore() })

@@ -35,3 +35,8 @@
   padding-top: var(--window-controls-height);
 }
 .mac-window .modal-content { max-height: calc(100dvh - 2 * var(--window-controls-height)); }
+
+/* Keep settings clear of native traffic lights, including the minimum window. */
+.mac-window .settings-veil .desk-settings {
+  height: min(600px, calc(100dvh - 2 * var(--window-controls-height)));
+}

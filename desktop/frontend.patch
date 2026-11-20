@@ -1,19 +1,5 @@
 --- a/src/components/MessageListView.tsx
 +++ b/src/components/MessageListView.tsx
-@@ -178,11 +178,13 @@
-     const poll = () => {
-       if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
-     };
-+    const unsubscribe = window.syncaDesktop?.subscribe('refresh', poll);
-     const timer = setInterval(poll, 10000);
-     document.addEventListener('visibilitychange', poll);
-     return () => {
-       ++fetchRevision.current;
-       clearInterval(timer);
-+      unsubscribe?.();
-       document.removeEventListener('visibilitychange', poll);
-     };
-   }, [email]);
 @@ -499,6 +501,7 @@
    const customCategories = categories.filter(category => !category.isDefault);
    const menuIndex = customCategories.findIndex(category => category.id === menuCategory?.id);
@@ -89,9 +75,10 @@
      }
 --- a/src/main.tsx
 +++ b/src/main.tsx
-@@ -10,6 +10,10 @@
+@@ -10,7 +10,11 @@
  import './calm.css';
  import './focus.css';
+ import './DesktopDesign.css';
  import { installFocusModality } from './utils/focusModality';
 +import './desktop/window.css';
 +

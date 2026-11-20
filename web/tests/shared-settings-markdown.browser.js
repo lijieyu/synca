@@ -8,12 +8,11 @@ export default async (page, { desktop, screenshot }) => {
   ].join('\n');
   const input = page.locator('.input-bar textarea');
   await input.fill('进入设置前的草稿');
-  await page.locator('.account-entry').click();
-  await page.getByRole('menuitem', {name:'设置', exact:true}).click();
+  await page.locator('.settings-entry').click();
   const settings = page.locator('.desk-settings');
   await settings.waitFor();
   check(await settings.getByRole('button', {name:'桌面',exact:true}).count() === Number(desktop), 'desktop capability mismatch');
-  await settings.getByRole('button', {name:'账户',exact:true}).click();
+  await settings.getByRole('button', {name:/账号与套餐/}).click();
   await settings.locator('.account-panel').waitFor();
   if(!desktop){
     await page.goBack();

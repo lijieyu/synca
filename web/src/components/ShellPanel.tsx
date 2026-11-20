@@ -100,6 +100,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline }: {
         <small id="feedback-image-hint">{t('navigation.feedback_images')}</small>
         {images.length > 0 && <ul>{images.map((file, index) => <li key={index}><span>{file.name}</span><button type="button" disabled={busy} aria-label={t('review.page.remove_image', {name: file.name})} onClick={() => { setImages(images.filter((_, i) => i !== index)); setError(''); }}><X size={16} aria-hidden="true" /></button></li>)}</ul>}
       </div>
+      <div className="feedback-social"><DeveloperSocialLink /></div>
       {error && <p role="alert">{error}</p>}
     </form>)}
   </Panel>
