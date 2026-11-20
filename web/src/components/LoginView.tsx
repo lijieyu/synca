@@ -1,89 +1,40 @@
-import React, { useEffect, useRef } from 'react';
+import appleLogoWhite from '../assets/apple-sign-in/logo-white.svg?no-inline';
+import appleLogoBlack from '../assets/apple-sign-in/logo-black.svg?no-inline';
+import { Mail } from 'lucide-react';
+import { AuthTerms } from './AuthTerms';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../api/client';
+import { api, type AuthResponse } from '../api/client';
 import { useTranslation } from 'react-i18next';
+import { authorizeApple, loadApple } from '../auth/apple';
+import { EmailVerification, authErrorKey } from './EmailVerification';
+import './LoginView.css';
 
-export const LoginView: React.FC = () => {
-  const { login } = useAuth();
-  const { t } = useTranslation();
-  const scriptLoaded = useRef(false);
-
-  useEffect(() => {
-    if (scriptLoaded.current) return;
-    
-    const script = document.createElement('script');
-    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-    script.async = true;
-    
-    script.onload = () => {
-      scriptLoaded.current = true;
-      // @ts-ignore
-      if (window.AppleID) {
-        // @ts-ignore
-        window.AppleID.auth.init({
-          clientId: 'cn.haerth.synca.web',
-          scope: 'name email',
-          redirectURI: 'https://synca.haerth.cn/api/auth/apple/callback',
-          usePopup: true
-        });
-      }
-    };
-    
-    document.body.appendChild(script);
-
-    const handleSuccess = async (event: any) => {
-      const idToken = event.detail.authorization.id_token;
-      let fullName: string | undefined;
-      if (event.detail.user?.name) {
-        const { firstName, lastName } = event.detail.user.name;
-        if (firstName || lastName) {
-          const joined = [firstName, lastName].filter(Boolean).join(' ');
-          // Basic heuristic: if it contains Chinese characters, remove the space between them
-          if (/[\u4e00-\u9fa5]/.test(joined)) {
-            fullName = [lastName, firstName].filter(Boolean).join('');
-          } else {
-            fullName = joined;
-          }
-        }
-      }
-
-      try {
-        const res = await api.loginWithApple(idToken, fullName);
-        login(res.token, res.user.isAdmin, res.user.email);
-      } catch (err) {
-        console.error('Login failed to exchange token', err);
-        alert(t('login.failed') + ': ' + err);
-      }
-    };
-
-    const handleFailure = (event: any) => {
-      console.error('Apple Sign In failed', event.detail);
-    };
-
-    document.addEventListener('AppleIDSignInOnSuccess', handleSuccess);
-    document.addEventListener('AppleIDSignInOnFailure', handleFailure);
-
-    return () => {
-      document.removeEventListener('AppleIDSignInOnSuccess', handleSuccess);
-      document.removeEventListener('AppleIDSignInOnFailure', handleFailure);
-    };
-  }, [login, t]);
-
-  return (
-    <div className="auth-container">
-      <img 
-        src="/logo.png?v=a2"
-        alt="Synca" 
-        style={{ 
-          width: '96px', 
-          height: '96px', 
-          borderRadius: '22px'
-        }} 
-      />
-      <h1>{t('app.name', 'Synca')}</h1>
-      <p>{t('app.slogan', 'Sync Your Aha Moment')}</p>
-      
-      <div id="appleid-signin" data-color="black" data-border="true" data-type="sign in"></div>
-    </div>
-  );
-};
+export function LoginView() {
+  const { login } = useAuth(); const { t } = useTranslation();
+  const [email, setEmail] = useState(false); const [emailDraft, setEmailDraft] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const request = useRef<AbortController | null>(null);
+  const session = useRef(localStorage.getItem('authToken'));
+  useEffect(() => { void loadApple().catch(() => {}); return () => request.current?.abort(); }, []);
+  const authenticated = (res: AuthResponse) => login(res.token, res.user.isAdmin, res.user.email);
+  async function appleLogin() {
+    if (request.current) return;
+    const controller = new AbortController(); request.current = controller; setBusy(true); setError('');
+    try {
+      const apple = await authorizeApple(controller.signal);
+      if (controller.signal.aborted || session.current !== localStorage.getItem('authToken')) return;
+      const response = await api.loginWithApple(apple.idToken, apple.name);
+      if (!controller.signal.aborted && session.current === localStorage.getItem('authToken')) authenticated(response);
+    } catch (err) { if (!controller.signal.aborted) setError(t(authErrorKey(err))); }
+    finally { if (!controller.signal.aborted) setBusy(false); if (request.current === controller) request.current = null; }
+  }
+  return <main className={`desktop-auth ${email ? 'desktop-auth-form' : ''}`}>
+    <div className="desktop-auth-content">{email ? <EmailVerification initialEmail={emailDraft} onEmailChange={setEmailDraft} onBack={() => setEmail(false)} onAuthenticated={authenticated} /> : <>
+      <div className="auth-brand"><img src="/logo.png?v=a2" alt="" width={72} height={72} /><h1>Synca</h1><p>{t('app.slogan')}</p></div>
+      <div className="auth-actions"><button className="auth-primary auth-apple auth-apple-signin" disabled={busy} onClick={() => void appleLogin()}><img className="auth-apple-logo auth-apple-logo-white" src={appleLogoWhite} alt="" aria-hidden="true" /><img className="auth-apple-logo auth-apple-logo-black" src={appleLogoBlack} alt="" aria-hidden="true" />{t(busy ? 'email_auth.apple_wait' : 'email_auth.apple_login')}</button><button className="auth-secondary auth-apple" disabled={busy} onClick={() => { setError(''); setEmail(true); }}><Mail size={18} aria-hidden="true" />{t('email_auth.email_login')}</button></div>
+      {busy && <button className="auth-back" onClick={() => { request.current?.abort(); request.current = null; setBusy(false); }}>{t('common.cancel')}</button>}
+      {error && <p className="auth-notice" role="alert">{error}</p>}
+      <AuthTerms />
+    </>}</div>
+  </main>;
+}

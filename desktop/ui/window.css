@@ -40,3 +40,9 @@
 .mac-window .settings-veil .desk-settings {
   height: min(600px, calc(100dvh - 2 * var(--window-controls-height)));
 }
+
+/* The shell already reserves the traffic-light strip; login uses the remainder. */
+.mac-window .desktop-auth { height: calc(100dvh - var(--window-controls-height)); }
+.mac-window .desktop-auth-form {
+  padding-top: max(16px, calc((100dvh - var(--window-controls-height) - 440px) / 2));
+}

@@ -1,0 +1,70 @@
+.desktop-auth { height: 100dvh; overflow-y: auto; padding: 40px 24px; background: var(--card-bg-color); color: var(--text-main); display: grid; align-items: safe center; justify-items: center; }
+.desktop-auth-content { width: 100%; max-width: 350px; }
+.auth-brand { text-align: center; }
+.auth-brand img { border-radius: 17px; display: block; margin: 0 auto 17px; }
+.auth-brand h1 { font-size: 28px; font-weight: 600; margin: 0 0 9px; }
+.auth-brand p { font-size: 14px; color: var(--text-secondary); }
+.auth-actions { display: grid; gap: 12px; max-width: 320px; margin: 32px auto 0; }
+.auth-primary, .auth-secondary { width: 100%; min-height: 46px; padding: 11px 16px; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 550; cursor: pointer; }
+.auth-primary { background: var(--text-main); color: var(--card-bg-color); border: 1px solid transparent; }
+.auth-secondary { background: transparent; color: inherit; border: 1px solid var(--border-color); }
+.auth-apple { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.auth-apple svg { width: 24px; height: 24px; }
+.auth-terms { font-size: 11px; line-height: 1.8; color: var(--text-secondary); margin: 24px 0 0; text-align: center; }
+.auth-terms a { color: inherit; text-underline-offset: 3px; }
+/* Anchor forms independently of content height. Help expands below the controls. */
+.desktop-auth-form { display: block; padding-top: max(32px, calc((100dvh - 440px) / 2)); }
+.desktop-auth-form .desktop-auth-content { margin: 0 auto; }
+.email-verification h1 { font-size: 26px; line-height: 1.35; font-weight: 600; margin: 16px 0 12px; }
+.auth-back { background: transparent; border: 0; color: var(--text-secondary); font: inherit; font-size: 13px; min-height: 32px; cursor: pointer; }
+.auth-description, .auth-hint { font-size: 13px; line-height: 1.8; color: var(--text-secondary); margin: 0 0 20px; }
+.auth-hint { font-size: 12px; margin: 14px 0 0; }
+.auth-address { font-size: 13px; font-weight: 550; overflow-wrap: anywhere; margin: -14px 0 20px; }
+.email-verification label { display: block; font-size: 12px; margin-bottom: 8px; }
+.email-verification input { display: block; width: 100%; height: 47px; padding: 11px 13px; border: 1px solid var(--border-color); border-radius: 9px; font: inherit; background: var(--card-bg-color); color: inherit; }
+.email-verification input.auth-code { font-size: 22px; letter-spacing: 9px; font-variant-numeric: tabular-nums; }
+.auth-notice { min-height: 34px; padding: 6px 0; font-size: 12px; line-height: 1.6; color: var(--text-secondary); overflow-wrap: anywhere; }
+.auth-notice[role=alert] { color: #b32632; }
+.auth-resend { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-top: 12px; }
+.auth-resend button, .login-method-rows button { background: transparent; border: 0; color: var(--accent-color); font: inherit; min-height: 32px; cursor: pointer; }
+.auth-help { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); }
+.auth-help summary { min-height: 28px; cursor: pointer; }
+.auth-help p { line-height: 1.8; margin-top: 6px; }
+.desktop-auth button:disabled, .login-methods button:disabled { opacity: .5; cursor: default; }
+.desktop-auth :focus-visible, .login-methods :focus-visible { outline: 3px solid var(--accent-color); outline-offset: 3px; }
+.login-methods { border-top: 1px solid var(--border-color); padding-top: 18px; }
+.login-methods h3 { font-size: 14px; font-weight: 600; }
+.login-methods .auth-hint { margin: 8px 0 12px; }
+.login-method-rows > div { display: flex; align-items: center; gap: 16px; padding: 12px 0; }
+.login-method-rows > div + div { border-top: 1px solid var(--border-color); }
+.login-method-rows span { flex: 1; min-width: 0; }
+.login-method-rows strong, .login-method-rows small { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.login-method-rows small { color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
+.login-method-rows button { flex-shrink: 0; font-size: 13px; }
+@media (prefers-color-scheme: dark) { :root:not([data-appearance=light]) .auth-notice[role=alert] { color: #ff9d9d; } }
+:root[data-appearance=dark] .auth-notice[role=alert] { color: #ff9d9d; }
+@media (forced-colors: active) { .auth-primary, .auth-secondary { border: 1px solid ButtonText; } }
+/* Binding is a detail step within Account; preserve the account view for Back. */
+.account-panel:has(.email-verification) > :not(.login-methods) { display: none; }
+.account-panel:has(.email-verification) > .login-methods { border-top: 0; padding-top: 0; }
+.login-methods .auth-primary { color: var(--card-bg-color); }
+.login-methods .email-verification[data-step=code] h1 { font-size: 24px; margin: 8px 0; }
+.login-methods .email-verification[data-step=code] .auth-back { min-height: 28px; }
+.login-methods .email-verification[data-step=code] .auth-description { font-size: 12px; line-height: 1.5; margin: 0 0 4px; }
+.login-methods .email-verification[data-step=code] .auth-address { margin: 0 0 12px; }
+.login-methods .email-verification[data-step=code] .auth-notice { min-height: 28px; }
+.login-methods .email-verification[data-step=code] .auth-resend { margin-top: 8px; }
+.login-methods .auth-help { margin-top: 8px; padding-top: 8px; }
+.account-panel .login-methods .auth-help summary { display: list-item; min-height: 28px; list-style: revert; }
+
+.auth-apple-signin { background: #000; color: #fff; padding-block: 0; border: 0; height: 46px; gap: 0; }
+.auth-apple-logo { display: block; height: 46px; width: auto; flex: none; }
+.auth-apple-logo-black { display: none; }
+:root[data-appearance=dark] .auth-apple-signin { background: #fff; color: #000; }
+:root[data-appearance=dark] .auth-apple-logo-black { display: block; }
+:root[data-appearance=dark] .auth-apple-logo-white { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance=light]) .auth-apple-signin { background: #fff; color: #000; }
+  :root:not([data-appearance=light]) .auth-apple-logo-black { display: block; }
+  :root:not([data-appearance=light]) .auth-apple-logo-white { display: none; }
+}

@@ -5,6 +5,7 @@ import { createAIRouter, aiRateLimit } from './aiRoutes.js';
 import { authenticate as authenticateAI, requireScope as requireAIScope, AIError, assertActive, type Actor, publicOrigin } from './aiCore.js';
 import { prepareUpload, trackUpload, releaseUpload } from './storage.js';
 import { db } from './db.js';
+import { createEmailAuthRouter } from './emailAuthRoutes.js';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -57,6 +58,7 @@ const recordTextJson = express.json({ limit: '1mb' });
 app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_records'], recordTextJson);
 app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
+app.use(createEmailAuthRouter());
 app.use(createAIRouter(notifyOtherDevices));
 
 // Serve uploaded images

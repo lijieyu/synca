@@ -1,5 +1,12 @@
 import { saveDownload } from '../utils/downloads';
 export class SessionExpiredError extends Error {}
+export class AuthError extends Error {
+  readonly code: string;
+  readonly retryAfter?: number;
+  constructor(code: string, retryAfter?: number) { super(code); this.code = code; this.retryAfter = retryAfter; }
+}
+export interface EmailChallenge { challengeId: string; expiresAt: string; resendAt: string }
+export interface LoginMethods { apple: boolean; email: string | null }
 
 export class MessageEditError extends Error {
   readonly code: 'message_edit_conflict' | 'message_not_found' | 'message_not_text';
@@ -150,14 +157,14 @@ class APIClient {
     return localStorage.getItem('authToken');
   }
 
-  private async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async fetch<T>(path: string, options: RequestInit = {}, anonymous = false): Promise<T> {
     const requestToken = this.token;
     const headers: Record<string, string> = {
       ...(!options.body || typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers as Record<string, string>),
     };
 
-    if (requestToken) {
+    if (requestToken && !anonymous) {
       headers['Authorization'] = `Bearer ${requestToken}`;
     }
 
@@ -166,13 +173,13 @@ class APIClient {
       headers,
     });
 
-    return this.decodeResponse<T>(response, requestToken);
+    return this.decodeResponse<T>(response, requestToken, anonymous);
   }
 
-  private async decodeResponse<T>(response: Response, requestToken: string | null): Promise<T> {
+  private async decodeResponse<T>(response: Response, requestToken: string | null, anonymous = false): Promise<T> {
     if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
 
-    if (response.status === 401) {
+    if (response.status === 401 && !anonymous) {
       localStorage.removeItem('authToken');
       this.resetSession();
       if (this.editingDrafts.size > 0) {
@@ -187,13 +194,14 @@ class APIClient {
       if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
       try {
         const errorJson = JSON.parse(errorText);
+        if (typeof errorJson.error === 'string' && (anonymous || response.url.includes('/login-methods') || ['invalid_payload','invalid_email','invalid_code','code_expired','code_attempts_exceeded','apple_auth_failed','email_in_use','apple_in_use','email_already_bound','apple_already_bound','rate_limited','email_unavailable','email_send_failed'].includes(errorJson.error))) throw new AuthError(errorJson.error, errorJson.retryAfter);
         if (['message_edit_conflict', 'message_not_found', 'message_not_text'].includes(errorJson.error)) throw new MessageEditError(errorJson.error);
         if (['file_upload_requires_paid', 'storage_limit_reached', 'attachment_expired', 'file_too_large'].includes(errorJson.error)) throw new StorageError(errorJson.error);
         if (response.status === 403 && errorJson.error === 'daily_limit_reached') {
           throw new DailyLimitError();
         }
       } catch (e) {
-        if (e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
+        if (e instanceof AuthError || e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
       }
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
@@ -203,11 +211,28 @@ class APIClient {
     return result;
   }
 
+  sendEmailCode(email: string, locale: string, binding = false, signal?: AbortSignal): Promise<EmailChallenge> {
+    return this.fetch(binding ? '/me/login-methods/email/code' : '/auth/email/code', { method: 'POST', body: JSON.stringify({ email, locale }), signal }, !binding);
+  }
+  verifyEmailCode(challengeId: string, code: string, signal?: AbortSignal): Promise<AuthResponse> {
+    return this.fetch('/auth/email/verify', { method: 'POST', body: JSON.stringify({ challengeId, code }), signal }, true);
+  }
+  getLoginMethods(signal?: AbortSignal): Promise<LoginMethods> { return this.fetch('/me/login-methods', { signal }); }
+  bindEmail(challengeId: string, code: string, signal?: AbortSignal): Promise<LoginMethods> {
+    return this.fetch('/me/login-methods/email/verify', { method: 'POST', body: JSON.stringify({ challengeId, code }), signal });
+  }
+  appleBindingChallenge(signal?: AbortSignal): Promise<{challengeId: string; nonce: string; expiresAt?: string}> {
+    return this.fetch('/me/login-methods/apple/challenge', { method: 'POST', signal });
+  }
+  bindApple(challengeId: string, idToken: string, signal?: AbortSignal): Promise<LoginMethods> {
+    return this.fetch('/me/login-methods/apple', { method: 'POST', body: JSON.stringify({ challengeId, idToken }), signal });
+  }
+
   async loginWithApple(idToken: string, name?: string): Promise<{ token: string; user: any; accessStatus: any }> {
     return this.fetch('/auth/apple', {
       method: 'POST',
       body: JSON.stringify({ idToken, name }),
-    });
+    }, true);
   }
 
   async listMessages(): Promise<{ messages: SyncaMessage[] }> {

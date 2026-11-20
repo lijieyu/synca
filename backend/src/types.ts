@@ -1,6 +1,6 @@
 export interface SyncaUser {
     id: string;
-    appleUserId: string;
+    appleUserId: string | null;
     email?: string | null;
     nickname: string;
     createdAt: string;

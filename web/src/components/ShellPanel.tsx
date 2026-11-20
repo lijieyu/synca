@@ -1,3 +1,4 @@
+import { LoginMethods } from './LoginMethods';
 import { DeveloperSocialLink } from './DeveloperSocialLink';
 import { PersonIcon } from './PersonIcon';
 import { useContext, useRef, useState } from 'react';
@@ -74,6 +75,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline }: {
       {accessStatus && Number.isFinite(accessStatus.todayUsed) && <p className="account-daily-usage"><span>{t('preferences.daily_usage')}</span><span>{accessStatus.todayLimit == null ? accessStatus.todayUsed : `${accessStatus.todayUsed} / ${accessStatus.todayLimit}`}</span></p>}
       <StorageUsage /></div>
       {accessStatus && <details className="account-benefits"><summary>{t(accessStatus.isUnlimited ? 'review.page.benefits' : 'review.page.compare_plans')}<ChevronDown size={16} aria-hidden="true" /></summary><PlanContent showStorage={false} /></details>}
+      <LoginMethods />
       <button className="account-session-action" onClick={onLogout}>{t('message_list.logout')}</button>
       <details className="account-management"><summary>{t('review.page.manage_account')}<ChevronDown size={16} aria-hidden="true" /></summary>
         <button className="account-text-action account-text-action-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button>

@@ -51,7 +51,7 @@ try {
     }
   },local)
   await page.goto(home)
-  await page.locator('#appleid-signin').waitFor({state:'attached'})
+  await page.locator('.auth-primary.auth-apple').waitFor({state:'attached'})
   console.log('Bundled login view loaded', await app.evaluate(({ app })=>[app.getVersion(),app.getPath('userData')]))
   await context.route('**/*', async route=>{
     const request = route.request(), url = new URL(request.url())

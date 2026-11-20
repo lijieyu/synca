@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, updateUserEmail, updateUserNickname } from './store.js';
+import { getUserByAppleId, createUser, createSession as dbCreateSession, getSession, getUser, updateUserNickname } from './store.js';
 import { buildAccessStatus } from './access.js';
+import { sql } from 'kysely';
+import { db } from './db.js';
 
 /**
  * Verify Apple identity token on the server side.
@@ -9,6 +11,7 @@ import { buildAccessStatus } from './access.js';
 export async function verifyAppleToken(idToken: string): Promise<{
     appleUserId: string;
     email?: string;
+    nonce?: string;
 }> {
     // Dynamic import to handle ESM/CJS compatibility
     const appleSignin = await import('apple-signin-auth');
@@ -19,8 +22,10 @@ export async function verifyAppleToken(idToken: string): Promise<{
         audience: [clientId, webClientId],
     });
 
+    if (typeof payload.sub !== 'string' || !payload.sub) throw new Error('invalid_apple_subject');
     return {
         appleUserId: payload.sub,
+        nonce: typeof payload.nonce === 'string' ? payload.nonce : undefined,
         email: payload.email,
     };
 }
@@ -41,7 +46,7 @@ export async function loginWithApple(params: {
     let user = await getUserByAppleId(appleUserId);
 
     if (!user) {
-        user = await createUser({
+        try { user = await createUser({
             id: uuidv4(),
             appleUserId,
             email,
@@ -49,10 +54,18 @@ export async function loginWithApple(params: {
             now: nowIso,
             trialStartedAt: null,
             trialEndsAt: null,
-        });
+        }); } catch (error) {
+            // Concurrent Apple sign-ins resolve to the unique existing identity.
+            user = await getUserByAppleId(appleUserId);
+            if (!user) throw error;
+        }
     } else {
         if (email && user.email !== email) {
-            user = (await updateUserEmail(user.id, email, nowIso)) ?? user;
+            // One atomic statement: an email binding that won the race must not
+            // be overwritten by an earlier Apple profile response.
+            await sql`UPDATE users SET email=${email},updated_at=${nowIso} WHERE id=${user.id}
+                AND NOT EXISTS(SELECT 1 FROM email_identities WHERE user_id=${user.id})`.execute(db);
+            user = (await getUser(user.id)) ?? user;
         }
         if (params.name && params.name.trim().length > 0 && user.nickname === 'Synca 用户') {
             user = (await updateUserNickname(user.id, params.name.trim(), nowIso)) ?? user;

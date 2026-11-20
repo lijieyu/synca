@@ -1,6 +1,6 @@
 const fs=require('node:fs/promises')
 const path=require('node:path')
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.webmanifest':'application/manifest+json'}
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'}
 const site='https://synca.haerth.cn'
 function installLocalUI(ses){
   ses.protocol.handle('https',async request=>{
