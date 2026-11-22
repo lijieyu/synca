@@ -14,9 +14,9 @@ Secure/HttpOnly cookie and Synca health before letting the product renderer open
 Email sign-in follows normally through the independent session path; the renderer
 cannot read the preview gate cookie. No production token/profile is migrated.
 
-The optional verified-release config is intentionally absent. Cloud post-clone
-exits before dependencies, archives or signing without this nonsecret record:
-`{ "origin": "https://synca-preview.haerth.cn", "backendCommit": "<verified full SHA>", "realEmailAndSyncVerified": true }`.
-Do not create this record before the exact hosted route passes authenticated
-email delivery/one-time verification plus isolated write and read-back. A
-successful offline archive cannot be substituted as release evidence.
+The verified-release config records the exact HTTPS origin, backend commit and
+release hash, independently verified real delivery to the allowed test inbox,
+and one-time-code, write and read-back coverage with a synthetic code. It
+does not claim the actual delivered code was redeemed. The protected live
+host and the exact packaged Mac scope must also be independently confirmed.
+A successful offline archive alone cannot substitute for release evidence.

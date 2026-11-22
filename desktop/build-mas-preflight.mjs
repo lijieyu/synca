@@ -19,7 +19,9 @@ let mode='mas-preflight';
 if(process.argv[2]==='--verified-testflight') {
  const release=JSON.parse(await readFile('mas/testflight-release.json','utf8'));
  const cfg=variantModule.variant('mas-testflight');
- if(release.origin!==cfg.home||typeof release.backendCommit!=='string'||!/^([a-f0-9]{40})$/.test(release.backendCommit)||release.realEmailAndSyncVerified!==true)
+ if(release.origin!==cfg.home||typeof release.backendCommit!=='string'||!/^([a-f0-9]{40})$/.test(release.backendCommit)||
+    !/^[a-f0-9]{64}$/.test(release.backendReleaseSha256||'')||
+    release.realEmailDeliveryVerified!==true||release.verificationAndSyncVerifiedWithSyntheticCode!==true)
   throw Error('Refusing archive: no verified exact isolated email/sync release config');
  mode='mas-testflight';
 } else if(process.argv.length!==2) throw Error('Unknown MAS build mode');
