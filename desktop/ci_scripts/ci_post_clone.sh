@@ -4,6 +4,13 @@ set -euo pipefail
 cd "$CI_PRIMARY_REPOSITORY_PATH/desktop"
 # Deliberately absent until isolated real-mail and record sync are independently proven.
 test -f mas/testflight-release.json || { echo 'Verified isolated email release not configured; no archive or upload.' >&2; exit 78; }
+# The operator verifies these exact stable versions in the dedicated workflow too.
+mac_build=$(/usr/bin/sw_vers -buildVersion)
+xcode_build=$(/usr/bin/xcodebuild -version | /usr/bin/awk '/^Build version / { print $3 }')
+if [[ "$mac_build" != 26B131 || "$xcode_build" != 27B52 ]]; then
+  printf 'Wrong Mac TestFlight toolchain; expected macOS 26B131/Xcode 27B52, got %s/%s. No archive or upload.\n' "$mac_build" "$xcode_build" >&2
+  exit 78
+fi
 case "$(/usr/bin/uname -m)" in
   arm64) node_arch=arm64; expected=d5c37f04d4006741574730871148839f254f3b3940f5afd70f7d1e70970c90e3 ;;
   x86_64) node_arch=x64; expected=7b6211bdb2a90834422f0243274ff1ca5deee309ca12a21329edcf1f775f8113 ;;
