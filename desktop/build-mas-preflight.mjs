@@ -26,6 +26,9 @@ if(process.argv[2]==='--verified-testflight') {
 const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arch:'universal',electronVersion:version,
  electronZipDir:runtime, asar:true, overwrite:false, appBundleId:'org.haerth.synca',helperBundleId:'org.haerth.synca.helper',
  appVersion:'1.2.0',buildVersion:'82',appCategoryType:'public.app-category.productivity',icon:'icons/Synca',
+ // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
+ // in force for this HTTPS-only archive; the renderer also has its own origin fence.
+ extendInfo:{NSAppTransportSecurity:{}},
  afterCopy:[({buildPath})=>writeFile(path.join(buildPath,'preview-build.json'),JSON.stringify({mode}))],
 });
 if(mode==='mas-testflight'){

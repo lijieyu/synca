@@ -7,6 +7,7 @@ root="$app/Contents"
 test -d "$root"
 test ! -d "$root/Frameworks/Squirrel.framework"
 test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$root/Info.plist")" = org.haerth.synca
+"$SRCROOT/mas/assert-ats-default.sh" "$root/Info.plist"
 verify_stamp="$app/../synca-archive-variant.txt"
 if [ "${CI:-}" = TRUE ] || [ "${CI:-}" = true ] || [ -n "${CI_BUILD_ID:-}" ]; then
   test -f "$verify_stamp" && grep -qx "verified-tf-remote" "$verify_stamp" || { echo 'Remote TestFlight endpoint was not verified; refuse archive.' >&2; exit 1; }
