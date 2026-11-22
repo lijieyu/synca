@@ -20,6 +20,7 @@ function installLocalUI(ses,cfg){
         }catch{return new Response(null,{status:404})}
       }
     }
+    if (cfg.offline) return new Response(null,{status:503})
     if (cfg.local) return localRequest(cfg, url, request)
     return ses.fetch(request,{bypassCustomProtocolHandlers:true,...(cfg.isolated ? {redirect:'error'} : {})})
   })

@@ -1,7 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
+const masPreflight = process.argv.includes('--synca-mas-preflight')
 const localPreview = process.argv.includes('--synca-local-preview')
-const preview = localPreview || process.argv.includes('--synca-internal-preview')
-const origin = localPreview ? 'https://synca-preview.localhost' : preview ? 'https://synca-preview.haerth.cn' : 'https://synca.haerth.cn'
+const preview = masPreflight || localPreview || process.argv.includes('--synca-internal-preview')
+const origin = masPreflight ? 'https://synca-testflight.invalid' : localPreview ? 'https://synca-preview.localhost' : preview ? 'https://synca-preview.haerth.cn' : 'https://synca.haerth.cn'
 if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
     version:'1.2.0', preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',

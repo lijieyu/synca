@@ -8,7 +8,7 @@ const {installPlatform}=require('./platform.cjs')
 const marker = path.join(__dirname, 'preview-build.json')
 const hasMarker = fs.existsSync(marker)
 const builtMode = hasMarker ? JSON.parse(fs.readFileSync(marker, 'utf8')).mode : 'production'
-if (hasMarker && !['preview', 'local-preview'].includes(builtMode)) throw Error('Invalid preview marker')
+if (hasMarker && !['preview', 'local-preview', 'mas-preflight'].includes(builtMode)) throw Error('Invalid preview marker')
 const baseCfg = variant(builtMode)
 const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   const secureFile = path.join(app.getPath('userData'), 'launch-admission')
@@ -50,7 +50,7 @@ function showSettings(){restore();mainWindow?.webContents.send('desktop:settings
 function createWindow() {
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
-    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
+    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
   mainWindow = window
   const page = window.webContents
   page.on('will-navigate', (event, url) => {

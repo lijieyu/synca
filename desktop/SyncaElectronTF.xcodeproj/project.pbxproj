@@ -1,0 +1,22 @@
+// !$*UTF8*$!
+{
+ archiveVersion = 1;
+ classes = {};
+ objectVersion = 56;
+ objects = {
+  A00000000000000000000001 = { isa = PBXProject; attributes = { LastUpgradeCheck = 2610; }; buildConfigurationList = A00000000000000000000002; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en,Base); mainGroup = A00000000000000000000003; productRefGroup = A00000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000005); };
+  A00000000000000000000002 = { isa = XCConfigurationList; buildConfigurations = (A00000000000000000000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+  A00000000000000000000003 = { isa = PBXGroup; children = (A00000000000000000000007,A00000000000000000000004); sourceTree = "<group>"; };
+  A00000000000000000000004 = { isa = PBXGroup; children = (A00000000000000000000008); name = Products; sourceTree = "<group>"; };
+  A00000000000000000000005 = { isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000009; buildPhases = (A00000000000000000000010,A00000000000000000000011); buildRules = (); dependencies = (); name = SyncaElectronTF; productName = Synca; productReference = A00000000000000000000008; productType = "com.apple.product-type.application"; };
+  A00000000000000000000006 = { isa = XCBuildConfiguration; buildSettings = { MACOSX_DEPLOYMENT_TARGET = 12.0; SDKROOT = macosx; }; name = Release; };
+  A00000000000000000000007 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "mas/archive-anchor.c"; sourceTree = "<group>"; };
+  A00000000000000000000008 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synca.app; sourceTree = BUILT_PRODUCTS_DIR; };
+  A00000000000000000000009 = { isa = XCConfigurationList; buildConfigurations = (A00000000000000000000012); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+  A00000000000000000000010 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000013); runOnlyForDeploymentPostprocessing = 0; };
+  A00000000000000000000011 = { isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputPaths = (); outputPaths = (); name = "Embed the preverified Electron MAS app"; runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/bash; shellScript = "\"\${SRCROOT}/mas/archive-stage.sh\"\n"; };
+  A00000000000000000000012 = { isa = XCBuildConfiguration; buildSettings = { ARCHS = "arm64 x86_64"; CODE_SIGN_ENTITLEMENTS = "mas/app.entitlements.plist"; CODE_SIGN_STYLE = Automatic; INSTALL_PATH = "$(LOCAL_APPS_DIR)"; DEVELOPMENT_TEAM = 7Y33M5HLSC; CURRENT_PROJECT_VERSION = 82; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = "$(SYNCA_TF_PREPARED_APP)/Contents/Info.plist"; INFOPLIST_EXPAND_BUILD_SETTINGS = NO; MARKETING_VERSION = 1.2.0; ONLY_ACTIVE_ARCH = NO; PRODUCT_BUNDLE_IDENTIFIER = org.haerth.synca; PRODUCT_NAME = Synca; SDKROOT = macosx; SKIP_INSTALL = NO; STRIP_INSTALLED_PRODUCT = NO; SYNCA_TF_PREPARED_APP = "$(PROJECT_DIR)/.mas-prepared/Synca-mas-universal/Synca.app"; }; name = Release; };
+  A00000000000000000000013 = { isa = PBXBuildFile; fileRef = A00000000000000000000007; };
+ };
+ rootObject = A00000000000000000000001;
+}
