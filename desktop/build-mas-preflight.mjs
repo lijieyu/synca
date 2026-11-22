@@ -27,7 +27,7 @@ if(process.argv[2]==='--verified-testflight') {
 } else if(process.argv.length!==2) throw Error('Unknown MAS build mode');
 const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arch:'universal',electronVersion:version,
  electronZipDir:runtime, asar:true, overwrite:false, appBundleId:'org.haerth.synca',helperBundleId:'org.haerth.synca.helper',
- appVersion:'1.2.0',buildVersion:'82',appCategoryType:'public.app-category.productivity',icon:'icons/Synca',
+ appVersion:'1.2.0',buildVersion:'83',appCategoryType:'public.app-category.productivity',icon:'icons/Synca',
  // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
  // in force for this HTTPS-only archive; the renderer also has its own origin fence.
  extendInfo:{NSAppTransportSecurity:{}},
