@@ -3,11 +3,15 @@ set -euo pipefail
 : "${SYNCA_TF_PREPARED_APP:?The verified MAS app must exist before archiving}"
 app="$SYNCA_TF_PREPARED_APP"
 dst="$TARGET_BUILD_DIR/$FULL_PRODUCT_NAME"
+"$SRCROOT/mas/assert-wrapper-metadata.sh" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
 root="$app/Contents"
 test -d "$root"
 test ! -d "$root/Frameworks/Squirrel.framework"
 test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$root/Info.plist")" = org.haerth.synca
 "$SRCROOT/mas/assert-ats-default.sh" "$root/Info.plist"
+icon=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIconFile' "$root/Info.plist")
+[[ "$icon" =~ ^[A-Za-z0-9_.-]+\.icns$ ]]
+"$SRCROOT/mas/icon.sh" verify "$root/Resources/$icon"
 verify_stamp="$app/../synca-archive-variant.txt"
 if [ "${CI:-}" = TRUE ] || [ "${CI:-}" = true ] || [ -n "${CI_BUILD_ID:-}" ]; then
   test -f "$verify_stamp" && grep -qx "verified-tf-remote" "$verify_stamp" || { echo 'Remote TestFlight endpoint was not verified; refuse archive.' >&2; exit 1; }
