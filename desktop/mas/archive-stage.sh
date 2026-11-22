@@ -4,6 +4,14 @@ set -euo pipefail
 app="$SYNCA_TF_PREPARED_APP"
 dst="$TARGET_BUILD_DIR/$FULL_PRODUCT_NAME"
 "$SRCROOT/mas/assert-wrapper-metadata.sh" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
+# This workflow is for a private build. Do not add an export conclusion to
+# the package before Apple's build-specific compliance step.
+for key in ITSAppUsesNonExemptEncryption ITSEncryptionExportComplianceCode; do
+  if /usr/libexec/PlistBuddy -c "Print :$key" "$TARGET_BUILD_DIR/$INFOPLIST_PATH" >/dev/null 2>&1; then
+    echo "Unexpected encryption declaration in internal preview: $key" >&2
+    exit 1
+  fi
+done
 root="$app/Contents"
 test -d "$root"
 test ! -d "$root/Frameworks/Squirrel.framework"
@@ -28,5 +36,7 @@ if [ "${CODE_SIGNING_ALLOWED:-NO}" = YES ]; then
   if [ -x "$SRCROOT/.mas-prepared/node/bin/node" ]; then
     export PATH="$SRCROOT/.mas-prepared/node/bin:$PATH"
   fi
-  /usr/bin/env node "$SRCROOT/mas/archive-sign.mjs" "$dst" "$EXPANDED_CODE_SIGN_IDENTITY"
+  : "${DEVELOPMENT_TEAM:?No verified Xcode development team}"
+  /usr/bin/env node "$SRCROOT/mas/archive-sign.mjs" "$dst" "$EXPANDED_CODE_SIGN_IDENTITY" "$DEVELOPMENT_TEAM"
+  "$SRCROOT/mas/assert-electron-mas-identity.sh" "$dst" "$DEVELOPMENT_TEAM"
 fi

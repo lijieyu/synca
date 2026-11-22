@@ -33,7 +33,7 @@ const sourceIcon=path.resolve('../ios/Synca/Resources/Assets.xcassets/AppIcon.ap
 execFileSync(path.resolve('mas/icon.sh'),['create',icon,sourceIcon],{stdio:'inherit'});
 const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arch:'universal',electronVersion:version,
  electronZipDir:runtime, asar:true, overwrite:false, appBundleId:'org.haerth.synca',helperBundleId:'org.haerth.synca.helper',
- appVersion:'1.2.0',buildVersion:'84',appCategoryType:'public.app-category.productivity',icon,
+ appVersion:'1.2.0',buildVersion:'85',appCategoryType:'public.app-category.productivity',icon,
  // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
  // in force for this HTTPS-only archive; the renderer also has its own origin fence.
  extendInfo:{NSAppTransportSecurity:{}},
@@ -47,6 +47,9 @@ for(const k of ['BuildMachineOSBuild','DTCompiler','DTPlatformBuild','DTPlatform
  const present=execFileSync('/usr/bin/plutil',['-p',wrapperPlist],{encoding:'utf8'}).includes('"'+k+'" =>');
  if(present)execFileSync('/usr/bin/plutil',['-remove',k,wrapperPlist]);
 }
+// This key belongs in the Xcode-processed root Info.plist (not a nested helper).
+// Xcode expands the same verified Team ID used to sign the final root app.
+execFileSync('/usr/bin/plutil',['-insert','ElectronTeamID','-string','$(DEVELOPMENT_TEAM)',wrapperPlist]);
 if(mode==='mas-testflight'){
  await writeFile(path.join(out,'synca-archive-variant.txt'),'verified-tf-remote\n',{flag:'wx'});
  console.log('Prepared exact isolated TestFlight payload for the Mac-only Xcode archive');

@@ -20,3 +20,19 @@ test('actual Mac TestFlight mode fixes the existing isolated HTTPS origin and ke
  assert.equal(cfg.allows('https://synca.haerth.cn/auth/email/code'),false);
  assert.equal(cfg.allows('https://synca-preview.haerth.cn/auth/email/code'),true);
 });
+
+test('only physical MAS preview binaries rely on macOS LaunchServices for singleton behavior',()=>{
+ const {requestInstance}=require('./app/instance.cjs')
+ let chromiumCalls=0
+ const request=()=>{chromiumCalls++;return false}
+ assert.equal(requestInstance({platform:'darwin',mas:true},'mas-testflight',request),true)
+ assert.equal(requestInstance({platform:'darwin',mas:true},'mas-preflight',request),true)
+ assert.equal(chromiumCalls,0)
+ for(const [runtime,mode] of [
+  [{platform:'darwin',mas:false},'mas-testflight'],
+  [{platform:'darwin',mas:true},'production'],
+  [{platform:'win32',mas:false},'production'],
+  [{platform:'linux',mas:false},'local-preview'],
+ ]) assert.equal(requestInstance(runtime,mode,request),false)
+ assert.equal(chromiumCalls,4)
+})

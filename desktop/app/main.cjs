@@ -4,6 +4,7 @@ const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
+const {requestInstance}=require('./instance.cjs')
 
 const marker = path.join(__dirname, 'preview-build.json')
 const hasMarker = fs.existsSync(marker)
@@ -96,7 +97,7 @@ function createWindow() {
   void window.loadURL(home).catch(() => {})
 }
 
-if (!app.requestSingleInstanceLock()) app.quit()
+if (!requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
 else {
   app.on('second-instance', () => {
     if (app.isReady()) void openWorkspace()
