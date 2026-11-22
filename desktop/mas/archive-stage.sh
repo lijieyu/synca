@@ -20,5 +20,8 @@ done
 /usr/bin/cmp -s "$root/MacOS/Synca" "$TARGET_BUILD_DIR/$EXECUTABLE_PATH"
 if [ "${CODE_SIGNING_ALLOWED:-NO}" = YES ]; then
   : "${EXPANDED_CODE_SIGN_IDENTITY:?No verified Xcode signing identity}"
+  if [ -x "$SRCROOT/.mas-prepared/node/bin/node" ]; then
+    export PATH="$SRCROOT/.mas-prepared/node/bin:$PATH"
+  fi
   /usr/bin/env node "$SRCROOT/mas/archive-sign.mjs" "$dst" "$EXPANDED_CODE_SIGN_IDENTITY"
 fi

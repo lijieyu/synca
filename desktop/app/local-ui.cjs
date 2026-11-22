@@ -22,7 +22,7 @@ function installLocalUI(ses,cfg){
     }
     if (cfg.offline) return new Response(null,{status:503})
     if (cfg.local) return localRequest(cfg, url, request)
-    return ses.fetch(request,{bypassCustomProtocolHandlers:true,...(cfg.isolated ? {redirect:'error'} : {})})
+    return ses.fetch(request,{bypassCustomProtocolHandlers:true,...(cfg.isolated ? {redirect:'error', ...(cfg.gate ? {credentials:'include'} : {})} : {})})
   })
 }
 // The walkthrough transport cannot talk to the preview website or production.
