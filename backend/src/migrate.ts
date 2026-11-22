@@ -362,6 +362,19 @@ export async function runMigrations() {
         challenge TEXT NOT NULL, state TEXT, scopes TEXT NOT NULL, expires_at TEXT NOT NULL,
         code_hash TEXT UNIQUE, connection_id TEXT, resource TEXT NOT NULL
     )`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS daily_activities (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        activity_date TEXT NOT NULL,
+        has_read INTEGER NOT NULL DEFAULT 0,
+        has_operation INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (activity_date, user_id)
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_daily_activities_user ON daily_activities(user_id, activity_date)`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS activity_coverage (
+        version INTEGER PRIMARY KEY, started_at TEXT NOT NULL
+    )`.execute(db);
+    await sql`INSERT OR IGNORE INTO activity_coverage(version, started_at)
+        VALUES (1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))`.execute(db);
     await migrateLoginIdentities();
     console.log('[migrate] Migrations complete.');
 }

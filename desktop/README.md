@@ -17,3 +17,9 @@ web/src/components/SettingsPanel.tsx 与配套 CSS 统一管理 Web 和 Electron
 ## 验收
 
 设置 SYNCA_BACKEND 指向已编译且依赖完整的本地 Synca backend，执行 node verify.mjs "/path/to/Synca Electron.app/Contents/MacOS/Synca Electron"。CAPTURE_DIR 可指定现有的截图输出目录。该脚本使用临时账户与 SQLite，验证桌面设置、草稿、中文输入、编辑、搜索、同步、离线读取和角标并采样进程。node popup-check.mjs 可检查 Apple 授权窗口。Windows 托盘和推送签名需在对应环境单独验收。
+
+## 隔离预览（macOS arm64）
+
+- `npm run build:mac:preview` 生成独立身份和数据目录的远程预览包，仅允许 `https://synca-preview.haerth.cn`；不会回退正式站、启动 Apple 登录或注册 APNs。预览站的访问门禁由预览运维负责，不能在包里放口令。
+- `npm run build:mac:local-preview` 生成独立的本机体验包，仅转发到 `127.0.0.1:30642` 的合成测试夹具。不会发真实邮件、登录 Apple 或连接正式数据。夹具独立启动，需验证局部健康标记和主进程从专用数据目录读取的 0600 临时访问文件；这个文件既不打包也不交给渲染进程。客户端没有用于访问网站或生产的回退代码。
+- 改用新的测试配置前退出现有预览包；正式 Electron 与原生 App 不用退出、不用替换。

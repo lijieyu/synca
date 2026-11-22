@@ -470,6 +470,9 @@
   "review.page.downloads": "下載",
   "review.page.window_note": "關閉視窗後，Synca 會繼續在背景執行。",
   "email_auth": {
+    "local_preview_notice": "本機體驗 · 僅模擬驗證碼，不發送真實郵件，不讀取正式記錄。",
+    "local_preview_code": "填入本機測試驗證碼",
+    "preview_notice": "內部預覽 · 僅用測試帳號，不連接正式記錄，暫不使用 Apple 登入。",
     "apple_login": "透過 Apple 登入",
     "email_login": "使用電子郵件登入",
     "apple_wait": "正在等待 Apple 授權…",

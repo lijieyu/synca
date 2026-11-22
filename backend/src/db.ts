@@ -15,9 +15,8 @@ const dbPath = configuredPath
     ? (path.isAbsolute(configuredPath) ? configuredPath : path.resolve(dataDir, configuredPath))
     : path.resolve(dataDir, 'synca.sqlite');
 
-const dialect = new SqliteDialect({
-    database: new SQLite(dbPath),
-});
+export const sqlite = new SQLite(dbPath);
+const dialect = new SqliteDialect({ database: sqlite });
 
 export const db = new Kysely<Database>({
     dialect,

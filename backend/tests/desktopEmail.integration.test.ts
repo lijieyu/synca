@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, expect, it, vi } from 'vitest';
 import express from 'express';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import fs from 'node:fs/promises';
 vi.mock('../src/emailDelivery.js',()=>({isEmailDeliveryConfigured:()=>true,sendVerificationEmail:vi.fn(async()=>{})}));
@@ -60,28 +60,43 @@ it.skipIf(!enabled)('built desktop UI uses real API/database across email signup
 it.skipIf(!enabled || !process.env.SYNCA_ELECTRON_BINARY)('packaged Electron uses shared email login and stable help with a real isolated backend',async()=>{
  const { _electron: electron }=await import('../../desktop/node_modules/playwright-core/index.mjs');
  const profile=await fs.mkdtemp('/tmp/synca-electron-email-profile-');
- const desktop=await electron.launch({executablePath:process.env.SYNCA_ELECTRON_BINARY!,args:['--user-data-dir='+profile]});
+ const preview=process.env.SYNCA_ELECTRON_BINARY!.includes('Synca Electron Preview.app');
+ const expectedHome=preview?'https://synca-preview.haerth.cn':'https://synca.haerth.cn';
+ const profileTag=randomBytes(16).toString('hex');
+ const desktop=await electron.launch({executablePath:process.env.SYNCA_ELECTRON_BINARY!,args:['--user-data-dir='+profile],
+  ...(preview ? {env:{...process.env,SYNCA_PREVIEW_SMOKE_RUN:profileTag}} : {})});
+ let previewProfile:string|undefined;
  try{
   const page=await desktop.firstWindow();page.setDefaultTimeout(10000);
-  await desktop.evaluate(({session}:any,local:string)=>{
+  await desktop.evaluate(({session}:any,config:{local:string; home:string})=>{
    const ses=session.defaultSession,original=ses.fetch.bind(ses);
-   ses.fetch=(input:any,options:any)=>{
+   ses.fetch=async(input:any,options:any)=>{
     const url=new URL(typeof input==='string'?input:input.url);
-    if(url.origin==='https://synca.haerth.cn' && /^\/(auth|me|messages|message-categories)(\/|$)/.test(url.pathname)){
-     const init=typeof input==='string'?options:{method:input.method,headers:input.headers,body:['GET','HEAD'].includes(input.method)?undefined:input.body,duplex:'half'};
-     return original(local+url.pathname+url.search,init);
+    if(url.origin===config.home && /^\/(auth|me|messages|message-categories)(\/|$)/.test(url.pathname)){
+     const init=typeof input==='string'?options:{method:input.method,headers:input.headers,body:['GET','HEAD'].includes(input.method)?undefined:await input.arrayBuffer()};
+     // Only the smoke harness forwards to a private fixture. Browser network allowlists remain active.
+     return await fetch(config.local+url.pathname+url.search,{...init,redirect:'error'});
     }
     return original(input,options);
    };
-  },origin);
+  },{local:origin,home:expectedHome});
   await page.context().route('**/*',async(route:any)=>{
    const url=new URL(route.request().url());
-   if(url.origin!=='https://synca.haerth.cn')return route.abort();
+   if(url.origin!==expectedHome)return route.abort();
    if(/^\/(auth|me|messages|message-categories)(\/|$)/.test(url.pathname))return route.fulfill({response:await route.fetch({url:origin+url.pathname+url.search,maxRedirects:0})});
    return route.continue();
   });
-  await page.reload();await page.locator('.auth-primary.auth-apple').waitFor();
-  await page.waitForFunction(()=>Array.from(document.querySelectorAll<HTMLImageElement>('.auth-apple-logo')).every(image=>image.complete && image.naturalWidth>0));
+  await page.reload();
+  if(preview){
+   previewProfile=await desktop.evaluate(({app}:any)=>app.getPath('userData'));
+   expect(path.basename(previewProfile!)).toBe('Synca Electron Preview-smoke-'+profileTag);
+   expect(new URL(page.url()).origin).toBe(expectedHome);
+   expect(await page.evaluate(()=>Boolean((window as any).syncaDesktop?.preview))).toBe(true);
+   expect(await page.locator('.auth-primary.auth-apple').count()).toBe(0);
+  }else{
+   await page.locator('.auth-primary.auth-apple').waitFor();
+   await page.waitForFunction(()=>Array.from(document.querySelectorAll<HTMLImageElement>('.auth-apple-logo')).every(image=>image.complete && image.naturalWidth>0));
+  }
   await desktop.evaluate(({BrowserWindow}:any)=>BrowserWindow.getAllWindows()[0].setSize(640,500));
   await page.waitForFunction(()=>document.documentElement.scrollHeight<=window.innerHeight);
   await page.getByRole('button',{name:/使用邮箱登录|Sign in with email/,exact:true}).click();await page.locator('input[type=email]').fill('electron@example.com');await page.locator('.email-verification form button').click();await page.locator('input.auth-code').waitFor();
@@ -90,5 +105,5 @@ it.skipIf(!enabled || !process.env.SYNCA_ELECTRON_BINARY)('packaged Electron use
   await fs.mkdir('/tmp/synca-email-real-api',{recursive:true});await page.screenshot({path:'/tmp/synca-email-real-api/electron-help.png'});
   await page.locator('input.auth-code').fill(vi.mocked(sendVerificationEmail).mock.calls.at(-1)![0].code);await page.locator('.email-verification form button').click();await page.locator('.settings-entry').waitFor();
   const token=await page.evaluate(()=>localStorage.getItem('authToken'));expect(await db.selectFrom('sessions').select('user_id').where('token','=',token!).executeTakeFirst()).toBeTruthy();
- }finally{await desktop.close();await fs.rm(profile,{recursive:true,force:true});}
+ }finally{await desktop.close();await fs.rm(profile,{recursive:true,force:true});if(previewProfile&&path.basename(previewProfile)==='Synca Electron Preview-smoke-'+profileTag)await fs.rm(previewProfile,{recursive:true,force:true});}
 },60_000);

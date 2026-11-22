@@ -7,8 +7,8 @@ export function authErrorKey(error: unknown) {
   const code = error instanceof AuthError ? error.code : error instanceof Error ? error.message : '';
   return `email_auth.errors.${['invalid_email','invalid_code','code_expired','code_attempts_exceeded','rate_limited','email_unavailable','email_send_failed','email_in_use','apple_in_use','email_already_bound','apple_already_bound','apple_cancelled','apple_timeout','apple_unavailable','apple_auth_failed'].includes(code) ? code : 'generic'}`;
 }
-export function EmailVerification({ binding = false, initialEmail = '', onEmailChange, onBack, onAuthenticated, onBound }: {
-  binding?: boolean; initialEmail?: string; onEmailChange?: (email: string) => void; onBack: () => void; onAuthenticated?: (response: AuthResponse) => void; onBound?: (methods: LoginMethods) => void;
+export function EmailVerification({ binding = false, initialEmail = '', onEmailChange, onBack, onAuthenticated, onBound, localPreview = false }: {
+  binding?: boolean; localPreview?: boolean; initialEmail?: string; onEmailChange?: (email: string) => void; onBack: () => void; onAuthenticated?: (response: AuthResponse) => void; onBound?: (methods: LoginMethods) => void;
 }) {
   const { t, i18n } = useTranslation();
   const id = useId();
@@ -40,6 +40,17 @@ export function EmailVerification({ binding = false, initialEmail = '', onEmailC
     } catch (err) { fail(err, controller); }
     finally { if (current(controller)) setBusy(false); if (request.current === controller) request.current = null; }
   }
+  async function useLocalCode() {
+    if (!localPreview || !challenge || request.current) return;
+    try {
+      const response = await fetch('/__local-test-outbox', { cache: 'no-store', redirect: 'error' });
+      if (!response.ok) throw Error('email_unavailable');
+      const result = await response.json();
+      if (typeof result.code !== 'string' || !/^\d{6}$/.test(result.code)) throw Error('invalid_code');
+      setCode(result.code);
+      input.current?.focus();
+    } catch (error) { setError(t(authErrorKey(error))); }
+  }
   async function verify() {
     if (request.current || !challenge) return;
     if (!/^\d{6}$/.test(code)) { setError(t('email_auth.errors.invalid_code')); input.current?.focus(); return; }
@@ -58,10 +69,11 @@ export function EmailVerification({ binding = false, initialEmail = '', onEmailC
     {challenge && <p className="auth-address" dir="auto">{email}</p>}
     <form noValidate onSubmit={event => { event.preventDefault(); void (challenge ? verify() : send()); }}>
       <label htmlFor={`${id}-input`}>{t(challenge ? 'email_auth.code' : 'email_auth.email')}</label>
-      <input key={challenge ? 'code' : 'email'} ref={input} id={`${id}-input`} type={challenge ? 'text' : 'email'} inputMode={challenge ? 'numeric' : 'email'} autoComplete={challenge ? 'one-time-code' : 'email'} autoCapitalize="none" spellCheck={false} required maxLength={challenge ? 6 : 254} pattern={challenge ? '[0-9]{6}' : undefined} className={challenge ? 'auth-code' : ''} value={challenge ? code : email} disabled={busy} aria-invalid={!!error} aria-describedby={`${id}-notice ${!challenge ? `${id}-hint` : ''}`} onChange={event => { if (challenge) setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); else { setEmail(event.target.value); onEmailChange?.(event.target.value); } setError(''); }} />
+      <input key={challenge ? 'code' : 'email'} ref={input} id={`${id}-input`} type={challenge ? 'text' : 'email'} inputMode={challenge ? 'numeric' : 'email'} autoComplete={challenge ? 'one-time-code' : 'email'} autoCapitalize="none" spellCheck={false} required maxLength={challenge ? 6 : 254} pattern={challenge ? '[0-9]{6}' : undefined} className={challenge ? 'auth-code' : ''} value={challenge ? code : email} readOnly={localPreview && !challenge} disabled={busy} aria-invalid={!!error} aria-describedby={`${id}-notice ${!challenge ? `${id}-hint` : ''}`} onChange={event => { if (challenge) setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); else { setEmail(event.target.value); onEmailChange?.(event.target.value); } setError(''); }} />
       <div id={`${id}-notice`} className="auth-notice" aria-live="polite" role={error ? 'alert' : 'status'}>{error || notice}</div>
       <button className="auth-primary" disabled={busy || (!challenge && seconds > 0)}>{t(busy ? challenge ? 'email_auth.verifying' : 'email_auth.sending' : challenge ? binding ? 'email_auth.verify_bind' : 'email_auth.login' : 'email_auth.send')}{!challenge && seconds > 0 ? ` (${seconds}s)` : ''}</button>
     </form>
+    {localPreview && challenge && <button type="button" className="auth-back" onClick={() => void useLocalCode()}>{t('email_auth.local_preview_code')}</button>}
     {challenge ? <><div className="auth-resend"><span>{t(now >= Date.parse(challenge.expiresAt) ? 'email_auth.expired' : 'email_auth.valid_duration')}</span><button type="button" disabled={busy || seconds > 0} onClick={() => void send()}>{seconds > 0 ? t('email_auth.resend_wait', { seconds }) : t('email_auth.resend')}</button></div><details className="auth-help"><summary>{t('email_auth.help')}</summary><p>{t('email_auth.help_text')}{!binding && ` ${t('email_auth.help_apple')}`}</p></details></> : <p className="auth-hint" id={`${id}-hint`}>{t(binding ? 'email_auth.bind_hint' : 'email_auth.signup_hint')}</p>}
     {!challenge && !binding && <AuthTerms />}
   </section>;

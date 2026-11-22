@@ -415,6 +415,7 @@ export async function deleteAccount(input: {
         await trx.deleteFrom('iap_transactions').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('device_push_tokens').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('lifetime_upgrade_offer_codes').where('assigned_user_id', '=', input.userId).execute();
+        await sql`DELETE FROM daily_activities WHERE user_id = ${input.userId}`.execute(trx);
         await trx.deleteFrom('message_usage_events').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('messages').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('message_categories').where('user_id', '=', input.userId).execute();
@@ -1142,6 +1143,7 @@ export async function resetDb() {
     await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();
     await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
+    await sql`DELETE FROM daily_activities`.execute(db);
     await db.deleteFrom('message_usage_events').execute();
     await db.deleteFrom('messages').execute();
     await db.deleteFrom('message_categories').execute();

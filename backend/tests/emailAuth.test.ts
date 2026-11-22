@@ -1,7 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
+vi.hoisted(() => { vi.stubEnv('SYNCA_EMAIL_AUTH_ENABLED', 'true'); });
+afterAll(() => vi.unstubAllEnvs());
 vi.mock('../src/emailDelivery.js', () => ({ isEmailDeliveryConfigured: vi.fn(() => true), sendVerificationEmail: vi.fn(async () => {}) }));
 vi.mock('apple-signin-auth', () => ({ verifyIdToken: vi.fn() }));
 import app from '../src/app.js';

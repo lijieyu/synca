@@ -1,7 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron')
-if (process.isMainFrame && location.origin === 'https://synca.haerth.cn') {
+const localPreview = process.argv.includes('--synca-local-preview')
+const preview = localPreview || process.argv.includes('--synca-internal-preview')
+const origin = localPreview ? 'https://synca-preview.localhost' : preview ? 'https://synca-preview.haerth.cn' : 'https://synca.haerth.cn'
+if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
-    version:'1.2.0', platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
+    version:'1.2.0', preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
     recordMenu:options=>ipcRenderer.invoke('desktop:record-menu',options),
     preferences:()=>ipcRenderer.invoke('desktop:preferences'),
     change:(key,value)=>ipcRenderer.invoke('desktop:change',key,value),

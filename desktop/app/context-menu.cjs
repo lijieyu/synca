@@ -6,7 +6,6 @@ const { pipeline } = require('node:stream/promises')
 const { execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const openApplication = promisify(execFile)
-const home = 'https://synca.haerth.cn'
 const actionIds = new Set(['edit', 'copyRecord', 'copySelection', 'openLink', 'copyLink', 'complete',
   'category', 'delete', 'preview', 'save', 'saveAs', 'reveal'])
 const attachmentActions = new Set(['preview', 'saveAs', 'reveal'])
@@ -18,7 +17,7 @@ function webLink(value) {
   } catch { return null }
 }
 
-function attachmentURL(value) {
+function attachmentURL(value, home) {
   try {
     const url = new URL(value, home)
     return url.origin === home && !url.username && !url.password && /^\/api\/media\/[A-Za-z0-9_.-]+$/.test(url.pathname)
@@ -31,7 +30,8 @@ function safeName(value) {
   return name && !name.startsWith('.') ? Array.from(name).slice(0, 150).join('') : 'attachment'
 }
 
-function installContextMenus(window, ses, handle, getSession, getDirectory) {
+function installContextMenus(window, ses, handle, getSession, getDirectory, cfg) {
+  const home=cfg.home
   const page = window.webContents
   let currentMenu
   let tempRoot
@@ -42,7 +42,7 @@ function installContextMenus(window, ses, handle, getSession, getDirectory) {
   }
   app.once('will-quit', () => { if (tempRoot) require('node:fs').rmSync(tempRoot, {recursive: true, force: true}) })
   async function performAttachment(action, attachment) {
-    const url = attachmentURL(attachment?.url)
+    const url = attachmentURL(attachment?.url, home)
     const token = getSession()
     if (!url || !token || (action === 'preview' && (attachment?.kind !== 'image' || process.platform !== 'darwin'))) throw Error('Invalid attachment')
     const name = safeName(attachment.name || new URL(url).pathname.split('/').pop())
@@ -57,7 +57,7 @@ function installContextMenus(window, ses, handle, getSession, getDirectory) {
       (!attachment.expiresAt || Date.parse(attachment.expiresAt) > Date.now())
     if (!sessionIsCurrent()) throw Error('Attachment unavailable')
     const response = await ses.fetch(url, {headers: {Authorization: 'Bearer ' + token}, redirect: 'error',
-      cache: 'no-store', signal: AbortSignal.timeout(120000), bypassCustomProtocolHandlers: true})
+      cache: 'no-store', signal: AbortSignal.timeout(120000), bypassCustomProtocolHandlers: !cfg.local})
     if (!response.ok || !response.body) throw Error('Download failed')
     if (action === 'copyImage') {
       const image = nativeImage.createFromBuffer(Buffer.from(await response.arrayBuffer()))
@@ -100,7 +100,7 @@ function installContextMenus(window, ses, handle, getSession, getDirectory) {
 
   handle('record-menu', args => new Promise((resolve, reject) => {
     if (!Array.isArray(args?.items) || args.items.length > 20) return resolve(null)
-    const link = webLink(args.link)
+    const link = cfg.isolated ? null : webLink(args.link)
     const template = []
     let chosen = false
     const finish = value => { if (!chosen) { chosen = true; resolve(value) } }

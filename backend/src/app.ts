@@ -1,3 +1,4 @@
+import { trackActivity } from './activity.js';
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
 import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension } from './attachmentPolicy.js';
@@ -58,7 +59,10 @@ const recordTextJson = express.json({ limit: '1mb' });
 app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_records'], recordTextJson);
 app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
-app.use(createEmailAuthRouter());
+// Keep email sign-in and binding off until the operator explicitly enables them.
+if (process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true') {
+    app.use(createEmailAuthRouter());
+}
 app.use(createAIRouter(notifyOtherDevices));
 
 // Serve uploaded images
@@ -162,6 +166,7 @@ async function auth(req: express.Request, res: express.Response, next: express.N
     const userId = await getUserIdFromToken(req.header('Authorization'));
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
     (req as any).userId = userId;
+    trackActivity(req, res, userId);
     next();
 }
 

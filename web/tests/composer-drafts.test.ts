@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import { createComposerDrafts } from '../src/utils/composerDrafts.ts';
 
 test('separate overview and category drafts restore text and selection across relaunch', () => {

@@ -470,6 +470,9 @@
   "review.page.downloads": "Downloads",
   "review.page.window_note": "Synca keeps running in the background when you close the window.",
   "email_auth": {
+    "local_preview_notice": "Local walkthrough only · no real email, Apple sign-in, or production records.",
+    "local_preview_code": "Fill in local test code",
+    "preview_notice": "Internal preview · test accounts only. Production records and Apple sign-in are disabled.",
     "apple_login": "Sign in with Apple",
     "email_login": "Sign in with email",
     "apple_wait": "Waiting for Apple…",

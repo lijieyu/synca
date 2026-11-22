@@ -1,9 +1,37 @@
 const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
 const path = require('node:path')
+const fs = require('node:fs')
+const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
 
-const home = 'https://synca.haerth.cn'
+const marker = path.join(__dirname, 'preview-build.json')
+const hasMarker = fs.existsSync(marker)
+const builtMode = hasMarker ? JSON.parse(fs.readFileSync(marker, 'utf8')).mode : 'production'
+if (hasMarker && !['preview', 'local-preview'].includes(builtMode)) throw Error('Invalid preview marker')
+const baseCfg = variant(builtMode)
+const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
+  const secureFile = path.join(app.getPath('userData'), 'launch-admission')
+  const fd = fs.openSync(secureFile, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW)
+  try {
+    const st = fs.fstatSync(fd)
+    if (!st.isFile() || (st.mode & 0o777) !== 0o600 || st.uid !== process.getuid() || st.size > 128)
+      throw Error('Invalid local launch admission file')
+    const key = fs.readFileSync(fd, 'utf8').trim()
+    if (!/^[A-Za-z0-9_-]{32,96}$/.test(key)) throw Error('Invalid local launch admission')
+    return key
+  } finally { fs.closeSync(fd) }
+}}) : baseCfg
+const home = cfg.home
+if (cfg.isolated) {
+  const smoke = /^[a-f0-9]{32}$/.test(process.env.SYNCA_PREVIEW_SMOKE_RUN || '') ? process.env.SYNCA_PREVIEW_SMOKE_RUN : ''
+  const folder = path.join(app.getPath('appData'), cfg.profile + (smoke ? '-smoke-' + smoke : ''))
+  fs.mkdirSync(folder, { recursive: true, mode: 0o700 })
+  if (!fs.lstatSync(folder).isDirectory() || fs.realpathSync(folder) !== path.join(fs.realpathSync(app.getPath('appData')), path.basename(folder)))
+    throw Error('Preview profile is not an independent real directory')
+  app.setPath('userData', folder)
+  app.setPath('sessionData', folder)
+}
 const apple = 'https://appleid.apple.com'
 let quitting = false
 app.on('before-quit',()=>{quitting=true})
@@ -20,9 +48,9 @@ function restore(){
 }
 function showSettings(){restore();mainWindow?.webContents.send('desktop:settings')}
 function createWindow() {
-  const window = new BrowserWindow({ title: 'Synca Electron', width: 1040, height: 760,
+  const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
-    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs")} })
+    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
   mainWindow = window
   const page = window.webContents
   page.on('will-navigate', (event, url) => {
@@ -32,6 +60,7 @@ function createWindow() {
     if (![home+'/',home+'/ai'].includes(url)) event.preventDefault()
   })
   page.setWindowOpenHandler(({url}) => {
+    if (cfg.isolated) return { action: 'deny' }
     if (origin(page.getURL()) !== home) return { action: 'deny' }
     if (origin(url) === apple || url === 'about:blank') {
       return { action: 'allow', overrideBrowserWindowOptions: { width: 560, height: 700, titleBarStyle: 'default', webPreferences: preferences } }
@@ -54,7 +83,7 @@ function createWindow() {
     else quitting=false
   })
   window.on('close', event => { if(!quitting){event.preventDefault();window.hide()} })
-  installPlatform(window,session.defaultSession,restore,showSettings)
+  installPlatform(window,session.defaultSession,restore,showSettings,cfg)
   window.on('closed', () => { mainWindow = undefined })
   void window.loadURL(home).catch(() => {})
 }
@@ -66,12 +95,14 @@ else {
     restore()
   })
   app.whenReady().then(() => {
-    installLocalUI(session.defaultSession)
-    app.setAppUserModelId('cn.haerth.synca.electron')
+    installLocalUI(session.defaultSession,cfg)
+    if (cfg.isolated) session.defaultSession.webRequest.onBeforeRequest((details, done) =>
+      done({ cancel: !cfg.allows(details.url) && !/^(?:data|blob|devtools):/.test(details.url) }))
+    app.setAppUserModelId(cfg.bundleId)
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     session.defaultSession.setPermissionCheckHandler(() => false)
     Menu.setApplicationMenu(Menu.buildFromTemplate([
-      {label:process.platform==='darwin'?'Synca Electron':'File',submenu:[
+      {label:process.platform==='darwin'?cfg.name:'File',submenu:[
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
         {type:'separator'},{role:'quit'}]},

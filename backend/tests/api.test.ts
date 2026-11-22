@@ -1,3 +1,5 @@
+import { sqlite } from '../src/db.js';
+import { activityDate, recordActivity } from '../src/activity.js';
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import app from '../src/app.js';
@@ -48,6 +50,34 @@ describe('Synca API', () => {
 
     beforeEach(async () => {
         await resetDb();
+    });
+
+    it('counts successful reads and operations once per Beijing day, excluding failures and service routes', async () => {
+        const { userId, authHeader } = await createTestUser();
+        const rows = () => sqlite.prepare('SELECT * FROM daily_activities WHERE user_id = ?').all(userId) as any[];
+        await request(app).get('/health');
+        await request(app).get('/messages');
+        await request(app).get('/me/access-status').set('Authorization', 'Bearer invalid');
+        expect(rows()).toHaveLength(0);
+        await Promise.all(Array.from({ length: 4 }, () =>
+            request(app).get('/messages').set('Authorization', authHeader)));
+        expect(rows()).toHaveLength(1);
+        expect(rows()[0]).toMatchObject({ has_read: 1, has_operation: 0 });
+        await request(app).post('/messages').set('Authorization', authHeader).send({});
+        expect(rows()[0].has_operation).toBe(0);
+        const made = await request(app).post('/messages').set('Authorization', authHeader).send({ textContent: 'activity test' });
+        expect(made.status).toBe(201);
+        expect(rows()[0]).toMatchObject({ has_read: 1, has_operation: 1 });
+        sqlite.prepare('DELETE FROM daily_activities WHERE user_id = ?').run(userId);
+        await request(app).patch('/messages/' + made.body.id + '/completion').set('Authorization', authHeader).send({ isCleared: true });
+        expect(rows()[0]).toMatchObject({ has_read: 0, has_operation: 1 });
+        sqlite.prepare('DELETE FROM daily_activities WHERE user_id = ?').run(userId);
+        await request(app).delete('/messages/' + made.body.id).set('Authorization', authHeader);
+        expect(rows()[0].has_operation).toBe(1);
+        expect(activityDate(new Date('2026-11-19T15:59:59Z'))).toBe('2026-11-19');
+        expect(activityDate(new Date('2026-11-19T16:00:00Z'))).toBe('2026-11-20');
+        recordActivity('missing-user', '2026-11-19', false);
+        expect(sqlite.prepare("SELECT count(*) AS n FROM daily_activities WHERE user_id='missing-user'").get()).toEqual({ n: 0 });
     });
 
     describe('compatible category palette', () => {

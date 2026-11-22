@@ -1,9 +1,8 @@
 const { app, dialog, ipcMain, Menu, nativeImage, powerMonitor, pushNotifications, Tray } = require('electron')
 const fs=require('node:fs')
 const path=require('node:path')
-const HOME='https://synca.haerth.cn'
-const topic='cn.haerth.synca.electron'
-function installPlatform(window, ses, restore, settings) {
+function installPlatform(window, ses, restore, settings, cfg) {
+  const HOME=cfg.home, topic=cfg.bundleId
   const file=path.join(app.getPath('userData'),'desktop-preferences.json')
   let prefs={badge:true,ask:true,directory:''}
   try{
@@ -39,7 +38,7 @@ function installPlatform(window, ses, restore, settings) {
     return fn(...args)
   })}
   require('./context-menu.cjs').installContextMenus(window, ses, handle, () => token,
-    () => prefs.directory && fs.existsSync(prefs.directory) ? prefs.directory : app.getPath('downloads'))
+    () => prefs.directory && fs.existsSync(prefs.directory) ? prefs.directory : app.getPath('downloads'), cfg)
   handle('preferences',()=>prefs)
   handle('change',(key,value)=>{
     if(!['ask','badge'].includes(key)||typeof value!=='boolean') throw Error('Invalid preference')
@@ -57,7 +56,7 @@ function installPlatform(window, ses, restore, settings) {
     running=true
     const epoch=generation
     try{
-      const response=await ses.fetch(HOME+'/messages/uncleared-count',{headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(12000),bypassCustomProtocolHandlers:true})
+      const response=await ses.fetch(HOME+'/messages/uncleared-count',{headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(12000),bypassCustomProtocolHandlers:!cfg.local})
       if(epoch!==generation)return
       if(response.status===401){setSession(null);return}
       if(response.ok){const {count:n}=await response.json();if(epoch===generation&&Number.isSafeInteger(n)&&n>=0)badge(n)}
@@ -65,7 +64,7 @@ function installPlatform(window, ses, restore, settings) {
     finally{running=false;if(again){again=false;void refresh()}}
   }
   async function bindPush(epoch){
-    if(process.platform!=='darwin'||!token)return
+    if(!cfg.push||process.platform!=='darwin'||!token)return
     try{
       registration ||= pushNotifications.registerForAPNSNotifications()
       apnsToken=await registration
@@ -83,7 +82,7 @@ function installPlatform(window, ses, restore, settings) {
     else if(apnsToken){pushNotifications.unregisterForAPNSNotifications();apnsToken=null;registration=null}
   }
   ipcMain.on('desktop:session',(e,next)=>{if(trusted(e)&&(next===null||(typeof next==='string'&&next.length<=8192)))setSession(next)})
-  if(process.platform==='darwin')pushNotifications.on('received-apns-notification',()=>{void refresh();refreshView()})
+  if(cfg.push&&process.platform==='darwin')pushNotifications.on('received-apns-notification',()=>{void refresh();refreshView()})
   const interval=setInterval(()=>{if(!window.isVisible()||window.isMinimized())void refresh()},30000)
   powerMonitor.on('resume',()=>{void refresh();refreshView()})
   window.on('show',refreshView)
