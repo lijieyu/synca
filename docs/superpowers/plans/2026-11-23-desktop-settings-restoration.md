@@ -19,10 +19,10 @@
 - [x] Restore settings layout and grouped account detail pages: SettingsPanel, ShellPanel, SettingsPanel.css, AIPage.css. Verify rendered UI via CUA, minimum window and draft guard.
 - [x] Add read-only email capability contract with conservative old-server fallback: backend app, Web auth capabilities, LoginView/LoginMethods. Test disabled/enabled/unavailable provider and preserve preview.
 - [x] Build shared Web and Mac production package. Run focused tests; keep MAS isolation tests green. No claim of TF upload or production email delivery.
-- [ ] Record before/after and delivery. Install independent production Electron after acceptance. Backend rollout requires schema/rollback verification first.
+- [x] Record before/after and delivery. Install independent production Electron after acceptance. Backend rollout requires schema/rollback verification first.
 
 ## Verification and rulings (2026-11-23)
-- Web full unit suite122 passed before three additional capability cases; email client final12 passed. Backend email/binding/configuration15 passed; MAS/preview9 passed. Web, backend and Mac renderer builds succeeded. Final Mac package passed strict deep signature verification.
+- Web full unit suite125 passed; email client subset12 passed. Backend email/binding/configuration15 passed; MAS/preview9 passed. Web, backend and Mac renderer builds succeeded. Final Mac package passed strict deep signature verification.
 - Actual installed production Electron: current account/records loaded, grouped account page, plan return, feedback and AI checked; Cmd+F/pinyin and Cmd+R checked. App window1040×760 and960×500 examined. Exact640×500 checked using the actual built Web in a local iframe with synthetic records, including methods return and feedback leave/continue guard. Do not claim exact640×500 native resize verification.
 - Fresh review identified compact heading focus trap regression and stale browser-test paths; fixed compact focus and updated mocked capability/navigation expectations. Browser scripts syntax-checked; UI checks used CUA, not these scripts.
 - Existing production API remains unchanged; email availability false until compatible configured backend ships. No delivered-code redemption or production email launch claimed.
