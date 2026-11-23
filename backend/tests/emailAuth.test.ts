@@ -26,14 +26,15 @@ describe('email login and settings identities',()=>{
  beforeAll(async()=>{process.env.EMAIL_AUTH_SECRET='test-secret-only-012345678901234567890123456789';await runMigrations();});
  beforeEach(async()=>{await resetDb();vi.clearAllMocks();delivery.mockResolvedValue();});
  it('advertises email only with both signing and delivery configuration', async () => {
-  expect((await request(app).get('/auth/capabilities')).body).toEqual({email:true});
+  expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
+  expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:true});
   const saved = process.env.EMAIL_AUTH_SECRET;
   try {
    process.env.EMAIL_AUTH_SECRET = 'too-short';
-   expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
+   expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:false});
   } finally { process.env.EMAIL_AUTH_SECRET = saved; }
   vi.mocked(isEmailDeliveryConfigured).mockReturnValueOnce(false);
-  expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
+  expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:false});
  });
  it('creates on first verified login, preserves identity on repeat, never elevates email to admin',async()=>{
   const a=await verify(await send('Jieyu.Li@icloud.com'));expect(a.status).toBe(200);expect(a.body.user.isAdmin).toBe(false);expect(a.body.user.appleUserId).toBeNull();
