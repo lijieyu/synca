@@ -1,8 +1,9 @@
+import { useEmailAvailability } from '../auth/useEmailAvailability';
 import { LoginMethods } from './LoginMethods';
 import { DeveloperSocialLink } from './DeveloperSocialLink';
 import { PersonIcon } from './PersonIcon';
 import { useContext, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronDown, ImagePlus, X } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronRight, ImagePlus, X } from 'lucide-react';
 import { SettingsSurface } from './SettingsSurface';
 
 import { useTranslation } from 'react-i18next';
@@ -19,9 +20,12 @@ const feedbackImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.hei
 
 function InlinePanel({ children }: { children?: React.ReactNode }) { return <>{children}</> }
 
-export function ShellPanel({ kind, email, onClose, onLogout, inline }: {
-  kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void; inline?: boolean;
+export type AccountPage = 'overview' | 'plan' | 'methods' | 'manage';
+
+export function ShellPanel({ kind, email, onClose, onLogout, inline, accountPage, onAccountPageChange }: {
+  kind: 'account' | 'feedback' | 'about'; email: string | null; onClose: () => void; onLogout: () => void; inline?: boolean; accountPage?: AccountPage; onAccountPageChange?: (page: AccountPage) => void;
 }) {
+  const emailAvailable = useEmailAvailability();
   const settingsSurface = useContext(SettingsSurface);
   const { logout, accessStatus } = useAuth();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -65,7 +69,31 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline }: {
     cancelText={t('common.cancel')} hideCancel={kind !== 'feedback' || sent}
     confirmDisabled={busy || (kind === 'feedback' && !sent && !content.trim())} cancelDisabled={busy}
     onConfirm={() => { if (kind === 'feedback' && !sent) document.querySelector<HTMLFormElement>('#feedback-form')?.requestSubmit(); else close(); }} onCancel={close}>
-    {kind === 'account' && <div className="account-panel">
+    {kind === 'account' && accountPage && <div className="account-panel account-pages">
+      {accountPage === 'overview' && <>
+        <div className="account-identity">
+          <span className="account-avatar" aria-hidden="true"><PersonIcon size={24} /></span>
+          <div className="account-details"><p className="account-email" title={email || undefined}>{email || t('navigation.account')}</p><p className="account-plan-subtitle"><AccountPlanLabel /></p></div>
+        </div>
+        <h3>{t('access.current_plan_title')}</h3>
+        <div className="account-group"><button className="account-row" onClick={() => onAccountPageChange?.('plan')}><span><AccountPlanLabel /></span><span className="account-row-detail">{t(accessStatus?.isUnlimited ? 'review.page.benefits' : 'review.page.compare_plans')}<ChevronRight size={16} aria-hidden="true" /></span></button></div>
+        {accessStatus && <div className="account-usage-group">
+          {Number.isFinite(accessStatus.todayUsed) && <p className="account-daily-usage"><span>{t('preferences.daily_usage')}</span><span>{accessStatus.todayLimit == null ? accessStatus.todayUsed : `${accessStatus.todayUsed} / ${accessStatus.todayLimit}`}</span></p>}
+          <StorageUsage />
+        </div>}
+        <h3>{t('navigation.account')}</h3>
+        <div className="account-group">
+          {emailAvailable && <button className="account-row" onClick={() => onAccountPageChange?.('methods')}><span>{t('email_auth.methods')}</span><ChevronRight size={16} aria-hidden="true" /></button>}
+          <button className="account-row" onClick={() => onAccountPageChange?.('manage')}><span>{t('review.page.manage_account')}</span><ChevronRight size={16} aria-hidden="true" /></button>
+          <button className="account-row" onClick={onLogout}>{t('message_list.logout')}</button>
+        </div>
+      </>}
+      {accountPage === 'plan' && <PlanContent showStorage={false} />}
+      {accountPage === 'methods' && <LoginMethods />}
+      {accountPage === 'manage' && <div className="account-group"><button className="account-row account-text-action-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button></div>}
+      {error && <p role="alert">{error}</p>}
+    </div>}
+    {kind === 'account' && !accountPage && <div className="account-panel">
       <div className="account-summary"><div className="account-identity">
         <span className="account-avatar" aria-hidden="true"><PersonIcon size={28} /></span>
         <div className="account-details">
@@ -75,7 +103,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline }: {
       {accessStatus && Number.isFinite(accessStatus.todayUsed) && <p className="account-daily-usage"><span>{t('preferences.daily_usage')}</span><span>{accessStatus.todayLimit == null ? accessStatus.todayUsed : `${accessStatus.todayUsed} / ${accessStatus.todayLimit}`}</span></p>}
       <StorageUsage /></div>
       {accessStatus && <details className="account-benefits"><summary>{t(accessStatus.isUnlimited ? 'review.page.benefits' : 'review.page.compare_plans')}<ChevronDown size={16} aria-hidden="true" /></summary><PlanContent showStorage={false} /></details>}
-      <LoginMethods />
+      {emailAvailable && <LoginMethods />}
       <button className="account-session-action" onClick={onLogout}>{t('message_list.logout')}</button>
       <details className="account-management"><summary>{t('review.page.manage_account')}<ChevronDown size={16} aria-hidden="true" /></summary>
         <button className="account-text-action account-text-action-destructive" onClick={() => setDeleteConfirm(true)}>{t('account.delete_action')}</button>

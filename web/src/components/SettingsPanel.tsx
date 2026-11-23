@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { ArrowLeft, ChevronRight, Tags, Sparkles, MessageSquare, X, CircleUserRound, Info, Monitor, SlidersHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { ShellPanel } from './ShellPanel';
+import { ShellPanel, type AccountPage } from './ShellPanel';
 import { AccountPlanLabel } from './PlanDialog';
 import { Modal } from './Modal';
 import {
@@ -59,6 +59,15 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
   const { token, email, logout } = useAuth();
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [accountPage, setAccountPage] = useState<AccountPage>('overview');
+  function showAccountPage(page: AccountPage) {
+    setAccountPage(page);
+    requestAnimationFrame(() => {
+      const body = document.querySelector<HTMLElement>('.desk-detail-body:not([hidden])');
+      body?.scrollTo(0, 0);
+      document.querySelector<HTMLElement>('.settings-title h2')?.focus({preventScroll:true});
+    });
+  }
   const [desktopSection, setDesktopSection] = useState<Section | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -80,6 +89,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
       ? (webSections.find((key) => key === requested) ?? null)
       : null;
   function setSection(next: Section | null) {
+    setAccountPage('overview');
     if (desktop) {
       setDesktopSection(next);
       return;
@@ -106,8 +116,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const pendingNavigation = useRef<(() => void) | null>(null);
   const directAction = useRef(false);
-  const actionParent = useRef<Section>('account');
-  const runAfterLeaving = (next: () => void) => {
+    const runAfterLeaving = (next: () => void) => {
     if (!action) { next(); return; }
     pendingNavigation.current = next;
     host?.querySelector<HTMLButtonElement>('[data-leave-section]')?.click();
@@ -121,7 +130,6 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
   function openAction(key: SettingsAction) {
     if (key === action) { pendingNavigation.current = null; return; }
     runAfterLeaving(() => {
-      if (!action) actionParent.current = section ?? 'account';
       setAction(key);
       window.dispatchEvent(new CustomEvent('synca-settings-action', {detail:key}));
     });
@@ -170,6 +178,12 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
       live = false;
     };
   }, [open, desktop]);
+  useLayoutEffect(() => {
+    if (!open || !action) return;
+    host?.scrollTo(0, 0);
+    if (compact) back.current?.focus({preventScroll:true});
+    else document.querySelector<HTMLElement>('.settings-title h2')?.focus({preventScroll:true});
+  }, [open, action, host, compact]);
   const wasOpen = useRef(false);
   useLayoutEffect(() => {
     if (!open && wasOpen.current) {
@@ -188,12 +202,6 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
     }
     if (compact && mobileDetail) { setMobileDetail(false); setSection('account'); }
     else setSection(null);
-  }
-  function backFromAction() {
-    runAfterLeaving(() => {
-      setSection(actionParent.current);
-      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.desk-settings nav [aria-current="page"]')?.focus());
-    });
   }
   function detail(next: Section) { setMobileDetail(true); setSection(next); }
   const actionKeys = {categories: 'message_list.manage_categories', ai: 'ai.connect', feedback: 'message_list.feedback'} as const;
@@ -279,7 +287,11 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
             </nav>
           </aside>}
           <section className="desk-detail" key={section}>
-            <header className={"settings-title"+(compact && (mobileDetail || action) ? " is-child" : "")}>{!compact && action && <button className="settings-back" onClick={backFromAction} aria-label={t('settings_page.back')} title={t('settings_page.back')}><ArrowLeft size={19}/></button>}<h2>{t(action ? actionKeys[action] : mobileHome ? 'preferences.title' : !compact && section === 'account' ? 'preferences.account_plan' : 'settings_page.' + section)}</h2><button ref={back} className="settings-close" onClick={close} aria-label={t(mobileHome && !action ? 'polish.done' : compact && (mobileDetail || action) ? 'settings_page.back' : 'navigation.close')}>{compact ? ((mobileDetail || action) ? <ArrowLeft/> : t('polish.done')) : <X size={20}/>}</button></header>
+            <header className={"settings-title"+(compact && (mobileDetail || action) ? " is-child" : "")}>
+              {!compact && !action && section === 'account' && accountPage !== 'overview' && <button className="settings-back" onClick={() => showAccountPage('overview')} aria-label={t('settings_page.back')} title={t('settings_page.back')}><ArrowLeft size={19}/></button>}
+              <h2 tabIndex={-1}>{t(action ? actionKeys[action] : mobileHome ? 'preferences.title' : !compact && section === 'account' ? ({overview:'preferences.account_plan',plan:'access.current_plan_title',methods:'email_auth.methods',manage:'review.page.manage_account'} as const)[accountPage] : 'settings_page.' + section)}</h2>
+              <button ref={back} className="settings-close" onClick={close} aria-label={t(mobileHome && !action ? 'polish.done' : compact && (mobileDetail || action) ? 'settings_page.back' : 'navigation.close')}>{compact ? ((mobileDetail || action) ? <ArrowLeft/> : t('polish.done')) : <X size={20}/>}</button>
+            </header>
             <div className="desk-detail-body" data-settings-action={action ?? undefined} ref={setHost} hidden={!action} />
             <div className="desk-detail-body" hidden={!!action}>
               {mobileHome && <button className="settings-identity" onClick={()=>detail('account')}><CircleUserRound size={34} aria-hidden="true"/><span>{email || t('navigation.account')}<small>{token ? <AccountPlanLabel /> : t('settings_page.signIn')}</small></span><ChevronRight className="settings-disclosure" size={17} aria-hidden="true"/></button>}
@@ -376,6 +388,8 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                   <ShellPanel
                     inline
                     kind={section}
+                    accountPage={!compact ? accountPage : undefined}
+                    onAccountPageChange={showAccountPage}
                     email={email}
                     onClose={close}
                     onLogout={() => setConfirmLogout(true)}

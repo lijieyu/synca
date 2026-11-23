@@ -13,3 +13,9 @@ it('does not mount email sign-in or binding without explicit opt-in even if cred
     expect((await request(app).post(route).send({email:'synthetic@example.invalid'})).status).toBe(404);
   }
 });
+
+it('advertises disabled email without exposing preloaded configuration', async () => {
+  const result = await request(app).get('/auth/capabilities').expect(200);
+  expect(result.body).toEqual({email:false});
+  expect(result.headers['cache-control']).toBe('no-store');
+});

@@ -1,3 +1,4 @@
+import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
@@ -60,7 +61,11 @@ app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_reco
 app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
 // Keep email sign-in and binding off until the operator explicitly enables them.
-if (process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true') {
+const emailAuthEnabled = process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true';
+app.get('/auth/capabilities', (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({email: emailAuthEnabled && isEmailAuthConfigured()});
+});
+if (emailAuthEnabled) {
     app.use(createEmailAuthRouter());
 }
 app.use(createAIRouter(notifyOtherDevices));

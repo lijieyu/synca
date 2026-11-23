@@ -111,6 +111,17 @@ const UPLOADED_IMAGE_LIMIT_BYTES = 20 * 1024 * 1024;
 const IMAGE_CACHE_TTL_MS = 60 * 1000;
 
 class APIClient {
+  // A missing capability is an older server, not an expired account session.
+  async emailAvailable(signal?: AbortSignal, legacyPreview = false): Promise<boolean> {
+    try {
+      const response = await fetch('/auth/capabilities', {signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000), cache:'no-store'});
+      if (response.status === 404) return legacyPreview;
+      if (!response.ok) return false;
+      const capabilities: unknown = await response.json();
+      return typeof capabilities === 'object' && capabilities !== null && 'email' in capabilities && capabilities.email === true;
+    } catch { return false; }
+  }
+
   constructor() {
     if (typeof window !== 'undefined' && 'caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }

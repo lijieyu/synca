@@ -29,3 +29,37 @@ it('discards an old session binding response after account switching', async () 
   vi.stubGlobal('fetch', vi.fn(async () => { token = 'new-session'; return new Response(JSON.stringify({ apple: true, email: 'old@example.com' })); }));
   await expect(api.bindEmail('challenge', '123456')).rejects.toMatchObject({ name:'AbortError' });
 });
+
+for (const [name, response] of [
+  ['old server', () => new Response('', {status:404})],
+  ['HTML fallback', () => new Response('<html></html>')],
+  ['disabled', () => new Response(JSON.stringify({email:false}))],
+  ['malformed', () => new Response(JSON.stringify({email:'true'}))],
+] as const) {
+  it(`does not offer email on ${name}`, async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response()));
+    expect(await api.emailAvailable()).toBe(false);
+  });
+}
+it('offers email only after an explicit server capability', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({email:true}))));
+  expect(await api.emailAvailable()).toBe(true);
+});
+it('preserves only a known legacy preview when capability endpoint is missing', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('', {status:404})));
+  expect(await api.emailAvailable(undefined, true)).toBe(true);
+});
+it('does not override an explicit disable or access denial even in preview', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({email:false}))));
+  expect(await api.emailAvailable(undefined, true)).toBe(false);
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('', {status:403})));
+  expect(await api.emailAvailable(undefined, true)).toBe(false);
+});
+it('fails closed on network failure without touching the account session', async () => {
+  const storage = {getItem:vi.fn(),removeItem:vi.fn()};
+  vi.stubGlobal('localStorage', storage);
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network failed'); }));
+  expect(await api.emailAvailable()).toBe(false);
+  expect(storage.getItem).not.toHaveBeenCalled();
+  expect(storage.removeItem).not.toHaveBeenCalled();
+});
