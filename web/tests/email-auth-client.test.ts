@@ -63,3 +63,14 @@ it('fails closed on network failure without touching the account session', async
   expect(storage.getItem).not.toHaveBeenCalled();
   expect(storage.removeItem).not.toHaveBeenCalled();
 });
+
+it('identifies only opted-in desktop capability probes, leaving published Web unchanged',async()=>{
+ const fetch=vi.fn(async()=>new Response(JSON.stringify({email:false})));
+ vi.stubGlobal('fetch',fetch);
+ vi.stubGlobal('window',{});
+ await api.emailAvailable();
+ expect(fetch.mock.calls[0]?.[1]).toEqual(expect.objectContaining({headers:{}}));
+ vi.stubGlobal('window',{syncaDesktop:{emailAuth:true}});
+ await api.emailAvailable();
+ expect(fetch.mock.calls[1]?.[1]).toEqual(expect.objectContaining({headers:{'X-Synca-Client':'desktop'}}));
+});

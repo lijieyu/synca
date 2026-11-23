@@ -40,6 +40,7 @@ export interface RecordMenuOptions {
 declare global {
   interface Window {
     syncaDesktop?: {
+      emailAuth?: boolean;
       platform: string;
       version: string;
       recordMenu?: (options: RecordMenuOptions) => Promise<string | null>;

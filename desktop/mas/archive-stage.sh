@@ -22,7 +22,7 @@ icon=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIconFile' "$root/Info.plist")
 "$SRCROOT/mas/icon.sh" verify "$root/Resources/$icon"
 verify_stamp="$app/../synca-archive-variant.txt"
 if [ "${CI:-}" = TRUE ] || [ "${CI:-}" = true ] || [ -n "${CI_BUILD_ID:-}" ]; then
-  test -f "$verify_stamp" && grep -qx "verified-tf-remote" "$verify_stamp" || { echo 'Remote TestFlight endpoint was not verified; refuse archive.' >&2; exit 1; }
+  test -f "$verify_stamp" && grep -Eqx "verified-tf-(remote|production)" "$verify_stamp" || { echo 'TestFlight endpoint was not verified; refuse archive.' >&2; exit 1; }
 fi
 for d in Frameworks Library Resources; do
   if [ -d "$root/$d" ]; then

@@ -114,7 +114,8 @@ class APIClient {
   // A missing capability is an older server, not an expired account session.
   async emailAvailable(signal?: AbortSignal, legacyPreview = false): Promise<boolean> {
     try {
-      const response = await fetch('/auth/capabilities', {signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000), cache:'no-store'});
+      const headers: Record<string,string> = typeof window !== 'undefined' && window.syncaDesktop?.emailAuth === true ? {'X-Synca-Client':'desktop'} : {};
+      const response = await fetch('/auth/capabilities', {headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000), cache:'no-store'});
       if (response.status === 404) return legacyPreview;
       if (!response.ok) return false;
       const capabilities: unknown = await response.json();

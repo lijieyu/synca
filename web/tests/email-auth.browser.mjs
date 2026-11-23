@@ -7,7 +7,7 @@ const out = '/tmp/synca-email-ui-evidence'; await fs.mkdir(out, { recursive: tru
 try {
 for (const theme of ['light','dark']) {
  const context = await browser.newContext({ viewport: { width: 640, height: 500 }, colorScheme: theme });
- await context.addInitScript(theme => { localStorage.setItem('synca.language','zh-Hans'); localStorage.setItem('synca.appearance',theme); let options; window.AppleID = { auth: { init(value) { options = value; }, async signIn() { if(window.cancelApple) throw { error:'popup_closed_by_user' }; return { authorization: { id_token:'test-token', state:options.state } }; } } }; }, theme);
+ await context.addInitScript(theme => { window.syncaDesktop = { emailAuth:true, platform:'macOS', version:'1.2.0', subscribe:()=>()=>{}, session:()=>{}, count:()=>{}, preferences:async()=>({badge:true,ask:true,directory:''}), change:async()=>({badge:true,ask:true,directory:''}), directory:async()=>({badge:true,ask:true,directory:''}) }; localStorage.setItem('synca.language','zh-Hans'); localStorage.setItem('synca.appearance',theme); let options; window.AppleID = { auth: { init(value) { options = value; }, async signIn() { if(window.cancelApple) throw { error:'popup_closed_by_user' }; return { authorization: { id_token:'test-token', state:options.state } }; } } }; }, theme);
  let verifies = 0; let codeSends = 0; let methods = { apple: false, email: 'test@example.com' };
  await context.route('**/*', async route => {
   const url = new URL(route.request().url()); if (url.origin !== 'http://127.0.0.1:5178') return route.abort();

@@ -1,22 +1,21 @@
-# macOS Electron TestFlight preparation
+# macOS Electron TestFlight
 
-Separate Xcode project `desktop/SyncaElectronTF.xcodeproj`, shared scheme `SyncaElectronTF`, macOS only. Never route the app to production or use any ordinary Mini preview package in TestFlight.
+Use the separate `desktop/SyncaElectronTF.xcodeproj`, shared scheme `SyncaElectronTF`, and the existing manual Mac-only Cloud workflow. Archive for `INTERNAL_ONLY`; do not modify or trigger the native iOS project. Official universal Electron MAS runtimes are checksum-verified, then signed through Apple-managed distribution.
 
-`build-mas-preflight.mjs` creates a strictly offline structural proof from the two release ZIPs validated against the Electron npm package's SHA-256 list. This artifact carries the existing app's bundle ID only for compatibility verification. It is **not** a beta to put in TestFlight, and must not be launched in place of an existing user install.
+## Production desktop release
 
-A production-suitable internal beta must pass proof for the exact real, isolated HTTPS email/sync backend and the real packaged Mac presentation. That build must use its own Electron data namespace, App Sandbox policy, and Apple-managed distribution signing; distribute using the standalone Mac-only archive action with `INTERNAL_ONLY`, with no automatically started runs or external groups. Do not modify the existing native Xcode project.
+On 2026-11-23 the owner explicitly authorized a production-connected Mac TF with email login and in-app Apple/email binding. This supersedes the earlier isolated-only restriction.
 
-The shipped TestFlight mode consumes only the HTTPS preview host already configured
-for Synca. The credential window has an in-memory, network-blocked scope. The
-main process passes its user-entered Basic credentials only to that host's exact
-unlock endpoint, never follows a redirect carrying them, and verifies a host-only
-Secure/HttpOnly cookie and Synca health before letting the product renderer open.
-Email sign-in follows normally through the independent session path; the renderer
-cannot read the preview gate cookie. No production token/profile is migrated.
+The default Cloud mode is now `production`: `build-mas-preflight.mjs --verified-production` requires `mas/production-release.json`, pinning the exact production backend commit and artifact hash. Migration, safe rollback, actual delivered-code login/sync and Web email-hidden checks must have passed before those assertions are recorded. An offline archive alone is insufficient.
 
-The verified-release config records the exact HTTPS origin, backend commit and
-release hash, independently verified real delivery to the allowed test inbox,
-and one-time-code, write and read-back coverage with a synthetic code. It
-does not claim the actual delivered code was redeemed. The protected live
-host and the exact packaged Mac scope must also be independently confirmed.
-A successful offline archive alone cannot substitute for release evidence.
+`mas-production` uses `https://synca.haerth.cn` with an independent `Synca Electron Production` profile. It does not copy preview credentials or tokens. Users sign into their real account afresh; email-only identities never silently merge with Apple identities. Binding stays inside settings.
+
+Production Web assets are not deployed by this workflow. Browser capability discovery returns email=false. Desktop preload explicitly opts in and requests capability discovery with `X-Synca-Client: desktop`; this is presentation metadata, not an authentication boundary. Server-side identity proofs and rate limits apply independently. The MAS build retains the existing sandbox/background polling behavior; native APNs is not enabled by this release.
+
+## Retained isolated and offline modes
+
+Set `SYNCA_TF_MODE=isolated` only for an intentional isolated release. It uses `mas/testflight-release.json` and `--verified-testflight`, connecting to the protected HTTPS preview host with its existing independent profile. The network-blocked credential window passes Basic credentials only to the exact unlock endpoint, rejects redirects and verifies the host-only Secure/HttpOnly cookie plus health. Renderer scripts cannot read the gate cookie.
+
+The historical isolated proof records real email delivery and synthetic-code redemption/sync; it does not substitute for actual delivered-code production verification.
+
+Without either verified flag, `build-mas-preflight.mjs` produces a strictly offline structural artifact. Never submit or launch it in place of an existing user installation.

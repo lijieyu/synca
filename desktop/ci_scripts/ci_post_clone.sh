@@ -2,8 +2,13 @@
 set -euo pipefail
 : "${CI_PRIMARY_REPOSITORY_PATH:?Use only within the dedicated Apple Xcode Cloud workflow}"
 cd "$CI_PRIMARY_REPOSITORY_PATH/desktop"
-# Deliberately absent until isolated real-mail and record sync are independently proven.
-test -f mas/testflight-release.json || { echo 'Verified isolated email release not configured; no archive or upload.' >&2; exit 78; }
+# Production was explicitly authorized for the new Mac build; isolated builds remain opt-in.
+case "${SYNCA_TF_MODE:-production}" in
+ production) release=mas/production-release.json; build_mode=--verified-production ;;
+ isolated) release=mas/testflight-release.json; build_mode=--verified-testflight ;;
+ *) echo 'Unknown TF mode; no archive.' >&2; exit 78 ;;
+esac
+test -f "$release" || { echo 'Exact verified backend release missing; no archive or upload.' >&2; exit 78; }
 # The operator verifies these exact stable versions in the dedicated workflow too.
 mac_build=$(/usr/bin/sw_vers -buildVersion)
 xcode_build=$(/usr/bin/xcodebuild -version | /usr/bin/awk '/^Build version / { print $3 }')
@@ -34,6 +39,6 @@ for arch in arm64 x64; do
   zip="electron-v$version-mas-$arch.zip"
   curl -fsSL --proto '=https' --max-time 300 "https://github.com/electron/electron/releases/download/v$version/$zip" -o "$root/runtime/$zip"
 done
-node --test mas-preflight.test.cjs mas/gate.test.cjs preview-config.test.cjs
+node --test mas-preflight.test.cjs mas/gate.test.cjs mas/release-config.test.cjs preview-config.test.cjs
 npm run build:ui
-SYNCA_MAS_RUNTIME_DIR="$root/runtime" SYNCA_MAS_PREFLIGHT_OUT="$root" node build-mas-preflight.mjs --verified-testflight
+SYNCA_MAS_RUNTIME_DIR="$root/runtime" SYNCA_MAS_PREFLIGHT_OUT="$root" node build-mas-preflight.mjs "$build_mode"

@@ -27,7 +27,7 @@ beforeAll(async()=>{
 afterAll(async()=>{if(!enabled)return;for(const c of clients)await c.close();await browser?.close();await new Promise<void>(r=>server.close(()=>r()));});
 async function pageFor(subject:string){
  const context=await browser.newContext({viewport:{width:640,height:500}});clients.push(context);
- await context.addInitScript((subject:string)=>{localStorage.setItem('synca.language','zh-Hans');let options:any;(window as any).AppleID={auth:{init(o:any){options=o},async signIn(){return {authorization:{state:options.state,id_token:JSON.stringify({sub:subject,nonce:options.nonce})}}}}};},subject);
+ await context.addInitScript((subject:string)=>{(window as any).syncaDesktop={ emailAuth:true, platform:'macOS', version:'1.2.0', subscribe:()=>()=>{}, session:()=>{}, count:()=>{}, preferences:async()=>({badge:true,ask:true,directory:''}), change:async()=>({badge:true,ask:true,directory:''}), directory:async()=>({badge:true,ask:true,directory:''}) };localStorage.setItem('synca.language','zh-Hans');let options:any;(window as any).AppleID={auth:{init(o:any){options=o},async signIn(){return {authorization:{state:options.state,id_token:JSON.stringify({sub:subject,nonce:options.nonce})}}}}};},subject);
  await context.route('**/*',async(r:any)=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
  const page=await context.newPage();page.setDefaultTimeout(8000);await page.goto(origin);return page;
 }
@@ -36,7 +36,7 @@ async function emailLogin(page:any,email:string){
  const code=vi.mocked(sendVerificationEmail).mock.calls.at(-1)![0].code;
  await page.getByLabel('6 位验证码').fill(code);await page.getByRole('button',{name:'登录',exact:true}).click();await page.locator('.settings-entry').waitFor();return await page.evaluate(()=>localStorage.getItem('authToken'));
 }
-async function settings(page:any){await page.locator('.settings-entry').click();await page.locator('.desk-settings nav').getByRole('button',{name:/账号与套餐/}).click();await page.getByRole('heading',{name:'登录方式',exact:true}).waitFor();}
+async function settings(page:any){await page.locator('.settings-entry').click();await page.locator('.desk-settings nav').getByRole('button',{name:/账号与套餐/}).click();await page.getByRole('button',{name:'登录方式',exact:true}).click();await page.getByRole('heading',{name:'登录方式',exact:true}).waitFor();}
 it.skipIf(!enabled)('built desktop UI uses real API/database across email signup, Apple binding, second-device sync and Apple->email binding',async()=>{
  const first=await pageFor('new-apple');const token=await emailLogin(first,'real-path@example.com');
  const firstUser=await db.selectFrom('sessions').select('user_id').where('token','=',token).executeTakeFirstOrThrow();
@@ -53,7 +53,7 @@ it.skipIf(!enabled)('built desktop UI uses real API/database across email signup
  await third.locator('.login-method-rows').getByRole('button',{name:'绑定',exact:true}).click();await third.getByLabel('邮箱地址').fill('native-linked@example.com');await third.getByRole('button',{name:'发送验证码',exact:true}).click();await third.getByLabel('6 位验证码').waitFor();
  const before=await third.locator('.email-verification h1,.email-verification input,.email-verification form button').evaluateAll((nodes:any[])=>nodes.map(n=>n.getBoundingClientRect().y));await third.getByText('没有收到邮件？',{exact:true}).click();
  expect(await third.locator('.email-verification h1,.email-verification input,.email-verification form button').evaluateAll((nodes:any[])=>nodes.map(n=>n.getBoundingClientRect().y))).toEqual(before);
- await third.getByLabel('6 位验证码').fill(vi.mocked(sendVerificationEmail).mock.calls.at(-1)![0].code);await third.getByRole('button',{name:'验证并绑定',exact:true}).click();await third.locator('.account-email').filter({hasText:'native-linked@example.com'}).waitFor();
+ await third.getByLabel('6 位验证码').fill(vi.mocked(sendVerificationEmail).mock.calls.at(-1)![0].code);await third.getByRole('button',{name:'验证并绑定',exact:true}).click();await third.locator('.login-method-rows').getByText('native-linked@example.com',{exact:true}).waitFor();
  const identity=(await sql<{user_id:string}>`SELECT user_id FROM email_identities WHERE email='native-linked@example.com'`.execute(db)).rows[0];expect(identity.user_id).toBe(legacyId);
  const output='/tmp/synca-email-real-api';await fs.mkdir(output,{recursive:true});await third.screenshot({path:output+'/settings-bound.png'});await second.screenshot({path:output+'/second-device-record.png'});
 },60_000);

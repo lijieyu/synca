@@ -36,3 +36,18 @@ test('only physical MAS preview binaries rely on macOS LaunchServices for single
  ]) assert.equal(requestInstance(runtime,mode,request),false)
  assert.equal(chromiumCalls,4)
 })
+
+test('production Mac TF uses real accounts without the isolated gate or profile',()=>{
+ const cfg=variant('mas-production')
+ assert.equal(cfg.home,'https://synca.haerth.cn')
+ assert.equal(cfg.bundleId,'org.haerth.synca')
+ assert.equal(cfg.gate,false)
+ assert.equal(cfg.isolated,false)
+ assert.equal(cfg.offline,false)
+ assert.equal(cfg.profile,'Synca Electron Production')
+ assert.notEqual(cfg.profile,variant('mas-testflight').profile)
+ assert.equal(cfg.allows('https://synca.haerth.cn/auth/email/code'),true)
+ assert.equal(cfg.allows('https://synca-preview.haerth.cn/auth/email/code'),false)
+ const {requestInstance}=require('./app/instance.cjs')
+ assert.equal(requestInstance({platform:'darwin',mas:true},'mas-production',()=>false),true)
+})

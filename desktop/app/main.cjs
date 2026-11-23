@@ -9,7 +9,7 @@ const {requestInstance}=require('./instance.cjs')
 const marker = path.join(__dirname, 'preview-build.json')
 const hasMarker = fs.existsSync(marker)
 const builtMode = hasMarker ? JSON.parse(fs.readFileSync(marker, 'utf8')).mode : 'production'
-if (hasMarker && !['preview', 'local-preview', 'mas-preflight', 'mas-testflight'].includes(builtMode)) throw Error('Invalid preview marker')
+if (hasMarker && !['preview', 'local-preview', 'mas-preflight', 'mas-testflight', 'mas-production'].includes(builtMode)) throw Error('Invalid preview marker')
 const baseCfg = variant(builtMode)
 const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   const secureFile = path.join(app.getPath('userData'), 'launch-admission')
@@ -24,12 +24,12 @@ const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   } finally { fs.closeSync(fd) }
 }}) : baseCfg
 const home = cfg.home
-if (cfg.isolated) {
+if (cfg.profile) {
   const smoke = /^[a-f0-9]{32}$/.test(process.env.SYNCA_PREVIEW_SMOKE_RUN || '') ? process.env.SYNCA_PREVIEW_SMOKE_RUN : ''
   const folder = path.join(app.getPath('appData'), cfg.profile + (smoke ? '-smoke-' + smoke : ''))
   fs.mkdirSync(folder, { recursive: true, mode: 0o700 })
   if (!fs.lstatSync(folder).isDirectory() || fs.realpathSync(folder) !== path.join(fs.realpathSync(app.getPath('appData')), path.basename(folder)))
-    throw Error('Preview profile is not an independent real directory')
+    throw Error('Desktop profile is not an independent real directory')
   app.setPath('userData', folder)
   app.setPath('sessionData', folder)
 }
