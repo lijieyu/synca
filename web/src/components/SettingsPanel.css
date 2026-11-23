@@ -231,7 +231,8 @@
   display: flex;
   min-height: 0;
   padding: 0;
-  overflow: auto;
+  overflow: hidden;
+  scrollbar-gutter: auto;
 }
 .desk-detail-body > .settings-embedded.feedback-modal {
   flex: 1;
@@ -241,9 +242,11 @@
   min-height: 0;
 }
 .settings-embedded.feedback-modal > .shell-form {
-  flex: none;
+  flex: 1;
   min-width: 0;
-  overflow: visible;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   align-content: start;
   padding: 14px var(--detail-inset);
@@ -251,8 +254,10 @@
 .settings-embedded.feedback-modal > [role="status"] { padding: 14px var(--detail-inset); }
 .settings-embedded.feedback-modal .settings-actions {
   flex: none;
-  margin: 4px 0 0;
-  padding: 0 var(--detail-inset) max(24px,env(safe-area-inset-bottom));
+  overflow: auto;
+  scrollbar-gutter: stable;
+  margin: 0;
+  padding: 16px var(--detail-inset) max(24px,env(safe-area-inset-bottom));
   border-top: 0;
   background: transparent;
 }

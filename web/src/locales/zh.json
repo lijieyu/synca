@@ -534,5 +534,13 @@
     "loading": "正在加载…",
     "valid_duration": "10 分钟内有效",
     "email_title": "邮箱登录"
+  },
+  "ai_layout": {
+    "tutorial": "连接教程",
+    "first_step": "将 Synca 连接指令发送给你使用的 AI。",
+    "pro_required": "连接 AI 需要 Synca Pro。",
+    "preview": "此预览环境暂不支持连接 AI，可先查看教程。",
+    "operation_failed": "操作未完成，请重试。",
+    "failed": "暂时无法加载连接信息，请重试。"
   }
 }

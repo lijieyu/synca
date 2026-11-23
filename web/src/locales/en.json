@@ -534,5 +534,13 @@
     "loading": "Loading…",
     "valid_duration": "Valid for 10 minutes",
     "email_title": "Email login"
+  },
+  "ai_layout": {
+    "tutorial": "Connection guide",
+    "first_step": "Send the Synca connection instructions to your AI app.",
+    "pro_required": "Synca Pro is required to connect AI.",
+    "preview": "AI connections are unavailable in this preview. You can explore the guide.",
+    "operation_failed": "Could not complete the action. Please try again.",
+    "failed": "Could not load connection details. Please try again."
   }
 }

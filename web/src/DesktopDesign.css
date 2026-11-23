@@ -37,7 +37,7 @@
   .calm-sidebar .category-add-btn { margin-top:8px; border-color:var(--border-color); background:color-mix(in srgb,var(--text-main) 2%,transparent); }
   .calm-sidebar .category-add-btn:hover { background:var(--desktop-hover); }
   .calm-sidebar .desktop-account { margin-top:14px; }
-  .desktop-account-row { display:flex; align-items:center; gap:2px; min-width:0; }
+  .desktop-account-row { position:relative; display:flex; align-items:center; gap:2px; min-width:0; }
   .desktop-account .account-entry { display:flex; align-items:center; gap:10px; flex:1; min-width:0; width:auto; border:0; padding:8px 4px; border-radius:var(--desktop-row-radius); }
   .desktop-account .identity-avatar { width:34px; height:34px; border-radius:50%; background:var(--desktop-hover); }
   .desktop-account .identity-copy { min-width:0; }
@@ -174,7 +174,7 @@
 }
 
 @media (min-width:640px) {
-  .calm-sidebar .account-menu-panel { width:250px; max-width:calc(100vw - 32px); }
+  .calm-sidebar .account-menu-panel { width:100%; max-width:100%; }
   .desktop-account .identity-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .calm-main .input-shell .photo-upload { border-radius:7px; transition:background-color 120ms,color 120ms; }
   .calm-main .input-shell .photo-upload:has(input:not(:disabled)):hover { background:var(--desktop-hover); color:var(--text-main); }

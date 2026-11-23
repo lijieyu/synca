@@ -85,8 +85,6 @@ function DesktopAccountMenu({ email, usage, onSettings, onFeedback, onAbout, onL
         <span className="identity-copy"><strong>{email || t('navigation.account')}</strong></span>
       </button>
       <button className="settings-entry" onClick={onSettings} aria-label={t('preferences.title')} title={t('preferences.title')}><Settings size={18} aria-hidden="true"/></button>
-    </div>
-    {usage && <span className="daily-quota"><span>{t('preferences.daily_usage')}<span>{usage.used} / {usage.limit}</span></span><progress aria-label={t('preferences.daily_usage')} value={Math.min(usage.used, usage.limit)} max={Math.max(1, usage.limit)}/></span>}
     {open && <div className="function-menu-panel account-menu-panel" onKeyDown={event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
@@ -102,5 +100,7 @@ function DesktopAccountMenu({ email, usage, onSettings, onFeedback, onAbout, onL
         <button role="menuitem" onClick={() => { close(); onLogout(); }}><LogOut size={16} aria-hidden="true"/><span>{t('message_list.logout')}</span></button>
       </div>
     </div>}
+    </div>
+    {usage && <span className="daily-quota"><span>{t('preferences.daily_usage')}<span>{usage.used} / {usage.limit}</span></span><progress aria-label={t('preferences.daily_usage')} value={Math.min(usage.used, usage.limit)} max={Math.max(1, usage.limit)}/></span>}
   </div>;
 }

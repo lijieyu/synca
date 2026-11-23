@@ -1,3 +1,4 @@
+import { SettingsSelect } from './SettingsSelect';
 import { SettingsSurface, type SettingsAction } from './SettingsSurface';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -218,6 +219,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
     if (!open) return;
     const guard = (e: KeyboardEvent) => {
       if (e.isComposing || e.keyCode === 229 || document.querySelector('.modal-overlay')) return;
+      if (['Escape', 'Tab'].includes(e.key) && document.querySelector('.settings-select[data-select-open]')) return;
       if (e.key === 'Tab') {
         const controls = [...document.querySelectorAll<HTMLElement>('.desk-settings :is(button,select,input,textarea):not(:disabled), .desk-settings a[href], .desk-settings summary')].filter(el=>el.getClientRects().length && !el.closest('details:not([open]) > :not(summary)'));
         if (e.shiftKey && document.activeElement === controls[0] || !e.shiftKey && document.activeElement === controls.at(-1)) {
@@ -299,41 +301,16 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
               {mobileHome && <button className="settings-identity" onClick={()=>detail('account')}><CircleUserRound size={34} aria-hidden="true"/><span>{email || t('navigation.account')}<small>{token ? <AccountPlanLabel /> : t('settings_page.signIn')}</small></span><ChevronRight className="settings-disclosure" size={17} aria-hidden="true"/></button>}
               {(section === 'general' || mobileHome) && (
                 <><h3>{t('settings_group.preferences')}</h3><div className="settings-pref-group">
-                  <label>
-                    {t('preferences.appearance')}
-                    <select
-                      value={appearance}
-                      onChange={(e) => {
-                        const v = e.target.value as AppearancePreference;
-                        applyAppearance(v);
-                        setAppearance(v);
-                      }}
-                    >
-                      {(['system', 'light', 'dark'] as const).map((v) => (
-                        <option key={v} value={v}>
-                          {t('preferences.' + v)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {t('preferences.language')}
-                    <select
-                      value={language}
-                      onChange={(e) => {
-                        const v = e.target.value as LanguagePreference;
-                        localStorage.setItem('synca.language', v);
-                        setLanguage(v);
-                        void i18n.changeLanguage(resolveLanguage(v, navigator.languages));
-                      }}
-                    >
-                      {(['system', 'zh-Hans', 'zh-Hant', 'en'] as const).map((v, i) => (
-                        <option key={v} value={v}>
-                          {[t('preferences.system'), '简体中文', '繁體中文', 'English'][i]}
-                        </option>
-                      ))}
-                    </select>
-                  </label></div>
+                  <div className="settings-preference-row"><span>{t('preferences.appearance')}</span>
+                    <SettingsSelect label={t('preferences.appearance')} value={appearance}
+                      options={(['system','light','dark'] as AppearancePreference[]).map(value => ({value,label:t('preferences.'+value)}))}
+                      onChange={value => { applyAppearance(value); setAppearance(value); }}/>
+                  </div>
+                  <div className="settings-preference-row"><span>{t('preferences.language')}</span>
+                    <SettingsSelect label={t('preferences.language')} value={language}
+                      options={(['system','zh-Hans','zh-Hant','en'] as LanguagePreference[]).map((value,index) => ({value,label:[t('preferences.system'),'简体中文','繁體中文','English'][index]}))}
+                      onChange={value => { localStorage.setItem('synca.language',value); setLanguage(value); void i18n.changeLanguage(resolveLanguage(value,navigator.languages)); }}/>
+                  </div></div>
                 </>
               )}
               {section === 'desktop' && desktop && prefs && (

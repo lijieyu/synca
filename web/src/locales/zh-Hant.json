@@ -534,5 +534,13 @@
     "loading": "正在載入…",
     "valid_duration": "10 分鐘內有效",
     "email_title": "電子郵件登入"
+  },
+  "ai_layout": {
+    "tutorial": "連接教學",
+    "first_step": "將 Synca 連接指令傳送給你使用的 AI。",
+    "pro_required": "連接 AI 需要 Synca Pro。",
+    "preview": "此預覽環境暫不支援連接 AI，可先查看教學。",
+    "operation_failed": "操作未完成，請重試。",
+    "failed": "暫時無法載入連接資訊，請重試。"
   }
 }
