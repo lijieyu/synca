@@ -10,7 +10,7 @@ import { MessageMarkdown } from './MessageMarkdown';
 import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
 import type { RecordMenuItem, RecordMenuOptions } from './SettingsPanel';
-import { copyProtectedImage } from '../utils/clipboard';
+import { copyProtectedImage, copyText } from '../utils/clipboard';
 
 interface Props {
   showsSeparator?: boolean;
@@ -120,14 +120,14 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     if (isCopying || isProcessing || (message.type === 'image' && expired)) return;
     setIsCopying(true); setCopied(false); setActionError('');
     try {
-      if (message.type === 'text') await navigator.clipboard.writeText(message.textContent ?? '');
+      if (message.type === 'text') await copyText(message.textContent ?? '');
       else if (message.type === 'image' && message.imageUrl) await copyProtectedImage(message.imageUrl, message.attachmentExpiresAt);
       else return;
       setCopied(true);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       if (error instanceof StorageError && error.code === 'attachment_expired') reportError(error);
-      else setActionError(t('message_bubble.copy_failed'));
+      else setActionError(t(message.type === 'image' ? 'message_bubble.copy_image_failed' : 'message_bubble.copy_failed'));
     } finally { setIsCopying(false); }
   };
 

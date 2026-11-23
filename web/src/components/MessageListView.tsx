@@ -1,3 +1,4 @@
+import { SyncFeedback } from './SyncFeedback';
 import { MobileCategoryDrawer } from './MobileCategoryDrawer';
 import { SettingsSurface } from './SettingsSurface';
 import { PanelLeft, X, Tags } from 'lucide-react';
@@ -263,12 +264,13 @@ export const MessageListView: React.FC = () => {
   }, [messages]);
   const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
   const visibleSingleModeCategories = useMemo(() => categories, [categories]);
+  const [syncSequence, setSyncSequence] = useState(0);
   const handleRefresh = async () => {
     // Keep in-flight category edits/order and concurrent sync responses authoritative.
     if (pendingFetches.current || categoryWritePending.current || categoryDragPending.current) return;
     if (!await fetchData(false)) return;
-    setToastMsg(t('message_list.sync_success', 'Synced'));
-    setShowToast(true);
+    if (compact) { setToastMsg(t('message_list.sync_success', 'Synced')); setShowToast(true); }
+    else setSyncSequence(value => value + 1);
   };
 
   const refreshRef = useRef(handleRefresh);
@@ -648,6 +650,7 @@ export const MessageListView: React.FC = () => {
       {compact ? <MobileCategoryDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)}>{sidebar}</MobileCategoryDrawer> : sidebar}
       <main className="calm-main">
         <header className="header">
+          {!compact && <SyncFeedback sequence={syncSequence} label={t('message_list.sync_success', 'Synced')}/>}
           {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+' · '+pending.length}>
             <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong><span>{pending.length}</span>
           </button> : <div className="stream-heading"><h1 title={heading}>{heading}</h1>

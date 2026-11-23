@@ -15,6 +15,17 @@ import { version } from '../../package.json';
 
 const maxFeedbackImages = 3;
 const maxFeedbackImageBytes = 20 * 1024 * 1024;
+// Classic scrollbars consume layout width; overlay scrollbars report zero.
+// Compensate only that gutter so the form and fixed action share equal panel insets.
+function observeFeedbackScrollbar(node: HTMLFormElement | null) {
+  if (!node) return;
+  const measure = () => node.style.setProperty('--feedback-scrollbar', `${node.offsetWidth - node.clientWidth}px`);
+  const observer = new ResizeObserver(measure);
+  observer.observe(node);
+  measure();
+  return () => observer.disconnect();
+}
+
 const feedbackImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
 const feedbackImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
 
@@ -118,19 +129,16 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline, accountPage
         <a href={`/${locale}/support`} target="_blank" rel="noopener noreferrer">{t('navigation.support')}<ArrowUpRight size={16} aria-hidden="true" /></a>
         <DeveloperSocialLink />
       </nav>
-      <p className="about-registration">浙ICP备2026013056号-3A</p>
     </div>}
-    {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form id="feedback-form" className="shell-form" onSubmit={submit}>
+    {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form ref={observeFeedbackScrollbar} id="feedback-form" className="shell-form" onSubmit={submit}>
       <label>{t('feedback.content_title')}<textarea required maxLength={2000} value={content} onChange={e => setContent(e.target.value)} disabled={busy} placeholder={t('feedback.content_placeholder')} /></label>
       <label>{t('feedback.email_title')}<input required type="email" maxLength={320} value={replyEmail} onChange={e => setReplyEmail(e.target.value)} disabled={busy} /></label>
       <div className="feedback-attachments">
-        <p>{t('feedback.images_title')}</p>
         <input ref={filePicker} type="file" hidden accept={[...feedbackImageTypes, ...feedbackImageExtensions].join(',')} multiple disabled={busy} onChange={addImages} />
-        <button type="button" className="feedback-add" disabled={busy || images.length >= maxFeedbackImages} onClick={() => filePicker.current?.click()} aria-describedby="feedback-image-hint"><ImagePlus size={16} aria-hidden="true" />{t(images.length ? 'feedback.add_more_images' : 'feedback.add_images')}</button>
-        <small id="feedback-image-hint">{t('navigation.feedback_images')}</small>
+        <button type="button" className="feedback-add" disabled={busy || images.length >= maxFeedbackImages} onClick={() => filePicker.current?.click()}><ImagePlus size={16} aria-hidden="true" />{t(images.length ? 'feedback.add_more_images' : 'feedback.add_images')}</button>
         {images.length > 0 && <ul>{images.map((file, index) => <li key={index}><span>{file.name}</span><button type="button" disabled={busy} aria-label={t('review.page.remove_image', {name: file.name})} onClick={() => { setImages(images.filter((_, i) => i !== index)); setError(''); }}><X size={16} aria-hidden="true" /></button></li>)}</ul>}
       </div>
-      <div className="feedback-social"><DeveloperSocialLink /></div>
+      <div className="feedback-social"><DeveloperSocialLink context="feedback" /></div>
       {error && <p role="alert">{error}</p>}
     </form>)}
   </Panel>

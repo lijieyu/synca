@@ -40,7 +40,8 @@
   "common.cancel": "Cancel",
   "common.delete": "Delete",
   "message_bubble.copied": "Copied",
-  "message_bubble.copy_failed": "Could not copy. Check clipboard permissions, or open the image and save it.",
+  "message_bubble.copy_failed": "Could not copy. Please try again.",
+  "message_bubble.copy_image_failed": "Could not copy the image. Try again, or open it and save it.",
   "desktop_menu.copy_selection": "Copy Selected Text",
   "desktop_menu.copy_record": "Copy Entire Record",
   "desktop_menu.show_folder": "Show in Folder",
@@ -410,7 +411,8 @@
       "Berry": "Berry",
       "Lavender": "Lavender"
     },
-    "done": "Done"
+    "done": "Done",
+    "about_synca": "About Synca"
   },
   "storage.current_free_capacity": "{{capacity}} attachment storage; images kept for {{days}} days",
   "storage.current_paid_capacity": "{{capacity}} attachment storage; images and files kept for {{days}} days",
@@ -436,7 +438,7 @@
   "navigation.resize_sidebar": "Resize sidebar",
   "developer_social": {
     "follow": "Follow the developer on RedNote",
-    "contact": "Contact the developer on RedNote",
+    "contact": "Contact the developer on Xiaohongshu",
     "external": "Opens in your browser"
   },
   "search": {
@@ -498,7 +500,7 @@
     "help_text": "Check your spam folder and email address, then try sending again.",
     "help_apple": "You can also go back and sign in with Apple.",
     "bind_hint": "After linking, both Apple and email sign in to this account.",
-    "signup_hint": "An account will be created automatically after verification if this email is new.",
+    "signup_hint": "New email addresses create an account after verification.",
     "terms_prefix": "By continuing, you agree to the",
     "terms": "Terms of Use",
     "and": "and",
@@ -530,6 +532,15 @@
     },
     "back": "Back",
     "loading": "Loading…",
-    "valid_duration": "Valid for 10 minutes"
+    "valid_duration": "Valid for 10 minutes",
+    "email_title": "Email login"
+  },
+  "ai_layout": {
+    "tutorial": "Connection guide",
+    "first_step": "Send the Synca connection instructions to your AI app.",
+    "pro_required": "Synca Pro is required to connect AI.",
+    "preview": "AI connections are unavailable in this preview. You can explore the guide.",
+    "operation_failed": "Could not complete the action. Please try again.",
+    "failed": "Could not load connection details. Please try again."
   }
 }

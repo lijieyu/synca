@@ -68,3 +68,12 @@
   :root:not([data-appearance=light]) .auth-apple-logo-black { display: block; }
   :root:not([data-appearance=light]) .auth-apple-logo-white { display: none; }
 }
+
+/* Stable slot: pending/cancel and normal-length errors never re-center the brand. */
+.auth-login-status { height:60px; margin:0 auto; max-width:320px; text-align:center; padding-top:12px; overflow:auto; }
+.auth-login-status .auth-notice { margin:0; padding:0; }
+.auth-login-status + .auth-terms { margin-top:8px; }
+.desktop-auth .auth-back:hover:not(:disabled) { color:var(--text-main); }
+.desktop-auth .auth-resend button { color:var(--text-main); }
+.desktop-auth :focus-visible { outline-color:var(--text-main); }
+.email-verification[data-step=email] h1 { margin-bottom:24px; }

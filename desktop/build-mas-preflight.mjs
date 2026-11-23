@@ -30,7 +30,7 @@ const sourceIcon=path.resolve('../ios/Synca/Resources/Assets.xcassets/AppIcon.ap
 execFileSync(path.resolve('mas/icon.sh'),['create',icon,sourceIcon],{stdio:'inherit'});
 const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arch:'universal',electronVersion:version,
  electronZipDir:runtime, asar:true, overwrite:false, appBundleId:'org.haerth.synca',helperBundleId:'org.haerth.synca.helper',
- appVersion:'1.2.0',buildVersion:'86',appCategoryType:'public.app-category.productivity',icon,
+ appVersion:'1.2.0',buildVersion:'87',appCategoryType:'public.app-category.productivity',icon,
  // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
  // in force for this HTTPS-only archive; the renderer also has its own origin fence.
  extendInfo:{NSAppTransportSecurity:{}},

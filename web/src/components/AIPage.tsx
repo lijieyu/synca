@@ -7,6 +7,7 @@ import { LoginView } from './LoginView';
 import { PlanDialog } from './PlanDialog';
 import { Modal } from './Modal';
 import './AIPage.css';
+import { copyText } from '../utils/clipboard';
 
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
 type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
@@ -57,6 +58,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const actionPending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -112,6 +114,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   useEffect(() => {
     if (!token) return;
     let active = true;
+    setLoadError('');
     const load = async () => {
       const [c, o, a] = await Promise.all([
         request<{ connections: Connection[] }>('connections'), request<{ operations: Operation[] }>('operations'),
@@ -119,7 +122,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
       ]);
       if (active) { setConnections(c.connections); setOperations(o.operations); setAuthorization(a); setLoaded(true); }
     };
-    void load().catch(e => { if (active) setError(String(e.message)); });
+    void load().catch(e => { if (active) setLoadError(String(e.message)); });
     return () => { active = false; };
   }, [token, request, authorize, loadAttempt]);
   const act = async (fn: () => Promise<void>) => {
@@ -128,26 +131,43 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     setBusy(true); setError(''); setNotice('');
     try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { actionPending.current = false; setBusy(false); }
   };
-  const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
+  const copy = (value: string) => act(async () => { setCopied(false); await copyText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
-  const showingTutorial = !authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible)));
+  const showingTutorial = !authorize && (!activeConnections.length || guideVisible);
+  const needsUpgrade = isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required');
+  const restricted = loadError === 'preview_operation_disabled';
+  const canCopy = isAuthenticated && accessStatus?.isUnlimited === true && loaded && !loadError;
+  const retry = () => { setError(''); setLoadAttempt(value => value + 1); };
+  const upgrade = <section className="ai-upgrade">
+    <h2>{t('ai_page.text_039')}</h2><p>{t('ai_layout.pro_required')}</p>
+    <div className="ai-upgrade-actions"><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button>
+      <button className="ai-text-link" disabled={busy} onClick={() => void act(async () => {
+        await refreshAccessStatus();
+        if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
+        else setLoadAttempt(value => value + 1);
+        setNotice(t('ai_page.text_042'));
+      })}>{t('ai_page.text_043')}</button></div>
+  </section>;
   return <><main ref={pageRef} className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}`} inert={planVisible || Boolean(revokeTarget)}><div ref={contentRef} className="ai-content">
     {!embedded && <nav className="ai-nav" aria-label={t('ai_page.text_020')}><Link className="ai-brand" to="/"><img src="/logo.png?v=a2" alt="" />Synca</Link></nav>}
     {guideVisible && activeConnections.length > 0 && <button className="ai-text-link ai-guide-back" onClick={() => changeGuide(false)}><ArrowLeft size={16} aria-hidden="true" />{t('ai_page.back_to_connections')}</button>}
     {showingTutorial && <section className="ai-tutorial">
-      <div className="ai-tutorial-heading">{!embedded && <h1>{t('ai_refined.title')}</h1>}<span className="ai-pro-badge">{t('ai_refined.pro')}</span></div>
+      <div className="ai-tutorial-heading">{!embedded && <h1>{t('ai_refined.title')}</h1>}</div>
       <p className="ai-intro">{t('ai_refined.intro')}</p>
-      <button className="ai-primary ai-copy" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_refined.copy')}</span></button>
-      <div className="ai-copy-foot"><button className="ai-text-link" aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => setPreviewVisible(value => !value)}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
-      {previewVisible && <div className="ai-prompt" id="ai-prompt-content">{connectionPrompt}</div>}
-      <details className="ai-tutorial-steps" open={guideVisible || undefined}>
-        <summary>{t('polish.tutorial')}<ChevronDown size={16} aria-hidden="true" /></summary>
-        <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(`ai_refined.detail${step}`)}</p></div></li>)}</ol>
-      </details>
+      <section className="ai-tutorial-steps">
+        <h2>{t('ai_layout.tutorial')}</h2>
+        <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(step === 1 ? 'ai_layout.first_step' : `ai_refined.detail${step}`)}</p></div></li>)}</ol>
+      </section>
+      {isAuthenticated && !needsUpgrade && <div className="ai-guide-action"><button className="ai-primary ai-copy" disabled={busy || !canCopy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_refined.copy')}</span></button>
+      <div className="ai-copy-foot"><button className="ai-text-link" disabled={!canCopy} aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => setPreviewVisible(value => !value)}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
+      {previewVisible && <div className="ai-prompt" id="ai-prompt-content">{connectionPrompt}</div>}</div>}
+      {needsUpgrade && upgrade}
+
     </section>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
-    {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => { if (presentation === 'dialog') { setError(''); setLoaded(false); setLoadAttempt(value => value + 1); } else window.location.reload(); }}>{t('ai_page.text_038')}</button></div>}
-    {isAuthenticated && !loaded && !error && <div className="ai-initial-loading" role="status">{t('ai_page.text_044')}</div>}
+    {restricted && <p className="ai-environment-note" role="status">{t('ai_layout.preview')}</p>}
+    {(error || (loadError && !restricted)) && <div role="alert" className="ai-error"><span>{t(error === 'ai_subscription_required' ? 'ai_page.text_037' : error ? 'ai_layout.operation_failed' : 'ai_layout.failed')}</span><button onClick={retry}>{t('ai_page.text_038')}</button></div>}
+    {isAuthenticated && !loaded && !loadError && <div className="ai-initial-loading" role="status">{t('ai_page.text_044')}</div>}
     {!isAuthenticated && <section className={`ai-card ${!authorize ? 'ai-manage' : ''}`}><h2>{authorize ? t('ai_page.text_045') : t('ai_page.text_046')}</h2>
       <p>{t('ai_page.text_047')}</p>
       {!loginVisible ? <button className="ai-primary" onClick={() => setLoginVisible(true)}>{t('ai_page.text_048')}</button> : <div className="ai-login"><LoginView /></div>}
@@ -177,11 +197,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
         {operations.length > 3 && <div className="ai-section-actions"><button aria-expanded={operationsExpanded} aria-controls="ai-operation-list" onClick={() => { prepareTransition(); setOperationsExpanded(value => !value); }}>{t(operationsExpanded ? 'ai_page.operations_less' : 'ai_page.operations_more')}{operationsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button></div>}
       </section>
     </>}
-    {!showingTutorial && isAuthenticated && (authorization?.aiEnabled === false || (!authorize && accessStatus?.isUnlimited === false) || error === 'ai_subscription_required') && <section className="ai-card"><h2>{t('ai_page.text_039')}</h2><p>{t('ai_page.text_040')}</p><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button> <button disabled={busy} onClick={() => void act(async () => {
-        await refreshAccessStatus();
-        if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
-        setNotice(t('ai_page.text_042'));
-      })}>{t('ai_page.text_043')}</button></section>}
+    {!showingTutorial && needsUpgrade && upgrade}
     {!embedded && <footer className="ai-muted">Synca · <Link to="/">{t('ai_page.text_066')}</Link> · <a href={zh ? '/zh-hans/privacy-policy' : '/en/privacy-policy'}>{t('ai_page.text_067')}</a></footer>}
     {planVisible && <PlanDialog onClose={() => setPlanVisible(false)} />}
   </div></main>{revokeTarget && <Modal title={t('polish.revokeTitle', { name: revokeTarget.name })} message={t('polish.revokeMessage')} destructive confirmText={t('ai_page.text_063')} cancelText={t('common.cancel')} confirmDisabled={busy} cancelDisabled={busy} closeDisabled={busy} onCancel={() => { if (!busy) setRevokeTarget(null); }} onConfirm={() => void act(async () => {

@@ -1396,3 +1396,6 @@ button.attachment-placeholder { cursor: pointer; }
 .message-editor-count.over-limit, .message-editor-error { color: var(--danger-color, #d93025); }
 .message-editor-error { font-size: 0.875rem; line-height: 1.5; margin-top: 12px; }
 .modal-btn:disabled { opacity: 0.5; cursor: default; }
+
+:root { --link-color:light-dark(#146ac2,#79b7ff); }
+.message-content .message-link, .shell-links a, .ai-page .ai-text-link, .message-expand { color:var(--link-color); }

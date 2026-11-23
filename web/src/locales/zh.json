@@ -40,7 +40,8 @@
   "common.cancel": "取消",
   "common.delete": "删除",
   "message_bubble.copied": "已复制",
-  "message_bubble.copy_failed": "复制失败，请检查浏览器剪贴板权限；图片也可打开后保存。",
+  "message_bubble.copy_failed": "复制失败，请重试。",
+  "message_bubble.copy_image_failed": "图片复制失败，请重试或打开图片后保存。",
   "desktop_menu.copy_selection": "拷贝所选文本",
   "desktop_menu.copy_record": "拷贝整条记录",
   "desktop_menu.show_folder": "在文件夹中显示",
@@ -410,7 +411,8 @@
       "Berry": "莓果",
       "Lavender": "薰衣草"
     },
-    "done": "完成"
+    "done": "完成",
+    "about_synca": "关于 Synca"
   },
   "storage.current_free_capacity": "{{capacity}} 附件空间，图片保留 {{days}} 天",
   "storage.current_paid_capacity": "{{capacity}} 附件空间，图片和文件保留 {{days}} 天",
@@ -475,7 +477,7 @@
     "preview_notice": "内部预览 · 仅用测试账号，不连接正式记录，暂不使用 Apple 登录。",
     "apple_login": "通过 Apple 登录",
     "email_login": "使用邮箱登录",
-    "apple_wait": "正在等待 Apple 授权…",
+    "apple_wait": "等待 Apple 授权…",
     "change_email": "更换邮箱",
     "check_code": "查收验证码",
     "add_email": "添加登录邮箱",
@@ -498,7 +500,7 @@
     "help_text": "检查垃圾邮件和邮箱地址，稍等片刻后重新发送。",
     "help_apple": "也可以返回使用 Apple 登录。",
     "bind_hint": "绑定后，Apple 和邮箱均可登录当前账号。",
-    "signup_hint": "未注册的邮箱将在验证成功后自动创建账号。",
+    "signup_hint": "未注册的邮箱验证后将自动创建账号。",
     "terms_prefix": "继续即表示你同意",
     "terms": "使用条款",
     "and": "和",
@@ -530,6 +532,15 @@
     },
     "back": "返回",
     "loading": "正在加载…",
-    "valid_duration": "10 分钟内有效"
+    "valid_duration": "10 分钟内有效",
+    "email_title": "邮箱登录"
+  },
+  "ai_layout": {
+    "tutorial": "连接教程",
+    "first_step": "将 Synca 连接指令发送给你使用的 AI。",
+    "pro_required": "连接 AI 需要 Synca Pro。",
+    "preview": "此预览环境暂不支持连接 AI，可先查看教程。",
+    "operation_failed": "操作未完成，请重试。",
+    "failed": "暂时无法加载连接信息，请重试。"
   }
 }
