@@ -78,13 +78,13 @@ function DesktopAccountMenu({ email, usage, onSettings, onFeedback, onAbout, onL
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
     onKeyDown={event => { if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); close(); } }}>
     <div className="desktop-account-row">
+      <div className="account-menu-anchor">
       <button ref={trigger} className="account-entry" title={email || t('navigation.account')} aria-label={t('navigation.account')} aria-haspopup="menu" aria-expanded={open}
         onClick={event => { focusMenu.current = event.detail === 0; setOpen(value => !value); }}
         onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); focusMenu.current = true; if (open) root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus(); else setOpen(true); } }}>
         <span className="identity-avatar" aria-hidden="true"><PersonIcon size={20}/></span>
         <span className="identity-copy"><strong>{email || t('navigation.account')}</strong></span>
       </button>
-      <button className="settings-entry" onClick={onSettings} aria-label={t('preferences.title')} title={t('preferences.title')}><Settings size={18} aria-hidden="true"/></button>
     {open && <div className="function-menu-panel account-menu-panel" onKeyDown={event => {
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
@@ -100,6 +100,8 @@ function DesktopAccountMenu({ email, usage, onSettings, onFeedback, onAbout, onL
         <button role="menuitem" onClick={() => { close(); onLogout(); }}><LogOut size={16} aria-hidden="true"/><span>{t('message_list.logout')}</span></button>
       </div>
     </div>}
+      </div>
+      <button className="settings-entry" onClick={onSettings} aria-label={t('preferences.title')} title={t('preferences.title')}><Settings size={18} aria-hidden="true"/></button>
     </div>
     {usage && <span className="daily-quota"><span>{t('preferences.daily_usage')}<span>{usage.used} / {usage.limit}</span></span><progress aria-label={t('preferences.daily_usage')} value={Math.min(usage.used, usage.limit)} max={Math.max(1, usage.limit)}/></span>}
   </div>;

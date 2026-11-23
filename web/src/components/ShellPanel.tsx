@@ -15,6 +15,17 @@ import { version } from '../../package.json';
 
 const maxFeedbackImages = 3;
 const maxFeedbackImageBytes = 20 * 1024 * 1024;
+// Classic scrollbars consume layout width; overlay scrollbars report zero.
+// Compensate only that gutter so the form and fixed action share equal panel insets.
+function observeFeedbackScrollbar(node: HTMLFormElement | null) {
+  if (!node) return;
+  const measure = () => node.style.setProperty('--feedback-scrollbar', `${node.offsetWidth - node.clientWidth}px`);
+  const observer = new ResizeObserver(measure);
+  observer.observe(node);
+  measure();
+  return () => observer.disconnect();
+}
+
 const feedbackImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
 const feedbackImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
 
@@ -119,7 +130,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline, accountPage
         <DeveloperSocialLink />
       </nav>
     </div>}
-    {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form id="feedback-form" className="shell-form" onSubmit={submit}>
+    {kind === 'feedback' && (sent ? <p role="status">{t('navigation.feedback_sent')}</p> : <form ref={observeFeedbackScrollbar} id="feedback-form" className="shell-form" onSubmit={submit}>
       <label>{t('feedback.content_title')}<textarea required maxLength={2000} value={content} onChange={e => setContent(e.target.value)} disabled={busy} placeholder={t('feedback.content_placeholder')} /></label>
       <label>{t('feedback.email_title')}<input required type="email" maxLength={320} value={replyEmail} onChange={e => setReplyEmail(e.target.value)} disabled={busy} /></label>
       <div className="feedback-attachments">

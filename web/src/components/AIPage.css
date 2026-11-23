@@ -118,7 +118,7 @@
 .ai-page .ai-upgrade h2 { margin:0 0 6px; font-size:16px; }
 .ai-page .ai-upgrade p { margin:0 0 16px; color:var(--ai-muted); }
 .ai-page .ai-upgrade-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
-.ai-page .ai-guide-action .ai-copy { margin-top:0; width:auto; }
+.ai-page .ai-guide-action .ai-copy { margin-top:0; width:100%; }
 .ai-page .ai-copy-foot { justify-content:flex-start; }
 .ai-page .ai-environment-note { margin:20px 0 0; color:var(--ai-muted); font-size:13px; line-height:1.6; }
 .ai-page .ai-error { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }

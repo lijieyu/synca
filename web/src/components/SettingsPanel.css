@@ -226,8 +226,8 @@
 .settings-links button svg,.settings-identity svg { flex:none; }
 .settings-pref-group select { min-width:0; }
 
-/* The feedback form and its action scroll together, without a detached bottom footer. */
-.desk-detail-body[data-settings-action="feedback"] {
+/* Scroll only the form; preserve equal panel insets independently of scrollbar width. */
+.desk-settings .desk-detail-body[data-settings-action="feedback"] {
   display: flex;
   min-height: 0;
   padding: 0;
@@ -250,12 +250,11 @@
   overscroll-behavior: contain;
   align-content: start;
   padding: 14px var(--detail-inset);
+  padding-inline-end: max(0px, calc(var(--detail-inset) - var(--feedback-scrollbar, 0px)));
 }
 .settings-embedded.feedback-modal > [role="status"] { padding: 14px var(--detail-inset); }
 .settings-embedded.feedback-modal .settings-actions {
   flex: none;
-  overflow: auto;
-  scrollbar-gutter: stable;
   margin: 0;
   padding: 16px var(--detail-inset) max(24px,env(safe-area-inset-bottom));
   border-top: 0;

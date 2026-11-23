@@ -38,6 +38,8 @@
   .calm-sidebar .category-add-btn:hover { background:var(--desktop-hover); }
   .calm-sidebar .desktop-account { margin-top:14px; }
   .desktop-account-row { position:relative; display:flex; align-items:center; gap:2px; min-width:0; }
+  .desktop-account .account-menu-anchor { position:relative; flex:1; min-width:0; }
+  .desktop-account .account-menu-anchor .account-entry { width:100%; }
   .desktop-account .account-entry { display:flex; align-items:center; gap:10px; flex:1; min-width:0; width:auto; border:0; padding:8px 4px; border-radius:var(--desktop-row-radius); }
   .desktop-account .identity-avatar { width:34px; height:34px; border-radius:50%; background:var(--desktop-hover); }
   .desktop-account .identity-copy { min-width:0; }

@@ -1,10 +1,15 @@
 .calm-main > .header { position:relative; }
-.sync-feedback { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:7px; white-space:nowrap; pointer-events:none; color:var(--text-secondary); font-size:13px; line-height:20px; opacity:0; }
+.sync-feedback {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:max-content; max-width:calc(100% - 32px); box-sizing:border-box;
+  pointer-events:none; white-space:nowrap; opacity:0;
+  background:#18752c; color:#fff; padding:8px 20px; border-radius:20px;
+  font-size:14px; font-weight:500; line-height:20px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
 .sync-feedback[data-visible="true"] { opacity:1; }
-.sync-feedback svg { color:light-dark(#40814f,#86b58c); flex:none; }
-.sync-feedback[data-compact="true"] span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-
-/* Keep the title out of the center feedback slot even before a sync begins. */
-.calm-main > .header:has(.sync-feedback) .stream-heading { max-width:calc(50% - 32px); }
+/* Reserve enough room for the full success pill, including at the minimum window size. */
+.calm-main > .header:has(.sync-feedback) .stream-heading { max-width:calc(50% - 64px); }
 .calm-main > .header:has(.sync-feedback) .stream-heading p { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .calm-main > .header:has(.sync-feedback) .header-actions { margin-inline-start:auto; }
