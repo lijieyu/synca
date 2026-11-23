@@ -19,3 +19,11 @@ Set `SYNCA_TF_MODE=isolated` only for an intentional isolated release. It uses `
 The historical isolated proof records real email delivery and synthetic-code redemption/sync; it does not substitute for actual delivered-code production verification.
 
 Without either verified flag, `build-mas-preflight.mjs` produces a strictly offline structural artifact. Never submit or launch it in place of an existing user installation.
+
+## Export compliance declaration
+
+The owner confirmed no France distribution and authorized persisting the reviewed declaration on 2026-11-24. For Mac 1.2.0 (87), App Store Connect was answered truthfully: standard encryption outside Apple's OS (Electron/Chromium/BoringSSL), and no distribution in France. Apple recorded `usesNonExemptEncryption=false`. This means exemption from documentation in the reviewed scope, not absence of encryption.
+
+`build-mas-preflight.mjs` writes boolean `ITSAppUsesNonExemptEncryption=false` into the packaged root Info.plist. The wrapper copies it; `archive-stage.sh` checks both the source app and the final Xcode-processed root plist. Missing values, strings, true, or an unreviewed export compliance code fail the archive. Cloud runs the validator's regression tests before packaging. No declaration code or French filing is fabricated.
+
+Reassess this conclusion before changing encryption functionality, adding custom/end-to-end/application-level stored-data encryption, changing runtime cryptography, or distributing in France. This configuration does not itself change App Store territories or TestFlight audiences. Existing uploaded binaries still need their build-specific metadata completed; it cannot retroactively modify them.
