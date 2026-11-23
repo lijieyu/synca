@@ -19,14 +19,14 @@
 .ai-page button,.ai-page .ai-primary { font:inherit; border:0; border-radius:8px; min-height:34px; padding:7px 12px; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--ai-subtle); color:var(--ai-ink); cursor:pointer; }
 .ai-page button:disabled { opacity:.5; cursor:default; }
 .ai-page :focus-visible { outline:2px solid var(--ai-accent); outline-offset:3px; }
-.ai-page .ai-primary { background:var(--ai-button); color:#fff; font-weight:500; }
+.ai-page .ai-primary { background:var(--accent-button,var(--ai-button)); color:#fff; font-weight:500; }
 .ai-page .ai-muted,.ai-page .ai-intro { color:var(--ai-muted); }
 .ai-page .ai-muted { font-size:12px; line-height:1.7; }
 .ai-page .ai-intro { font-size:13px; line-height:1.65; }
 .ai-page .ai-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .ai-page .ai-card + .ai-card { border-top:1px solid var(--ai-line); margin-top:10px; padding-top:20px; }
 .ai-page .ai-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
-.ai-page .ai-text-link { background:transparent; color:var(--ai-accent); padding:4px 0; font-size:12px; min-height:32px; flex-shrink:0; border-radius:4px; }
+.ai-page .ai-text-link { background:transparent; color:var(--link-color); padding:4px 0; font-size:12px; min-height:32px; flex-shrink:0; border-radius:4px; }
 .ai-page .ai-guide-back { margin-bottom:12px; }
 .ai-page .ai-connection { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:12px; align-items:start; padding:15px 0; }
 .ai-page .ai-connection + .ai-connection { border-top:1px solid var(--ai-line); }
@@ -101,7 +101,7 @@
   margin-top: 12px;
   border-top: 1px solid var(--ai-line);
 }
-.ai-page .ai-tutorial-steps summary {
+.ai-page .ai-tutorial-steps h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,9 +109,16 @@
   min-height: 48px;
   font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
-  list-style: none;
+  margin:0;
 }
-.ai-tutorial-steps summary::-webkit-details-marker { display: none; }
-.ai-tutorial-steps[open] summary > svg { transform: rotate(180deg); }
 .ai-page .ai-tutorial-steps .ai-steps { margin: 8px 0 18px; }
+
+.ai-page .ai-tutorial-heading:empty { display:none; }
+.ai-page .ai-upgrade,.ai-page .ai-guide-action { border-top:1px solid var(--ai-line); padding-top:20px; margin-top:20px; }
+.ai-page .ai-upgrade h2 { margin:0 0 6px; font-size:16px; }
+.ai-page .ai-upgrade p { margin:0 0 16px; color:var(--ai-muted); }
+.ai-page .ai-upgrade-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.ai-page .ai-guide-action .ai-copy { margin-top:0; width:100%; }
+.ai-page .ai-environment-note { margin:20px 0 0; color:var(--ai-muted); font-size:13px; line-height:1.6; }
+.ai-page .ai-error { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.ai-page .ai-error button { margin:0; }

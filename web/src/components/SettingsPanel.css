@@ -226,12 +226,13 @@
 .settings-links button svg,.settings-identity svg { flex:none; }
 .settings-pref-group select { min-width:0; }
 
-/* Keep submission visible while an attachment list or the keyboard shortens the form. */
-.desk-detail-body[data-settings-action="feedback"] {
+/* Scroll only the form; preserve equal panel insets independently of scrollbar width. */
+.desk-settings .desk-detail-body[data-settings-action="feedback"] {
   display: flex;
   min-height: 0;
   padding: 0;
   overflow: hidden;
+  scrollbar-gutter: auto;
 }
 .desk-detail-body > .settings-embedded.feedback-modal {
   flex: 1;
@@ -241,20 +242,23 @@
   min-height: 0;
 }
 .settings-embedded.feedback-modal > .shell-form {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   align-content: start;
   padding: 14px var(--detail-inset);
+  padding-inline-end: max(0px, calc(var(--detail-inset) - var(--feedback-scrollbar, 0px)));
 }
 .settings-embedded.feedback-modal > [role="status"] { padding: 14px var(--detail-inset); }
 .settings-embedded.feedback-modal .settings-actions {
   flex: none;
-  margin: auto 0 0;
-  padding: 8px var(--detail-inset) max(8px,env(safe-area-inset-bottom));
-  background: var(--bg-color);
+  margin: 0;
+  padding: 16px var(--detail-inset) max(24px,env(safe-area-inset-bottom));
+  border-top: 0;
+  background: transparent;
 }
 .feedback-attachments { display: grid; justify-items: start; gap: 8px; min-width: 0; font-size: 14px; }
 .feedback-attachments p { margin: 0; }
@@ -321,3 +325,22 @@
 .settings-pref-group .desk-row { min-height: 58px; border: 0; border-top: 1px solid var(--ds-line); }
 .desktop-window-note { margin: 12px 2px; color: var(--text-secondary); font-size: 13px; }
 .settings-links .settings-disclosure { margin-inline-start: auto; }
+
+/* Reserve a real trailing area for the chevron, independent of native select metrics. */
+.desk-detail select {
+  appearance:none;
+  min-height:36px;
+  padding:7px 34px 7px 12px;
+  color:var(--text-main);
+  font:inherit;
+  font-size:13px;
+  line-height:20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m2 4 4 4 4-4' fill='none' stroke='%23808086' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  background-size:12px;
+  cursor:pointer;
+  flex-shrink:1;
+  text-overflow:ellipsis;
+}
+@media (forced-colors:active) { .desk-detail select { appearance:auto; background-image:none; padding-right:12px; } }

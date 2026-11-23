@@ -7,6 +7,7 @@ if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
     version:'1.2.0', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
     recordMenu:options=>ipcRenderer.invoke('desktop:record-menu',options),
+    copyRecord:options=>ipcRenderer.invoke('desktop:copy-record',options),
     preferences:()=>ipcRenderer.invoke('desktop:preferences'),
     change:(key,value)=>ipcRenderer.invoke('desktop:change',key,value),
     directory:()=>ipcRenderer.invoke('desktop:directory'),

@@ -177,7 +177,7 @@
 .about-modal .shell-links a { color:var(--text-main); flex:1; justify-content:center; border:1px solid var(--border-color); border-radius:8px; text-decoration:none; padding:8px 12px; min-height:38px; }
 .about-modal .about-registration { margin:4px 0 4px; font-size:11px; }
 .message-content-collapsed { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:6; overflow:hidden; }
-.message-expand { display:block; min-height:36px; padding:6px 0; border:0; background:transparent; color:var(--accent-color); font:inherit; font-size:12px; cursor:pointer; }
+.message-expand { display:block; min-height:36px; padding:6px 0; border:0; background:transparent; color:var(--link-color); font:inherit; font-size:12px; cursor:pointer; }
 .message-input-limit { margin:0; padding:0 20px 8px; color:light-dark(#b42318,#ff8a80); font-size:12px; }
 .category-assignment { position:relative; min-width:0; }
 .category-assignment-trigger { display:flex; align-items:center; gap:4px; min-height:28px; padding:0; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
@@ -231,7 +231,6 @@
 .category-validation { margin:0; color:var(--danger-color,#bf4747); text-align:start; font-size:13px; overflow-wrap:anywhere; }
 .category-manager-row .category-validation { grid-column:2/-1; }
 @media (hover:hover) and (pointer:fine) and (width >= 640px) {
-  .category-manager-row:not(:hover):not(:focus-within) .category-manager-row-actions { opacity:0; }
   .category-manager-row:hover input.category-manager-name { border-color:var(--border-color); }
 }
 .palette-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(44px,1fr)); gap:0; width:100%; }
@@ -314,7 +313,7 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 .message-markdown pre code { padding: 0; }
 .message-content-collapsed:has(.message-markdown) { display: block; max-height: 6lh; }
 
-.message-content .message-link { color: var(--accent-color); }
+.message-content .message-link { color: var(--link-color); }
 
 /* Inset rings stay complete at every scroll boundary. */
 .calm-sidebar .category-chip:focus-visible { outline-offset:-3px; }

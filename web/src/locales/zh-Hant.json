@@ -40,7 +40,8 @@
   "common.cancel": "取消",
   "common.delete": "刪除",
   "message_bubble.copied": "已複製",
-  "message_bubble.copy_failed": "複製失敗，請檢查瀏覽器剪貼板權限；圖片也可打開後儲存。",
+  "message_bubble.copy_failed": "複製失敗，請重試。",
+  "message_bubble.copy_image_failed": "圖片複製失敗，請重試或打開圖片後儲存。",
   "desktop_menu.copy_selection": "拷貝所選文字",
   "desktop_menu.copy_record": "拷貝整筆記錄",
   "desktop_menu.show_folder": "在資料夾中顯示",
@@ -410,7 +411,8 @@
       "Berry": "莓果",
       "Lavender": "薰衣草"
     },
-    "done": "完成"
+    "done": "完成",
+    "about_synca": "關於 Synca"
   },
   "storage.current_free_capacity": "{{capacity}} 附件空間，圖片保留 {{days}} 天",
   "storage.current_paid_capacity": "{{capacity}} 附件空間，圖片和檔案保留 {{days}} 天",
@@ -436,7 +438,7 @@
   "navigation.resize_sidebar": "調整側欄寬度",
   "developer_social": {
     "follow": "去小紅書關注開發者",
-    "contact": "去小紅書聯繫開發者",
+    "contact": "去小紅書聯絡開發者",
     "external": "在瀏覽器中開啟"
   },
   "search": {
@@ -475,7 +477,7 @@
     "preview_notice": "內部預覽 · 僅用測試帳號，不連接正式記錄，暫不使用 Apple 登入。",
     "apple_login": "透過 Apple 登入",
     "email_login": "使用電子郵件登入",
-    "apple_wait": "正在等待 Apple 授權…",
+    "apple_wait": "等待 Apple 授權…",
     "change_email": "更換電子郵件",
     "check_code": "查看驗證碼",
     "add_email": "新增登入電子郵件",
@@ -498,7 +500,7 @@
     "help_text": "檢查垃圾郵件和電子郵件地址，稍候再重新傳送。",
     "help_apple": "也可以返回使用 Apple 登入。",
     "bind_hint": "綁定後，Apple 和電子郵件皆可登入目前的帳號。",
-    "signup_hint": "尚未註冊的電子郵件將在驗證成功後自動建立帳號。",
+    "signup_hint": "未註冊的電子郵件驗證後將自動建立帳號。",
     "terms_prefix": "繼續即表示你同意",
     "terms": "使用條款",
     "and": "和",
@@ -530,6 +532,15 @@
     },
     "back": "返回",
     "loading": "正在載入…",
-    "valid_duration": "10 分鐘內有效"
+    "valid_duration": "10 分鐘內有效",
+    "email_title": "電子郵件登入"
+  },
+  "ai_layout": {
+    "tutorial": "連接教學",
+    "first_step": "將 Synca 連接指令傳送給你使用的 AI。",
+    "pro_required": "連接 AI 需要 Synca Pro。",
+    "preview": "此預覽環境暫不支援連接 AI，可先查看教學。",
+    "operation_failed": "操作未完成，請重試。",
+    "failed": "暫時無法載入連接資訊，請重試。"
   }
 }
