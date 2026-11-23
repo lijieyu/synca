@@ -66,7 +66,7 @@
   .calm-main .message-expand { align-self:flex-start; min-height:30px; }
   .calm-main .file-card { width:min(100%,400px); background:var(--sidebar-bg); border:1px solid var(--border-color); box-shadow:none; border-radius:10px; }
   .calm-main .input-bar { margin-top:14px; border-radius:14px; background:var(--panel-bg-color); box-shadow:0 3px 18px #20203004; }
-  .calm-main .input-shell { display:grid; grid-template-columns:32px 32px minmax(0,1fr) 34px; gap:6px; padding:12px; align-items:center; }
+  .calm-main .input-shell { display:grid; grid-template-columns:36px 36px minmax(0,1fr) 36px; gap:6px; padding:12px; align-items:center; }
   .calm-main .input-bar textarea { grid-column:1/-1; grid-row:1; width:100%; padding:2px 2px 8px; min-height:34px; font-size:15px; line-height:1.65; }
   .calm-main .input-shell .photo-upload { grid-row:2; width:32px; height:32px; color:var(--text-secondary); }
   .calm-main .input-shell .photo-upload > svg { width:18px; height:18px; }
@@ -92,7 +92,7 @@
   .desk-detail-body > .settings-pref-group + h3 { margin-top:24px; }
   .settings-pref-group { border-radius:12px; padding-inline:16px; }
   .settings-pref-group label { min-height:62px; font-size:14px; }
-  .desk-detail select { background:var(--sidebar-bg); font-size:13px; padding:8px 10px; }
+  .desk-detail select { background-color:var(--sidebar-bg); font-size:13px; }
   .desk-settings .desk-detail-body { scrollbar-gutter:stable; }
   .settings-title h2:focus { outline:none; }
   .account-pages { font-size:14px; }
@@ -171,4 +171,54 @@
   .desk-settings > aside { padding-block:16px; }
   .desk-settings aside > h1 { margin-bottom:12px; }
   .desk-settings aside > nav button { min-height:40px; padding-block:8px; margin-block:1px; }
+}
+
+@media (min-width:640px) {
+  .calm-sidebar .account-menu-panel { width:250px; max-width:calc(100vw - 32px); }
+  .desktop-account .identity-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .calm-main .input-shell .photo-upload { border-radius:7px; transition:background-color 120ms,color 120ms; }
+  .calm-main .input-shell .photo-upload:has(input:not(:disabled)):hover { background:var(--desktop-hover); color:var(--text-main); }
+  .calm-main .input-shell .photo-upload:has(input:not(:disabled)):active { background:color-mix(in srgb,var(--text-main) 13%,transparent); }
+  .calm-main .input-shell .photo-upload:has(input:focus-visible) { outline:2px solid var(--text-main); outline-offset:2px; }
+  .calm-main .input-shell .photo-upload:has(input:disabled) { opacity:.4; cursor:default; }
+  .calm-main .input-shell .photo-upload input { cursor:pointer; inset:0; margin:0; }
+  .calm-main .input-shell .photo-upload input:disabled { cursor:default; }
+}
+@media (prefers-reduced-motion:reduce) { .calm-main .input-shell .photo-upload { transition:none; } }
+
+/* One compact action size throughout desktop surfaces. Navigation rows retain their own rhythm. */
+@media (min-width:640px) and (pointer:fine) {
+  :root { --desktop-action-height:36px; --desktop-action-radius:8px; --desktop-action-padding:7px 14px; }
+  .modal-content .modal-btn,
+  .settings-embedded .modal-btn,
+  .settings-actions .modal-leading-action,
+  .modal-content .modal-leading-action,
+  .download-preference button,
+  .storage-plans .plan-download-link,
+  .account-panel .account-text-action:not(.account-row),
+  .desk-detail .shell-form button,
+  .modal-content .shell-form button,
+  .settings-embedded .category-manager-add,
+  .category-manager-content .category-manager-tools button,
+  .account-session-action,
+  .login-method-rows button,
+  .desk-row > button,
+  .ai-page button:not(.ai-text-link):not(.ai-revoke),
+  .ai-page .ai-primary {
+    min-height:var(--desktop-action-height);
+    padding:var(--desktop-action-padding);
+    border-radius:var(--desktop-action-radius);
+    font-size:13px;
+    font-weight:500;
+    line-height:20px;
+  }
+  .calm-sidebar .account-menu-panel button { padding-block:8px; }
+  .settings-embedded.feedback-modal .feedback-attachments li button { width:36px; padding:7px; }
+  .calm-main .header-actions .header-btn,
+  .calm-main .message-header .action-btn,
+  .calm-main .input-shell .photo-upload,
+  .calm-main .input-shell .send-btn,
+  .desktop-account .settings-entry,
+  .desk-detail .settings-title .settings-close,
+  .desk-detail .settings-title .settings-back { width:36px; min-width:36px; height:36px; min-height:36px; border-radius:8px; }
 }

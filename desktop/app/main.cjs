@@ -113,7 +113,10 @@ else {
       {label:process.platform==='darwin'?cfg.name:'File',submenu:[
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
+        ...(process.platform==='darwin'?[{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'}]:[]),
+        ...(process.platform!=='darwin'?[{role:'close'}]:[]),
         {type:'separator'},{role:'quit'}]},
+      ...(process.platform==='darwin'?[{label:'File',submenu:[{role:'close'}]}]:[]),
       {role:'editMenu'}, {label:'View', submenu:[{label:app.getLocale().startsWith('zh')?'同步':'Sync',accelerator:'CommandOrControl+R',click:()=>mainWindow?.webContents.send('desktop:sync')},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}, {role:'windowMenu'}
     ]))
     void openWorkspace()

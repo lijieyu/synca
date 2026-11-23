@@ -64,8 +64,8 @@ export function EmailVerification({ binding = false, initialEmail = '', onEmailC
   const back = () => { request.current?.abort(); request.current = null; setBusy(false); setError(''); setNotice(''); if (challenge) { setChallenge(null); setCode(''); } else onBack(); };
   return <section className="email-verification" data-step={challenge ? 'code' : 'email'}>
     <button type="button" className="auth-back" onClick={back}>← {t(challenge ? 'email_auth.change_email' : 'email_auth.back')}</button>
-    <h1>{t(challenge ? 'email_auth.check_code' : binding ? 'email_auth.add_email' : 'email_auth.email_login')}</h1>
-    <p className="auth-description">{challenge ? t('email_auth.sent_to') : t(binding ? 'email_auth.bind_description' : 'email_auth.description')}</p>
+    <h1>{t(challenge ? 'email_auth.check_code' : binding ? 'email_auth.add_email' : 'email_auth.email_title')}</h1>
+    {(challenge || binding) && <p className="auth-description">{t(challenge ? 'email_auth.sent_to' : 'email_auth.bind_description')}</p>}
     {challenge && <p className="auth-address" dir="auto">{email}</p>}
     <form noValidate onSubmit={event => { event.preventDefault(); void (challenge ? verify() : send()); }}>
       <label htmlFor={`${id}-input`}>{t(challenge ? 'email_auth.code' : 'email_auth.email')}</label>

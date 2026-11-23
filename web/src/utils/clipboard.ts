@@ -1,5 +1,10 @@
 import { api } from '../api/client';
 
+export async function copyText(text: string): Promise<void> {
+  if (window.syncaDesktop?.copyRecord) return window.syncaDesktop.copyRecord({text});
+  await navigator.clipboard.writeText(text);
+}
+
 async function imageAsPNG(url: string, expiresAt?: string | null): Promise<Blob> {
   const blob = await api.getProtectedFileBlob(url, { expiresAt, cacheImage: true });
   if (blob.type === 'image/png') return blob;
@@ -19,6 +24,9 @@ async function imageAsPNG(url: string, expiresAt?: string | null): Promise<Blob>
 }
 
 export async function copyProtectedImage(url: string, expiresAt?: string | null): Promise<void> {
+  if (window.syncaDesktop?.copyRecord) {
+    return window.syncaDesktop.copyRecord({attachment: {url, name: '', kind: 'image', expiresAt}});
+  }
   if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') throw new Error('Image clipboard is not supported');
   // Start clipboard.write during the user gesture, including on Safari; resolve the authenticated image asynchronously.
   const image = imageAsPNG(url, expiresAt);

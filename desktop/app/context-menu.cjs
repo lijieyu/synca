@@ -87,6 +87,15 @@ function installContextMenus(window, ses, handle, getSession, getDirectory, cfg)
     }
   }
 
+  async function copyRecord(args) {
+    if (typeof args?.text === 'string') await clipboard.writeText(args.text)
+    else if (args?.attachment?.kind === 'image') await performAttachment('copyImage', args.attachment)
+    else throw Error('Copy unavailable')
+  }
+  // The same trusted-main-frame guard as native menus applies to button copies.
+  // Keep browser clipboard/read permissions denied; expose only this write action.
+  handle('copy-record', copyRecord)
+
   function popup(template, position, choose) {
     currentMenu?.closePopup(window)
     const menu = Menu.buildFromTemplate(template)
@@ -110,9 +119,7 @@ function installContextMenus(window, ses, handle, getSession, getDirectory, cfg)
       try {
         if (id === 'copySelection' && typeof args.selection === 'string') await clipboard.writeText(args.selection)
         else if (id === 'copyRecord') {
-          if (typeof args.text === 'string') await clipboard.writeText(args.text)
-          else if (args.attachment?.kind === 'image') await performAttachment('copyImage', args.attachment)
-          else throw Error('Copy unavailable')
+          await copyRecord(args)
           resolve('copied')
           return
         }

@@ -7,6 +7,7 @@ import { LoginView } from './LoginView';
 import { PlanDialog } from './PlanDialog';
 import { Modal } from './Modal';
 import './AIPage.css';
+import { copyText } from '../utils/clipboard';
 
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
 type Connection = { id: string; name: string; scopes: Scope[]; expires_at: string; revoked_at: string | null; last_used_at: string | null };
@@ -128,7 +129,7 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     setBusy(true); setError(''); setNotice('');
     try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { actionPending.current = false; setBusy(false); }
   };
-  const copy = (value: string) => act(async () => { setCopied(false); await navigator.clipboard.writeText(value); setCopied(true); });
+  const copy = (value: string) => act(async () => { setCopied(false); await copyText(value); setCopied(true); });
   const activeConnections = connections.filter(c => !c.revoked_at && new Date(c.expires_at).getTime() > Date.now());
   const showingTutorial = !authorize && (!isAuthenticated || (loaded && (!activeConnections.length || guideVisible)));
   return <><main ref={pageRef} className={`ai-page${authorize ? ' ai-authorization-page' : ''}${embedded ? ' ai-embedded' : ''}${presentation === 'dialog' ? ' ai-dialog' : ''}`} inert={planVisible || Boolean(revokeTarget)}><div ref={contentRef} className="ai-content">
@@ -137,13 +138,14 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     {showingTutorial && <section className="ai-tutorial">
       <div className="ai-tutorial-heading">{!embedded && <h1>{t('ai_refined.title')}</h1>}<span className="ai-pro-badge">{t('ai_refined.pro')}</span></div>
       <p className="ai-intro">{t('ai_refined.intro')}</p>
+      <section className="ai-tutorial-steps">
+        <h2>{t('polish.tutorial')}</h2>
+        <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(`ai_refined.detail${step}`)}</p></div></li>)}</ol>
+      </section>
       <button className="ai-primary ai-copy" disabled={busy} onClick={() => void copy(connectionPrompt)}>{copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}<span aria-live="polite">{copied ? t('ai_page.text_028') : t('ai_refined.copy')}</span></button>
       <div className="ai-copy-foot"><button className="ai-text-link" aria-expanded={previewVisible} aria-controls="ai-prompt-content" onClick={() => setPreviewVisible(value => !value)}>{t(previewVisible ? 'ai_refined.hide_prompt' : 'ai_refined.show_prompt')}{previewVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button></div>
       {previewVisible && <div className="ai-prompt" id="ai-prompt-content">{connectionPrompt}</div>}
-      <details className="ai-tutorial-steps" open={guideVisible || undefined}>
-        <summary>{t('polish.tutorial')}<ChevronDown size={16} aria-hidden="true" /></summary>
-        <ol className="ai-steps">{[1, 2, 3].map(step => <li key={step}><div><strong>{t(`ai_refined.step${step}`)}</strong><p>{t(`ai_refined.detail${step}`)}</p></div></li>)}</ol>
-      </details>
+
     </section>}
     {(authorize || isAuthenticated) && <div aria-live="polite" role="status" className="ai-notice">{notice}</div>}
     {error && <div role="alert" className="ai-error">{t('ai_page.text_036')}{error === 'ai_subscription_required' ? t('ai_page.text_037') : error}<button onClick={() => { if (presentation === 'dialog') { setError(''); setLoaded(false); setLoadAttempt(value => value + 1); } else window.location.reload(); }}>{t('ai_page.text_038')}</button></div>}

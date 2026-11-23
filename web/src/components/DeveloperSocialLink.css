@@ -21,3 +21,6 @@
 .about-links a + a { border-top: 1px solid var(--border-color); }
 .about-links a svg { color: var(--text-secondary); flex: none; }
 .about-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.developer-social-logo { width:24px; height:24px; border-radius:6px; flex:none; image-rendering:auto; }
+.developer-social-link > span { flex:1; }

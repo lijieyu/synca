@@ -44,6 +44,7 @@ declare global {
       platform: string;
       version: string;
       recordMenu?: (options: RecordMenuOptions) => Promise<string | null>;
+      copyRecord?: (options: Pick<RecordMenuOptions, 'text' | 'attachment'>) => Promise<void>;
       preferences: () => Promise<Preferences>;
       change: (key: 'ask' | 'badge', value: boolean) => Promise<Preferences>;
       directory: () => Promise<Preferences>;
