@@ -282,7 +282,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                     onClick={() => runAfterLeaving(() => setSection(key))}
                   >
                     <Icon size={17} />
-                    <span className="settings-nav-label">{t(key === 'account' ? 'preferences.account_plan' : 'settings_page.' + key)}{key === 'account' && token && <small><AccountPlanLabel /></small>}</span>
+                    <span className="settings-nav-label">{t(key === 'account' ? 'preferences.account_plan' : 'settings_page.' + key)}</span>
                   </button>
                 );
               })}
