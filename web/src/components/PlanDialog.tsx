@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from './Modal';
+import { ChevronDown } from 'lucide-react';
 
 export const SYNCA_APP_STORE_URL = 'https://apps.apple.com/cn/app/synca-灵感记录-即刻同步/id6761647007';
 
@@ -44,9 +45,32 @@ export function PlanContent({ showStorage = true }: { showStorage?: boolean } = 
     </div>;
 }
 
-export function PlanDialog({ onClose }: { onClose: () => void }) {
+export function PlanDialog({ onClose, reason }: { onClose: () => void; reason?: 'upload' | 'quota' }) {
   const { t } = useTranslation();
-  return <Modal size="standard" scrollBody title={t('access.center_title')} message="" onCancel={onClose} onConfirm={onClose} confirmText={t('common.ok')} hideCancel hideActions neutral><PlanContent /></Modal>;
+  const title = reason === 'quota' ? 'access.limit_reached_title' : reason === 'upload' ? 'storage.paid_title' : 'access.center_title';
+  return <Modal size="standard" scrollBody title={t(title)} message={reason ? t('review.page.' + reason) : ''} onCancel={onClose} onConfirm={onClose} confirmText={t(reason ? 'review.page.back_to_records' : 'common.ok')} hideCancel hideActions={!reason} neutral>
+    {reason ? <details className="account-benefits plan-disclosure"><summary>{t('review.page.benefits')}<ChevronDown size={16} aria-hidden="true" /></summary><PlanContent /></details> : <PlanContent />}
+  </Modal>;
+}
+
+export function AccountPlanLabel() {
+  const { t, i18n } = useTranslation();
+  const { accessStatus: status } = useAuth();
+  if (!status) return t('access.status_load_failed');
+  if (status.isTrial || status.plan === 'trial') {
+    return status.daysLeft == null ? t('review.page.trial') : t('review.page.trial_remaining', {days: status.daysLeft});
+  }
+  if (!status.isUnlimited) return t('access.free_title');
+  if (status.unlimitedSource === 'lifetime') return t('review.page.lifetime');
+  const plan = status.storeProductId === 'org.haerth.synca.unlimited.monthly' ? t('access.purchased_monthly')
+    : status.storeProductId === 'org.haerth.synca.unlimited.yearly' ? t('access.purchased_yearly') : 'Synca Pro';
+  if (status.unlimitedSource === 'subscription' && status.subscriptionExpiresAt) {
+    const expiry = new Date(status.subscriptionExpiresAt);
+    if (Number.isFinite(expiry.getTime())) {
+      return t('review.page.subscription', { plan, date: expiry.toLocaleDateString(i18n.language) });
+    }
+  }
+  return plan;
 }
 
 export function StorageUsage() {

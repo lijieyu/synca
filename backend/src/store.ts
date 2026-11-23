@@ -108,7 +108,7 @@ export async function updateUserNickname(userId: string, nickname: string, now: 
 
 export async function createUser(user: {
     id: string;
-    appleUserId: string;
+    appleUserId: string | null;
     email?: string | null;
     nickname: string;
     now: string;
@@ -415,6 +415,7 @@ export async function deleteAccount(input: {
         await trx.deleteFrom('iap_transactions').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('device_push_tokens').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('lifetime_upgrade_offer_codes').where('assigned_user_id', '=', input.userId).execute();
+        await sql`DELETE FROM daily_activities WHERE user_id = ${input.userId}`.execute(trx);
         await trx.deleteFrom('message_usage_events').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('messages').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('message_categories').where('user_id', '=', input.userId).execute();
@@ -424,6 +425,10 @@ export async function deleteAccount(input: {
         await trx.deleteFrom('ai_refresh_tokens').where('connection_id', 'in', trx.selectFrom('ai_connections').select('id').where('user_id', '=', input.userId)).execute();
         await trx.deleteFrom('ai_connections').where('user_id', '=', input.userId).execute();
         await trx.deleteFrom('sessions').where('user_id', '=', input.userId).execute();
+        await sql`DELETE FROM email_auth_challenges WHERE user_id=${input.userId}
+            OR email IN (SELECT email FROM email_identities WHERE user_id=${input.userId})`.execute(trx);
+        await sql`DELETE FROM apple_binding_challenges WHERE user_id=${input.userId}`.execute(trx);
+        await sql`DELETE FROM email_identities WHERE user_id=${input.userId}`.execute(trx);
         await trx.deleteFrom('users').where('id', '=', input.userId).execute();
     });
     for (const item of cleanup) {
@@ -1124,6 +1129,10 @@ export async function canUserAccessMedia(userId: string, filename: string, isAdm
 }
 
 export async function resetDb() {
+    await sql`DELETE FROM email_auth_challenges`.execute(db);
+    await sql`DELETE FROM apple_binding_challenges`.execute(db);
+    await sql`DELETE FROM email_identities`.execute(db);
+    await sql`DELETE FROM auth_rate_limits`.execute(db);
     await db.deleteFrom('ai_oauth_requests').execute();
     await db.deleteFrom('ai_oauth_clients').execute();
     await db.deleteFrom('ai_operations').execute();
@@ -1134,6 +1143,7 @@ export async function resetDb() {
     await db.deleteFrom('iap_transactions').execute();
     await db.deleteFrom('device_push_tokens').execute();
     await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
+    await sql`DELETE FROM daily_activities`.execute(db);
     await db.deleteFrom('message_usage_events').execute();
     await db.deleteFrom('messages').execute();
     await db.deleteFrom('message_categories').execute();

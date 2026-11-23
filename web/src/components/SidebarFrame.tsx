@@ -22,6 +22,8 @@ export function SidebarFrame({ children }: { children: ReactNode }) {
   const recentMoves = useRef<boolean[]>([]);
   const drag = useRef<{ id: number; x: number; width: number; last: number; moved: boolean } | null>(null);
   const width = clampSidebar(preferred, viewport);
+  const maximum = sidebarLimit(viewport);
+  const canResize = maximum > SIDEBAR_MIN;
   const save = (value: number) => {
     const next = clampSidebar(value, window.innerWidth);
     setPreferred(next);
@@ -47,14 +49,15 @@ export function SidebarFrame({ children }: { children: ReactNode }) {
   return <aside className="calm-sidebar" style={{ '--sidebar-width': `${width}px` } as React.CSSProperties}>
     {children}
     <div className="sidebar-resizer" data-active={dragging || hovered} onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)} role="separator" aria-orientation="vertical" aria-label={t('navigation.resize_sidebar')}
-      aria-valuemin={SIDEBAR_MIN} aria-valuemax={sidebarLimit(viewport)} aria-valuenow={Math.round(width)} tabIndex={0}
-      onDoubleClick={() => { if (!recentMoves.current.some(Boolean)) save(SIDEBAR_DEFAULT); }}
+      aria-valuemin={SIDEBAR_MIN} aria-valuemax={maximum} aria-valuenow={Math.round(width)} aria-disabled={!canResize} tabIndex={canResize ? 0 : -1}
+      onDoubleClick={() => { if (canResize && !recentMoves.current.some(Boolean)) save(SIDEBAR_DEFAULT); }}
       onKeyDown={event => {
+        if (!canResize) return;
         const next = event.key === 'ArrowLeft' ? width - 10 : event.key === 'ArrowRight' ? width + 10 : event.key === 'Home' ? SIDEBAR_MIN : event.key === 'End' ? sidebarLimit(viewport) : null;
         if (next !== null) { event.preventDefault(); save(next); }
       }}
       onPointerDown={event => {
-        if (event.button !== 0 || !event.isPrimary) return;
+        if (!canResize || event.button !== 0 || !event.isPrimary) return;
         event.preventDefault(); event.currentTarget.blur();
         drag.current = { id: event.pointerId, x: event.clientX, width, last: width, moved: false };
         event.currentTarget.setPointerCapture(event.pointerId); setDragging(true);

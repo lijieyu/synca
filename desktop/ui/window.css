@@ -1,0 +1,48 @@
+/* System controls occupy the top left of the content view on macOS. */
+.mac-window { --window-controls-height: 44px; }
+.mac-window .calm-sidebar {
+  padding-top: calc(var(--window-controls-height) + 6px);
+}
+
+.mac-window body:not(:has([role="dialog"])) :is(.sidebar-brand, .calm-main .header) {
+  app-region: drag;
+  user-select: none;
+}
+.mac-window .calm-main .header-actions { app-region: no-drag; }
+
+/* An empty strip also provides a drag target on login and settings screens. */
+.mac-window body:not(:has([role="dialog"]))::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--window-controls-height);
+  z-index: 1;
+  app-region: drag;
+}
+.mac-window body:has(.calm-shell):not(:has(.desk-settings))::before {
+  content: none;
+}
+.mac-window body:not(:has([role="dialog"])) .calm-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--window-controls-height);
+  app-region: drag;
+}
+
+.mac-window .desk-workspace:not(:has(.calm-shell)) {
+  box-sizing: border-box;
+  padding-top: var(--window-controls-height);
+}
+.mac-window .modal-content { max-height: calc(100dvh - 2 * var(--window-controls-height)); }
+
+/* Keep settings clear of native traffic lights, including the minimum window. */
+.mac-window .settings-veil .desk-settings {
+  height: min(620px, calc(100dvh - 2 * var(--window-controls-height)));
+}
+
+/* The shell already reserves the traffic-light strip; login uses the remainder. */
+.mac-window .desktop-auth { height: calc(100dvh - var(--window-controls-height)); }
+.mac-window .desktop-auth-form {
+  padding-top: max(16px, calc((100dvh - var(--window-controls-height) - 440px) / 2));
+}

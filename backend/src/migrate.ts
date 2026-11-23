@@ -1,5 +1,6 @@
 import { db } from './db.js';
 import { sql } from 'kysely';
+import { migrateLoginIdentities } from './authMigrations.js';
 
 export async function runMigrations() {
     console.log('[migrate] Running database migrations...');
@@ -50,11 +51,8 @@ export async function runMigrations() {
         console.log('[migrate] Added timezone_offset_seconds column to users table.');
     } catch (_e) {}
 
-    // Set initial admin
-    try {
-        await sql`UPDATE users SET is_admin = 1 WHERE email = 'jieyu.li@icloud.com'`.execute(db);
-        console.log('[migrate] Ensured jieyu.li@icloud.com is admin.');
-    } catch (_e) {}
+    // Admin privileges are explicit account data. Never infer privileges from
+    // an email address: users can now register and bind email identities.
 
     await sql`
         CREATE TABLE IF NOT EXISTS message_categories (
@@ -364,6 +362,20 @@ export async function runMigrations() {
         challenge TEXT NOT NULL, state TEXT, scopes TEXT NOT NULL, expires_at TEXT NOT NULL,
         code_hash TEXT UNIQUE, connection_id TEXT, resource TEXT NOT NULL
     )`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS daily_activities (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        activity_date TEXT NOT NULL,
+        has_read INTEGER NOT NULL DEFAULT 0,
+        has_operation INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (activity_date, user_id)
+    )`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_daily_activities_user ON daily_activities(user_id, activity_date)`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS activity_coverage (
+        version INTEGER PRIMARY KEY, started_at TEXT NOT NULL
+    )`.execute(db);
+    await sql`INSERT OR IGNORE INTO activity_coverage(version, started_at)
+        VALUES (1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))`.execute(db);
+    await migrateLoginIdentities();
     console.log('[migrate] Migrations complete.');
 }
 

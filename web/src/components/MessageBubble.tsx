@@ -1,6 +1,6 @@
 import { formatMessageTime } from '../utils/messageTime';
-import React, { useEffect, useMemo, useState } from 'react';
-import { api, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { api, MessageEditError, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
 import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
@@ -9,6 +9,7 @@ import { CategoryAssignmentMenu } from './CategoryAssignmentMenu';
 import { MessageMarkdown } from './MessageMarkdown';
 import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
+import type { RecordMenuItem, RecordMenuOptions } from './SettingsPanel';
 import { copyProtectedImage } from '../utils/clipboard';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
   message: SyncaMessage;
   categories: MessageCategory[];
   onUpdate: () => void;
+  onTextSaved: (message: SyncaMessage) => void;
   onEdit: (message: SyncaMessage) => void;
 }
 
@@ -33,7 +35,7 @@ const CheckCircleOutline = ({ size = 20, color = 'currentColor' }: { size?: numb
   </svg>
 );
 
-export const MessageBubble: React.FC<Props> = React.memo(({ message, categories, onUpdate, onEdit, showsSeparator = true }) => {
+export const MessageBubble: React.FC<Props> = React.memo(({ message, categories, onUpdate, onEdit, onTextSaved, showsSeparator = true }) => {
   const [actionError, setActionError] = useState('');
   const canEditText = message.type === 'text' && !message.isDeleted && !message.imagePath && !message.imageUrl && !message.filePath && !message.fileUrl;
   const [copied, setCopied] = useState(false);
@@ -75,6 +77,31 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     if (ext === 'zip') return <FileArchive size={22} />;
     return <FileType2 size={22} />;
   }, [fileExtension]);
+
+  const taskInFlight = useRef(false);
+  const toggleTask = async (offset: number) => {
+    const source = message.textContent;
+    if (!canEditText || isProcessing || taskInFlight.current || !source) return;
+    const marker = source[offset];
+    if (source[offset - 1] !== '[' || source[offset + 1] !== ']' || ![' ', 'x', 'X'].includes(marker)) return;
+    taskInFlight.current = true;
+    setIsProcessing(true);
+    setActionError('');
+    try {
+      const text = source.slice(0, offset) + (marker === ' ' ? 'x' : ' ') + source.slice(offset + 1);
+      onTextSaved(await api.updateMessageText(message.id, text, message.updatedAt));
+    } catch (error) {
+      if (error instanceof MessageEditError) {
+        setActionError(t(error.code === 'message_edit_conflict' ? 'message_task.conflict' : 'message_task.unavailable'));
+        onUpdate();
+      } else {
+        setActionError(t('message_task.failed'));
+      }
+    } finally {
+      taskInFlight.current = false;
+      setIsProcessing(false);
+    }
+  };
 
   const handleClear = async () => {
     if (isProcessing) return;
@@ -190,6 +217,63 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     }
   };
 
+  const openRecordMenu = async (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
+    const recordMenu = window.syncaDesktop?.recordMenu;
+    const target = event.target;
+    const row = event.currentTarget;
+    if (!recordMenu || !(target instanceof Element) || !row.contains(target) ||
+      target.closest('input:not([type=checkbox]), textarea, [contenteditable=true]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const selection = window.getSelection();
+    const hasSelection = Boolean(selection && !selection.isCollapsed && selection.rangeCount && selection.getRangeAt(0).intersectsNode(row));
+    const link = target.closest<HTMLAnchorElement>('a[href]')?.href;
+    const items: (RecordMenuItem | null)[] = [];
+    if (hasSelection) items.push({id: 'copySelection', label: t('desktop_menu.copy_selection')});
+    if (link) items.push({id: 'openLink', label: t('desktop_menu.open_link')}, {id: 'copyLink', label: t('desktop_menu.copy_link')});
+    if (items.length) items.push(null);
+    const url = message.type === 'image' ? message.imageUrl : message.fileUrl;
+    const attachment = !expired && url && message.type !== 'text' ? {
+      url, name: message.fileName || url.split('/').pop() || 'attachment', kind: message.type, expiresAt: message.attachmentExpiresAt,
+    } : undefined;
+    const enabled = !isProcessing;
+    if (canEditText) items.push({id: 'edit', label: t('message_edit.title'), enabled});
+    if (message.type === 'text' || attachment?.kind === 'image') items.push({id: 'copyRecord',
+      label: t(message.type === 'text' && hasSelection ? 'desktop_menu.copy_record' : 'common.copy'), enabled: enabled && !isCopying});
+    if (attachment) {
+      if (attachment.kind === 'image' && window.syncaDesktop?.platform === 'macOS') items.push({id: 'preview', label: t('message_bubble.open_with_preview'), enabled});
+      items.push({id: 'save', label: t('common.save'), enabled},
+        {id: 'saveAs', label: t('message_bubble.save_as'), enabled},
+        {id: 'reveal', label: t(window.syncaDesktop?.platform === 'macOS' ? 'message_bubble.show_in_finder' : 'desktop_menu.show_folder'), enabled});
+    }
+    if (items.length && items.at(-1) !== null) items.push(null);
+    items.push({id: 'complete', label: t(message.isCleared ? 'storage.mark_incomplete' : 'storage.mark_complete'), enabled});
+    if (categories.length) items.push({id: 'category', label: t('storage.message_category'), enabled, options: categories.map(category => ({
+      id: category.id, label: category.isDefault ? t('message_category.default_badge') : category.name, checked: category.id === message.categoryId,
+    }))});
+    items.push(null, {id: 'delete', label: t('common.delete'), enabled});
+    const bounds = target.getBoundingClientRect();
+    const options: RecordMenuOptions = {items, attachment, link,
+      text: message.type === 'text' ? message.textContent ?? '' : undefined,
+      selection: hasSelection ? selection?.toString() : undefined,
+      x: 'clientX' in event ? event.clientX : bounds.left + 8, y: 'clientY' in event ? event.clientY : bounds.top + 8};
+    try {
+      const action = await recordMenu(options);
+      if (!action || !row.isConnected) return;
+      if (action === 'edit') onEdit(message);
+      else if (action === 'copied') setCopied(true);
+      else if (action === 'complete') await handleClear();
+      else if (action === 'delete') setShowDeleteModal(true);
+      else if (action === 'save' && attachment) {
+        if (attachment.kind === 'file') await handleFileDownload();
+        else await api.downloadProtectedFile(attachment.url, attachment.name, attachment.expiresAt);
+      } else if (action.startsWith('category:')) {
+        const id = action.slice('category:'.length);
+        if (categories.some(category => category.id === id)) await handleCategoryChange(id);
+      }
+    } catch (error) { if (row.isConnected) reportError(error); }
+  };
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes || bytes <= 0) return '';
     if (bytes < 1024) return `${bytes} B`;
@@ -199,11 +283,17 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
 
   return (
     <>
-      <div data-message-id={message.id} tabIndex={-1} className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
+      <div data-message-id={message.id} tabIndex={-1}
+        onContextMenu={openRecordMenu}
+        onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) void openRecordMenu(event); }}
+        className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
         {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (
-          <ExpandableMessageText key={message.textContent} text={message.textContent ?? ''}><MessageMarkdown text={message.textContent ?? ''} /></ExpandableMessageText>
+          <ExpandableMessageText text={message.textContent ?? ''}>
+            <MessageMarkdown text={message.textContent ?? ''} taskLabel={t('message_task.label')}
+              taskPending={isProcessing} onTaskToggle={canEditText ? toggleTask : undefined} />
+          </ExpandableMessageText>
         )}
         
         {!expired && message.type === 'image' && message.imageUrl && (

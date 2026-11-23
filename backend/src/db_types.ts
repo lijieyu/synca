@@ -2,7 +2,7 @@ import { Generated } from 'kysely';
 
 export interface UsersTable {
     id: string;
-    apple_user_id: string;
+    apple_user_id: string | null;
     email: string | null;
     nickname: string;
     trial_started_at: string | null;

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Synca Preview Access</title>
+<style>
+:root{color-scheme:light dark;font:15px -apple-system,BlinkMacSystemFont,sans-serif}
+body{margin:25px}label,input,button{display:block;margin-top:12px}input,button{box-sizing:border-box;width:100%;font:inherit;padding:9px}h1{font-size:23px}small{display:block;overflow-wrap:anywhere}#notice{min-height:20px}
+</style>
+<script defer src="tf-unlock-ui.js"></script>
+</head>
+<body>
+<h1 id="title">Unlock Synca Preview</h1>
+<small>https://synca-preview.haerth.cn</small>
+<p id="intro">Use your existing preview credentials. They are sent only to the protected Synca preview site.</p>
+<form id="form" autocomplete="off">
+<label for="user" id="user-label">Preview username</label><input id="user" maxlength="128" required autocomplete="off" spellcheck="false" autofocus>
+<label for="password" id="password-label">Preview password</label><input id="password" type="password" maxlength="256" required autocomplete="off">
+<button id="submit" type="submit">Unlock Preview</button>
+</form>
+<p id="notice" role="status" aria-live="polite"></p>
+</body>
+</html>

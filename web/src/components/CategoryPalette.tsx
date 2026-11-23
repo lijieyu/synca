@@ -52,9 +52,9 @@ export function CategoryPalette({ color, colorHex, onChange, expanded = false, s
   }, [open, supportsPopover]);
   const selectedHex = categoryHex(color, colorHex);
   const swatches = <div ref={popover} popover={expanded ? undefined : "manual"} className={expanded ? 'palette-grid' : 'palette-popover'} style={expanded ? undefined : position} role="group" aria-label={t('polish.color')}>
-    {CATEGORY_PALETTE.map(item => <button key={item.hex} type="button" title={t(`polish.colors.${item.name}`)} aria-label={t(`polish.colors.${item.name}`)} aria-pressed={selectedHex === item.hex} style={{ background: item.hex }} onClick={() => {
+    {CATEGORY_PALETTE.map(item => <button key={item.hex} type="button" title={t(`polish.colors.${item.name}`)} aria-label={t(`polish.colors.${item.name}`)} aria-pressed={selectedHex === item.hex} style={categoryStyle(item.hex, item.color)} onClick={() => {
       onChange(item.color, item.hex); setOpen(false); if (!expanded) trigger.current?.focus();
-    }}>{selectedHex === item.hex && <Check size={18} strokeWidth={2.5} />}</button>)}
+    }}><span className="palette-swatch" aria-hidden="true">{selectedHex === item.hex && <Check size={14} strokeWidth={3} />}</span></button>)}
   </div>;
   if (expanded) return swatches;
   return <div className="category-palette">
