@@ -33,9 +33,11 @@ const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arc
  appVersion:'1.2.0',buildVersion:'87',appCategoryType:'public.app-category.productivity',icon,
  // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
  // in force for this HTTPS-only archive; the renderer also has its own origin fence.
- extendInfo:{NSAppTransportSecurity:{}},
+ // Reviewed standard cryptography / no France distribution; see mas/README.md.
+ extendInfo:{NSAppTransportSecurity:{},ITSAppUsesNonExemptEncryption:false},
  afterCopy:[({buildPath})=>writeFile(path.join(buildPath,'preview-build.json'),JSON.stringify({mode}))],
 });
+execFileSync('/bin/bash',[path.resolve('mas/assert-export-compliance.sh'),path.join(out,'Synca.app/Contents/Info.plist')],{stdio:'inherit'});
 // Preserve the Electron app/binaries. Only the separate Xcode wrapper input
 // drops upstream build records so Xcode can generate this archive's own facts.
 const wrapperPlist=path.join(out,'SyncaWrapperInfo.plist');

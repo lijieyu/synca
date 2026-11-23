@@ -39,6 +39,6 @@ for arch in arm64 x64; do
   zip="electron-v$version-mas-$arch.zip"
   curl -fsSL --proto '=https' --max-time 300 "https://github.com/electron/electron/releases/download/v$version/$zip" -o "$root/runtime/$zip"
 done
-node --test mas-preflight.test.cjs mas/gate.test.cjs mas/release-config.test.cjs preview-config.test.cjs
+node --test mas/export-compliance.test.cjs mas-preflight.test.cjs mas/gate.test.cjs mas/release-config.test.cjs preview-config.test.cjs
 npm run build:ui
 SYNCA_MAS_RUNTIME_DIR="$root/runtime" SYNCA_MAS_PREFLIGHT_OUT="$root" node build-mas-preflight.mjs "$build_mode"

@@ -4,19 +4,14 @@ set -euo pipefail
 app="$SYNCA_TF_PREPARED_APP"
 dst="$TARGET_BUILD_DIR/$FULL_PRODUCT_NAME"
 "$SRCROOT/mas/assert-wrapper-metadata.sh" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
-# This workflow is for a private build. Do not add an export conclusion to
-# the package before Apple's build-specific compliance step.
-for key in ITSAppUsesNonExemptEncryption ITSEncryptionExportComplianceCode; do
-  if /usr/libexec/PlistBuddy -c "Print :$key" "$TARGET_BUILD_DIR/$INFOPLIST_PATH" >/dev/null 2>&1; then
-    echo "Unexpected encryption declaration in internal preview: $key" >&2
-    exit 1
-  fi
-done
+# Verify the Xcode-processed root plist, which is the one Apple receives.
+/bin/bash "$SRCROOT/mas/assert-export-compliance.sh" "$TARGET_BUILD_DIR/$INFOPLIST_PATH"
 root="$app/Contents"
 test -d "$root"
 test ! -d "$root/Frameworks/Squirrel.framework"
 test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$root/Info.plist")" = org.haerth.synca
 "$SRCROOT/mas/assert-ats-default.sh" "$root/Info.plist"
+/bin/bash "$SRCROOT/mas/assert-export-compliance.sh" "$root/Info.plist"
 icon=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIconFile' "$root/Info.plist")
 [[ "$icon" =~ ^[A-Za-z0-9_.-]+\.icns$ ]]
 "$SRCROOT/mas/icon.sh" verify "$root/Resources/$icon"
