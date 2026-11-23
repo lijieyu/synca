@@ -25,6 +25,9 @@ function secret() {
     if (!key || Buffer.byteLength(key) < 32) throw new LoginError('email_unavailable', 503);
     return key;
 }
+export function isEmailAuthConfigured(): boolean {
+    try { secret(); return isEmailDeliveryConfigured(); } catch { return false; }
+}
 function digest(id: string, code: string) { return createHmac('sha256', secret()).update(`${id}:${code}`).digest('hex'); }
 export function normalizeLoginEmail(value: string) {
     const email = value.trim().toLowerCase();

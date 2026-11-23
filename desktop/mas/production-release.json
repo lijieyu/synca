@@ -1,0 +1,9 @@
+{
+  "origin": "https://synca.haerth.cn",
+  "backendCommit": "e111f532669aca8f59add1f097860c446e99e76d",
+  "backendReleaseSha256": "e5d16fd3a62e06e508dbe9be3f0d03957917b0828a1c9d55f58bb6de5e13fa7c",
+  "productionMigrationVerified": true,
+  "safeRollbackVerified": true,
+  "realEmailLoginAndSyncVerified": true,
+  "webEmailHidden": true
+}

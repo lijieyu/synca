@@ -4,11 +4,12 @@ const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
+const {requestInstance}=require('./instance.cjs')
 
 const marker = path.join(__dirname, 'preview-build.json')
 const hasMarker = fs.existsSync(marker)
 const builtMode = hasMarker ? JSON.parse(fs.readFileSync(marker, 'utf8')).mode : 'production'
-if (hasMarker && !['preview', 'local-preview'].includes(builtMode)) throw Error('Invalid preview marker')
+if (hasMarker && !['preview', 'local-preview', 'mas-preflight', 'mas-testflight', 'mas-production'].includes(builtMode)) throw Error('Invalid preview marker')
 const baseCfg = variant(builtMode)
 const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   const secureFile = path.join(app.getPath('userData'), 'launch-admission')
@@ -23,12 +24,12 @@ const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   } finally { fs.closeSync(fd) }
 }}) : baseCfg
 const home = cfg.home
-if (cfg.isolated) {
+if (cfg.profile) {
   const smoke = /^[a-f0-9]{32}$/.test(process.env.SYNCA_PREVIEW_SMOKE_RUN || '') ? process.env.SYNCA_PREVIEW_SMOKE_RUN : ''
   const folder = path.join(app.getPath('appData'), cfg.profile + (smoke ? '-smoke-' + smoke : ''))
   fs.mkdirSync(folder, { recursive: true, mode: 0o700 })
   if (!fs.lstatSync(folder).isDirectory() || fs.realpathSync(folder) !== path.join(fs.realpathSync(app.getPath('appData')), path.basename(folder)))
-    throw Error('Preview profile is not an independent real directory')
+    throw Error('Desktop profile is not an independent real directory')
   app.setPath('userData', folder)
   app.setPath('sessionData', folder)
 }
@@ -36,7 +37,15 @@ const apple = 'https://appleid.apple.com'
 let quitting = false
 app.on('before-quit',()=>{quitting=true})
 const preferences = { sandbox: true, contextIsolation: true, nodeIntegration: false, webviewTag: false }
-let mainWindow
+let mainWindow, opening
+async function openWorkspace(){
+  if(mainWindow)return restore()
+  if(!opening)opening=(async()=>{
+    if(cfg.gate&&!await require('./tf-gate.cjs').ensureGate(session.defaultSession,home,require('electron')))return
+    if(!quitting)createWindow()
+  })().finally(()=>{opening=undefined})
+  return await opening
+}
 
 function origin(url) {
   return URL.canParse(url) ? new URL(url).origin : ''
@@ -50,7 +59,7 @@ function showSettings(){restore();mainWindow?.webContents.send('desktop:settings
 function createWindow() {
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
-    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
+    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
   mainWindow = window
   const page = window.webContents
   page.on('will-navigate', (event, url) => {
@@ -88,11 +97,10 @@ function createWindow() {
   void window.loadURL(home).catch(() => {})
 }
 
-if (!app.requestSingleInstanceLock()) app.quit()
+if (!requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
 else {
   app.on('second-instance', () => {
-    if (!mainWindow && app.isReady()) createWindow()
-    restore()
+    if (app.isReady()) void openWorkspace()
   })
   app.whenReady().then(() => {
     installLocalUI(session.defaultSession,cfg)
@@ -108,8 +116,8 @@ else {
         {type:'separator'},{role:'quit'}]},
       {role:'editMenu'}, {label:'View', submenu:[{label:app.getLocale().startsWith('zh')?'同步':'Sync',accelerator:'CommandOrControl+R',click:()=>mainWindow?.webContents.send('desktop:sync')},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}, {role:'windowMenu'}
     ]))
-    createWindow()
-    app.on('activate', () => { if (!mainWindow) createWindow();else restore() })
+    void openWorkspace()
+    app.on('activate', () => { void openWorkspace() })
   })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 }

@@ -1,3 +1,4 @@
+import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
@@ -37,7 +38,7 @@ app.use(requestContext);
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'X-Synca-Client', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
     exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id', 'X-Request-ID'],
 }));
 
@@ -60,7 +61,13 @@ app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_reco
 app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
 // Keep email sign-in and binding off until the operator explicitly enables them.
-if (process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true') {
+const emailAuthEnabled = process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true';
+app.get('/auth/capabilities', (req, res) => {
+    // Presentation rollout only; this header is not an authentication mechanism.
+    // Existing browser builds have no desktop marker and must keep Apple-only UI.
+    res.set('Cache-Control', 'no-store').vary('X-Synca-Client').json({email: req.get('X-Synca-Client') === 'desktop' && emailAuthEnabled && isEmailAuthConfigured()});
+});
+if (emailAuthEnabled) {
     app.use(createEmailAuthRouter());
 }
 app.use(createAIRouter(notifyOtherDevices));

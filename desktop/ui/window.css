@@ -38,7 +38,7 @@
 
 /* Keep settings clear of native traffic lights, including the minimum window. */
 .mac-window .settings-veil .desk-settings {
-  height: min(600px, calc(100dvh - 2 * var(--window-controls-height)));
+  height: min(620px, calc(100dvh - 2 * var(--window-controls-height)));
 }
 
 /* The shell already reserves the traffic-light strip; login uses the remainder. */

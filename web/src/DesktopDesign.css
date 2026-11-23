@@ -74,7 +74,7 @@
   .calm-main .input-shell .send-btn svg { width:29px; height:29px; }
 
   .settings-veil { background:#17141d55; backdrop-filter:blur(3px); }
-  .settings-veil .desk-settings { width:min(880px,calc(100% - 32px)); height:min(600px,calc(100dvh - 40px)); grid-template-columns:190px minmax(0,1fr); border-radius:16px; box-shadow:0 20px 70px #1c142c2b; }
+  .settings-veil .desk-settings { width:min(880px,calc(100% - 32px)); height:min(620px,calc(100dvh - 40px)); grid-template-columns:190px minmax(0,1fr); border-radius:16px; box-shadow:0 20px 70px #1c142c2b; }
   .desk-settings > aside { padding:22px 12px 16px; background:var(--sidebar-bg); border-right:1px solid var(--border-color); }
   .desk-settings aside > h1 { padding-inline:0; margin:0 12px 16px; font-size:17px; }
   .desk-settings aside > nav button { min-height:44px; gap:10px; padding:10px 12px; border-radius:9px; font-size:13px; }
@@ -93,16 +93,46 @@
   .settings-pref-group { border-radius:12px; padding-inline:16px; }
   .settings-pref-group label { min-height:62px; font-size:14px; }
   .desk-detail select { background:var(--sidebar-bg); font-size:13px; padding:8px 10px; }
-  .account-summary .account-avatar { background:var(--desktop-hover); width:46px; flex-basis:46px; height:46px; border-radius:50%; }
-  .account-summary .account-identity { padding-top:2px; gap:12px; }
-  .account-panel .account-summary { margin-bottom:12px; }
-  .account-panel .account-benefits { background:var(--panel-bg-color); }
-  .account-panel .account-management { margin-top:24px; }
+  .desk-settings .desk-detail-body { scrollbar-gutter:stable; }
+  .settings-title h2:focus { outline:none; }
+  .account-pages { font-size:14px; }
+  .account-pages > .account-identity { display:flex; align-items:center; gap:14px; margin:4px 0 24px; padding:0; border:0; }
+  .account-pages .account-avatar { display:grid; place-items:center; flex:0 0 44px; height:44px; border-radius:50%; background:var(--desktop-hover); color:var(--text-secondary); }
+  .account-pages .account-details { min-width:0; }
+  .account-pages .account-email { margin:0; font-size:15px; line-height:1.5; }
+  .account-pages .account-plan-subtitle { margin:4px 0 0; color:var(--text-secondary); font-size:12px; }
+  .account-pages > h3 { margin:24px 0 10px; font-size:12px; color:var(--text-secondary); font-weight:500; }
+  .account-group,.account-usage-group { border:1px solid var(--border-color); border-radius:11px; background:var(--panel-bg-color); overflow:hidden; }
+  .account-pages .account-row { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:54px; padding:14px 16px; border:0; border-radius:0; background:transparent; text-align:start; font-size:13px; line-height:1.5; }
+  .account-row > span { min-width:0; overflow-wrap:anywhere; }
+  .account-row svg { flex:none; color:var(--text-secondary); }
+  .account-row-detail { display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:12px; text-align:end; }
+  .account-row + .account-row { border-top:1px solid var(--border-color); }
+  .account-pages .account-row:hover { background:var(--desktop-hover); }
+  .account-pages .account-row:focus-visible { outline-offset:-3px; }
+  .account-usage-group { padding:16px; margin-top:12px; }
+  .account-usage-group .account-storage { margin:0; padding:0; border:0; }
+  .account-usage-group .account-daily-usage { margin:0 0 16px; }
+  .account-pages > .login-methods { border:0; padding:0; margin:0; }
+  .account-pages > .login-methods > h3 { display:none; }
+  .account-pages .login-method-rows { margin-top:20px; padding:0 16px; border:1px solid var(--border-color); border-radius:11px; background:var(--panel-bg-color); }
+  .account-pages .login-method-rows > div { min-height:72px; }
+  .account-pages .storage-plans { margin-top:0; }
+  .account-pages .storage-plans > section { border-color:var(--border-color); background:var(--panel-bg-color); border-radius:11px; padding:16px; }
+  .account-pages .plan-activated { padding:3px 8px; border-radius:6px; background:var(--desktop-hover); color:var(--text-secondary); font-size:11px; }
+  .account-pages .storage-plans li { margin-block:8px; line-height:1.6; }
+
+  .settings-embedded .ai-page .ai-card { border:1px solid var(--border-color); border-radius:11px; padding:16px; background:var(--panel-bg-color); }
+  .settings-embedded .ai-page .ai-card + .ai-card { margin-top:20px; }
+  .settings-embedded .ai-page .ai-section-heading { flex-wrap:wrap; margin-bottom:12px; }
+  .settings-embedded .ai-page .ai-log li { flex-wrap:wrap; gap:4px 16px; padding-block:12px; }
+  .settings-embedded .ai-page .ai-log li + li { border-top:1px solid var(--border-color); }
+  .settings-embedded .ai-page .ai-log time { margin-inline-start:auto; }
   .settings-embedded .category-manager-content .category-manager-row { min-height:60px; padding-block:8px; }
   .settings-embedded .category-manager-rows { border:1px solid var(--border-color); border-radius:12px; padding-inline:8px; }
   .settings-embedded .category-manager-row + .category-manager-row { border-top:1px solid var(--border-color); }
   .settings-embedded .category-manager-add { margin-top:12px; border:1px solid var(--border-color); border-radius:9px; min-height:44px; color:var(--text-secondary); }
-  .settings-embedded.feedback-modal .shell-form { gap:16px; padding-block:20px; }
+  .settings-embedded.feedback-modal .shell-form { gap:16px; margin:0; padding-block:20px; }
   .feedback-social { padding-top:12px; border-top:1px solid var(--border-color); }
   .feedback-social .developer-social-link { display:flex; align-items:center; gap:10px; min-height:44px; color:var(--text-main); font-size:13px; text-decoration:none; }
   .feedback-social a:hover { text-decoration:underline; text-underline-offset:3px; }
@@ -135,4 +165,10 @@
 @media (max-width:639px) {
   /* The new desktop icon treatment does not change the current mobile layout. */
   .developer-social-icon, .feedback-social { display:none; }
+}
+
+@media (min-width:640px) and (max-height:560px) {
+  .desk-settings > aside { padding-block:16px; }
+  .desk-settings aside > h1 { margin-bottom:12px; }
+  .desk-settings aside > nav button { min-height:40px; padding-block:8px; margin-block:1px; }
 }

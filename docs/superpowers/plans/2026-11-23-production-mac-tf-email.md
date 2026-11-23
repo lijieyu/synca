@@ -1,0 +1,11 @@
+# Production Mac TestFlight with desktop-only email entry
+
+User explicitly authorizes a production-connected Mac TF with email login/bidirectional in-app binding, while the already published production Web must not show email. This supersedes the historical isolated-only TF release restriction. No new UI/copy flows; reuse approved auth and settings.
+
+1. Add explicit `mas-production` variant, separate production user-data directory, no preview gate, preserved sandbox/signing/ATS fixes, universal Mac build86. Keep old isolated/preflight modes available. Preserve native iOS project.
+2. Backend capability reports email only to explicit desktop capability probes. This is UI rollout metadata, not an authentication boundary. Existing Web probes remain false even in already-open tabs; no Web redeploy is needed. All actual auth security/rate limits remain server-side.
+3. Reuse authorized DirectMail sender credential on-server only, own production signing secret;600 permissions. Rehearse full migration on a private consistent production DB copy; verify row identities/content/session preservation and foreign keys. Prepare safe rollback with email disabled and no email-derived admin bootstrap before activation. Do not copy test users or data into production.
+4. Run affected client/backend/MAS tests, build artifacts. Deploy only compatible backend, preserve original config/data/media and Web resources. Verify public Web capability false and desktop true, existing unauthenticated access guards and health. Send/redeem a real code to the previously approved owner test mailbox if connected inbox allows it; never expose codes/tokens in output. Verify same-account repeat login and designated test record readback.
+5. Record exact production backend commit/hash in release manifest, prepare Mac signed Cloud archive, commit/push normal integration with current remote baseline. Use existing dedicated Mac Cloud workflow once; no duplicate build and no unrelated iOS upload. Report confirmed submission stage, not unverified availability. Provide MacBook acceptance steps.
+
+Validation reuse: previous settings/search/149 checks are valid for unchanged code; rerun only affected tests. No Windows build. No changes to formal Web email UI. Existing two dirty operations docs remain outside this commit.
