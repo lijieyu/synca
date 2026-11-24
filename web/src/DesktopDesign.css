@@ -145,9 +145,10 @@
   .message-search-result mark { background:var(--selection-bg); }
 }
 @media (min-width:640px) and (hover:hover) and (pointer:fine) {
-  .calm-main .message-bubble .actions { opacity:0; transition:opacity 120ms ease; }
+  .calm-main .message-bubble .actions { opacity:0; pointer-events:none; transition:opacity 120ms ease; }
   .calm-main .message-bubble:hover .actions,
-  .calm-main .message-bubble:focus-within .actions { opacity:1; }
+  .calm-main .message-bubble:focus-visible .actions,
+  .calm-main .message-bubble:has(:focus-visible) .actions { opacity:1; pointer-events:auto; }
 }
 @media (min-width:640px) and (max-width:800px) {
   .calm-shell .calm-main > .header { min-height:80px; padding:14px 20px; }

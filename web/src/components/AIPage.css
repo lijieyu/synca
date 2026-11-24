@@ -28,11 +28,17 @@
 .ai-page .ai-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
 .ai-page .ai-text-link { background:transparent; color:var(--link-color); padding:4px 0; font-size:12px; min-height:32px; flex-shrink:0; border-radius:4px; }
 .ai-page .ai-guide-back { margin-bottom:12px; }
-.ai-page .ai-connection { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:12px; align-items:start; padding:15px 0; }
+.ai-page .ai-connection { display:grid; grid-template-columns:32px minmax(0,1fr); gap:0 12px; align-items:start; padding:15px 0; }
 .ai-page .ai-connection + .ai-connection { border-top:1px solid var(--ai-line); }
 .ai-page .ai-app-mark { width:32px; height:32px; border-radius:9px; background:var(--ai-subtle); display:grid; place-items:center; }
-.ai-page .ai-connection h3 { overflow-wrap:anywhere; margin-bottom:4px; }
-.ai-page .ai-connection .ai-revoke { background:transparent; color:var(--ai-muted); font-size:12px; padding:5px 0; min-height:28px; align-self:end; }
+.ai-page .ai-client-mask,.ai-page .ai-app-mark img { width:24px; height:24px; object-fit:contain; }
+.ai-page .ai-client-mask { display:block; background:var(--ai-ink); mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
+.ai-page .ai-connection-heading { grid-column:1 / -1; display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; column-gap:12px; }
+.ai-page .ai-connection-meta { grid-column:2; }
+.ai-page .ai-connection-heading h3 { flex:1; min-width:0; }
+.ai-page .ai-connection-heading .ai-revoke { flex-shrink:0; align-self:center; }
+.ai-page .ai-connection h3 { overflow-wrap:anywhere; margin-bottom:0; }
+.ai-page .ai-connection .ai-revoke { background:transparent; color:var(--ai-muted); font-size:12px; padding:5px 0; min-height:28px; align-self:center; }
 .ai-page .ai-log { list-style:none; margin:8px 0 0; padding:0; }
 .ai-page .ai-log li { display:flex; justify-content:space-between; gap:16px; align-items:baseline; padding:9px 0; overflow-wrap:anywhere; }
 .ai-page .ai-log li > span { min-width:0; }
@@ -69,7 +75,8 @@
   .ai-page .ai-content { padding:12px 20px 20px; }
   .ai-page h2,.ai-page h3 { font-size:15px; }
   .ai-page .ai-text-link { font-size:13px; min-height:44px; }
-  .ai-page .ai-connection { gap:8px; padding:14px 0; }
+  .ai-page .ai-connection { column-gap:8px; padding:14px 0; }
+  .ai-page .ai-connection-heading { column-gap:8px; }
   .ai-page .ai-connection .ai-revoke { min-height:44px; font-size:13px; }
   .ai-page .ai-connection .ai-muted { font-size:13px; }
   .ai-page .ai-log li { font-size:14px; gap:8px; }
@@ -77,7 +84,7 @@
   .ai-page button { min-height:44px; }
   .ai-page .ai-copy { min-height:44px; font-size:14px; }
 }
-@media(max-width:350px) { .ai-page .ai-connection { grid-template-columns:28px minmax(0,1fr); }.ai-page .ai-revoke { grid-column:2; justify-self:end; }.ai-page .ai-app-mark { width:28px; height:28px; } }
+@media(max-width:350px) { .ai-page .ai-connection { grid-template-columns:28px minmax(0,1fr); }.ai-page .ai-app-mark { width:28px; height:28px; }.ai-page .ai-connection-heading { grid-template-columns:28px minmax(0,1fr) auto; } }
 @media(prefers-reduced-motion:reduce) { .ai-page * { scroll-behavior:auto!important; } }
 
 .ai-page .ai-tutorial-heading { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:flex-start; gap:6px 8px; margin-bottom:8px; }
@@ -117,7 +124,9 @@
 .ai-page .ai-upgrade,.ai-page .ai-guide-action { border-top:1px solid var(--ai-line); padding-top:20px; margin-top:20px; }
 .ai-page .ai-upgrade h2 { margin:0 0 6px; font-size:16px; }
 .ai-page .ai-upgrade p { margin:0 0 16px; color:var(--ai-muted); }
-.ai-page .ai-upgrade-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.ai-page .ai-upgrade-actions { display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+.ai-page .ai-upgrade-actions .ai-primary { width:100%; }
+.ai-page .ai-upgrade-actions .ai-text-link { align-self:center; }
 .ai-page .ai-guide-action .ai-copy { margin-top:0; width:100%; }
 .ai-page .ai-environment-note { margin:20px 0 0; color:var(--ai-muted); font-size:13px; line-height:1.6; }
 .ai-page .ai-error { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }

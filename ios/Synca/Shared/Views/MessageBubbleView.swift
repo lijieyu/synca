@@ -1114,12 +1114,27 @@ private struct InternalLinkTextView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.adjustsFontForContentSizeCategory = true
         textView.dataDetectorTypes = []
-        // Keep UIKit's default link actions: tap opens, long press offers preview and copy.
+        // Keep system link actions without fetching a remote webpage preview.
+        textView.delegate = context.coordinator
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
         return textView
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        @available(iOS 17.0, *)
+        func textView(_ textView: UITextView, menuConfigurationFor textItem: UITextItem,
+                      defaultMenu: UIMenu) -> UITextItem.MenuConfiguration? {
+            // Only suppress URL previews; attachment/tag menus keep system behavior.
+            if case .link = textItem.content {
+                return UITextItem.MenuConfiguration(preview: nil, menu: defaultMenu)
+            }
+            return UITextItem.MenuConfiguration(preview: .default, menu: defaultMenu)
+        }
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
