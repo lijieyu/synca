@@ -47,7 +47,10 @@ struct FeedbackComposerView: View {
             #else
             NavigationStack {
                 feedbackContent
+                    .background(Color(uiColor: .systemBackground))
                     .disabled(isSubmitting)
+                    .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
+                    .toolbarBackground(.visible, for: .navigationBar)
                     .navigationTitle(String(syncaLocalized: "feedback.title", bundle: .main))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -128,6 +131,8 @@ struct FeedbackComposerView: View {
                 .frame(height: 150)
             #else
             TextEditor(text: $content)
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("feedback-content")
                 .frame(minHeight: 180)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -146,7 +151,7 @@ struct FeedbackComposerView: View {
         .background(editorBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
+                .strokeBorder(editorBorder, lineWidth: 1)
         )
     }
 
@@ -174,7 +179,7 @@ struct FeedbackComposerView: View {
                 .background(currentEditorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
+                        .strokeBorder(editorBorder, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -251,7 +256,7 @@ struct FeedbackComposerView: View {
         .background(editorBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
+                .strokeBorder(editorBorder, lineWidth: 1)
         )
     }
 
@@ -280,9 +285,20 @@ struct FeedbackComposerView: View {
         max(0, 3 - attachments.count)
     }
 
+    private var editorBorder: Color {
+        #if os(iOS)
+        Color.primary.opacity(0.10)
+        #else
+        Color.secondary.opacity(0.16)
+        #endif
+    }
+
     private var editorBackground: Color {
         #if os(iOS)
-        Color(uiColor: .secondarySystemBackground)
+        // Neutral field fill: secondarySystemBackground has a visible blue/purple cast.
+        Color(uiColor: UIColor { traits in
+            UIColor(white: traits.userInterfaceStyle == .dark ? 0.12 : 0.97, alpha: 1)
+        })
         #else
         Color(nsColor: .textBackgroundColor)
         #endif

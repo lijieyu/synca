@@ -1019,7 +1019,9 @@ struct MessageListView: View {
                 Color.black.opacity(0.30 * progress).ignoresSafeArea()
                     .onTapGesture { toggleDrawer(false) }.accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
+                    HStack(spacing: 10) {
+                        Image("LoginLogo").resizable().scaledToFit()
+                            .frame(width: 32, height: 32).accessibilityHidden(true)
                         Text("Synca").font(.title2.bold())
                         Spacer()
                         Button { toggleDrawer(false) } label: { Image(systemName: "xmark").frame(width: 44,height: 44) }
@@ -1046,19 +1048,22 @@ struct MessageListView: View {
                             }.accessibilityLabel(Text("message_category.add_action")).accessibilityIdentifier("drawer-add")
                         }
                     }
-                    if let status = accessManager.status { DailyQuotaView(status: status).padding(.horizontal, 12) }
                     Divider()
                     Button { toggleDrawer(false); showIOSSettings = true } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary)
-                            HStack(spacing: 6) {
-                                Text(api.currentUserEmail ?? String(syncaLocalized: "account.and_plan"))
-                                    .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
-                            }
-                            Spacer(minLength: 0)
+                            Text(api.currentUserEmail ?? String(syncaLocalized: "account.and_plan"))
+                                .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: 8)
+                            Image(systemName: "gearshape").font(.system(size: 19)).foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }.frame(minHeight: 44).contentShape(Rectangle())
                     }.accessibilityIdentifier("drawer-settings").keyboardShortcut(",", modifiers:.command)
+                     .accessibilityLabel(Text("settings.title") + Text("、" + (api.currentUserEmail ?? String(syncaLocalized: "account.and_plan"))))
+                    if let status = accessManager.status {
+                        DailyQuotaView(status: status).padding(.horizontal, 12)
+                            .accessibilityIdentifier("drawer-daily-quota")
+                    }
                 }
                 .buttonStyle(.plain).padding(.horizontal,16).padding(.vertical,8)
                 .frame(width: width)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowLeft, Copy, Check, Blocks, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +7,7 @@ import { LoginView } from './LoginView';
 import { PlanDialog } from './PlanDialog';
 import { Modal } from './Modal';
 import './AIPage.css';
+import { AIClientIcon } from './AIClientIcon';
 import { copyText } from '../utils/clipboard';
 
 type Scope = 'read' | 'create' | 'update' | 'delete' | 'attachments';
@@ -138,9 +139,19 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
   const restricted = loadError === 'preview_operation_disabled';
   const canCopy = isAuthenticated && accessStatus?.isUnlimited === true && loaded && !loadError;
   const retry = () => { setError(''); setLoadAttempt(value => value + 1); };
+  const openUpgrade = () => {
+    const bridge = (window as Window & { webkit?: { messageHandlers?: { syncaAIUpgrade?: { postMessage: (value: string) => void } } } }).webkit?.messageHandlers?.syncaAIUpgrade;
+    if (bridge) bridge.postMessage('upgrade');
+    else setPlanVisible(true);
+  };
+  useEffect(() => {
+    const updated = () => { void refreshAccessStatus(); setLoadAttempt(value => value + 1); };
+    window.addEventListener('synca-native-access-updated', updated);
+    return () => window.removeEventListener('synca-native-access-updated', updated);
+  }, [refreshAccessStatus]);
   const upgrade = <section className="ai-upgrade">
     <h2>{t('ai_page.text_039')}</h2><p>{t('ai_layout.pro_required')}</p>
-    <div className="ai-upgrade-actions"><button className="ai-primary" onClick={() => setPlanVisible(true)}>{t('ai_page.text_041')}</button>
+    <div className="ai-upgrade-actions"><button className="ai-primary" onClick={openUpgrade}>{t('ai_page.text_041')}</button>
       <button className="ai-text-link" disabled={busy} onClick={() => void act(async () => {
         await refreshAccessStatus();
         if (authorize) setAuthorization(await request<Authorization>(`authorization/${encodeURIComponent(authorize)}`));
@@ -186,10 +197,13 @@ export function AIPage({ presentation = 'page' }: { presentation?: 'page' | 'dia
     {isAuthenticated && !authorize && loaded && !showingTutorial && <>
       <section className="ai-card ai-connections"><div className="ai-section-heading"><h2>{t('ai_page.text_057')}</h2><button className="ai-text-link" data-guide-link onClick={() => changeGuide(true)}>{t('polish.tutorial')}</button></div>
         {!activeConnections.length && <p className="ai-muted">{t('ai_page.text_058')}</p>}
-        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div className="ai-app-mark" aria-hidden="true"><Blocks size={17} /></div><div className="ai-connection-meta"><h3>{c.name}</h3>
+        {activeConnections.map(c => <article className="ai-connection" key={c.id}><div className="ai-connection-heading"><AIClientIcon name={c.name} />
+              <h3>{c.name}</h3>
+              <button className="ai-revoke" disabled={busy} onClick={() => setRevokeTarget(c)}>{t('ai_page.text_063')}</button>
+            </div><div className="ai-connection-meta">
           <p className="ai-muted">{t('ai_page.text_059')}{new Date(c.expires_at).toLocaleDateString(i18n.language)}</p>
           <p className="ai-muted">{t('ai_page.text_060')}{c.last_used_at ? new Date(c.last_used_at).toLocaleString(i18n.language) : t('ai_page.text_061')}</p></div>
-          <button className="ai-revoke" disabled={busy} onClick={() => setRevokeTarget(c)}>{t('ai_page.text_063')}</button></article>)}
+          </article>)}
       </section>
       <section className="ai-card ai-recent"><h2>{t('ai_page.text_064')}</h2>{!operations.length && <p className="ai-muted">{t('ai_page.text_065')}</p>}
         <ul className="ai-log" id="ai-operation-list">{(operationsExpanded ? operations : operations.slice(0, 3)).map(o => <li key={o.id}><span>{actionLabels[o.kind] ?? o.kind}<small>{o.connectionName ? `${o.connectionName} · ` : ''}{statusLabels[o.status] ?? o.status}</small></span><time dateTime={o.created_at}>{new Date(o.created_at).toLocaleString(i18n.language)}</time></li>)}</ul>

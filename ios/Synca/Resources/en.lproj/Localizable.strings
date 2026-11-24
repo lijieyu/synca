@@ -418,3 +418,13 @@
 "search.count" = "%ld records found";
 
 "account.current_plan" = "Current plan";
+
+// Compact Pro upgrade presentation
+"upgrade.current_free" = "Current plan: Free";
+"upgrade.files_title" = "File transfers";
+"upgrade.files_detail" = "Up to 200 MB per file";
+"upgrade.storage_title" = "More attachment storage";
+"upgrade.storage_detail" = "1 GB storage · Attachments kept for 30 days";
+"upgrade.ai_title" = "Connect AI";
+"upgrade.ai_detail" = "Find, organize and save records";
+"upgrade.purchase" = "Upgrade to Synca Pro";

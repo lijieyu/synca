@@ -13,11 +13,12 @@ edit('Shared/Core/APIClient.swift','self.currentUserId = UserDefaults.standard.s
 edit('Shared/Core/APIClient.swift','self.currentUserEmail = UserDefaults.standard.string(forKey: currentUserEmailKey)','self.currentUserEmail = "alex@example.com"')
 edit('Shared/Core/APIClient.swift','self.baseURL = (Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String) ?? "http://127.0.0.1:3000"','self.baseURL = "http://127.0.0.1:54671"')
 edit('Shared/Core/PurchaseManager.swift','updatesTask = observeTransactionUpdates()','// No StoreKit observation in visual fixture')
+edit('Shared/Core/PurchaseManager.swift','func loadProducts() async {','func loadProducts() async { if ProcessInfo.processInfo.arguments.contains("-qa-products-unavailable") { return };')
 edit('Shared/Core/AccessManager.swift','func refresh() async -> Bool {','func refresh() async -> Bool { return true;')
-edit('Shared/Core/AccessManager.swift','private init() {}','private init() { status = AccessStatus(plan: "free", isUnlimited: false, isTrial: false, unlimitedSource: nil, trialEndsAt: nil, daysLeft: nil, todayUsed: 7, todayLimit: 20, dailyResetAt: "2026-11-25T00:00:00Z", purchaseDate: nil, subscriptionExpiresAt: nil, storeProductId: nil, lifetimeUpgradeOffer: nil) }')
+edit('Shared/Core/AccessManager.swift','private init() {}','private init() { status = AccessStatus(storage: StorageAllowance(usedBytes: 25165824, limitBytes: 104857600, imageLimitBytes: 52428800, fileLimitBytes: 209715200, retentionDays: 3, canUploadFiles: false), plan: "free", isUnlimited: false, isTrial: false, unlimitedSource: nil, trialEndsAt: nil, daysLeft: nil, todayUsed: 7, todayLimit: 20, dailyResetAt: "2026-11-25T00:00:00Z", purchaseDate: nil, subscriptionExpiresAt: nil, storeProductId: nil, lifetimeUpgradeOffer: nil) }')
 now='2026-11-24T05:30:00.000Z'
 cats=[dict(id=str(i),userId='visual-fixture',name=n,color=c,isDefault=i==0,sortOrder=i,createdAt=now,updatedAt=now) for i,(n,c) in enumerate([('默认','slate'),('工作','sky'),('生活','mint'),('灵感','violet')])]
-msgs=[dict(id=str(i),userId='visual-fixture',type='text',textContent=t,categoryId=str(c),categoryName=cats[c]['name'],categoryColor=cats[c]['color'],categoryIsDefault=c==0,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i,(t,c) in enumerate([('把零散的想法，留在一个地方。 https://example.com',0),('周末去看新展览，记得提前预约。',2),('下一版：让记录和整理，都更轻松。',3)])]
+msgs=[dict(id=str(i),userId='visual-fixture',type='text',textContent=t,categoryId=str(c),categoryName=cats[c]['name'],categoryColor=cats[c]['color'],categoryIsDefault=c==0,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i,(t,c) in enumerate([('把零散的想法，留在一个地方。\nhttps://example.com',0),('周末去看新展览，记得提前预约。',2),('下一版：让记录和整理，都更轻松。',3)])]
 # Optional image-heavy feed uses only deterministic loopback attachments.
 if '--images' in sys.argv[2:]:
  msgs=[dict(id=str(i),userId='visual-fixture',type='image',imageUrl='http://127.0.0.1:54671/image/'+str(i)+'.png',categoryId='1',categoryName='工作',categoryColor='sky',categoryIsDefault=False,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i in range(6)]
@@ -30,6 +31,7 @@ for p in dst.rglob('*.swift'):
  s=p.read_text().replace('https://synca.haerth.cn','http://127.0.0.1:54671');p.write_text(s)
 p=dst/'project.yml';s=p.read_text().replace('org.haerth.synca','org.haerth.synca.iospolishqa');s=s.replace('schemes:\n','  PolishUITests:\n    type: bundle.ui-testing\n    platform: iOS\n    sources: [UITests]\n    dependencies:\n      - target: Synca\n    settings:\n      base:\n        TEST_TARGET_NAME: Synca\n        GENERATE_INFOPLIST_FILE: YES\nschemes:\n');s=s.replace('    test:\n      config: Production','    test:\n      config: Production\n      targets: [PolishUITests]',1);p.write_text(s)
 (dst/'UITests').mkdir();shutil.copy(tests/'PolishTests.swift',dst/'UITests/PolishTests.swift')
+shutil.copy(tests/'UpgradePreview.storekit',dst/'UITests/UpgradePreview.storekit')
 if integration:
  for name in ['SyncManager.swift','AccessManager.swift']: shutil.copy(src/'Shared/Core'/name,dst/'Shared/Core'/name)
  (dst/'Shared/App/SyncaApp.swift').write_text('import SwiftUI\n@main struct SyncaApp: App { var body: some Scene { WindowGroup { Text("Isolated sync verification") } } }')

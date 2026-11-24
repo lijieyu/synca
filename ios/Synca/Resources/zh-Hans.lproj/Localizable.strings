@@ -418,3 +418,13 @@
 "search.count" = "找到 %ld 条记录";
 
 "account.current_plan" = "当前套餐";
+
+// Compact Pro upgrade presentation
+"upgrade.current_free" = "当前：免费版";
+"upgrade.files_title" = "文件传输";
+"upgrade.files_detail" = "单个文件最大 200 MB";
+"upgrade.storage_title" = "更大附件空间";
+"upgrade.storage_detail" = "1 GB 空间 · 附件保留 30 天";
+"upgrade.ai_title" = "连接 AI";
+"upgrade.ai_detail" = "查找、整理和保存记录";
+"upgrade.purchase" = "升级 Synca Pro";

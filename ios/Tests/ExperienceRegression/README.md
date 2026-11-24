@@ -38,3 +38,9 @@ Results: 8 targeted UI tests passed across the existing iPhone 17 and iPad Pro 1
 Local screenshots and comparison: `/Users/haer/Documents/Codex/2026-11-24/synca-ios-detail/comparison.html`.
 
 The iPad rotation test asserts the actual application frame is wider than tall. Screenshot export still exhibited orientation/cropping inconsistencies with the simulator capture API, so iPad captures are excluded from the visual comparison; device visual acceptance remains necessary.
+
+## Pro upgrade presentation (2026-11-24)
+
+`testUpgradePresentation` uses the loopback AI service and bundled `UpgradePreview.storekit` through `SKTestSession`. It checks the native upgrade sheet opened from Connect AI in light/dark, product-unavailable light/dark, maximum accessibility text, and English. The test product price is fixture-only (CNY 98.00), not a change to App Store pricing. No purchase or restore transaction is submitted. It checks product display, reachable primary/restore actions and close returning to the AI page.
+
+The fixture-only `-qa-products-unavailable` launch argument skips loading products to exercise the error layout; this switch is never added to product source. The product page continues to call the existing PurchaseManager transaction methods.

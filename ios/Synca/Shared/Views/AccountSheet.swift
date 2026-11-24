@@ -73,11 +73,9 @@ struct AccountSheet: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 6)
-            }
-            Section {
                 NavigationLink {
                     ScrollView { AccessCenterView(embedded: true).padding(20) }
-                        .navigationTitle("access.center_title").navigationBarTitleDisplayMode(.inline)
+                        .navigationTitle(accessManager.status?.unlimitedSource == "lifetime" || accessManager.status?.unlimitedSource == "subscription" ? String(syncaLocalized: "access.center_title") : "").navigationBarTitleDisplayMode(.inline)
                 } label: {
                     ViewThatFits(in: .horizontal) {
                         HStack {
@@ -92,9 +90,7 @@ struct AccountSheet: View {
                     }
                 }
                 .accessibilityIdentifier("account-plan")
-            }
-            if let storage = accessManager.status?.storage {
-                Section {
+                if let storage = accessManager.status?.storage {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("storage.used").font(.subheadline)
                         Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
@@ -109,8 +105,6 @@ struct AccountSheet: View {
                     if embedded { onRequestLogout() } else { runAfterDismiss(onRequestLogout) }
                 }
                     .foregroundStyle(.primary).accessibilityIdentifier("account-signout")
-            }
-            Section {
                 Button("account.delete_action", role: .destructive) {
                     if embedded { onRequestDeleteAccount() } else { runAfterDismiss(onRequestDeleteAccount) }
                 }
