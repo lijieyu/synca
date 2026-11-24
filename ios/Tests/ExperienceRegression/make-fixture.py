@@ -37,6 +37,10 @@ if integration:
  (dst/'Shared/App/SyncaApp.swift').write_text('import SwiftUI\n@main struct SyncaApp: App { var body: some Scene { WindowGroup { Text("Isolated sync verification") } } }')
  shutil.rmtree(dst/'UITests'); (dst/'IntegrationTests').mkdir()
  shutil.copy(tests/'SyncIntegrationTests.swift',dst/'IntegrationTests/SyncIntegrationTests.swift')
+ shutil.copy(tests/'EmailAuthTests.swift',dst/'IntegrationTests/EmailAuthTests.swift')
+ # Force a session switch during the StoreKit await, without adding test hooks to product code.
+ edit('Shared/Core/PurchaseManager.swift','await Transaction.latest(for: productID)','await PurchaseSessionFixture.latest(for: productID)')
+ (dst/'Shared/Core/PurchaseSessionFixture.swift').write_text('import StoreKit\n@MainActor enum PurchaseSessionFixture { static var switchSession = false; static func latest(for productID: String) async -> VerificationResult<Transaction>? { if switchSession { switchSession = false; APIClient.shared.setToken("next-session", userId: "next-user") }; return nil } }')
  p=dst/'project.yml';s=p.read_text().replace('PolishUITests','SyncIntegrationTests').replace('type: bundle.ui-testing','type: bundle.unit-test').replace('sources: [UITests]','sources: [IntegrationTests]').replace('TEST_TARGET_NAME: Synca','SWIFT_VERSION: 5.0');p.write_text(s)
 else:
  # Permit only the loopback fixture origin, never a real account or external HTTP.
@@ -44,5 +48,8 @@ else:
  edit('Shared/Core/EmbeddedAISession.swift','url.host?.lowercased() == "synca.haerth.cn"','url.host?.lowercased() == "127.0.0.1"')
  edit('Shared/Core/EmbeddedAISession.swift','(url.port == nil || url.port == 443)','url.port == 54671')
  edit('Shared/Views/AIConnectionView.swift','if scheme == "https", url.user == nil','if scheme == "http", url.host == "127.0.0.1", url.port == 54671, url.user == nil')
+if '--email' in sys.argv[2:]:
+ edit('Shared/Core/APIClient.swift','self.token = "visual-fixture"','self.token = ProcessInfo.processInfo.arguments.contains("-qa-signed-out") ? nil : "visual-fixture"')
+ shutil.copy(tests/'EmailUITests.swift',dst/'UITests/EmailUITests.swift')
 (dst/'fixture-records.json').write_text(json.dumps(msgs,ensure_ascii=False))
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)

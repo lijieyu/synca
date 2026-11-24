@@ -74,6 +74,10 @@ struct AccountSheet: View {
                     }
                 }.padding(.vertical, 6)
                 NavigationLink {
+                    LoginMethodsView()
+                } label: { Text("email_auth.methods") }
+                .accessibilityIdentifier("account-login-methods")
+                NavigationLink {
                     ScrollView { AccessCenterView(embedded: true).padding(20) }
                         .navigationTitle(accessManager.status?.unlimitedSource == "lifetime" || accessManager.status?.unlimitedSource == "subscription" ? String(syncaLocalized: "access.center_title") : "").navigationBarTitleDisplayMode(.inline)
                 } label: {

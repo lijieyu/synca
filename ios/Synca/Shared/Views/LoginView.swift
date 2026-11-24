@@ -9,6 +9,7 @@ import AppKit
 struct LoginView: View {
     @StateObject private var authService = AuthService.shared
     @State private var showError = false
+    @State private var showEmail = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -69,6 +70,16 @@ struct LoginView: View {
                 .id(colorScheme) // Ensure native component recreates on color scheme change
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
+                #if os(iOS)
+                Button { showEmail = true } label: {
+                    Label("email_auth.email_login", systemImage: "envelope")
+                        .font(.body.weight(.semibold)).foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain).disabled(authService.isSigningIn)
+                .accessibilityIdentifier("email-login")
+                #endif
             }
             .padding(.horizontal, 40)
             .padding(.bottom, 60)
@@ -76,6 +87,12 @@ struct LoginView: View {
         .background(backgroundColor.ignoresSafeArea())
         #if os(macOS)
         .frame(minWidth: 320, minHeight: 420)
+        #endif
+        #if os(iOS)
+        .sheet(isPresented: $showEmail) {
+            NavigationStack { EmailLoginView() }
+                .syncaPreferences()
+        }
         #endif
         .alert(Text("login.failed", bundle: .main), isPresented: $showError) {
             Button("common.ok") {}
