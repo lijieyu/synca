@@ -140,8 +140,8 @@ struct IOSSettingsView: View {
     @State private var path: [Destination] = []
     @State private var feedbackPresented = false
     let onClose: () -> Void
-    let onRequestDeleteAccount: () -> Void
-    let onRequestLogout: () -> Void
+    let onDeleteAccount: () async throws -> Void
+    let onLogout: () -> Void
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -208,7 +208,7 @@ struct IOSSettingsView: View {
         switch destination {
         case .account:
             AccountSheet(embedded: true, accountEmail: api.currentUserEmail,
-                onRequestDeleteAccount: onRequestDeleteAccount, onRequestLogout: onRequestLogout)
+                onDeleteAccount: onDeleteAccount, onLogout: onLogout)
                 .navigationTitle("account.and_plan")
         case .categories:
             MessageCategoryManagerSheet(embedded: true).navigationTitle("message_list.manage_categories")

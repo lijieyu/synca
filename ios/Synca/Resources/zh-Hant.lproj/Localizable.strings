@@ -488,3 +488,5 @@
 "email_auth.valid_duration" = "10 分鐘內有效";
 "email_auth.email_title" = "電子郵件登入";
 "email_auth.logged_in" = "登入成功";
+
+"email_auth.signup_agreement" = "未註冊的電子郵件驗證後將自動建立帳號。繼續即表示你同意%@和%@。";

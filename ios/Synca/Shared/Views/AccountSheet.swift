@@ -12,8 +12,13 @@ struct AccountSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let accountEmail: String?
-    let onRequestDeleteAccount: () -> Void
-    let onRequestLogout: () -> Void
+    let onDeleteAccount: () async throws -> Void
+    let onLogout: () -> Void
+    @State private var showLogoutConfirm = false
+    @State private var showDeleteConfirm = false
+    @State private var showDeleteSuccess = false
+    @State private var deleteError: String?
+    @State private var isDeletingAccount = false
 
     private var normalizedAccountEmail: String? {
         let trimmed = accountEmail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -30,14 +35,56 @@ struct AccountSheet: View {
             ?? String(syncaLocalized: "account.email_unavailable", bundle: .main)
     }
 
-    private func runAfterDismiss(_ action: @escaping () -> Void) {
-        dismiss()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            action()
+    var body: some View {
+        platformContent
+            .disabled(isDeletingAccount)
+            .interactiveDismissDisabled(isDeletingAccount)
+            #if os(iOS)
+            .navigationBarBackButtonHidden(isDeletingAccount)
+            #endif
+            .overlay {
+                if isDeletingAccount { ProgressView().padding(20).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) }
+            }
+            .alert("message_list.logout_confirm_title", isPresented: $showLogoutConfirm) {
+                Button("common.cancel", role: .cancel) {}
+                Button("message_list.logout", role: .destructive, action: onLogout)
+            } message: { Text("message_list.logout_confirm_message") }
+            .alert("account.delete_confirm_title", isPresented: $showDeleteConfirm) {
+                Button("common.cancel", role: .cancel) {}
+                Button("account.delete_action", role: .destructive) { deleteAccount() }
+            } message: { Text("account.delete_confirm_message") }
+            .alert("account.delete_success_title", isPresented: $showDeleteSuccess) {
+                Button("common.ok", action: onLogout)
+            } message: { Text("account.delete_success_message") }
+            .alert("account.delete_failed_title", isPresented: Binding(
+                get: { deleteError != nil }, set: { if !$0 { deleteError = nil } }
+            )) {
+                Button("common.ok", role: .cancel) { deleteError = nil }
+            } message: { Text(deleteError ?? String(syncaLocalized: "account.delete_failed_message")) }
+    }
+
+    private func deleteAccount() {
+        guard !isDeletingAccount else { return }
+        isDeletingAccount = true
+        Task { @MainActor in
+            defer { isDeletingAccount = false }
+            do {
+                try await onDeleteAccount()
+                showDeleteSuccess = true
+                #if os(iOS)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                #endif
+            } catch {
+                deleteError = (error as? LocalizedError)?.errorDescription
+                    ?? String(syncaLocalized: "account.delete_failed_message")
+                #if os(iOS)
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                #endif
+            }
         }
     }
 
-    var body: some View {
+    @ViewBuilder private var platformContent: some View {
         #if os(macOS)
         VStack(spacing: 0) {
             MacSheetHeader(title: "account.and_plan")
@@ -66,13 +113,6 @@ struct AccountSheet: View {
     private var iosAccountContent: some View {
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(resolvedAccountEmail).font(.headline).textSelection(.enabled)
-                    if isPrivateRelayEmail {
-                        Label("account.email_hidden_title", systemImage: "eye.slash")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }.padding(.vertical, 6)
                 NavigationLink {
                     LoginMethodsView()
                 } label: { Text("email_auth.methods") }
@@ -81,40 +121,63 @@ struct AccountSheet: View {
                     ScrollView { AccessCenterView(embedded: true).padding(20) }
                         .navigationTitle(accessManager.status?.unlimitedSource == "lifetime" || accessManager.status?.unlimitedSource == "subscription" ? String(syncaLocalized: "access.center_title") : "").navigationBarTitleDisplayMode(.inline)
                 } label: {
-                    ViewThatFits(in: .horizontal) {
-                        HStack {
-                            Text("account.current_plan")
-                            Spacer(minLength: 12)
-                            iosPlanName
+                    VStack(alignment: .leading, spacing: 16) {
+                        ViewThatFits(in: .horizontal) {
+                            HStack {
+                                Text("account.current_plan")
+                                Spacer(minLength: 12)
+                                iosPlanName
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("account.current_plan")
+                                iosPlanName
+                            }
                         }
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("account.current_plan")
-                            iosPlanName
+                        if let storage = accessManager.status?.storage {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ViewThatFits(in: .horizontal) {
+                                    HStack {
+                                        Text("storage.used")
+                                        Spacer(minLength: 8)
+                                        storageUsage(storage)
+                                    }
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("storage.used")
+                                        storageUsage(storage)
+                                    }
+                                }.font(.caption).foregroundStyle(.secondary)
+                                ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                                    .tint(.secondary).accessibilityHidden(true)
+                            }
                         }
-                    }
+                    }.padding(.vertical, 6)
                 }
                 .accessibilityIdentifier("account-plan")
-                if let storage = accessManager.status?.storage {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("storage.used").font(.subheadline)
-                        Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
-                            .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                        ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
-                            .accessibilityHidden(true)
-                    }.padding(.vertical, 4).accessibilityElement(children: .combine)
-                }
+            } header: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(resolvedAccountEmail).font(.headline).foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                    if isPrivateRelayEmail {
+                        Label("account.email_hidden_title", systemImage: "eye.slash")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }.textCase(nil).padding(.bottom, 8)
             }
             Section {
                 Button("message_list.sign_out") {
-                    if embedded { onRequestLogout() } else { runAfterDismiss(onRequestLogout) }
+                    showLogoutConfirm = true
                 }
                     .foregroundStyle(.primary).accessibilityIdentifier("account-signout")
                 Button("account.delete_action", role: .destructive) {
-                    if embedded { onRequestDeleteAccount() } else { runAfterDismiss(onRequestDeleteAccount) }
+                    showDeleteConfirm = true
                 }
                     .accessibilityIdentifier("account-delete")
             }
         }
+    }
+    private func storageUsage(_ storage: StorageAllowance) -> some View {
+        Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+            .monospacedDigit()
     }
     @ViewBuilder
     private var iosPlanName: some View {
@@ -203,14 +266,14 @@ struct AccountSheet: View {
     @ViewBuilder
     private var accountActions: some View {
         Button(role: .destructive) {
-            runAfterDismiss(onRequestDeleteAccount)
+            showDeleteConfirm = true
         } label: {
             Text("account.delete_action").foregroundStyle(.red).frame(minHeight: 44)
         }
         .buttonStyle(.plain)
 
         Button {
-            runAfterDismiss(onRequestLogout)
+            showLogoutConfirm = true
         } label: {
             Text("message_list.sign_out").frame(minHeight: 44)
         }

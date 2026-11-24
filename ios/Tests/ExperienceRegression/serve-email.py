@@ -5,6 +5,9 @@ import json
 methods = {'apple': True, 'email': None}
 access = {'plan':'free','isUnlimited':False,'isTrial':False,'todayUsed':0,'todayLimit':20,'dailyResetAt':'2099-12-31T00:00:00Z'}
 class Handler(BaseHTTPRequestHandler):
+ def do_DELETE(self):
+  # Explicit failure: never delete anything, even in this isolated fixture.
+  self.reply({'error':'fixture_delete_failed'},500)
  def reply(self, data, status=200):
   payload=json.dumps(data).encode(); self.send_response(status); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(payload))); self.end_headers(); self.wfile.write(payload)
  def do_GET(self):

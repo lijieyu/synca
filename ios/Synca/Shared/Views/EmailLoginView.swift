@@ -73,9 +73,10 @@ struct EmailLoginView: View {
                         }.font(.subheadline).frame(minHeight: 44)
                     }
                 } else {
-                    Text(binding ? "email_auth.bind_description" : "email_auth.signup_hint")
-                        .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    if !binding { legalLinks }
+                    if binding {
+                        Text("email_auth.bind_description")
+                            .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    } else { legalLinks }
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         if model.resendSeconds > 0 {
                             Text(String(format: String(syncaLocalized: "email_auth.resend_wait"), model.resendSeconds))
@@ -142,13 +143,25 @@ struct EmailLoginView: View {
         }
     }
     private var legalLinks: some View {
-        VStack(spacing: 0) {
-            Text("email_auth.terms_prefix").font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 16) {
-                Link("access.terms_link_title", destination: AppLinks.termsOfUseURL)
-                Link("access.privacy_policy_link_title", destination: AppLinks.privacyPolicyURL)
-            }.font(.caption).frame(minHeight: 44)
-        }.frame(maxWidth: .infinity)
+        Text(signupAgreement)
+            .font(.footnote).foregroundStyle(.secondary).tint(.primary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("email-signup-agreement")
+    }
+
+    private var signupAgreement: AttributedString {
+        // One localized paragraph; links wrap naturally with the surrounding copy.
+        let format = String(syncaLocalized: "email_auth.signup_agreement")
+        let terms = String(syncaLocalized: "access.terms_link_title")
+        let privacy = String(syncaLocalized: "access.privacy_policy_link_title")
+        var paragraph = AttributedString(String(format: format, terms, privacy))
+        for (title, url) in [(terms, AppLinks.termsOfUseURL), (privacy, AppLinks.privacyPolicyURL)] {
+            if let range = paragraph.range(of: title) {
+                paragraph[range].link = url
+                paragraph[range].underlineStyle = .single
+            }
+        }
+        return paragraph
     }
     private func submit() {
         guard !model.isBusy else { return }

@@ -27,10 +27,15 @@ struct LoginMethodsView: View {
                         }
                     }.frame(minHeight: 32)
                     if let email = methods.email {
-                        VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 16) {
                             Label("email_auth.email_label", systemImage: "envelope")
-                            Text(email).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
-                        }.padding(.vertical, 4)
+                                .labelStyle(.titleAndIcon)
+                                .fixedSize(horizontal: true, vertical: false)
+                            Spacer(minLength: 0)
+                            Text(email).font(.subheadline).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                                .accessibilityLabel(email)
+                        }.frame(minHeight: 32)
                     } else {
                         NavigationLink {
                             EmailLoginView(binding: true) { result in

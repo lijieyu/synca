@@ -488,3 +488,5 @@
 "email_auth.valid_duration" = "Valid for 10 minutes";
 "email_auth.email_title" = "Email login";
 "email_auth.logged_in" = "Signed in";
+
+"email_auth.signup_agreement" = "New email addresses create an account after verification. By continuing, you agree to the %@ and %@.";
