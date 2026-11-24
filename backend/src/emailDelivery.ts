@@ -106,6 +106,17 @@ export async function sendVerificationEmail({ email, code, locale }: Verificatio
             || !('RequestId' in result) || typeof result.RequestId !== 'string' || !result.RequestId.trim()) {
             throw new Error('email_delivery_failed');
         }
+        // Acceptance is not delivery or inbox placement. Retain only known ID
+        // formats so operations can correlate DirectMail records without
+        // logging recipients, codes, credentials or provider-controlled text.
+        const receipt: Record<string, string> = { status: 'provider_accepted' };
+        if (/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(result.RequestId)) {
+            receipt.requestId = result.RequestId;
+        }
+        if ('EnvId' in result && typeof result.EnvId === 'string' && /^\d{10,32}$/.test(result.EnvId)) {
+            receipt.envelopeId = result.EnvId;
+        }
+        console.info('[email/delivery]', JSON.stringify(receipt));
     } catch {
         // Provider/network errors can contain the address, message or signed
         // request. Keep both message and cause free of provider-controlled data.
