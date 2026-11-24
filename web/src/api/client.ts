@@ -161,6 +161,7 @@ class APIClient {
     this.attachmentRequests.clear();
     this.activeUploads.forEach(xhr => xhr.abort());
     this.activeUploads.clear();
+    this.messageDeltaCache = null;
     if ('caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
 
@@ -221,6 +222,30 @@ class APIClient {
     const result = await response.json();
     if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
     return result;
+  }
+
+  // One private, session-scoped response only; never persist deltas as a full list.
+  private messageDeltaCache: { token: string | null; since: string; etag: string; value: { messages: SyncaMessage[] } } | null = null;
+
+  async listMessageChanges(since: string): Promise<{ messages: SyncaMessage[] }> {
+    const token = this.token;
+    const cached = this.messageDeltaCache?.token === token && this.messageDeltaCache.since === since ? this.messageDeltaCache : null;
+    const response = await fetch(`/messages?since=${encodeURIComponent(since)}`, {
+      cache: 'no-store',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // Explicit max-age permits origin ETag validation while no-store prevents
+        // disk caching of protected record content in the browser.
+        'Cache-Control': 'max-age=0',
+        ...(cached ? { 'If-None-Match': cached.etag } : {}),
+      },
+    });
+    if (token !== this.token) throw new DOMException('Session changed', 'AbortError');
+    if (response.status === 304 && cached) return cached.value;
+    const value = await this.decodeResponse<{ messages: SyncaMessage[] }>(response, token);
+    const etag = response.headers.get('ETag');
+    this.messageDeltaCache = etag ? { token, since, etag, value } : null;
+    return value;
   }
 
   sendEmailCode(email: string, locale: string, binding = false, signal?: AbortSignal): Promise<EmailChallenge> {

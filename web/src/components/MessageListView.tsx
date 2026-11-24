@@ -1,3 +1,4 @@
+import { mergeMessageChanges, messageChangesSince, nextMessageCheckpoint } from '../utils/messageSync';
 import { SyncFeedback } from './SyncFeedback';
 import { desktopClearShortcut } from '../utils/desktopShortcuts';
 import { MobileCategoryDrawer } from './MobileCategoryDrawer';
@@ -147,6 +148,7 @@ export const MessageListView: React.FC = () => {
   const listRef = useRef<HTMLDivElement>(null);
   const didRestorePreferencesRef = useRef(false);
   const fetchRevision = useRef(0);
+  const messageCheckpoint = useRef<string | null>(null);
   const pendingFetches = useRef(0);
   const categoryWritePending = useRef(false);
   const categoryDragPending = useRef(false);
@@ -159,17 +161,24 @@ export const MessageListView: React.FC = () => {
   const fetchData = async (scrollToBottom = false) => {
     const scrollVersion = scrollRevision.current;
     const revision = ++fetchRevision.current;
+    // Desktop snapshot persistence is migrated in the next client release.
+    const incremental = !window.syncaDesktop && messageCheckpoint.current !== null;
+    const checkpoint = messageCheckpoint.current;
     const token = localStorage.getItem('authToken');
     pendingFetches.current += 1;
     try {
       const [messagesRes, categoriesRes] = await Promise.all([
-        api.listMessages(),
+        incremental ? api.listMessageChanges(messageChangesSince(checkpoint!)) : api.listMessages(),
         api.listMessageCategories(),
       ]);
 
       if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken') || categoryDragPending.current) return false;
-      const sortedMessages = sortMessages(messagesRes.messages);
-      setMessages(sortedMessages);
+      const nextCheckpoint = nextMessageCheckpoint(checkpoint, messagesRes.messages);
+      setMessages(current => {
+        const merged = mergeMessageChanges(incremental ? current : [], messagesRes.messages);
+        return incremental && merged === current ? current : sortMessages(merged);
+      });
+      messageCheckpoint.current = nextCheckpoint;
       setCategories(categoriesRes.categories);
       refreshAccessStatus();
 
@@ -189,6 +198,10 @@ export const MessageListView: React.FC = () => {
             : (defaultCategory?.id ?? null)
         );
         didRestorePreferencesRef.current = true;
+      } else if (!window.syncaDesktop) {
+        const exists = (id: string | null) => categoriesRes.categories.some(category => category.id === id);
+        setSelectedCategoryId(current => current === ALL_CATEGORY_ID || exists(current) ? current : (defaultCategory?.id ?? ALL_CATEGORY_ID));
+        setDefaultSendCategoryId(current => exists(current) ? current : (defaultCategory?.id ?? null));
       }
 
       if (scrollToBottom) {
@@ -210,6 +223,7 @@ export const MessageListView: React.FC = () => {
 
   useEffect(() => {
     didRestorePreferencesRef.current = false;
+    messageCheckpoint.current = null;
     setMessages([]); setShowSearch(false); setSearchTarget(null); setSearchQuery('');
     searchNavigation.current = false; ++scrollRevision.current;
     void fetchData(true);
@@ -225,7 +239,7 @@ export const MessageListView: React.FC = () => {
       unsubscribe?.();
       document.removeEventListener('visibilitychange', poll);
     };
-  }, [email]);
+  }, [email, token]);
 
   useEffect(() => {
     // Do not overwrite the saved selection before this account's categories load.
@@ -730,7 +744,7 @@ export const MessageListView: React.FC = () => {
             )}
           </div>
 
-          <InputBar key={token} scopeId={selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
+          <InputBar key={token} availableScopeIds={window.syncaDesktop ? undefined : [ALL_CATEGORY_ID, ...categories.map(category => category.id)]} fallbackScopeId={defaultCategory?.id} scopeId={selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
       </main>
 
       {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
