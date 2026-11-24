@@ -44,3 +44,7 @@ The iPad rotation test asserts the actual application frame is wider than tall. 
 `testUpgradePresentation` uses the loopback AI service and bundled `UpgradePreview.storekit` through `SKTestSession`. It checks the native upgrade sheet opened from Connect AI in light/dark, product-unavailable light/dark, maximum accessibility text, and English. The test product price is fixture-only (CNY 98.00), not a change to App Store pricing. No purchase or restore transaction is submitted. It checks product display, reachable primary/restore actions and close returning to the AI page.
 
 The fixture-only `-qa-products-unavailable` launch argument skips loading products to exercise the error layout; this switch is never added to product source. The product page continues to call the existing PurchaseManager transaction methods.
+
+## Sidebar direction lock (2026-11-25)
+
+Generate a separate fixture with `--drawer` and run `-only-testing:PolishUITests/DrawerGestureTests`. It seeds 50 text records so a scroll boundary cannot hide unintended vertical movement. The test compares the same visible record before and after a diagonal edge opening and a cancelled short drag (2pt tolerance), then verifies that a mostly vertical edge drag still scrolls. The fixture adds record identifiers only to its temporary copy; product source has no test-only identifiers or data. Run `PolishTests/testDrawerAndCategoryEditing` with the loopback interaction server to cover existing category interactions as well.

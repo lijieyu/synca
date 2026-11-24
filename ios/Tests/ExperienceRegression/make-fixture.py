@@ -22,6 +22,12 @@ msgs=[dict(id=str(i),userId='visual-fixture',type='text',textContent=t,categoryI
 # Optional image-heavy feed uses only deterministic loopback attachments.
 if '--images' in sys.argv[2:]:
  msgs=[dict(id=str(i),userId='visual-fixture',type='image',imageUrl='http://127.0.0.1:54671/image/'+str(i)+'.png',categoryId='1',categoryName='工作',categoryColor='sky',categoryIsDefault=False,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i in range(6)]
+if '--drawer' in sys.argv[2:]:
+ msgs=[dict(msgs[0], id=str(i), textContent=f'Gesture record {i:02d}\nA stable record for verifying horizontal and vertical movement.', categoryId='0') for i in range(50)]
+ # Stable row geometry is exposed only in the isolated test copy.
+ edit('Shared/Views/MessageListView.swift',
+      'onCompletion: { completePreservingViewport(message, proxy: proxy) })',
+      'onCompletion: { completePreservingViewport(message, proxy: proxy) }).accessibilityElement(children: .contain).accessibilityIdentifier("qa-record-" + message.id)')
 seed='private init() { categories = try! JSONDecoder().decode([SyncaMessageCategory].self, from: Data(#"'+json.dumps(cats,ensure_ascii=False)+'"#.utf8)); messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(msgs,ensure_ascii=False)+'"#.utf8)); hasCompletedInitialLoad = true; unclearedCount = '+str(len(msgs))+'; selectedCategoryId = "__all__" }'
 edit('Shared/Core/SyncManager.swift','private init() {}',seed)
 edit('Shared/Core/SyncManager.swift','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool {','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool { return true;')
@@ -51,5 +57,7 @@ else:
 if '--email' in sys.argv[2:]:
  edit('Shared/Core/APIClient.swift','self.token = "visual-fixture"','self.token = ProcessInfo.processInfo.arguments.contains("-qa-signed-out") ? nil : "visual-fixture"')
  shutil.copy(tests/'EmailUITests.swift',dst/'UITests/EmailUITests.swift')
+if '--drawer' in sys.argv[2:]:
+ shutil.copy(tests/'DrawerGestureTests.swift',dst/'UITests/DrawerGestureTests.swift')
 (dst/'fixture-records.json').write_text(json.dumps(msgs,ensure_ascii=False))
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)
