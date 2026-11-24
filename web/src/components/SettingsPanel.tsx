@@ -1,4 +1,5 @@
 import { SettingsSelect } from './SettingsSelect';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { SettingsSurface, type SettingsAction } from './SettingsSurface';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -49,7 +50,8 @@ declare global {
       preferences: () => Promise<Preferences>;
       change: (key: 'ask' | 'badge', value: boolean) => Promise<Preferences>;
       directory: () => Promise<Preferences>;
-      subscribe: (event: 'settings' | 'refresh' | 'sync', listener: () => void) => () => void;
+      subscribe: (event: 'settings' | 'refresh' | 'sync' | 'clear-completed', listener: () => void) => () => void;
+      clearCompletedAvailable?: (available: boolean) => void;
       session: (token: string | null) => void;
       count: (count: number) => void;
     };
@@ -297,7 +299,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
               <button ref={back} className="settings-close" onClick={close} aria-label={t(mobileHome && !action ? 'polish.done' : compact && (mobileDetail || action) ? 'settings_page.back' : 'navigation.close')}>{compact ? ((mobileDetail || action) ? <ArrowLeft/> : t('polish.done')) : <X size={20}/>}</button>
             </header>
             <div className="desk-detail-body" data-settings-action={action ?? undefined} ref={setHost} hidden={!action} />
-            <div className="desk-detail-body" hidden={!!action}>
+            <div className={'desk-detail-body' + (section === 'general' && !compact ? ' settings-general' : '')} hidden={!!action}>
               {mobileHome && <button className="settings-identity" onClick={()=>detail('account')}><CircleUserRound size={34} aria-hidden="true"/><span>{email || t('navigation.account')}<small>{token ? <AccountPlanLabel /> : t('settings_page.signIn')}</small></span><ChevronRight className="settings-disclosure" size={17} aria-hidden="true"/></button>}
               {(section === 'general' || mobileHome) && (
                 <><h3>{t('settings_group.preferences')}</h3><div className="settings-pref-group">
@@ -311,6 +313,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                       options={(['system','zh-Hans','zh-Hant','en'] as LanguagePreference[]).map((value,index) => ({value,label:[t('preferences.system'),'简体中文','繁體中文','English'][index]}))}
                       onChange={value => { localStorage.setItem('synca.language',value); setLanguage(value); void i18n.changeLanguage(resolveLanguage(value,navigator.languages)); }}/>
                   </div></div>
+                  {section === 'general' && <KeyboardShortcuts />}
                 </>
               )}
               {section === 'desktop' && desktop && prefs && (
