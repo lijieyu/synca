@@ -658,6 +658,7 @@ struct MessageBubbleView: View {
         }
         .buttonStyle(.plain)
         .disabled(isUpdatingCompletion)
+        .accessibilityIdentifier("record-completion-" + message.id)
         .accessibilityLabel(Text(message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"))
         .help(Text(message.isCleared ? "message_bubble.mark_incomplete" : "message_bubble.mark_complete"))
     }
@@ -1096,10 +1097,6 @@ private struct InternalLinkTextView: UIViewRepresentable {
     let attributedText: NSAttributedString
     let maximumNumberOfLines: Int
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
     func makeUIView(context: Context) -> UITextView {
         // Use TextKit 1 from creation, matching the layout manager used for sizing.
         // Switching from TextKit 2 lazily during a measurement can defer long-text layout.
@@ -1117,7 +1114,7 @@ private struct InternalLinkTextView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.adjustsFontForContentSizeCategory = true
         textView.dataDetectorTypes = []
-        textView.delegate = context.coordinator
+        // Keep UIKit's default link actions: tap opens, long press offers preview and copy.
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.link,
             .underlineStyle: NSUnderlineStyle.single.rawValue
@@ -1148,18 +1145,6 @@ private struct InternalLinkTextView: UIViewRepresentable {
         uiView.textContainer.size = CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
         uiView.layoutManager.ensureLayout(for: uiView.textContainer)
         return CGSize(width: targetWidth, height: ceil(uiView.layoutManager.usedRect(for: uiView.textContainer).maxY))
-    }
-
-    final class Coordinator: NSObject, UITextViewDelegate {
-        func textView(
-            _ textView: UITextView,
-            shouldInteractWith url: URL,
-            in characterRange: NSRange,
-            interaction: UITextItemInteraction
-        ) -> Bool {
-            UIApplication.shared.open(url)
-            return false
-        }
     }
 }
 #endif

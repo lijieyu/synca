@@ -89,7 +89,12 @@ struct MessageListView: View {
     @State private var categorySwipeIsHorizontal: Bool?
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSize
+    @State private var feedViewport = FeedViewportReference()
+    @ScaledMetric(relativeTo: .caption) private var categoryBadgeDiameter: CGFloat = 22
     @State private var drawerOpen = false
+    @State private var drawerTranslation: CGFloat = 0
+    @State private var drawerWidth: CGFloat = 324
+    @GestureState private var drawerGestureActive = false
     @State private var showIOSSettings = false
     private var phoneLayout: Bool { horizontalSize == .compact }
     #endif
@@ -109,6 +114,10 @@ struct MessageListView: View {
     @State private var searchQuery = ""
     @State private var searchAnchorY: CGFloat?
     @State private var searchRowHeight: CGFloat = 0
+    @State private var completionScrollTask: Task<Void, Never>?
+    @State private var viewportInteractionRevision = 0
+    @State private var completionBottomSpace: CGFloat = 0
+    @State private var visibleRecordFrames: [String: CGRect] = [:]
     @State private var searchRowFrame: CGRect?
     @State private var searchPositionedTextAnchor = false
     @State private var searchViewportHeight: CGFloat = 0
@@ -322,8 +331,17 @@ struct MessageListView: View {
         #if os(iOS)
         .accessibilityHidden(drawerOpen)
         .allowsHitTesting(!drawerOpen)
-        .overlay(alignment: .leading) { if drawerOpen && phoneLayout { phoneDrawer } }
-        .onChange(of: horizontalSize) { _ in drawerOpen = false }
+        .overlay(alignment: .leading) { if phoneLayout { phoneDrawer.accessibilityHidden(!drawerOpen) } }
+        .onChange(of: drawerGestureActive) { active in
+            guard !active else { return }
+            // A cancelled drag has no onEnded. Restore the resting position, too.
+            DispatchQueue.main.async {
+                guard !drawerGestureActive else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { drawerTranslation = 0 }
+                categorySwipeIsHorizontal = nil
+            }
+        }
+        .onChange(of: horizontalSize) { _ in drawerOpen = false; drawerTranslation = 0 }
         .fullScreenCover(isPresented: Binding(get: { showIOSSettings && phoneLayout }, set: { showIOSSettings = $0 })) {
             iosSettings
         }
@@ -647,17 +665,22 @@ struct MessageListView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 #if os(iOS)
-                .simultaneousGesture(DragGesture(minimumDistance: 20)
+                .simultaneousGesture(DragGesture(minimumDistance: 12)
+                    .updating($drawerGestureActive) { _, active, _ in active = true }
                     .onChanged { value in
                         if categorySwipeIsHorizontal == nil {
                             categorySwipeIsHorizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
                         }
+                        guard phoneLayout, categorySwipeIsHorizontal == true,
+                              value.startLocation.x < 32, value.translation.width > 0 else { return }
+                        drawerTranslation = min(drawerWidth, value.translation.width)
                     }
                     .onEnded { value in
                         defer { categorySwipeIsHorizontal = nil }
                         guard categorySwipeIsHorizontal == true else { return }
                         if phoneLayout {
-                            if value.startLocation.x < 32 && value.translation.width > 60 { toggleDrawer(true) }
+                            guard value.startLocation.x < 32 else { return }
+                            toggleDrawer(value.predictedEndTranslation.width > drawerWidth * 0.4)
                         } else {
                             switchCategory(horizontal: value.translation.width, vertical: 0)
                         }
@@ -697,7 +720,7 @@ struct MessageListView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     sidebarCategory(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "message_list.all_records"), color: nil, count: allTodoCount)
                         .padding(.bottom, 16)
-                    MacCategoryReorderStack(categories: syncManager.categories, spacing: 4, handleOnly: false, disabled: sidebarReordering, onCommit: { ids in
+                    CategoryReorderStack(categories: syncManager.categories, spacing: 4, handleOnly: false, disabled: sidebarReordering, onCommit: { ids in
                         sidebarReordering = true
                         _ = await syncManager.reorderCategories(ids: ids)
                         sidebarReordering = false
@@ -919,17 +942,25 @@ struct MessageListView: View {
         if phoneLayout {
             ToolbarItem(placement: .topBarLeading) {
                 Button { toggleDrawer(true) } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 8) {
                         Image(systemName: "sidebar.left")
-                        if let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) {
-                            Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex)).frame(width: 7, height: 7)
-                        }
-                        Text(selectedCategoryTitle).font(.headline).lineLimit(1).truncationMode(.tail)
-                        Text("\(todoCount(for: selectedFilterCategoryId))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .font(.system(size: 18, weight: .regular)).foregroundStyle(.secondary)
+                        Text(selectedCategoryTitle)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                            .lineLimit(1).truncationMode(.tail)
+                        Text("\(todoCount(for: selectedFilterCategoryId))")
+                            .font(.caption.weight(.semibold)).monospacedDigit()
+                            .foregroundStyle(Color.primary.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .frame(minWidth: categoryBadgeDiameter, minHeight: categoryBadgeDiameter)
+                            .background(categoryBadgeColor.opacity(colorScheme == .dark ? 0.24 : 0.14), in: Capsule())
+                            .fixedSize().accessibilityHidden(true)
                     }
-                    .frame(maxWidth: 154, alignment: .leading)
+                    .frame(maxWidth: 154, minHeight: 44, alignment: .leading)
+
                 }
                 .accessibilityIdentifier("phone-categories")
+                .accessibilityLabel(Text(selectedCategoryTitle) + Text("、") + Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId))))
                 .accessibilityHint(Text("message_category.section_title"))
             }
         } else {
@@ -944,9 +975,19 @@ struct MessageListView: View {
         }
     }
 
+    private var categoryBadgeColor: Color {
+        guard let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) else {
+            return .secondary
+        }
+        return categoryDisplayColor(category.color, hex: category.colorHex)
+    }
+
     private func toggleDrawer(_ open: Bool) {
         if open { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { drawerOpen = open }
+        withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.92)) {
+            drawerOpen = open
+            drawerTranslation = 0
+        }
     }
 
     private func drawerRow(id: String, title: String, color: Color?, count: Int) -> some View {
@@ -971,8 +1012,12 @@ struct MessageListView: View {
 
     private var phoneDrawer: some View {
         GeometryReader { proxy in
+            let width = min(324, proxy.size.width * 0.82)
+            let offset = min(0, max(-width, (drawerOpen ? 0 : -width) + drawerTranslation))
+            let progress = 1 + offset / width
             ZStack(alignment: .leading) {
-                Color.black.opacity(0.30).ignoresSafeArea().onTapGesture { toggleDrawer(false) }.accessibilityHidden(true)
+                Color.black.opacity(0.30 * progress).ignoresSafeArea()
+                    .onTapGesture { toggleDrawer(false) }.accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Synca").font(.title2.bold())
@@ -1004,25 +1049,43 @@ struct MessageListView: View {
                     if let status = accessManager.status { DailyQuotaView(status: status).padding(.horizontal, 12) }
                     Divider()
                     Button { toggleDrawer(false); showIOSSettings = true } label: {
-                        HStack {
-                            Image(systemName: "person.crop.circle").font(.title2)
-                            Text(api.currentUserEmail ?? String(syncaLocalized: "account.and_plan")).font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }.frame(minHeight:44).contentShape(Rectangle())
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary)
+                            HStack(spacing: 6) {
+                                Text(api.currentUserEmail ?? String(syncaLocalized: "account.and_plan"))
+                                    .font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                            }
+                            Spacer(minLength: 0)
+                        }.frame(minHeight: 44).contentShape(Rectangle())
                     }.accessibilityIdentifier("drawer-settings").keyboardShortcut(",", modifiers:.command)
                 }
                 .buttonStyle(.plain).padding(.horizontal,16).padding(.vertical,8)
-                .frame(width:min(324,proxy.size.width * 0.82))
+                .frame(width: width)
                 .frame(maxHeight:.infinity)
                 .background(Color(uiColor:.secondarySystemBackground).ignoresSafeArea())
-                .simultaneousGesture(DragGesture(minimumDistance:24).onEnded { value in
-                    if value.translation.width < -60 && -value.translation.width > abs(value.translation.height)*2 { toggleDrawer(false) }
-                })
+                .offset(x: offset)
+                .simultaneousGesture(DragGesture(minimumDistance: 12)
+                    .updating($drawerGestureActive) { _, active, _ in active = true }
+                    .onChanged { value in
+                        if categorySwipeIsHorizontal == nil {
+                            categorySwipeIsHorizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                        }
+                        guard categorySwipeIsHorizontal == true else { return }
+                        drawerTranslation = min(0, max(-width, value.translation.width))
+                    }
+                    .onEnded { value in
+                        defer { categorySwipeIsHorizontal = nil }
+                        guard categorySwipeIsHorizontal == true else { return }
+                        toggleDrawer(value.predictedEndTranslation.width > -width * 0.4)
+                    })
                 .accessibilityAction(.escape) { toggleDrawer(false) }
                 .accessibilityElement(children: .contain)
-                .transition(.move(edge:.leading))
             }
+            .allowsHitTesting(drawerOpen)
+            .accessibilityHidden(!drawerOpen)
+            .onAppear { drawerWidth = width }
+            .onChange(of: width) { drawerWidth = $0 }
         }
     }
     #endif
@@ -1210,35 +1273,30 @@ struct MessageListView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(completed, id: \.listRowID) { message in
+                        // One identity domain keeps image/text state while completion moves a row.
+                        ForEach(completed + uncompleted, id: \.listRowID) { message in
+                            if message.id == uncompleted.first?.id {
+                                HStack {
+                                    Text("message_list.todo_section", bundle: .main)
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 8).padding(.vertical, 2)
+                                        .background(Color.secondary.opacity(0.1)).cornerRadius(4)
+                                    Spacer()
+                                }.padding(.top, 8).id("uncompleted_header")
+                            }
                             messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id),
-                                        onTextCollapse: { restoreCollapsedMessage(message, proxy: proxy) })
-                        }
-
-                        if !uncompleted.isEmpty {
-                            HStack {
-                                Text("message_list.todo_section", bundle: .main)
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .cornerRadius(4)
-                                Spacer()
-                            }
-                            .padding(.top, 8)
-                            .id("uncompleted_header")
-
-                            ForEach(uncompleted, id: \.listRowID) { message in
-                                messageView(for: message, showsSeparator: message.id != (uncompleted.last?.id ?? completed.last?.id),
-                                        onTextCollapse: { restoreCollapsedMessage(message, proxy: proxy) })
-                            }
+                                        onTextCollapse: { restoreCollapsedMessage(message, proxy: proxy) },
+                                        onCompletion: { completePreservingViewport(message, proxy: proxy) })
                         }
 
                         Color.clear
-                            .frame(height: 1)
+                            .frame(height: 1 + completionBottomSpace)
                             .id("bottom")
                     }
+                    #if os(iOS)
+                    .background(FeedViewportReader(reference: feedViewport))
+                    #endif
                     .frame(maxWidth: streamMaximumWidth)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
@@ -1260,12 +1318,25 @@ struct MessageListView: View {
                 .onPreferenceChange(SearchRowHeight.self) { searchRowHeight = $0 }
                 #if os(iOS)
                 .onPreferenceChange(SearchRowFrame.self) { searchRowFrame = $0 }
+                .onPreferenceChange(RecordViewportFrames.self) { frames in
+                    visibleRecordFrames = frames
+                    if completionBottomSpace > 0, let scroll = feedViewport.scrollView,
+                       scroll.isDragging || scroll.isDecelerating {
+                        let naturalMaximum = max(-scroll.adjustedContentInset.top,
+                            scroll.contentSize.height - completionBottomSpace - scroll.bounds.height + scroll.adjustedContentInset.bottom)
+                        if scroll.contentOffset.y <= naturalMaximum { completionBottomSpace = 0 }
+                    }
+                }
                 #endif
                 .background(GeometryReader { geometry in
                     Color.clear.onAppear { searchViewportHeight = geometry.size.height }
                         .onChange(of: geometry.size.height) { searchViewportHeight = $0 }
                 })
-                .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in interruptSearchPositioning() })
+                .simultaneousGesture(DragGesture(minimumDistance: 4).onChanged { _ in
+                    viewportInteractionRevision += 1
+                    completionScrollTask?.cancel()
+                    interruptSearchPositioning()
+                })
                 #if os(macOS)
                 .background(SearchScrollInterruption(onScroll: interruptSearchPositioning))
                 #endif
@@ -1338,6 +1409,7 @@ struct MessageListView: View {
                 #endif
                 .onChange(of: syncManager.isSending) { isSending in
                     guard !isSending, shouldScrollToBottomAfterSend else { return }
+                    completionBottomSpace = 0
                     beginPostSendScrollWindow()
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
@@ -1355,6 +1427,7 @@ struct MessageListView: View {
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
                 .onChange(of: syncManager.remoteAppendEvent) { _ in
+                    completionBottomSpace = 0
                     guard syncManager.hasCompletedInitialLoad else { return }
                     scrollToBottomAfterLayoutSettles(proxy: proxy)
                 }
@@ -1380,6 +1453,9 @@ struct MessageListView: View {
                 }
                 #endif
                 .onDisappear {
+                    completionBottomSpace = 0
+                    viewportInteractionRevision += 1
+                    completionScrollTask?.cancel()
                     scrollTask?.cancel()
                     initialLoadScrollWindowID = UUID()
                     shouldScrollToBottomAfterInitialLoad = false
@@ -1754,6 +1830,64 @@ struct MessageListView: View {
         await syncManager.sendFile(file: pendingFile, categoryId: categoryId)
     }
 
+    private func completePreservingViewport(_ message: SyncaMessage, proxy: ScrollViewProxy) {
+        #if os(iOS)
+        let category = syncManager.selectedCategoryId
+        viewportInteractionRevision += 1
+        let revision = viewportInteractionRevision
+        let candidates = visibleRecordFrames.filter { $0.key != message.id }
+        let visible = candidates.filter { $0.value.maxY > 0 && $0.value.minY < searchViewportHeight }
+        let neighbor = (visible.isEmpty ? candidates : visible).min { abs($0.value.minY) < abs($1.value.minY) }
+        let originalOffset = feedViewport.scrollView?.contentOffset
+        var extraBottomSpace: CGFloat = 0
+        if !message.isCleared, let neighbor, let movingFrame = visibleRecordFrames[message.id],
+           neighbor.value.minY < movingFrame.minY, let scroll = feedViewport.scrollView {
+            // At the bottom, preserving a neighbor is impossible without the space of
+            // the removed row: UIKit otherwise clamps the viewport down a whole image.
+            // Release that temporary space once the reader scrolls back into real content.
+            let availableBelow = max(0, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom - scroll.contentOffset.y)
+            extraBottomSpace = max(0, movingFrame.height + 12 - availableBelow)
+        }
+        completionScrollTask?.cancel()
+        Task { @MainActor in
+            // Reading/navigation may cancel positioning, never the user's server mutation.
+            await syncManager.clearMessage(message.id)
+            guard revision == viewportInteractionRevision, category == syncManager.selectedCategoryId else { return }
+            guard let updated = syncManager.messages.first(where: { $0.id == message.id }),
+                  updated.isCleared != message.isCleared else { return }
+            // Failed or superseded requests must never leave artificial content space.
+            completionBottomSpace += extraBottomSpace
+            completionScrollTask = Task { @MainActor in
+                // Use the actual surviving row delta, not estimated lazy-stack height.
+                // Viewport gestures invalidate this task, but never cancel the write.
+                for delay in [30, 70, 150] {
+                    try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
+                    guard !Task.isCancelled, category == syncManager.selectedCategoryId,
+                          revision == viewportInteractionRevision,
+                          let scrollView = feedViewport.scrollView else { return }
+                    let targetY: CGFloat
+                    if let neighbor {
+                        guard let currentFrame = visibleRecordFrames[neighbor.key] else {
+                            var transaction = Transaction(animation: nil)
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) { proxy.scrollTo(neighbor.key, anchor: .top) }
+                            continue
+                        }
+                        targetY = scrollView.contentOffset.y + currentFrame.minY - neighbor.value.minY
+                    } else if let originalOffset {
+                        targetY = originalOffset.y
+                    } else { return }
+                    let minimum = -scrollView.adjustedContentInset.top
+                    let maximum = max(minimum, scrollView.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom)
+                    scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: min(maximum, max(minimum, targetY))), animated: false)
+                }
+            }
+        }
+        #else
+        Task { await syncManager.clearMessage(message.id) }
+        #endif
+    }
+
     private func restoreCollapsedMessage(_ message: SyncaMessage, proxy: ScrollViewProxy) {
         interruptSearchPositioning()
         scrollTask?.cancel()
@@ -1903,7 +2037,7 @@ struct MessageListView: View {
     #endif
 
     @ViewBuilder
-    private func messageView(for message: SyncaMessage, showsSeparator: Bool, onTextCollapse: (() -> Void)? = nil) -> some View {
+    private func messageView(for message: SyncaMessage, showsSeparator: Bool, onTextCollapse: (() -> Void)? = nil, onCompletion: (() -> Void)? = nil) -> some View {
         MessageBubbleView(
             message: message,
             categories: syncManager.categories,
@@ -1912,7 +2046,17 @@ struct MessageListView: View {
             onEdit: { editingMessage = message },
             onTextCollapse: onTextCollapse,
             onClear: {
-                Task { await syncManager.clearMessage(message.id) }
+                // Completing a row is explicit navigation intent. Late image loads must
+                // not revive startup/send/search scrolling after the record moves.
+                searchTarget = nil
+                searchHighlight = nil
+                scrollTask?.cancel()
+                shouldScrollToBottomAfterInitialLoad = false
+                shouldScrollToBottomAfterSend = false
+                initialLoadScrollWindowID = UUID()
+                postSendScrollWindowID = UUID()
+                if let onCompletion { onCompletion() }
+                else { Task { await syncManager.clearMessage(message.id) } }
             },
             onDelete: {
                 Task { await syncManager.deleteMessage(message.id) }
@@ -1949,6 +2093,7 @@ struct MessageListView: View {
             Color.clear.preference(key: SearchRowHeight.self,
                 value: searchTarget == message.id ? geometry.size.height : 0)
                 #if os(iOS)
+                .preference(key: RecordViewportFrames.self, value: [message.id: geometry.frame(in: .named("search-feed"))])
                 .preference(key: SearchRowFrame.self,
                     value: searchTarget == message.id ? geometry.frame(in: .named("search-feed")) : nil)
                 #endif
@@ -2973,7 +3118,6 @@ private struct NewMessageCategorySheet: View {
 struct MessageCategoryManagerSheet: View {
     var embedded = false
     #if os(iOS)
-    @State private var editMode: EditMode = .active
     @State private var editingCategory: SyncaMessageCategory?
     #endif
     @EnvironmentObject private var syncManager: SyncManager
@@ -2982,7 +3126,6 @@ struct MessageCategoryManagerSheet: View {
     @State private var busy = false
     @State private var failed = false
     @State private var adding = false
-    @State private var previewOrder: [String]?
     @State private var draftNames: [String: String] = [:]
 
     private func finish() {
@@ -3058,60 +3201,55 @@ struct MessageCategoryManagerSheet: View {
     }
 
     #if os(iOS)
-    private var customCategories: [SyncaMessageCategory] {
-        let categories = syncManager.categories.filter { !$0.isDefault }
-        guard let previewOrder else { return categories }
-        let lookup = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
-        return previewOrder.compactMap { lookup[$0] }
-    }
-
-    private func reorder(from source: IndexSet, to destination: Int) {
-        guard !busy else { return }
-        var ids = customCategories.map(\.id)
-        ids.move(fromOffsets: source, toOffset: destination)
-        guard ids != customCategories.map(\.id) else { return }
-        previewOrder = ids
-        busy = true
-        Task { @MainActor in
-            let succeeded = await syncManager.reorderCategories(ids: ids)
-            // The authoritative list changes only on success; clearing the preview rolls back failure.
-            previewOrder = nil
-            busy = false
-            if !succeeded { failed = true }
-        }
-    }
-
     private func nativeRow(_ category: SyncaMessageCategory) -> some View {
-        HStack(spacing: 12) {
-            Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex))
-                .frame(width: 12, height: 12).accessibilityHidden(true)
-            Text(category.isDefault ? AppLocalization.string("message_category.default_badge") : category.name)
-            Spacer()
-            Group {
-                Button { editingCategory = category } label: {
-                    Image(systemName: "pencil").frame(width: 44, height: 44)
-                }.buttonStyle(.borderless).accessibilityLabel(Text("message_category.modify"))
-                if !category.isDefault {
-                    Button(role: .destructive) { pendingDelete = category } label: {
-                        Image(systemName: "trash").frame(width: 44, height: 44)
-                    }.buttonStyle(.borderless).accessibilityLabel(Text("message_category.delete_action"))
-                }
+        HStack(spacing: 0) {
+            Button { editingCategory = category } label: {
+                HStack(spacing: 12) {
+                    Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex))
+                        .frame(width: 10, height: 10).accessibilityHidden(true)
+                    Text(category.isDefault ? AppLocalization.string("message_category.default_badge") : category.name)
+                        .foregroundStyle(.primary).lineLimit(2)
+                    Spacer(minLength: 8)
+                }.frame(minHeight: 52).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("category-edit-" + category.id)
+             .accessibilityHint(Text("message_category.modify"))
+            if !category.isDefault {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 16)).foregroundStyle(.tertiary)
+                    .frame(width: 44, height: 44)
+                    .accessibilityLabel(Text("message_category.reorder") + Text(" " + category.name))
+                    .accessibilityIdentifier("category-reorder-" + category.id)
+                    .accessibilityAction(named: Text("message_category.move_up")) { move(category, by: -1) }
+                    .accessibilityAction(named: Text("message_category.move_down")) { move(category, by: 1) }
+                Button { pendingDelete = category } label: {
+                    Image(systemName: "trash").font(.system(size: 16)).foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel(Text("message_category.delete_action") + Text(" " + category.name))
+                 .accessibilityIdentifier("category-delete-" + category.id)
             }
-        }.frame(minHeight: 44).disabled(busy)
+        }.padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 2).disabled(busy)
+         .background(Color(uiColor: .secondarySystemGroupedBackground))
     }
 
     private var rows: some View {
-        List {
-            Section {
-                ForEach(syncManager.categories.filter(\.isDefault)) { category in nativeRow(category) }
-                ForEach(customCategories) { category in
-                    nativeRow(category).deleteDisabled(true).moveDisabled(!editMode.isEditing || busy)
-                }.onMove(perform: reorder)
-                addButton.foregroundStyle(Color.primary)
+        ScrollView {
+            VStack(spacing: 0) {
+                CategoryReorderStack(categories: syncManager.categories, spacing: 0, handleOnly: true,
+                    handleTrailingInset: 52, handleWidth: 44, disabled: busy, onCommit: { ids in
+                        busy = true
+                        if !(await syncManager.reorderCategories(ids: ids)) { failed = true }
+                        busy = false
+                    }) { category in
+                        nativeRow(category)
+                            .overlay(alignment: .bottom) { Divider().padding(.leading, 38) }
+                    }
+                addButton.padding(.horizontal, 16).padding(.vertical, 4)
             }
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(20)
         }
-        .listStyle(.insetGrouped)
-        .environment(\.editMode, $editMode)
+        .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("message_list.manage_categories")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -3128,7 +3266,7 @@ struct MessageCategoryManagerSheet: View {
     #else
     private var rows: some View {
         VStack(spacing: 0) {
-            MacCategoryReorderStack(categories: syncManager.categories, spacing: 0, handleOnly: true, disabled: busy, onCommit: { ids in
+            CategoryReorderStack(categories: syncManager.categories, spacing: 0, handleOnly: true, disabled: busy, onCommit: { ids in
                 busy = true
                 if !(await syncManager.reorderCategories(ids: ids)) { failed = true }
                 busy = false
@@ -3515,17 +3653,18 @@ private struct MessageListNavigationContainer<Content: View>: View {
     }
 }
 
-#if os(macOS)
 /// Local pointer reordering: the row follows the pointer, siblings make room, and only the final order is saved.
 /// No pasteboard drag session is created, so reordering never advertises a copy operation.
-private struct MacCategoryRowFrames: PreferenceKey {
+private struct CategoryRowFrames: PreferenceKey {
     static let defaultValue: [String: CGRect] = [:]
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) { value.merge(nextValue(), uniquingKeysWith: { _, new in new }) }
 }
-private struct MacCategoryReorderStack<Row: View>: View {
+private struct CategoryReorderStack<Row: View>: View {
     let categories: [SyncaMessageCategory]
     let spacing: CGFloat
     let handleOnly: Bool
+    var handleTrailingInset: CGFloat = 0
+    var handleWidth: CGFloat = 36
     let disabled: Bool
     let onCommit: ([String]) async -> Void
     var onExit: (() -> Void)? = nil
@@ -3554,11 +3693,12 @@ private struct MacCategoryReorderStack<Row: View>: View {
             ForEach(ordered) { category in
                 row(category)
                     .background(GeometryReader { geometry in
-                        Color.clear.preference(key: MacCategoryRowFrames.self, value: [category.id: geometry.frame(in: .named(coordinateID))])
+                        Color.clear.preference(key: CategoryRowFrames.self, value: [category.id: geometry.frame(in: .named(coordinateID))])
                     })
                     .overlay(alignment: .trailing) {
                         if handleOnly && !category.isDefault {
-                            Color.clear.frame(width: 36).contentShape(Rectangle()).gesture(drag(category))
+                            Color.clear.frame(width: handleWidth).contentShape(Rectangle()).gesture(drag(category))
+                                .padding(.trailing, handleTrailingInset).accessibilityHidden(true)
                         }
                     }
                     .highPriorityGesture(handleOnly || category.isDefault ? nil : drag(category))
@@ -3569,7 +3709,7 @@ private struct MacCategoryReorderStack<Row: View>: View {
             }
         }
         .coordinateSpace(name: coordinateID)
-        .onPreferenceChange(MacCategoryRowFrames.self) { frames = $0 }
+        .onPreferenceChange(CategoryRowFrames.self) { frames = $0 }
         // Animate actual placement changes, not clearing the preview after a save.
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: ordered.map(\.id))
         // Block duplicate interactions without dimming every category during the request.
@@ -3584,6 +3724,7 @@ private struct MacCategoryReorderStack<Row: View>: View {
                 reset()
             }
         }
+        #if os(macOS)
         .onExitCommand {
             guard !saving, !disabled else { return }
             if gestureInFlight || draggedID != nil {
@@ -3593,6 +3734,7 @@ private struct MacCategoryReorderStack<Row: View>: View {
                 onExit?()
             }
         }
+        #endif
         .onDisappear { if !saving { reset() } }
         .onChange(of: categories.map(\.id)) { _ in if !saving { gestureCancelled = gestureInFlight; reset() } }
     }
@@ -3643,12 +3785,11 @@ private struct MacCategoryReorderStack<Row: View>: View {
     }
     private func reset() { draggedID = nil; translation = 0; previewIDs = []; originalIDs = []; originalFrames = [:] }
 }
-#endif
 
 // LazyVStack must know offscreen scroll targets through ForEach identity, before
 // messageView is materialized. Use the same identity for collapse and search.
 private extension SyncaMessage {
-    var listRowID: String { "\(id)-\(isCleared)" }
+    var listRowID: String { id }
 }
 
 /// Read-only geometry; emphasis never inserts padding or affects measurement.
@@ -3671,3 +3812,40 @@ private struct SearchRowFrame: PreferenceKey {
         if let next = nextValue() { value = next }
     }
 }
+
+private struct RecordViewportFrames: PreferenceKey {
+    static var defaultValue: [String: CGRect] { [:] }
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+#if os(iOS)
+@MainActor private final class FeedViewportReference {
+    weak var scrollView: UIScrollView?
+}
+private struct FeedViewportReader: UIViewRepresentable {
+    let reference: FeedViewportReference
+    func makeUIView(context: Context) -> Probe { Probe(reference: reference) }
+    func updateUIView(_ uiView: Probe, context: Context) { uiView.resolve() }
+    final class Probe: UIView {
+        let reference: FeedViewportReference
+        init(reference: FeedViewportReference) {
+            self.reference = reference
+            super.init(frame: .zero)
+            isUserInteractionEnabled = false
+            isAccessibilityElement = false
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+        override func didMoveToWindow() { super.didMoveToWindow(); resolve() }
+        override func layoutSubviews() { super.layoutSubviews(); resolve() }
+        func resolve() {
+            var ancestor = superview
+            while let view = ancestor {
+                if let scrollView = view as? UIScrollView { reference.scrollView = scrollView; return }
+                ancestor = view.superview
+            }
+        }
+    }
+}
+#endif

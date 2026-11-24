@@ -416,3 +416,5 @@
 "search.located" = "已定位到原记录";
 
 "search.count" = "找到 %ld 条记录";
+
+"account.current_plan" = "当前套餐";

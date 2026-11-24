@@ -50,7 +50,7 @@ struct AccountSheet: View {
         #else
         if embedded { iosAccountContent } else {
         NavigationStack {
-            sheetContent
+            iosAccountContent
                 .navigationTitle(Text("account.and_plan"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -72,12 +72,29 @@ struct AccountSheet: View {
                         Label("account.email_hidden_title", systemImage: "eye.slash")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    if let status = accessManager.status {
-                        Text(status.isUnlimited ? "access.pro_name" : "access.free_title")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
                 }.padding(.vertical, 6)
-                if let storage = accessManager.status?.storage {
+            }
+            Section {
+                NavigationLink {
+                    ScrollView { AccessCenterView(embedded: true).padding(20) }
+                        .navigationTitle("access.center_title").navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            Text("account.current_plan")
+                            Spacer(minLength: 12)
+                            iosPlanName
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("account.current_plan")
+                            iosPlanName
+                        }
+                    }
+                }
+                .accessibilityIdentifier("account-plan")
+            }
+            if let storage = accessManager.status?.storage {
+                Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("storage.used").font(.subheadline)
                         Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
@@ -86,20 +103,26 @@ struct AccountSheet: View {
                             .accessibilityHidden(true)
                     }.padding(.vertical, 4).accessibilityElement(children: .combine)
                 }
-                NavigationLink {
-                    ScrollView { AccessCenterView(embedded: true).padding(20) }
-                        .navigationTitle("access.center_title").navigationBarTitleDisplayMode(.inline)
-                } label: { Text("access.center_title") }
-                    .accessibilityIdentifier("account-plan")
             }
             Section {
-                Button("message_list.sign_out", action: onRequestLogout)
+                Button("message_list.sign_out") {
+                    if embedded { onRequestLogout() } else { runAfterDismiss(onRequestLogout) }
+                }
                     .foregroundStyle(.primary).accessibilityIdentifier("account-signout")
             }
             Section {
-                Button("account.delete_action", role: .destructive, action: onRequestDeleteAccount)
+                Button("account.delete_action", role: .destructive) {
+                    if embedded { onRequestDeleteAccount() } else { runAfterDismiss(onRequestDeleteAccount) }
+                }
                     .accessibilityIdentifier("account-delete")
             }
+        }
+    }
+    @ViewBuilder
+    private var iosPlanName: some View {
+        if let status = accessManager.status {
+            Text(status.isUnlimited ? "access.pro_name" : "access.free_title")
+                .foregroundStyle(.secondary)
         }
     }
     #endif
