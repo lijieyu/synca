@@ -65,10 +65,15 @@ targets:
         UIApplicationSupportsIndirectInputEvents: true
         UIBackgroundModes:
           - remote-notification
-        UIRequiresFullScreen: true
+        UIRequiresFullScreen: false
         UILaunchStoryboardName: LaunchScreen
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
           UISceneConfigurations: {}
