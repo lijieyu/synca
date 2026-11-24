@@ -1,3 +1,5 @@
+import { createChangeNotifications } from '../utils/changeNotifications';
+import type { SyncState } from '../api/client';
 import { mergeMessageChanges, messageChangesSince, nextMessageCheckpoint } from '../utils/messageSync';
 import { SyncFeedback } from './SyncFeedback';
 import { desktopClearShortcut } from '../utils/desktopShortcuts';
@@ -150,6 +152,8 @@ export const MessageListView: React.FC = () => {
   const fetchRevision = useRef(0);
   const messageCheckpoint = useRef<string | null>(null);
   const pendingFetches = useRef(0);
+  const confirmedSyncState = useRef<SyncState | null>(null);
+  const syncedCategories = useRef<MessageCategory[]>([]);
   const categoryWritePending = useRef(false);
   const categoryDragPending = useRef(false);
   const managerBaseline = useRef(new Map<string, MessageCategory>());
@@ -158,29 +162,37 @@ export const MessageListView: React.FC = () => {
   const { token, logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
 
-  const fetchData = async (scrollToBottom = false) => {
+  const fetchData = async (scrollToBottom = false, state?: SyncState) => {
     const scrollVersion = scrollRevision.current;
     const revision = ++fetchRevision.current;
-    // Desktop snapshot persistence is migrated in the next client release.
-    const incremental = !window.syncaDesktop && messageCheckpoint.current !== null;
+    const previousState = confirmedSyncState.current;
+    const reset = state && previousState && (state.latestMessage ?? '') < (previousState.latestMessage ?? '');
+    const incremental = messageCheckpoint.current !== null && !reset;
+    const recordsChanged = !state || !previousState || state.messages !== previousState.messages;
+    const categoriesChanged = !state || !previousState || state.categories !== previousState.categories;
     const checkpoint = messageCheckpoint.current;
     const token = localStorage.getItem('authToken');
     pendingFetches.current += 1;
     try {
       const [messagesRes, categoriesRes] = await Promise.all([
-        incremental ? api.listMessageChanges(messageChangesSince(checkpoint!)) : api.listMessages(),
-        api.listMessageCategories(),
+        recordsChanged ? (incremental ? api.listMessageChanges(messageChangesSince(checkpoint!)) : api.listMessages(!state && checkpoint === null)) : Promise.resolve({ messages: [] }),
+        categoriesChanged ? api.listMessageCategories(!state && checkpoint === null) : Promise.resolve({ categories: syncedCategories.current }),
       ]);
 
       if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken') || categoryDragPending.current) return false;
-      const nextCheckpoint = nextMessageCheckpoint(checkpoint, messagesRes.messages);
+      const nextCheckpoint = nextMessageCheckpoint(reset ? null : checkpoint, messagesRes.messages);
       setMessages(current => {
         const merged = mergeMessageChanges(incremental ? current : [], messagesRes.messages);
         return incremental && merged === current ? current : sortMessages(merged);
       });
       messageCheckpoint.current = nextCheckpoint;
-      setCategories(categoriesRes.categories);
-      refreshAccessStatus();
+      syncedCategories.current = categoriesRes.categories;
+      if (categoriesChanged) setCategories(categoriesRes.categories);
+      if (!state || !previousState || state.access !== previousState.access) {
+        if (await refreshAccessStatus() === false) return false;
+      }
+      if (revision !== fetchRevision.current || token !== localStorage.getItem('authToken')) return false;
+      if (state) confirmedSyncState.current = state;
 
       const defaultCategory = categoriesRes.categories.find((category) => category.isDefault) ?? categoriesRes.categories[0];
       const storedSelected = localStorage.getItem(categoryScopeStorageKey(email)) ?? ALL_CATEGORY_ID;
@@ -198,7 +210,7 @@ export const MessageListView: React.FC = () => {
             : (defaultCategory?.id ?? null)
         );
         didRestorePreferencesRef.current = true;
-      } else if (!window.syncaDesktop) {
+      } else {
         const exists = (id: string | null) => categoriesRes.categories.some(category => category.id === id);
         setSelectedCategoryId(current => current === ALL_CATEGORY_ID || exists(current) ? current : (defaultCategory?.id ?? ALL_CATEGORY_ID));
         setDefaultSendCategoryId(current => exists(current) ? current : (defaultCategory?.id ?? null));
@@ -226,18 +238,36 @@ export const MessageListView: React.FC = () => {
     messageCheckpoint.current = null;
     setMessages([]); setShowSearch(false); setSearchTarget(null); setSearchQuery('');
     searchNavigation.current = false; ++scrollRevision.current;
+    confirmedSyncState.current = null;
+    syncedCategories.current = [];
     void fetchData(true);
-    const poll = () => {
-      if (!document.hidden && pendingFetches.current === 0 && !categoryWritePending.current && !categoryDragPending.current) void fetchData(false);
+    let subscription: ReturnType<typeof createChangeNotifications> | undefined;
+    const check = async () => {
+      if (document.hidden) return true;
+      if (pendingFetches.current || categoryWritePending.current || categoryDragPending.current) return false;
+      const state = await api.getSyncState();
+      if (token !== localStorage.getItem('authToken')) return true;
+      if (pendingFetches.current || categoryWritePending.current || categoryDragPending.current) return false;
+      const previous = confirmedSyncState.current;
+      if (previous && previous.messages === state.messages && previous.categories === state.categories && previous.access === state.access) return true;
+      return fetchData(false, state);
     };
-    const unsubscribe = window.syncaDesktop?.subscribe('refresh', poll);
-    const timer = setInterval(poll, 10000);
-    document.addEventListener('visibilitychange', poll);
+    const start = () => {
+      subscription?.stop(); subscription = undefined;
+      if (!document.hidden && token) subscription = createChangeNotifications({
+        token, onChange: check, stream: !window.syncaDesktop,
+        onUnauthorized: () => { void api.getSyncState().catch(() => {}); },
+      });
+    };
+    start();
+    const unsubscribe = window.syncaDesktop?.subscribe('refresh', () => subscription?.hint());
+    document.addEventListener('visibilitychange', start);
+    window.addEventListener('online', start);
     return () => {
       ++fetchRevision.current;
-      clearInterval(timer);
-      unsubscribe?.();
-      document.removeEventListener('visibilitychange', poll);
+      subscription?.stop(); unsubscribe?.();
+      document.removeEventListener('visibilitychange', start);
+      window.removeEventListener('online', start);
     };
   }, [email, token]);
 

@@ -1,3 +1,4 @@
+export interface SyncState { messages: string; categories: string; access: string; latestMessage: string | null; count: number }
 import { saveDownload } from '../utils/downloads';
 export class SessionExpiredError extends Error {}
 export class AuthError extends Error {
@@ -227,6 +228,8 @@ class APIClient {
   // One private, session-scoped response only; never persist deltas as a full list.
   private messageDeltaCache: { token: string | null; since: string; etag: string; value: { messages: SyncaMessage[] } } | null = null;
 
+  getSyncState(): Promise<SyncState> { return this.fetch('/sync/state', { cache: 'no-store' }); }
+
   async listMessageChanges(since: string): Promise<{ messages: SyncaMessage[] }> {
     const token = this.token;
     const cached = this.messageDeltaCache?.token === token && this.messageDeltaCache.since === since ? this.messageDeltaCache : null;
@@ -272,11 +275,11 @@ class APIClient {
     }, true);
   }
 
-  async listMessages(): Promise<{ messages: SyncaMessage[] }> {
+  async listMessages(_allowOffline = false): Promise<{ messages: SyncaMessage[] }> {
     return this.fetch<{ messages: SyncaMessage[] }>('/messages');
   }
 
-  async listMessageCategories(): Promise<{ categories: MessageCategory[] }> {
+  async listMessageCategories(_allowOffline = false): Promise<{ categories: MessageCategory[] }> {
     return this.fetch<{ categories: MessageCategory[] }>('/message-categories');
   }
 

@@ -11,6 +11,9 @@ final class PushTokenManager {
 
     func cacheDeviceToken(_ deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        if UserDefaults.standard.string(forKey: cachedTokenKey) != token {
+            clearUploadedSessionMarker()
+        }
         UserDefaults.standard.set(token, forKey: cachedTokenKey)
     }
 
@@ -43,6 +46,8 @@ final class PushTokenManager {
                 apnsEnvironment: env,
                 topic: topic
             )
+            guard APIClient.shared.token == authToken,
+                  UserDefaults.standard.string(forKey: cachedTokenKey) == pushToken else { return }
             UserDefaults.standard.set(authToken, forKey: uploadedAuthTokenKey)
             print("[apns] token uploaded (\(platform), \(env))")
         } catch {

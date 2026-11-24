@@ -13,10 +13,11 @@ final class AccessManager: ObservableObject {
 
     private init() {}
 
-    func refresh() async {
+    @discardableResult
+    func refresh() async -> Bool {
         guard APIClient.shared.isAuthenticated else {
             clear()
-            return
+            return false
         }
 
         let requestID = UUID()
@@ -26,10 +27,12 @@ final class AccessManager: ObservableObject {
 
         do {
             let result = try await APIClient.shared.getAccessStatus()
-            guard refreshID == requestID, APIClient.shared.isAuthenticated else { return }
+            guard refreshID == requestID, APIClient.shared.isAuthenticated else { return false }
             status = result
+            return true
         } catch {
             print("[access] refresh failed: \(error)")
+            return false
         }
     }
 

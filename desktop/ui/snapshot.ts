@@ -16,7 +16,7 @@ export async function clearSnapshots() {
   const db=await dbReady;
   db.transaction('snapshots','readwrite').objectStore('snapshots').clear();
 }
-export async function cachedList<T>(key:string,load:()=>Promise<T>):Promise<T> {
+export async function cachedList<T>(key:string,load:()=>Promise<T>,allowOffline=false):Promise<T> {
   const token=localStorage.getItem('authToken');
   const owner=sessionId();
   const current=()=>Boolean(token)&&token===localStorage.getItem('authToken');
@@ -27,7 +27,7 @@ export async function cachedList<T>(key:string,load:()=>Promise<T>):Promise<T> {
     }).catch(()=>{});
     return value;
   }catch(error){
-    if(!(error instanceof TypeError)||!current())throw error;
+    if(!allowOffline||!(error instanceof TypeError)||!current())throw error;
     const db=await dbReady;
     const saved=await new Promise<{owner:string;value:T}|undefined>((resolve,reject)=>{
       const r=db.transaction('snapshots').objectStore('snapshots').get(key);
@@ -46,4 +46,12 @@ export function createDesktopDrafts() {
   } catch {
     return createComposerDrafts();
   }
+}
+
+// Save the merged view, never the response to /messages?since=.
+export async function saveMessageSnapshot(messages: unknown[]) {
+  const token=localStorage.getItem('authToken'), owner=sessionId();
+  const db=await dbReady;
+  if (!token || token!==localStorage.getItem('authToken') || owner!==localStorage.getItem('synca.desktop.session')) return;
+  db.transaction('snapshots','readwrite').objectStore('snapshots').put({owner,value:{messages}},'messages');
 }

@@ -8,16 +8,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let notifDelegate = NotificationDelegate.shared
         UNUserNotificationCenter.current().delegate = notifDelegate
 
-        // Request notification permission
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            if granted {
-                DispatchQueue.main.async {
-                    application.registerForRemoteNotifications()
-                }
-            }
-        }
-
+        // Register silent synchronization independently of visible notification permission.
+        application.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
         return true
+
     }
 
     func application(_ application: UIApplication,
@@ -42,7 +37,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("[apns] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
+            await SyncManager.shared.syncAfterNotification()
 
             // Update badge
             let count = SyncManager.shared.unclearedCount
@@ -63,7 +58,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Se
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Trigger sync on foreground notification
         Task { @MainActor in
-            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
+            await SyncManager.shared.syncAfterNotification()
         }
         completionHandler([])  // Don't show banner since app is in foreground
     }

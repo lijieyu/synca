@@ -1,5 +1,9 @@
 import Foundation
 import Combine
+import UserNotifications
+#if os(macOS)
+import AppKit
+#endif
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -57,7 +61,15 @@ final class SyncManager: ObservableObject {
         activeSendCount = max(0, activeSendCount - 1)
         isSending = activeSendCount > 0
     }
-    @Published var unclearedCount: Int = 0
+    @Published var unclearedCount: Int = 0 {
+        didSet {
+            #if os(macOS)
+            NSApp.dockTile.badgeLabel = unclearedCount > 0 ? String(unclearedCount) : nil
+            #else
+            UNUserNotificationCenter.current().setBadgeCount(unclearedCount) { _ in }
+            #endif
+        }
+    }
     @Published var isLoading = false
     @Published var hasCompletedInitialLoad = false
     @Published var isSending = false
@@ -87,14 +99,14 @@ final class SyncManager: ObservableObject {
         categories.first(where: \.isDefault)
     }
 
-    private var pollTimer: Timer?
+    private var notifications: SyncNotifications?
+    private var confirmedServerState: SyncServerState?
     private var lastSyncTimestamp: String?
     private let api = APIClient.shared
     private var statusResetTask: Task<Void, Never>?
     private var feedbackOperationID = UUID()
     private var isSyncingInternal = false // Concurrency lock
     private var refreshWaiters: [CheckedContinuation<Void, Never>] = []
-    private var pollCycleCount = 0
     private let cacheDirectoryURL: URL = {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let directoryURL = baseURL.appendingPathComponent("Synca", isDirectory: true)
@@ -124,9 +136,10 @@ final class SyncManager: ObservableObject {
 
     // MARK: - Full Sync
 
-    func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async {
-        guard api.isAuthenticated else { return }
-        guard !isSyncingInternal else { return }
+    @discardableResult
+    func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool {
+        guard api.isAuthenticated else { return false }
+        guard !isSyncingInternal else { return false }
         
         let ticket = syncState.ticket
         isSyncingInternal = true
@@ -150,34 +163,38 @@ final class SyncManager: ObservableObject {
             let allCategories = try await api.listMessageCategories()
             guard syncState.accepts(ticket) else {
                 if ticket.generation == syncState.generation && manual { updateStatus(.idle) }
-                return
+                return false
             }
             if messages != allMessages { messages = allMessages; persistMessages() }
             if categories != allCategories { categories = allCategories; persistCategories() }
             unclearedCount = allMessages.filter { !$0.isCleared }.count
-            lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max()
+            lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max() ?? "1970-01-01T00:00:00.000Z"
             lastRefreshDate = Date()
             normalizeCategorySelections()
             let appendedRemotely = hasCompletedInitialLoad && allMessages.contains { !existingIDs.contains($0.id) && !$0.isDeleted }
-            await AccessManager.shared.refresh()
-            guard ticket.generation == syncState.generation else { return }
+            guard await AccessManager.shared.refresh() else { return false }
+            guard ticket.generation == syncState.generation else { return false }
             if appendedRemotely {
                 remoteAppendEvent = UUID()
             }
             if manual && showSuccessStatus { updateStatus(.success) }
+            return true
         } catch {
-            guard ticket.generation == syncState.generation else { return }
-            if isCancellationError(error) { return }
+            guard ticket.generation == syncState.generation else { return false }
+            if isCancellationError(error) { return false }
             handleError(error, contextKey: "sync.error_context.sync")
             if manual { updateStatus(.error(error.localizedDescription)) }
+            return false
         }
     }
 
     // MARK: - Incremental Sync
 
-    func incrementalSync(manual: Bool = false) async {
-        guard api.isAuthenticated else { return }
-        guard !isSyncingInternal else { return }
+    @discardableResult
+    func incrementalSync(manual: Bool = false, state: SyncServerState? = nil) async -> Bool {
+        if lastSyncTimestamp == nil { return await fullSync(manual: manual, showSuccessStatus: manual) }
+        guard api.isAuthenticated else { return false }
+        guard !isSyncingInternal else { return false }
         
         let ticket = syncState.ticket
         isSyncingInternal = true
@@ -191,12 +208,14 @@ final class SyncManager: ObservableObject {
         if manual { updateStatus(.syncing) }
 
         do {
-            let since = lastSyncTimestamp
-            let newMessages = try await api.listMessages(since: since)
-            let allCategories = try await api.listMessageCategories()
+            let since = lastSyncTimestamp.map(SyncServerState.overlap)
+            let recordsChanged = state == nil || state?.messages != confirmedServerState?.messages
+            let categoriesChanged = state == nil || state?.categories != confirmedServerState?.categories
+            let newMessages = recordsChanged ? try await api.listMessages(since: since) : []
+            let allCategories = categoriesChanged ? try await api.listMessageCategories() : categories
             guard syncState.accepts(ticket) else {
                 if ticket.generation == syncState.generation && manual { updateStatus(.idle) }
-                return
+                return false
             }
             var appendedRemotely = false
 
@@ -212,17 +231,21 @@ final class SyncManager: ObservableObject {
             if categories != allCategories { categories = allCategories; persistCategories() }
             normalizeCategorySelections()
             unclearedCount = messages.filter { !$0.isCleared }.count
-            await AccessManager.shared.refresh()
-            guard ticket.generation == syncState.generation else { return }
+            if state == nil || state?.access != confirmedServerState?.access {
+                guard await AccessManager.shared.refresh() else { return false }
+            }
+            guard ticket.generation == syncState.generation else { return false }
             if appendedRemotely && hasCompletedInitialLoad {
                 remoteAppendEvent = UUID()
             }
             if manual { updateStatus(.success) }
+            return true
         } catch {
-            guard ticket.generation == syncState.generation else { return }
-            if isCancellationError(error) { return }
+            guard ticket.generation == syncState.generation else { return false }
+            if isCancellationError(error) { return false }
             handleError(error, contextKey: "sync.error_context.sync", silent: !manual)
             if manual { updateStatus(.error(error.localizedDescription)) }
+            return false
         }
     }
 
@@ -234,7 +257,7 @@ final class SyncManager: ObservableObject {
         guard generation == syncState.generation, api.isAuthenticated else { return }
         isRefreshing = true
         stopPolling()
-        await fullSync(manual: true)
+        await incrementalSync(manual: true)
         guard generation == syncState.generation, api.isAuthenticated else { return }
         startPolling()
         isRefreshing = false
@@ -244,37 +267,55 @@ final class SyncManager: ObservableObject {
 
     private var hasSyncedTimezone = false
 
+    // Retain the lifecycle entry point name; no high-frequency polling remains.
     func startPolling() {
         guard api.isAuthenticated else { return }
-        stopPolling()
-        pollCycleCount = 0
-        
+        if let notifications { notifications.hint(); return }
         if !hasSyncedTimezone {
             hasSyncedTimezone = true
-            Task {
-                try? await api.updateTimezone(offsetSeconds: TimeZone.current.secondsFromGMT())
-            }
+            Task { try? await api.updateTimezone(offsetSeconds: TimeZone.current.secondsFromGMT()) }
         }
-        
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.pollCycleCount += 1
+        guard let request = api.syncNotificationRequest() else { return }
+        let generation = syncState.generation
+        notifications = SyncNotifications(request: request) { [weak self] in
+            guard let self, generation == self.syncState.generation else { return true }
+            return await self.checkForChanges()
+        }
+        notifications?.start()
+    }
 
-                // 定期做一次全量同步，覆盖“删除历史”这类增量同步难以感知的变化
-                if self.pollCycleCount % 3 == 0 {
-                    await self.fullSync(manual: false, showSuccessStatus: false)
-                } else {
-                    await self.incrementalSync(manual: false)
-                }
-            }
+    private func checkForChanges() async -> Bool {
+        guard api.isAuthenticated else { return true }
+        guard !isSyncingInternal else { return false }
+        let generation = syncState.generation
+        do {
+            let state = try await api.getSyncState()
+            guard generation == syncState.generation else { return true }
+            if state == confirmedServerState { return true }
+            let reset = confirmedServerState.map { (state.latestMessage ?? "") < ($0.latestMessage ?? "") } ?? false
+            let success = reset ? await fullSync(manual: false, showSuccessStatus: false) : await incrementalSync(state: state)
+            guard success, generation == syncState.generation else { return false }
+            confirmedServerState = state
+            return true
+        } catch {
+            guard generation == syncState.generation else { return true }
+            handleError(error, contextKey: "sync.error_context.sync", silent: true)
+            return false
         }
     }
 
+    // APNs can arrive during a foreground sync; wait rather than dropping it.
+    @discardableResult
+    func syncAfterNotification() async -> Bool {
+        let generation = syncState.generation
+        await waitForCurrentSyncIfNeeded()
+        guard generation == syncState.generation, api.isAuthenticated else { return false }
+        return await incrementalSync()
+    }
+
     func stopPolling() {
-        pollTimer?.invalidate()
-        pollTimer = nil
-        pollCycleCount = 0
+        notifications?.stop()
+        notifications = nil
     }
 
     // MARK: - Status Helper
@@ -811,6 +852,7 @@ final class SyncManager: ObservableObject {
         selectedCategoryId = nil
         selectedCategoryIDsForTiledLayout = []
         lastSyncTimestamp = nil
+        confirmedServerState = nil
         sessionExpired = false
         syncStatus = .idle
         lastRefreshDate = nil

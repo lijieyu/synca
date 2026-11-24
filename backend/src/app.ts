@@ -1,3 +1,4 @@
+import { notifySync, openSyncStream, syncState } from './syncEvents.js';
 import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
@@ -174,6 +175,9 @@ async function auth(req: express.Request, res: express.Response, next: express.N
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
     (req as any).userId = userId;
     trackActivity(req, res, userId);
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) res.once('finish', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) notifySync(userId);
+    });
     next();
 }
 
@@ -325,6 +329,12 @@ app.delete('/me/account', auth, async (req, res) => {
     res.json({ ok: true });
 });
 
+app.get('/sync/events', auth, (req, res) => openSyncStream(req, res, getUserId(req)));
+app.get('/sync/state', auth, async (req, res, next) => {
+    try { res.set('Cache-Control', 'no-store').json(await syncState(getUserId(req))); }
+    catch (error) { next(error); }
+});
+
 // List messages (with optional since filter for sync)
 app.get('/messages', auth, async (req, res) => {
     const since = req.query.since as string | undefined;
@@ -364,6 +374,7 @@ app.post('/message-categories', auth, async (req, res) => {
             colorHex: parsed.data.colorHex,
             now: new Date().toISOString(),
         });
+        notifyOtherDevices(getUserId(req)).catch(() => {});
         res.status(201).json(category);
     } catch (error) {
         console.error('[message-categories/create] error:', error);
@@ -394,6 +405,7 @@ app.patch('/message-categories/:id', auth, async (req, res) => {
         if (!category) {
             return res.status(404).json({ error: 'category_not_found_or_not_editable' });
         }
+        notifyOtherDevices(getUserId(req)).catch(() => {});
         res.json(category);
     } catch (error) {
         console.error('[message-categories/update] error:', error);
@@ -953,6 +965,7 @@ app.post('/me/push-token', auth, async (req, res) => {
  * to trigger an immediate sync.
  */
 async function notifyOtherDevices(userId: string, authHeader?: string): Promise<void> {
+    notifySync(userId);
     const tokens = await listActiveDevicePushTokens(userId);
     if (tokens.length === 0) return;
 

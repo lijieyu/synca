@@ -12,7 +12,7 @@ function variant(mode = 'production') {
   const name = mas ? 'Synca' : local ? 'Synca Electron Local Preview' : isolated ? 'Synca Electron Preview' : 'Synca Electron'
   return Object.freeze({ home, name, isolated, local, offline, gate, upstream: local ? 'http://127.0.0.1:30642' : null,
     bundleId: mas ? 'org.haerth.synca' : local ? 'cn.haerth.synca.electron.preview.local' : isolated ? 'cn.haerth.synca.electron.preview' : 'cn.haerth.synca.electron',
-    profile: liveMAS ? 'Synca Electron Production' : mas ? 'Synca Electron TestFlight' : isolated ? name : null, push: !isolated && !mas,
+    profile: liveMAS ? 'Synca Electron Production' : mas ? 'Synca Electron TestFlight' : isolated ? name : null, push: !isolated,
     allows(value) { try { const u = new URL(value); return !u.username && !u.password && u.origin === home } catch { return false } },
   })
 }
