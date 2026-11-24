@@ -82,7 +82,12 @@ for page in '' 'en/' 'zh-Hant/'; do
 done
 for name in robots.txt sitemap.xml; do
   # A 200 HTML fallback is not a valid crawler document. Compare exact bytes.
-  curl -fsS --max-time 15 "https://synca.haerth.cn/$name" | cmp - "$release_dir/$name"
+  ready=0
+  for attempt in $(seq 1 10); do
+    if curl -fsS --max-time 10 "https://synca.haerth.cn/$name" -o "$release_dir/$name.response" && cmp -s "$release_dir/$name.response" "$release_dir/$name"; then ready=1; break; fi
+    sleep 1
+  done
+  test "$ready" = 1
 done
 test "$production_before" = "$(sha256sum /opt/synca/web/index.html)"
 trap - ERR

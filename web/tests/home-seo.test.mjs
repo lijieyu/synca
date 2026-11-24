@@ -64,7 +64,7 @@ test('deployment adds exact crawler routes once and preserves the SPA', () => {
     assert.equal(readFileSync(config, 'utf8'), first, 'Repeated deployment is idempotent');
     writeFileSync(config, first.replace('alias /opt/synca/home-current/robots.txt;', 'alias /unexpected/robots.txt;'));
     assert.throws(() => execFileSync('python3', ['-', config], { input: patch, stdio: ['pipe', 'pipe', 'pipe'] }), /Unexpected existing robots.txt route/);
-    assert(script.includes('| cmp - "$release_dir/$name"'), 'Verify actual document bytes, not just status 200');
+    assert(script.includes('cmp -s "$release_dir/$name.response" "$release_dir/$name"'), 'Verify actual document bytes, not just status 200');
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }

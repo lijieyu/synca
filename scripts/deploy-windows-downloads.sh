@@ -122,7 +122,13 @@ if ! cmp -s "$conf" "$incoming/nginx.next.conf"; then
   systemctl reload nginx
 fi
 base="https://synca.haerth.cn/downloads/windows/$release_id"
-curl -fsS --max-time 30 "$base/SHA256SUMS.txt" | cmp - "$target/SHA256SUMS.txt"
+# nginx reload is asynchronous: wait for a new worker to serve the exact bytes.
+ready=0
+for attempt in $(seq 1 10); do
+  if curl -fsS --max-time 10 "$base/SHA256SUMS.txt" -o "$incoming/checksum.response" && cmp -s "$incoming/checksum.response" "$target/SHA256SUMS.txt"; then ready=1; break; fi
+  sleep 1
+done
+test "$ready" = 1
 for arch in arm64 x64; do
   name="Synca-1.2.0-Windows-$arch.zip"
   expected="$(sha256sum "$target/$name" | cut -d ' ' -f 1)"
