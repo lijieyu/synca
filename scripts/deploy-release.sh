@@ -148,7 +148,7 @@ else:
 
 '''+source[position:]
 # MCP and OAuth must reach the API rather than the SPA fallback.
-for route in ['/mcp', '/api/ai/', '/oauth/', '/.well-known/oauth-']:
+for route in ['/mcp', '/api/ai/', '/oauth/', '/.well-known/oauth-', '/sync/']:
     marker='location ^~ '+route+' {'
     if marker not in source:
         position=source.index('    # SPA fallback:')

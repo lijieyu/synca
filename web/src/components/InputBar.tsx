@@ -14,6 +14,8 @@ interface Props {
   categoryId?: string | null;
   focusRequest?: number;
   scopeId?: string;
+  availableScopeIds?: readonly string[];
+  fallbackScopeId?: string;
 }
 
 // SF Symbol: arrow.up.circle.fill equivalent as inline SVG
@@ -24,7 +26,7 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, focusRequest = 0 }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availableScopeIds, fallbackScopeId, focusRequest = 0 }) => {
   const { accessStatus } = useAuth();
   const uploadController = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -64,10 +66,19 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, focusRe
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }, []);
 
+  const previousScope = useRef(scope);
+  React.useLayoutEffect(() => {
+    // Let an in-flight send clear its captured draft before recovering deleted scopes.
+    if (!isSending && availableScopeIds && fallbackScopeId) {
+      drafts.recoverScopes(availableScopeIds, fallbackScopeId, previousScope.current);
+    }
+    previousScope.current = scope;
+  }, [drafts, scope, availableScopeIds, fallbackScopeId, isSending]);
+
   React.useLayoutEffect(() => {
     const draft = drafts.get(scope);
     textareaRef.current?.setSelectionRange(draft.start, draft.end, draft.direction);
-  }, [drafts, scope]);
+  }, [drafts, scope, text]);
   React.useLayoutEffect(autoGrow, [text, scope, autoGrow]);
 
   const rememberDraft = (field: HTMLTextAreaElement) => {

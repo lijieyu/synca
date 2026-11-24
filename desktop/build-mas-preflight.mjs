@@ -1,3 +1,4 @@
+import { releaseVersion } from './release-version.mjs'
 import {packager} from '@electron/packager';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
@@ -28,15 +29,17 @@ await mkdir(iconDir,{recursive:true});
 const icon=path.join(iconDir,'Synca.icns');
 const sourceIcon=path.resolve('../ios/Synca/Resources/Assets.xcassets/AppIcon.appiconset/app-icon-mac.png');
 execFileSync(path.resolve('mas/icon.sh'),['create',icon,sourceIcon],{stdio:'inherit'});
+const identity=releaseVersion();
 const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arch:'universal',electronVersion:version,
  electronZipDir:runtime, asar:true, overwrite:false, appBundleId:'org.haerth.synca',helperBundleId:'org.haerth.synca.helper',
- appVersion:'1.2.0',buildVersion:'87',appCategoryType:'public.app-category.productivity',icon,
+ appVersion:identity.version,buildVersion:identity.build,appCategoryType:'public.app-category.productivity',icon,
  // The stock Electron MAS Info.plist opts out of ATS. Leave the Apple defaults
  // in force for this HTTPS-only archive; the renderer also has its own origin fence.
  // Reviewed standard cryptography / no France distribution; see mas/README.md.
  extendInfo:{NSAppTransportSecurity:{},ITSAppUsesNonExemptEncryption:false},
  afterCopy:[({buildPath})=>writeFile(path.join(buildPath,'preview-build.json'),JSON.stringify({mode}))],
 });
+await writeFile(path.join(out,'Synca.app/Contents/Resources/build-info.json'),JSON.stringify(identity));
 execFileSync('/bin/bash',[path.resolve('mas/assert-export-compliance.sh'),path.join(out,'Synca.app/Contents/Info.plist')],{stdio:'inherit'});
 // Preserve the Electron app/binaries. Only the separate Xcode wrapper input
 // drops upstream build records so Xcode can generate this archive's own facts.

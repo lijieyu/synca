@@ -18,6 +18,7 @@ xcrun swiftc -swift-version 6 -module-cache-path "$test_directory/module-cache" 
   "$project_root/ios/Synca/Shared/Core/SettingsManager.swift" \
   "$project_root/ios/Synca/Shared/Models/AccessStatus.swift" \
   "$project_root/ios/Synca/Shared/Models/SyncaMessage.swift" \
+  "$project_root/ios/Synca/Shared/Core/SyncNotifications.swift" \
   "$project_root/ios/Synca/Shared/Core/APIClient.swift" \
   "$project_root/ios/Synca/Shared/Core/ImageCacheManager.swift" \
   "$project_root/ios/Tests/ThumbnailReuseTests.swift" \

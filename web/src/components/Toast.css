@@ -1,0 +1,17 @@
+.app-toast {
+  position:fixed; top:48px; left:50%; transform:translate(-50%,-50%);
+  width:max-content; max-width:calc(100vw - 32px); box-sizing:border-box;
+  background:#18752c; color:#fff; padding:8px 20px; border-radius:20px;
+  font-size:14px; font-weight:500; line-height:20px; text-align:center;
+  z-index:3000; pointer-events:none; overflow-wrap:anywhere;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 2px 12px rgba(0,0,0,.2); animation:appToastIn 120ms ease-out;
+  -webkit-app-region:no-drag;
+}
+.app-toast[data-variant="error"] { background:#b42318; }
+/* Show one transient message at a time without moving content or buttons. */
+body:has(> .app-toast) .sync-feedback { visibility:hidden; }
+body > .app-toast:has(~ .app-toast) { display:none; }
+@keyframes appToastIn { from { opacity:0; } to { opacity:1; } }
+@media(prefers-reduced-motion:reduce) { .app-toast { animation:none; } }
+@media(forced-colors:active) { .app-toast { border:1px solid CanvasText; } }

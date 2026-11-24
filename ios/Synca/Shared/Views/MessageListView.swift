@@ -408,15 +408,20 @@ struct MessageListView: View {
         }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            Task { await syncManager.fullSync(manual: false, showSuccessStatus: false) }
+            syncManager.startPolling()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            syncManager.stopPolling()
         }
         #elseif os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await syncManager.fullSync(manual: false, showSuccessStatus: false) }
+            syncManager.startPolling()
         }
         #endif
         .onDisappear {
+            #if os(iOS)
             syncManager.stopPolling()
+            #endif
         }
         .onReceive(NotificationCenter.default.publisher(for: .syncaFeedbackSubmitted)) { _ in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -1963,7 +1968,7 @@ private struct TiledCategoryColumn: View {
                 Spacer()
 
                 Button {
-                    Task { await syncManager.fullSync(manual: true) }
+                    Task { await syncManager.refresh() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

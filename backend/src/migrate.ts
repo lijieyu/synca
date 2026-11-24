@@ -204,6 +204,7 @@ export async function runMigrations() {
     `.execute(db);
 
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`.execute(db);
+    await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_revision ON messages(user_id, updated_at)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at)`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_messages_category_id ON messages(category_id)`.execute(db);

@@ -1,3 +1,4 @@
+import { notifySync } from './syncEvents.js';
 import { sql } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
@@ -93,6 +94,7 @@ export async function cleanupExpiredAttachments(now = new Date()) {
         for (const row of rows) {
             try {
                 await purgeMessageMedia(row, path.resolve('uploads'), path.resolve('files'), now.toISOString());
+                notifySync(row.user_id);
             } catch (error) { console.error('[storage] cleanup retry required', row.id, error); }
         }
         const stale = await sql<{ id: string }>`SELECT id FROM upload_reservations WHERE expires_at <= ${now.toISOString()} LIMIT 200`.execute(db);

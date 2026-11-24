@@ -9,14 +9,10 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
         let notifDelegate = MacNotificationDelegate.shared
         UNUserNotificationCenter.current().delegate = notifDelegate
 
-        // Request notification permission
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-            if granted {
-                DispatchQueue.main.async {
-                    NSApplication.shared.registerForRemoteNotifications()
-                }
-            }
-        }
+        // Register silent synchronization independently of visible notification permission.
+        NSApplication.shared.registerForRemoteNotifications()
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -50,7 +46,7 @@ class MacAppDelegate: NSObject, NSApplicationDelegate {
                      didReceiveRemoteNotification userInfo: [String: Any]) {
         print("[apns:mac] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
+            await SyncManager.shared.syncAfterNotification()
 
             // Update Dock badge
             let count = SyncManager.shared.unclearedCount
@@ -71,7 +67,7 @@ final class MacNotificationDelegate: NSObject, UNUserNotificationCenterDelegate,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         Task { @MainActor in
-            await SyncManager.shared.fullSync(manual: false, showSuccessStatus: false)
+            await SyncManager.shared.syncAfterNotification()
         }
         completionHandler([])
     }

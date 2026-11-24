@@ -1,9 +1,13 @@
+import {createRequire} from 'node:module'
 import path from 'node:path'
 import os from 'node:os'
 import fs from 'node:fs/promises'
 import {execFileSync} from 'node:child_process'
 const root=path.resolve(process.env.SYNCA_WEB||'../web')
 const modules=path.resolve(process.env.SYNCA_WEB_MODULES||path.join(root,'node_modules'))
+const ts=createRequire(path.join(modules,'typescript/package.json'))('./lib/typescript.js')
+const core=await fs.readFile(path.join(root,'src/utils/changeNotifications.ts'),'utf8')
+await fs.writeFile('app/change-notifications.cjs',ts.transpileModule(core,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)
 const stage=await fs.mkdtemp(path.join(os.tmpdir(),'synca-renderer-'))
 try{
   for(const name of ['src','public','package.json','index.html','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json']){
@@ -13,5 +17,5 @@ try{
   execFileSync('git',['apply','--no-index',path.resolve('frontend.patch')],{cwd:stage,stdio:'inherit'})
   await fs.cp('ui',path.join(stage,'src/desktop'),{recursive:true})
   execFileSync(path.join(modules,'.bin/tsc'),['-b'],{cwd:stage,stdio:'inherit'})
-  execFileSync(path.join(modules,'.bin/vite'),['build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit'})
+  execFileSync(path.join(modules,'.bin/vite'),['build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit',env:{...process.env,SYNCA_SOURCE_ROOT:root}})
 }finally{await fs.rm(stage,{recursive:true,force:true})}

@@ -1,14 +1,14 @@
 # Synca Electron 1.2.0
 
-本地打包共享 React 前端，沿用 Synca 服务、Apple 登录来源和既有桌面用户配置。Mac Bundle ID 为 cn.haerth.synca.electron。正式签名 APNs 需要独立的 App ID、推送权限、匹配的 provisioning profile 和签名。当前交付的 Mac ZIP 使用 ad-hoc 签名，Windows ZIP 为未签名的 x64 便携包。
+本地打包共享 React 前端，沿用 Synca 服务、Apple 登录来源和既有桌面用户配置。Mac Bundle ID 为 cn.haerth.synca.electron。正式签名 APNs 需要独立的 App ID、推送权限、匹配的 provisioning profile 和签名。当前交付的 Mac ZIP 使用 ad-hoc 签名，Windows 测试包为未签名的 ARM64 / x64 便携包，解压完整目录后运行 Synca Electron.exe。
 
 ## 构建
 
 在 Mac 上使用 Node 25、npm 和 codesign。先运行 npm ci --ignore-scripts。将 SYNCA_WEB 指向 Synca 仓库的 web 目录，在该目录执行 npm ci，或通过 SYNCA_WEB_MODULES 指向另一份按相同锁文件安装的 node_modules。
 
-在 Mini 上单独构建 macOS arm64 使用 `npm run build:mac`。
+在 Mini 上单独构建 macOS arm64 使用 `npm run build:mac`。单独构建 Windows ARM64 和 x64 使用 `npm run build:windows`，两者共用一次前端构建。Mac 可交叉构建 Windows，无需 Windows 编译环境；实际运行验收仍必须在对应 Windows 系统完成。
 
-npm run build 会先执行 node build-ui.mjs，在临时目录将 frontend.patch 和 ui 合入共享前端、类型检查、编译并生成 app/renderer。设置与 Markdown 直接使用同仓库 web/src/components 下的共享实现。补丁基线不兼容会令构建失败。之后自动生成安装包。可设置 ELECTRON_ZIP_DIR 使用本地运行时（校验 npm 官方哈希），并设置 SYNCA_BUILD_DIR 指定输出路径。推荐使用本机临时构建目录以避免云盘为 app 增加 FinderInfo 属性。
+npm run build 会先执行 node build-ui.mjs，在临时目录将 frontend.patch 和 ui 合入共享前端、类型检查、编译并生成 app/renderer。设置与 Markdown 直接使用同仓库 web/src/components 下的共享实现。补丁基线不兼容会令构建失败。之后生成应用目录；Windows 分发时需将整个输出目录压缩为 ZIP，不能只复制 exe。可设置 ELECTRON_ZIP_DIR 使用本地运行时（校验 npm 官方哈希），并设置 SYNCA_BUILD_DIR 指定输出路径。推荐使用本机临时构建目录以避免云盘为 app 增加 FinderInfo 属性。
 
 ## 实现位置
 

@@ -152,11 +152,12 @@ export async function updateMessages(actor: Actor, args: z.infer<typeof mutation
             if (row.updated_at !== item.expectedUpdatedAt) throw new AIError(409, 'version_conflict');
             if (args.textContent !== undefined && row.type !== 'text') throw new AIError(400, 'text_message_required');
             const now = new Date(Math.max(Date.now(), Date.parse(row.updated_at) + 1)).toISOString();
-            const patch = { updated_at: now, ...(args.textContent !== undefined ? { text_content: args.textContent } : {}),
+            const patch = { updated_at: nextMessageTimestamp(now), ...(args.textContent !== undefined ? { text_content: args.textContent } : {}),
                 ...(args.categoryId ? { category_id: args.categoryId } : {}), ...(args.isCleared !== undefined ? { is_cleared: args.isCleared ? 1 : 0 } : {}) };
             await trx.updateTable('messages').set(patch).where('id', '=', item.id).where('user_id', '=', actor.userId).execute();
             before.push({ id: row.id, updatedAt: row.updated_at });
-            after.push({ id: row.id, updatedAt: now });
+            const committed = await trx.selectFrom('messages').select('updated_at').where('id', '=', row.id).executeTakeFirstOrThrow();
+            after.push({ id: row.id, updatedAt: committed.updated_at });
         }
         const audit = operation(actor, 'update_messages', { before, changedFields: Object.keys(args).filter(key => key !== 'items') }, { items: after });
         await trx.insertInto('ai_operations').values(audit).execute();

@@ -1,0 +1,36 @@
+import { preview } from 'vite';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import express from '../../backend/node_modules/express/index.js';
+import fs from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'../../desktop/node_modules/playwright-core/index.mjs');
+const app=express(),streams=new Set(),requests=[],errors=[];let now=Date.UTC(2026,10,24,0),fail=false;
+const stamp=()=>new Date(++now).toISOString(),hash=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+let categories=[{id:'default',name:'默认',color:'slate',isDefault:true,sortOrder:0},{id:'work',name:'工作',color:'sky',isDefault:false,sortOrder:1}];
+let records=Array.from({length:60},(_,i)=>({id:'r'+i,type:'text',textContent:'历史记录 '+i+' '+('已有内容。'.repeat(40)),categoryId:'work',categoryName:'工作',categoryColor:'sky',sourceDevice:'iOS',isCleared:false,isDeleted:false,createdAt:stamp(),updatedAt:stamp()}));
+const notify=()=>{for(const res of streams)res.write('event: change\ndata: {}\n\n');};
+app.use((req,res,next)=>{res.on('finish',()=>requests.push({path:req.path,since:req.query.since,status:res.statusCode}));next();});
+app.get('/sync/events',(req,res)=>{res.set({'Content-Type':'text/event-stream','Cache-Control':'no-store'});res.flushHeaders();streams.add(res);res.write('event: change\ndata: {}\n\n');res.on('close',()=>streams.delete(res));});
+app.get('/sync/state',(_req,res)=>res.json({messages:hash(records),categories:hash(categories),access:'a',latestMessage:records.reduce((a,r)=>r.updatedAt>a?r.updatedAt:a,''),count:records.filter(r=>!r.isCleared&&!r.isDeleted).length}));
+app.get('/messages',(req,res)=>{if(fail){fail=false;return res.status(503).json({error:'fixture_unavailable'});}res.json({messages:req.query.since?records.filter(r=>r.updatedAt>req.query.since):records.filter(r=>!r.isDeleted)});});
+app.get('/message-categories',(_req,res)=>res.json({categories}));
+app.get('/me/access-status',(_req,res)=>res.json({email:'synthetic@example.invalid',accessStatus:{plan:'unlimited',isUnlimited:true,isTrial:false,todayUsed:0,todayLimit:null}}));
+const server=await preview({preview:{host:'127.0.0.1',port:0},plugins:[{name:'notifications-fixture',configurePreviewServer(s){s.middlewares.use(app);}}]});
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const ctx=await browser.newContext({viewport:{width:1100,height:760}});
+await ctx.addInitScript(()=>{localStorage.setItem('authToken','synthetic');localStorage.setItem('userEmail','synthetic@example.invalid');localStorage.setItem('synca.language','zh-Hans');});
+const p=await ctx.newPage();p.setDefaultTimeout(8000);p.on('pageerror',e=>errors.push(e.message));const settle=()=>p.waitForTimeout(250);
+try{
+ await p.goto(server.resolvedUrls.local[0]);await p.locator('[data-message-id=r0]').waitFor();await p.waitForTimeout(1500);
+ const input=p.locator('.input-bar textarea');await input.fill('持续输入的草稿');await input.evaluate(el=>el.setSelectionRange(2,5));
+ const before=requests.filter(r=>r.path==='/messages').length;await p.clock.install();await p.clock.fastForward(60000);await settle();assert.equal(requests.filter(r=>r.path==='/messages').length,before);
+ records.push({...records[0],id:'remote',textContent:'通知带来的新增',createdAt:stamp(),updatedAt:stamp()});notify();await p.locator('[data-message-id=remote]').waitFor();assert.equal(await input.inputValue(),'持续输入的草稿');assert.deepEqual(await input.evaluate(el=>[el.selectionStart,el.selectionEnd]),[2,5]);
+ records[0]={...records[0],textContent:'修改后的内容',updatedAt:stamp()};records[1]={...records[1],isDeleted:true,updatedAt:stamp()};records[2]={...records[2],isCleared:true,updatedAt:stamp()};notify();await p.locator('[data-message-id=r0]').getByText('修改后的内容',{exact:true}).waitFor();assert.equal(await p.locator('[data-message-id=r1]').count(),0);
+ categories[1]={...categories[1],name:'新的工作分类'};records=records.map(r=>({...r,categoryName:'新的工作分类',updatedAt:stamp()}));notify();await p.locator('[data-category-id=work]').getByText('新的工作分类',{exact:true}).waitFor();
+ records.push({...records[0],id:'missed',textContent:'漏通知后补齐',updatedAt:stamp()});await p.clock.fastForward(300000);await p.locator('[data-message-id=missed]').waitFor();
+ fail=true;records.push({...records[0],id:'retry',textContent:'失败自动重试',updatedAt:stamp()});notify();await settle();await p.clock.fastForward(2000);await p.locator('[data-message-id=retry]').waitFor();
+ for(const res of streams)res.end();records.push({...records[0],id:'reconnect',textContent:'断线后补齐',updatedAt:stamp()});await settle();await p.clock.fastForward(3000);await p.locator('[data-message-id=reconnect]').waitFor();
+ await p.keyboard.press('Meta+f');await p.getByRole('searchbox').fill('修改');await p.locator('.message-search-result').first().waitFor();await p.keyboard.press('Escape');await p.keyboard.press('Meta+r');await p.getByText('同步成功',{exact:true}).waitFor();
+ assert.equal(await input.inputValue(),'持续输入的草稿');assert.equal(requests.filter(r=>r.path==='/messages'&&!r.since).length,1);assert.deepEqual(errors,[]);
+ const report={checks:['no idle 10s reads','push add/edit/delete/complete','category rename','missed hint catch-up','failed delta retries','stream reconnect','draft/selection/search/manual sync preserved'],requests};await fs.writeFile('/private/tmp/sync-notification-browser.json',JSON.stringify(report,null,2));console.log('PASS',report.checks.join('; '));
+}finally{for(const res of streams)res.end();await browser.close();server.httpServer.closeAllConnections();await new Promise(r=>server.httpServer.close(r));}

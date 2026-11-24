@@ -10,7 +10,7 @@ interface AuthContextType {
   accessStatus: AccessStatus | null;
   login: (token: string, isAdmin?: boolean, email?: string, plan?: string) => void;
   logout: () => void;
-  refreshAccessStatus: () => Promise<void>;
+  refreshAccessStatus: () => Promise<boolean | void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return;
     try {
       const res = await api.getMyProfile();
-      if (token !== localStorage.getItem('authToken')) return;
+      if (token !== localStorage.getItem('authToken')) return false;
       if (res.isAdmin !== undefined) {
         setIsAdmin(res.isAdmin);
         localStorage.setItem('isAdmin', res.isAdmin ? 'true' : 'false');
@@ -50,8 +50,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAccessStatus(res.accessStatus);
         localStorage.setItem('userPlan', res.accessStatus.plan);
       }
+      return true;
     } catch (err) {
       console.error('[auth] profile fetch failed:', err);
+      return false;
     }
   };
 
