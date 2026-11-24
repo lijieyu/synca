@@ -3,6 +3,7 @@ import WebKit
 
 /// A temporary, authenticated AI guide; shares neither cookies nor storage with browsers.
 struct AIConnectionView: View {
+    var embedded = false
     @EnvironmentObject private var api: APIClient
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -39,6 +40,17 @@ struct AIConnectionView: View {
             }
             .frame(width: macSheetSize.width, height: macSheetSize.height)
             #else
+            if embedded {
+                browserContent
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        if browser.canGoBack {
+                            HStack {
+                                Button { browser.goBack() } label: { Label("ai_browser.back", systemImage: "chevron.left") }
+                                Spacer()
+                            }.padding(.horizontal, 20).padding(.vertical, 10).background(.background)
+                        }
+                    }
+            } else {
             NavigationStack {
                 browserContent
                     .navigationTitle(Text("message_list.connect_ai"))
@@ -58,6 +70,7 @@ struct AIConnectionView: View {
             }
             .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(620), .large])
             .presentationDragIndicator(.visible)
+            }
             #endif
         }
         .onAppear {
@@ -96,7 +109,12 @@ struct AIConnectionView: View {
                         .accessibilityHidden(true)
                     Text("ai_browser.load_failed").multilineTextAlignment(.center)
                     Button("common.retry") { browser.retry() }
-                        .buttonStyle(.borderedProminent).tint(.accentColor)
+                        .buttonStyle(.borderedProminent)
+                        #if os(iOS)
+                        .tint(.primary)
+                        #else
+                        .tint(.accentColor)
+                        #endif
                 }
                 .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.background)
@@ -177,6 +195,18 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         ))
         controller.addUserScript(WKUserScript(source: Self.contentHeightScript,
             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        #if os(iOS)
+        // Keep the shared guide's actions aligned with the native settings palette.
+        controller.addUserScript(WKUserScript(source: """
+        (() => {
+          if (window.top !== window || location.origin !== 'https://synca.haerth.cn' ||
+              !['/ai', '/ai/'].includes(location.pathname)) return;
+          const style = document.createElement('style');
+          style.textContent = '.ai-embedded .ai-primary { background:var(--ai-ink); color:var(--ai-surface) } .ai-embedded .ai-text-link { color:var(--ai-ink) }';
+          document.head.appendChild(style);
+        })();
+        """, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        #endif
         if let url = webView.url, EmbeddedAISession.isTrusted(url) {
             webView.evaluateJavaScript(EmbeddedAISession.preferences(appearance: appearance, language: language), completionHandler: nil)
         }
