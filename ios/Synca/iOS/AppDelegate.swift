@@ -37,13 +37,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("[apns] received remote notification")
         Task { @MainActor in
-            await SyncManager.shared.syncAfterNotification()
-
-            // Update badge
-            let count = SyncManager.shared.unclearedCount
-            UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
-
-            completionHandler(.newData)
+            let succeeded = await SyncManager.shared.syncAfterNotification()
+            completionHandler(succeeded ? .newData : .failed)
         }
     }
 }

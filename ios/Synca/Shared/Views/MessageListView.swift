@@ -83,7 +83,16 @@ private struct StatusToastStyle: ViewModifier {
 }
 
 struct MessageListView: View {
+    #if os(iOS)
+    @State private var hasInitializedWorkspace = false
+    #endif
     @State private var categorySwipeIsHorizontal: Bool?
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSize
+    @State private var drawerOpen = false
+    @State private var showIOSSettings = false
+    private var phoneLayout: Bool { horizontalSize == .compact }
+    #endif
     private enum Timing {
         static let scrollCoalescingNanoseconds: UInt64 = 50_000_000
         static let errorDisplayNanoseconds: UInt64 = 6_000_000_000
@@ -161,7 +170,7 @@ struct MessageListView: View {
     @State private var accountEntryHeight: CGFloat = 112
     @FocusState private var managementMenuFocused: Bool
 
-    var body: some View {
+    private var workspaceNavigation: some View {
         MessageListNavigationContainer {
             rootContent
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -306,6 +315,22 @@ struct MessageListView: View {
                 Text("message_list.session_expired_message")
             }
         }
+    }
+
+    var body: some View {
+        workspaceNavigation
+        #if os(iOS)
+        .accessibilityHidden(drawerOpen)
+        .allowsHitTesting(!drawerOpen)
+        .overlay(alignment: .leading) { if drawerOpen && phoneLayout { phoneDrawer } }
+        .onChange(of: horizontalSize) { _ in drawerOpen = false }
+        .fullScreenCover(isPresented: Binding(get: { showIOSSettings && phoneLayout }, set: { showIOSSettings = $0 })) {
+            iosSettings
+        }
+        .sheet(isPresented: Binding(get: { showIOSSettings && !phoneLayout }, set: { showIOSSettings = $0 })) {
+            iosSettings.presentationDetents([.large])
+        }
+        #endif
         .onChange(of: api.currentUserEmail) { _ in searchQuery = ""; showSearch = false }
         .overlay(alignment: .top) { syncStatusOverlay }
         .overlay(alignment: .top) { feedbackToastOverlay }
@@ -339,6 +364,9 @@ struct MessageListView: View {
         }
         .imagePreviewSheet(item: $selectedImageMessage, syncManager: syncManager)
         .task {
+            #if os(iOS)
+            guard !hasInitializedWorkspace else { return }
+            #endif
             let isReturningFromSearch = searchPresentationSuppressesScroll
             shouldScrollToBottomAfterInitialLoad = !isReturningFromSearch
             await syncManager.restoreCachedDataIfAvailable()
@@ -354,8 +382,17 @@ struct MessageListView: View {
             if !isReturningFromSearch, !syncManager.orderedMessages.isEmpty {
                 beginInitialLoadScrollWindow()
             }
+            guard !Task.isCancelled else { return }
+            #if os(iOS)
+            // Initial loading can finish after all windows entered the background.
+            if UIApplication.shared.applicationState != .background { syncManager.startPolling() }
+            #else
             syncManager.startPolling()
+            #endif
             self.updateBadge()
+            #if os(iOS)
+            hasInitializedWorkspace = true
+            #endif
         }
         #if os(iOS)
         .onChange(of: syncManager.selectedCategoryId) { category in
@@ -406,23 +443,11 @@ struct MessageListView: View {
             guard !Task.isCancelled, syncManager.errorMessage == message else { return }
             syncManager.errorMessage = nil
         }
-        #if os(iOS)
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            syncManager.startPolling()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-            syncManager.stopPolling()
-        }
-        #elseif os(macOS)
+        #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             syncManager.startPolling()
         }
         #endif
-        .onDisappear {
-            #if os(iOS)
-            syncManager.stopPolling()
-            #endif
-        }
         .onReceive(NotificationCenter.default.publisher(for: .syncaFeedbackSubmitted)) { _ in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 showFeedbackSuccessToast = true
@@ -485,6 +510,19 @@ struct MessageListView: View {
             .keyboardShortcut("f", modifiers: .command)
             #endif
     }
+
+    #if os(iOS)
+    private var iosSettings: some View {
+        IOSSettingsView(onClose: { showIOSSettings = false },
+            onRequestDeleteAccount: {
+                showIOSSettings = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showDeleteAccountConfirm = true }
+            }, onRequestLogout: {
+                showIOSSettings = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showLogoutConfirm = true }
+            })
+    }
+    #endif
 
     private func finishSearchPresentation() {
         // Presentation suppression ends after the returning reader's appearance.
@@ -592,10 +630,12 @@ struct MessageListView: View {
         }
         #else
         VStack(spacing: 0) {
-            if let status = accessManager.status {
-                DailyQuotaView(status: status).padding(.horizontal, 20).padding(.top, 6)
+            if !phoneLayout {
+                if let status = accessManager.status {
+                    DailyQuotaView(status: status).padding(.horizontal, 20).padding(.top, 6)
+                }
+                categoryToolbar
             }
-            categoryToolbar
             singleMessageContent
         }
         #endif
@@ -616,7 +656,11 @@ struct MessageListView: View {
                     .onEnded { value in
                         defer { categorySwipeIsHorizontal = nil }
                         guard categorySwipeIsHorizontal == true else { return }
-                        switchCategory(horizontal: value.translation.width, vertical: 0)
+                        if phoneLayout {
+                            if value.startLocation.x < 32 && value.translation.width > 60 { toggleDrawer(true) }
+                        } else {
+                            switchCategory(horizontal: value.translation.width, vertical: 0)
+                        }
                     })
                 .accessibilityAction(named: Text("message_list.next_category")) { switchCategory(horizontal: -80, vertical: 0) }
                 .accessibilityAction(named: Text("message_list.previous_category")) { switchCategory(horizontal: 80, vertical: 0) }
@@ -858,24 +902,126 @@ struct MessageListView: View {
     private var actionToolbarItems: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) { searchButton }
         ToolbarItem(placement: .topBarTrailing) {
-            refreshButton
+            refreshButton.accessibilityLabel(Text("message_list.sync")).accessibilityIdentifier("phone-sync")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            clearAllButton
+            clearAllButton.accessibilityIdentifier("phone-clear")
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            settingsMenu
-        }
+        if !phoneLayout { ToolbarItem(placement: .topBarTrailing) {
+            Button { showIOSSettings = true } label: { Image(systemName: "person.crop.circle") }
+                .accessibilityLabel(Text("settings.title"))
+                .keyboardShortcut(",", modifiers: .command)
+        } }
     }
 
     @ToolbarContentBuilder
     private var titleToolbarItem: some ToolbarContent {
+        if phoneLayout {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { toggleDrawer(true) } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "sidebar.left")
+                        if let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) {
+                            Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex)).frame(width: 7, height: 7)
+                        }
+                        Text(selectedCategoryTitle).font(.headline).lineLimit(1).truncationMode(.tail)
+                        Text("\(todoCount(for: selectedFilterCategoryId))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: 154, alignment: .leading)
+                }
+                .accessibilityIdentifier("phone-categories")
+                .accessibilityHint(Text("message_category.section_title"))
+            }
+        } else {
         ToolbarItem(placement: .principal) {
             HStack(spacing: 8) {
                 Text("Synca")
                     .font(.system(size: 17, weight: .semibold))
 
 
+            }
+        }
+        }
+    }
+
+    private func toggleDrawer(_ open: Bool) {
+        if open { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { drawerOpen = open }
+    }
+
+    private func drawerRow(id: String, title: String, color: Color?, count: Int) -> some View {
+        let selected = (syncManager.selectedCategoryId ?? syncManager.allCategoryPseudoId) == id
+        return Button {
+            syncManager.selectCategory(id)
+            toggleDrawer(false)
+        } label: {
+            HStack(spacing: 10) {
+                if let color { Circle().fill(color).frame(width: 9, height: 9) }
+                else { Image(systemName: "square.grid.2x2") }
+                Text(title).lineLimit(2)
+                Spacer()
+                Text("\(count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: 24, alignment: .trailing)
+
+            }.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 44)
+             .background((color ?? Color.primary).opacity(selected ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 10))
+             .contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityIdentifier("drawer-category-" + id)
+         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var phoneDrawer: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Color.black.opacity(0.30).ignoresSafeArea().onTapGesture { toggleDrawer(false) }.accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Synca").font(.title2.bold())
+                        Spacer()
+                        Button { toggleDrawer(false) } label: { Image(systemName: "xmark").frame(width: 44,height: 44) }
+                            .accessibilityLabel(Text("common.cancel"))
+                    }
+                    ScrollView {
+                        VStack(spacing: 4) {
+                            drawerRow(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "common.all"), color: nil, count: allTodoCount)
+                            HStack {
+                                Text("message_category.section_title").font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image(systemName: "tag").frame(width:44,height:44) }
+                                    .accessibilityLabel(Text("message_list.manage_categories"))
+                            }.padding(.leading,12)
+                            ForEach(syncManager.categories) { category in
+                                drawerRow(id: category.id, title: category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name, color: categoryDisplayColor(category.color, hex: category.colorHex), count: todoCount(for: category.id))
+                            }
+                            Button {
+                                toggleDrawer(false); categoryToEdit = nil; showCreateCategory = true
+                            } label: {
+                                Image(systemName: "plus").foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 44)
+                                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(.secondary.opacity(0.22)))
+                                    .contentShape(Rectangle())
+                            }.accessibilityLabel(Text("message_category.add_action")).accessibilityIdentifier("drawer-add")
+                        }
+                    }
+                    if let status = accessManager.status { DailyQuotaView(status: status).padding(.horizontal, 12) }
+                    Divider()
+                    Button { toggleDrawer(false); showIOSSettings = true } label: {
+                        HStack {
+                            Image(systemName: "person.crop.circle").font(.title2)
+                            Text(api.currentUserEmail ?? String(syncaLocalized: "account.and_plan")).font(.subheadline.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }.frame(minHeight:44).contentShape(Rectangle())
+                    }.accessibilityIdentifier("drawer-settings").keyboardShortcut(",", modifiers:.command)
+                }
+                .buttonStyle(.plain).padding(.horizontal,16).padding(.vertical,8)
+                .frame(width:min(324,proxy.size.width * 0.82))
+                .frame(maxHeight:.infinity)
+                .background(Color(uiColor:.secondarySystemBackground).ignoresSafeArea())
+                .simultaneousGesture(DragGesture(minimumDistance:24).onEnded { value in
+                    if value.translation.width < -60 && -value.translation.width > abs(value.translation.height)*2 { toggleDrawer(false) }
+                })
+                .accessibilityAction(.escape) { toggleDrawer(false) }
+                .accessibilityElement(children: .contain)
+                .transition(.move(edge:.leading))
             }
         }
     }
@@ -2678,6 +2824,9 @@ private struct NewMessageCategorySheet: View {
         NavigationStack {
             Form {
                 Section {
+                    if category?.isDefault == true {
+                        Text("message_category.default_badge").foregroundStyle(.secondary)
+                    } else {
                     TextField(String(syncaLocalized: "message_category.name_placeholder", bundle: .main), text: $name)
                         .textInputAutocapitalization(.words)
                         .submitLabel(.done)
@@ -2687,6 +2836,7 @@ private struct NewMessageCategorySheet: View {
                                 createCategory()
                             }
                         }
+                    }
                 }
 
                 Section {
@@ -2714,7 +2864,7 @@ private struct NewMessageCategorySheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.syncaPageBackground)
-            .navigationTitle("message_category.new_section")
+            .navigationTitle(category == nil ? "message_category.new_section" : "message_category.edit_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2731,7 +2881,7 @@ private struct NewMessageCategorySheet: View {
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                isNameFocused = true
+                isNameFocused = category?.isDefault != true
             }
         }
         .alert("message_category.duplicate_title", isPresented: $showDuplicateNameAlert) {
@@ -2820,7 +2970,12 @@ private struct NewMessageCategorySheet: View {
     }
 }
 
-private struct MessageCategoryManagerSheet: View {
+struct MessageCategoryManagerSheet: View {
+    var embedded = false
+    #if os(iOS)
+    @State private var editMode: EditMode = .active
+    @State private var editingCategory: SyncaMessageCategory?
+    #endif
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.dismiss) private var dismiss
     @State private var pendingDelete: SyncaMessageCategory?
@@ -2926,24 +3081,49 @@ private struct MessageCategoryManagerSheet: View {
         }
     }
 
+    private func nativeRow(_ category: SyncaMessageCategory) -> some View {
+        HStack(spacing: 12) {
+            Circle().fill(categoryDisplayColor(category.color, hex: category.colorHex))
+                .frame(width: 12, height: 12).accessibilityHidden(true)
+            Text(category.isDefault ? AppLocalization.string("message_category.default_badge") : category.name)
+            Spacer()
+            Group {
+                Button { editingCategory = category } label: {
+                    Image(systemName: "pencil").frame(width: 44, height: 44)
+                }.buttonStyle(.borderless).accessibilityLabel(Text("message_category.modify"))
+                if !category.isDefault {
+                    Button(role: .destructive) { pendingDelete = category } label: {
+                        Image(systemName: "trash").frame(width: 44, height: 44)
+                    }.buttonStyle(.borderless).accessibilityLabel(Text("message_category.delete_action"))
+                }
+            }
+        }.frame(minHeight: 44).disabled(busy)
+    }
+
     private var rows: some View {
         List {
             Section {
-                ForEach(syncManager.categories.filter(\.isDefault)) { category in
-                    categoryRow(category)
-                }
+                ForEach(syncManager.categories.filter(\.isDefault)) { category in nativeRow(category) }
                 ForEach(customCategories) { category in
-                    categoryRow(category)
-                        .deleteDisabled(true)
-                        .moveDisabled(busy)
-                }
-                .onMove(perform: reorder)
+                    nativeRow(category).deleteDisabled(true).moveDisabled(!editMode.isEditing || busy)
+                }.onMove(perform: reorder)
+                addButton.foregroundStyle(Color.primary)
             }
-            Section { addButton }
         }
         .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .environment(\.editMode, .constant(.active))
+        .environment(\.editMode, $editMode)
+        .navigationTitle("message_list.manage_categories")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !embedded {
+                ToolbarItem(placement: .cancellationAction) { Button("common.close") { dismiss() }.disabled(busy) }
+            }
+        }
+        .tint(.primary)
+        .sheet(item: $editingCategory) { category in
+            NewMessageCategorySheet(category: category, showsManageCategories: false, onManageCategories: {})
+                .syncaPreferences()
+        }
     }
     #else
     private var rows: some View {
@@ -2967,13 +3147,7 @@ private struct MessageCategoryManagerSheet: View {
     var body: some View {
         Group {
             #if os(iOS)
-            NavigationStack {
-                rows
-                    .background(Color.syncaPageBackground)
-                    .navigationTitle("message_category.section_title")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("common.done", action: finish).disabled(busy) } }
-            }
+            if embedded { rows } else { NavigationStack { rows } }
             #else
             VStack(spacing: 0) {
                 MacSheetHeader(title: "message_list.manage_categories", onClose: finish)
@@ -3139,7 +3313,8 @@ func categoryDisplayColor(_ legacy: MessageCategoryColor, hex: String?) -> Color
     return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
 }
 
-private struct AboutSyncaSheet: View {
+struct AboutSyncaSheet: View {
+    var embedded = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var contentHeight: CGFloat = 360
@@ -3180,6 +3355,7 @@ private struct AboutSyncaSheet: View {
         .frame(width: min(420, (NSScreen.main?.visibleFrame.width ?? 520) - 80), height: min(contentHeight + 57, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
 
         #else
+        if embedded { sheetContent } else {
         NavigationStack {
             sheetContent
                 .navigationTitle(Text("message_list.about"))
@@ -3189,6 +3365,7 @@ private struct AboutSyncaSheet: View {
                 }
         }
         .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
+        }
         #endif
     }
 
@@ -3248,6 +3425,7 @@ private struct AboutSyncaSheet: View {
                     }
                 }.padding(.top, 28)
 
+                #if os(macOS)
                 Text(verbatim: "浙ICP备2026013056号-3A")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -3255,6 +3433,7 @@ private struct AboutSyncaSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity)
+                #endif
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)

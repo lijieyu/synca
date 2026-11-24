@@ -4,6 +4,7 @@ import AppKit
 #endif
 
 struct AccountSheet: View {
+    var embedded = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var accessManager: AccessManager
 
@@ -47,6 +48,7 @@ struct AccountSheet: View {
         .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80), height: min(contentHeight + 57, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
 
         #else
+        if embedded { iosAccountContent } else {
         NavigationStack {
             sheetContent
                 .navigationTitle(Text("account.and_plan"))
@@ -56,8 +58,51 @@ struct AccountSheet: View {
                 }
         }
         .presentationDetents([.medium, .large])
+        }
         #endif
     }
+
+    #if os(iOS)
+    private var iosAccountContent: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(resolvedAccountEmail).font(.headline).textSelection(.enabled)
+                    if isPrivateRelayEmail {
+                        Label("account.email_hidden_title", systemImage: "eye.slash")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let status = accessManager.status {
+                        Text(status.isUnlimited ? "access.pro_name" : "access.free_title")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }.padding(.vertical, 6)
+                if let storage = accessManager.status?.storage {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("storage.used").font(.subheadline)
+                        Text("\(ByteCountFormatter.string(fromByteCount: storage.usedBytes, countStyle: .binary)) / \(ByteCountFormatter.string(fromByteCount: storage.limitBytes, countStyle: .binary))")
+                            .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                        ProgressView(value: Double(min(max(0, storage.usedBytes), storage.limitBytes)), total: Double(max(1, storage.limitBytes)))
+                            .accessibilityHidden(true)
+                    }.padding(.vertical, 4).accessibilityElement(children: .combine)
+                }
+                NavigationLink {
+                    ScrollView { AccessCenterView(embedded: true).padding(20) }
+                        .navigationTitle("access.center_title").navigationBarTitleDisplayMode(.inline)
+                } label: { Text("access.center_title") }
+                    .accessibilityIdentifier("account-plan")
+            }
+            Section {
+                Button("message_list.sign_out", action: onRequestLogout)
+                    .foregroundStyle(.primary).accessibilityIdentifier("account-signout")
+            }
+            Section {
+                Button("account.delete_action", role: .destructive, action: onRequestDeleteAccount)
+                    .accessibilityIdentifier("account-delete")
+            }
+        }
+    }
+    #endif
 
     private var closeButton: some View {
         Button("common.close") { dismiss() }

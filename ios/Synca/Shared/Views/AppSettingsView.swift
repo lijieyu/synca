@@ -99,6 +99,13 @@ struct AppSettingsView: View {
 
 struct DailyQuotaView: View {
     let status: AccessStatus
+    private var quotaColor: Color {
+        #if os(iOS)
+        .primary
+        #else
+        .accentColor
+        #endif
+    }
     var body: some View {
         if !status.isUnlimited, let limit = status.todayLimit, limit > 0 {
             VStack(spacing: 7) {
@@ -111,7 +118,7 @@ struct DailyQuotaView: View {
                 GeometryReader { geometry in
                     Capsule().fill(Color.secondary.opacity(0.12))
                         .overlay(alignment: .leading) {
-                            Capsule().fill(Color.accentColor)
+                            Capsule().fill(quotaColor)
                                 .frame(width: geometry.size.width * Double(min(max(status.todayUsed, 0), limit)) / Double(limit))
                         }
                 }
@@ -122,3 +129,94 @@ struct DailyQuotaView: View {
         }
     }
 }
+
+#if os(iOS)
+/// One native navigation stack owns all settings destinations on iPhone and iPad.
+struct IOSSettingsView: View {
+    private enum Destination: Hashable { case account, categories, ai, about }
+    @ObservedObject private var settings = SettingsManager.shared
+    @EnvironmentObject private var api: APIClient
+    @EnvironmentObject private var accessManager: AccessManager
+    @State private var path: [Destination] = []
+    @State private var feedbackPresented = false
+    let onClose: () -> Void
+    let onRequestDeleteAccount: () -> Void
+    let onRequestLogout: () -> Void
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            List {
+                Section {
+                    NavigationLink(value: Destination.account) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 36)).foregroundStyle(.secondary).accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("account.and_plan").font(.headline)
+                                if let email = api.currentUserEmail {
+                                    Text(verbatim: email).font(.subheadline).foregroundStyle(.secondary)
+                                        .lineLimit(2).truncationMode(.middle)
+                                }
+                            }
+                        }.padding(.vertical, 4)
+                    }.accessibilityIdentifier("settings-account")
+                }
+                Section("settings.display") {
+                    Picker("settings.appearance", selection: $settings.appAppearance) {
+                        ForEach(AppAppearance.allCases) { item in Text(LocalizedStringKey(item.labelKey)).tag(item) }
+                    }
+                    Picker("settings.language", selection: $settings.appLanguage) {
+                        ForEach(AppLanguage.allCases) { item in Text(LocalizedStringKey(item.labelKey)).tag(item) }
+                    }
+                }
+                Section {
+                    NavigationLink(value: Destination.categories) { Label("message_list.manage_categories", systemImage: "tag") }
+                        .accessibilityIdentifier("settings-categories")
+                    NavigationLink(value: Destination.ai) { Label("message_list.connect_ai", systemImage: "sparkles") }
+                        .accessibilityIdentifier("settings-ai")
+                }
+                Section {
+                    Button { feedbackPresented = true } label: {
+                        HStack {
+                            Label("message_list.feedback", systemImage: "bubble.left")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                        }.foregroundStyle(.primary)
+                    }.accessibilityIdentifier("settings-feedback")
+                    NavigationLink(value: Destination.about) { Label("message_list.about", systemImage: "info.circle") }
+                        .accessibilityIdentifier("settings-about")
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("settings.title")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("common.done", action: onClose).accessibilityIdentifier("settings-close")
+                }
+            }
+            .navigationDestination(for: Destination.self) { destination in
+                destinationView(destination).navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        .tint(.primary)
+        .sheet(isPresented: $feedbackPresented) { FeedbackComposerView().syncaPreferences() }
+        .syncaPreferences()
+    }
+
+    @ViewBuilder private func destinationView(_ destination: Destination) -> some View {
+        switch destination {
+        case .account:
+            AccountSheet(embedded: true, accountEmail: api.currentUserEmail,
+                onRequestDeleteAccount: onRequestDeleteAccount, onRequestLogout: onRequestLogout)
+                .navigationTitle("account.and_plan")
+        case .categories:
+            MessageCategoryManagerSheet(embedded: true).navigationTitle("message_list.manage_categories")
+        case .ai:
+            AIConnectionView(embedded: true).navigationTitle("message_list.connect_ai")
+        case .about:
+            AboutSyncaSheet(embedded: true).navigationTitle("message_list.about")
+        }
+    }
+}
+#endif

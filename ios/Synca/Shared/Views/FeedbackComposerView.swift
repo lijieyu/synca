@@ -63,7 +63,8 @@ struct FeedbackComposerView: View {
         #if os(macOS)
         .frame(width: min(480, (NSScreen.main?.visibleFrame.width ?? 580) - 80), height: min(contentHeight + 125, (NSScreen.main?.visibleFrame.height ?? 860) - 100))
         #else
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(contentHeight + 60), .large])
+        .presentationDetents([.large])
+        .tint(.primary)
         #endif
     }
 
@@ -75,7 +76,9 @@ struct FeedbackComposerView: View {
                     feedbackTextEditor
                 }
                 VStack(alignment: .leading, spacing: 8) {
+                    #if os(macOS)
                     feedbackSectionTitle("feedback.images_title")
+                    #endif
                     imageAttachmentSection
                 }
                 VStack(alignment: .leading, spacing: 8) {
@@ -164,7 +167,7 @@ struct FeedbackComposerView: View {
                     Text(currentAttachments.isEmpty ? String(syncaLocalized: "feedback.add_images", bundle: .main) : String(syncaLocalized: "feedback.add_more_images", bundle: .main))
                 }
                 .font(.body.weight(.medium))
-                .foregroundStyle(currentRemainingAttachmentSlots > 0 ? Color.accentColor : Color.secondary)
+                .foregroundStyle(currentRemainingAttachmentSlots > 0 ? Color.primary : Color.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
@@ -189,9 +192,11 @@ struct FeedbackComposerView: View {
                 }
             }
 
+            #if os(macOS)
             Text(String(format: String(syncaLocalized: "feedback.images_limit", bundle: .main), attachments.count, 3))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            #endif
         }
     }
 
@@ -499,11 +504,9 @@ struct DeveloperSocialLink: View {
     var body: some View {
         Link(destination: AppLinks.developerProfileURL) {
             HStack(spacing: 12) {
-                Text(verbatim: "小红书")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
+                Image("Xiaohongshu").resizable().scaledToFit()
                     .frame(width: 30, height: 30)
-                    .background(Color(red: 237 / 255, green: 53 / 255, blue: 75 / 255), in: RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.subheadline)
