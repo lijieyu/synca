@@ -63,10 +63,8 @@ app.patch('/messages/:id/text', recordTextJson);
 app.use(express.json());
 // Keep email sign-in and binding off until the operator explicitly enables them.
 const emailAuthEnabled = process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true';
-app.get('/auth/capabilities', (req, res) => {
-    // Presentation rollout only; this header is not an authentication mechanism.
-    // Existing browser builds have no desktop marker and must keep Apple-only UI.
-    res.set('Cache-Control', 'no-store').vary('X-Synca-Client').json({email: req.get('X-Synca-Client') === 'desktop' && emailAuthEnabled && isEmailAuthConfigured()});
+app.get('/auth/capabilities', (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({email: emailAuthEnabled && isEmailAuthConfigured()});
 });
 if (emailAuthEnabled) {
     app.use(createEmailAuthRouter());
