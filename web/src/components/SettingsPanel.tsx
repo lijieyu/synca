@@ -45,6 +45,7 @@ declare global {
       emailAuth?: boolean;
       platform: string;
       version: string;
+      build?: string;
       recordMenu?: (options: RecordMenuOptions) => Promise<string | null>;
       copyRecord?: (options: Pick<RecordMenuOptions, 'text' | 'attachment'>) => Promise<void>;
       preferences: () => Promise<Preferences>;

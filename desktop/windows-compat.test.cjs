@@ -28,7 +28,7 @@ test('Windows attachment save dialog gets legal names, preserving Chinese and ex
 
 async function mainFixture(platform){
  let menu,window;
- const app=Object.assign(new EventEmitter(),{getLocale:()=> 'zh-CN',requestSingleInstanceLock:()=>true,isReady:()=>true,whenReady:()=>Promise.resolve(),setAppUserModelId(){},quit(){}});
+ const app=Object.assign(new EventEmitter(),{getVersion:()=> '1.2.0',getLocale:()=> 'zh-CN',requestSingleInstanceLock:()=>true,isReady:()=>true,whenReady:()=>Promise.resolve(),setAppUserModelId(){},quit(){}});
  class BrowserWindow extends EventEmitter{
   constructor(options){super();this.options=options;this.webContents=Object.assign(new EventEmitter(),{sent:[],setWindowOpenHandler(){},send(...args){this.sent.push(args)}});window=this;}
   getSize(){return [1040,760]} getContentSize(){return [1024,721]}

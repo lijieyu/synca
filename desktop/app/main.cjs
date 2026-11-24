@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
+const {readBuildInfo}=require('./build-info.cjs')
 const path = require('node:path')
 const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
@@ -57,9 +58,10 @@ function restore(){
 }
 function showSettings(){restore();mainWindow?.webContents.send('desktop:settings')}
 function createWindow() {
+  const identity = readBuildInfo(process.resourcesPath, app.getVersion())
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
-    minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
+    minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: ['--synca-version='+identity.version, '--synca-build='+identity.build, ...(cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : [])]} })
   // BrowserWindow minimum dimensions include the native Windows frame.
   if (process.platform === 'win32') {
     const [width, height] = window.getSize()

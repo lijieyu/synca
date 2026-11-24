@@ -13,5 +13,5 @@ try{
   execFileSync('git',['apply','--no-index',path.resolve('frontend.patch')],{cwd:stage,stdio:'inherit'})
   await fs.cp('ui',path.join(stage,'src/desktop'),{recursive:true})
   execFileSync(path.join(modules,'.bin/tsc'),['-b'],{cwd:stage,stdio:'inherit'})
-  execFileSync(path.join(modules,'.bin/vite'),['build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit'})
+  execFileSync(path.join(modules,'.bin/vite'),['build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit',env:{...process.env,SYNCA_SOURCE_ROOT:root}})
 }finally{await fs.rm(stage,{recursive:true,force:true})}

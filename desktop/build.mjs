@@ -1,3 +1,4 @@
+import { releaseVersion } from './release-version.mjs'
 import { packager } from '@electron/packager'
 import { readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -6,6 +7,7 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
+const identity = releaseVersion()
 const version = JSON.parse(await readFile('package.json')).devDependencies.electron
 const checksums = JSON.parse(await readFile('node_modules/electron/checksums.json'))
 const targets = [['darwin', 'arm64'], ['win32', 'x64'], ['win32', 'arm64']]
@@ -26,8 +28,11 @@ for (const [platform, arch] of targets) {
   }
   const [directory] = await packager({dir:'app', out:process.env.SYNCA_BUILD_DIR || 'dist', name:cfg.name, platform, arch, electronVersion:version,
     ...(cfg.isolated ? {afterCopy:[({buildPath})=>writeFile(path.join(buildPath,'preview-build.json'),JSON.stringify({mode:cfg.local ? 'local-preview' : 'preview'}))]} : {}),
+    appVersion:identity.version, buildVersion:platform === 'win32' ? identity.version+'.'+identity.build : identity.build,
     electronZipDir, asar:true, overwrite:true, appBundleId:cfg.bundleId, appCategoryType:'public.app-category.productivity',
     icon:'icons/Synca', win32metadata:{ProductName:'Synca Electron', FileDescription:'Synca Electron', CompanyName:'Synca'}})
+  const resources = platform === 'darwin' ? path.join(directory, cfg.name+'.app/Contents/Resources') : path.join(directory, 'resources')
+  await writeFile(path.join(resources, 'build-info.json'), JSON.stringify(identity))
   if (platform === 'darwin') {
     const bundle = path.join(directory, cfg.name + '.app')
     execFileSync('codesign', ['--force', '--deep', '--sign', '-', bundle])

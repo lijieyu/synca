@@ -11,7 +11,7 @@ import { AccountPlanLabel, PlanContent, StorageUsage } from './PlanDialog';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from './Modal';
 import { api } from '../api/client';
-import { version } from '../../package.json';
+import { webRelease } from '../release';
 
 const maxFeedbackImages = 3;
 const maxFeedbackImageBytes = 20 * 1024 * 1024;
@@ -122,7 +122,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline, accountPage
       {error && <p role="alert">{error}</p>}
     </div>}
     {kind === 'about' && <div className="about-panel">
-      <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={48} height={48} /><div><h4>Synca</h4><p>{window.syncaDesktop?.platform ?? t('navigation.web')} · {window.syncaDesktop?.version ?? version}</p></div></div>
+      <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={48} height={48} /><div><h4>Synca</h4><p>{window.syncaDesktop?.platform ?? t('navigation.web')} · {window.syncaDesktop ? `${window.syncaDesktop.version}${window.syncaDesktop.build ? ` (${window.syncaDesktop.build})` : ''}` : webRelease}</p></div></div>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="about-links" aria-label={t('message_list.about')}>
         <a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}<ArrowUpRight size={16} aria-hidden="true" /></a>

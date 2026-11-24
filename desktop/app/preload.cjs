@@ -5,7 +5,8 @@ const preview = masPreflight || localPreview || process.argv.includes('--synca-i
 const origin = masPreflight ? 'https://synca-testflight.invalid' : localPreview ? 'https://synca-preview.localhost' : preview ? 'https://synca-preview.haerth.cn' : 'https://synca.haerth.cn'
 if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
-    version:'1.2.0', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
+    version:process.argv.find(value=>value.startsWith('--synca-version='))?.slice('--synca-version='.length) ?? '',
+    build:process.argv.find(value=>value.startsWith('--synca-build='))?.slice('--synca-build='.length) ?? '', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
     recordMenu:options=>ipcRenderer.invoke('desktop:record-menu',options),
     copyRecord:options=>ipcRenderer.invoke('desktop:copy-record',options),
     preferences:()=>ipcRenderer.invoke('desktop:preferences'),
