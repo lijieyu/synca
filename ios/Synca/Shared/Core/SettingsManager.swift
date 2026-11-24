@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case system, simplifiedChinese = "zh-Hans", traditionalChinese = "zh-Hant", english = "en"
@@ -50,7 +53,9 @@ private struct AppPreferencesModifier: ViewModifier {
     @ObservedObject private var settings = SettingsManager.shared
     func body(content: Content) -> some View {
         content.environment(\.locale, settings.locale)
+            #if os(macOS)
             .preferredColorScheme(settings.appAppearance.colorScheme)
+            #endif
     }
 }
 
@@ -58,6 +63,49 @@ extension View {
     /// Presentations need their own observing boundary; AppKit can otherwise snapshot the parent environment.
     func syncaPreferences() -> some View { modifier(AppPreferencesModifier()) }
 }
+
+#if os(iOS)
+/// The window owns appearance so open presentations inherit changes, including
+/// clearing an explicit override when the user returns to following the system.
+struct IOSWindowAppearance: UIViewRepresentable {
+    let appearance: AppAppearance
+
+    func makeUIView(context: Context) -> AppearanceView {
+        let view = AppearanceView()
+        view.isUserInteractionEnabled = false
+        view.appearance = appearance
+        return view
+    }
+
+    func updateUIView(_ uiView: AppearanceView, context: Context) {
+        uiView.appearance = appearance
+    }
+
+    final class AppearanceView: UIView {
+        var appearance: AppAppearance = .system {
+            didSet { updateWindowAppearance() }
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            updateWindowAppearance()
+        }
+
+        private func updateWindowAppearance() {
+            guard let window else { return }
+            let style: UIUserInterfaceStyle
+            switch appearance {
+            case .system: style = .unspecified
+            case .light: style = .light
+            case .dark: style = .dark
+            }
+            if window.overrideUserInterfaceStyle != style {
+                window.overrideUserInterfaceStyle = style
+            }
+        }
+    }
+}
+#endif
 
 @MainActor
 final class SettingsManager: ObservableObject {

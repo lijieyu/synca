@@ -1014,7 +1014,7 @@ struct MessageListView: View {
                             HStack {
                                 Text("message_category.section_title").font(.caption).foregroundStyle(.secondary)
                                 Spacer()
-                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image("TagsOutline").resizable().scaledToFit().frame(width: 18, height: 18).frame(width: 44, height: 44) }
+                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image(systemName: "tag").font(.system(size: 18, weight: .regular)).foregroundStyle(.secondary).frame(width: 44, height: 44) }
                                     .accessibilityLabel(Text("message_list.manage_categories"))
                             }.padding(.leading,12)
                             ForEach(syncManager.categories) { category in
@@ -1901,6 +1901,15 @@ struct MessageListView: View {
             #if os(macOS)
             proxy.scrollTo("bottom", anchor: .bottom)
             #else
+            // scrollTo(bottom) can pull a short feed below its natural top while
+            // the navigation bar establishes its initial adjusted inset. A feed
+            // that already fits has nothing to reveal at the bottom.
+            if let scrollView = feedViewport.scrollView,
+               scrollView.contentSize.height <= scrollView.bounds.height
+                    - scrollView.adjustedContentInset.top - scrollView.adjustedContentInset.bottom {
+                scrollView.setContentOffset(CGPoint(x: 0, y: -scrollView.adjustedContentInset.top), animated: false)
+                return
+            }
             if shouldScrollToBottomAfterInitialLoad || reduceMotion {
                 // Initial layout can change as lazy rows and attachments resolve their height.
                 // Establish the final scroll geometry without animating intermediate offsets.

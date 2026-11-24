@@ -12,6 +12,7 @@ describe('Aliyun DirectMail delivery', () => {
         vi.stubEnv('ALIYUN_DM_REGION', '');
         vi.stubEnv('ALIYUN_DM_SECURITY_TOKEN', '');
         vi.stubGlobal('fetch', fetchMock);
+        vi.spyOn(console, 'info').mockImplementation(() => {});
         fetchMock.mockResolvedValue(new Response(JSON.stringify({ RequestId: 'test-request', EnvId: 'test-envelope' })));
     });
 
@@ -54,6 +55,31 @@ describe('Aliyun DirectMail delivery', () => {
         expect(body.get('Timestamp')).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
         expect(String(init?.body)).not.toContain('testsecret');
         expect(body.has('SecurityToken')).toBe(false);
+    });
+
+    it('records provider acceptance identifiers without logging recipient, code, credentials or response contents', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            RequestId: '2D086F6B-8F31-4658-84C1-006DED334ACD',
+            EnvId: '600000373230455440',
+            Message: `${message.email} ${message.code} testsecret`,
+        })));
+        await sendVerificationEmail(message);
+        expect(console.info).toHaveBeenCalledExactlyOnceWith('[email/delivery]', JSON.stringify({
+            status: 'provider_accepted',
+            requestId: '2D086F6B-8F31-4658-84C1-006DED334ACD',
+            envelopeId: '600000373230455440',
+        }));
+    });
+
+    it('omits unexpected identifier contents without turning an accepted email into a failed send', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+            RequestId: `${message.email}\n${message.code}`,
+            EnvId: { code: message.code, secret: 'testsecret' },
+        })));
+        await expect(sendVerificationEmail(message)).resolves.toBeUndefined();
+        expect(console.info).toHaveBeenCalledExactlyOnceWith('[email/delivery]', JSON.stringify({
+            status: 'provider_accepted',
+        }));
     });
 
     it.each([
@@ -111,6 +137,7 @@ describe('Aliyun DirectMail delivery', () => {
         expect(error.message).toBe('email_delivery_failed');
         expect(error.cause).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledOnce();
+        expect(console.info).not.toHaveBeenCalled();
     });
 
     it('sanitizes non-JSON and network failures without automatic retries', async () => {
@@ -133,5 +160,6 @@ describe('Aliyun DirectMail delivery', () => {
         expect(await result).toMatchObject({ message: 'email_delivery_failed' });
         expect(fetchMock.mock.calls[0][1]?.signal?.aborted).toBe(true);
         expect(vi.getTimerCount()).toBe(0);
+        expect(console.info).not.toHaveBeenCalled();
     });
 });

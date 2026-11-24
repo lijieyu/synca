@@ -1,0 +1,82 @@
+{
+  "spec_verified_on": "2026-11-25",
+  "spec_source": "https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications",
+  "spec_verification": "Parent task checked current Apple product page header specification on 2026-11-25.",
+  "status": "draft",
+  "uploaded": false,
+  "submitted": false,
+  "sets": [
+    {
+      "id": "product-header-zh-Hans-v2",
+      "platform": "App Store product page",
+      "slot": "Product page header (title)",
+      "locale": "zh-Hans",
+      "width": 3840,
+      "height": 1646,
+      "assets": [
+        {
+          "path": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/header-v2.png",
+          "status": "draft"
+        }
+      ]
+    }
+  ],
+  "art_safe_area": {
+    "x": 1097,
+    "y": 493,
+    "width": 1646,
+    "height": 661
+  },
+  "safe_area_status": "Pending ASC crop preview; this visual draft retains original device geometry and does not place every essential element inside the central safe area. Not approved for upload.",
+  "sources": {
+    "original_asc_url": "https://is1-ssl.mzstatic.com/image/thumb/JL9du3NRT56q_xM0-_RkUA/3840x1646bb.png",
+    "original_local": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/original-asc.png",
+    "original_sha256": "f8a59a21b84f0724ee416b558c3b2608a9da5fd9b5e4d19a279eaf64e37c4820",
+    "editable_source": "header-v2.svg",
+    "reference": "/Users/haer/Documents/ChatGPT/久念/AppStore-1.5.1-头图留白/淡云燕子-v4/zh-Hans/header.png"
+  },
+  "copy": [
+    "灵感记录",
+    "即刻同步"
+  ],
+  "changes": [
+    "Removed upper-left logo and Synca wordmark",
+    "Reduced slogan to 124 px semibold with 160 px baseline spacing",
+    "Moved left slogan to x=570, baselines 830/990",
+    "Added 64×8 px muted lavender accent",
+    "Preserved warm ivory #f5f2ed background"
+  ],
+  "preservation_validation": {
+    "region": [
+      1300,
+      0,
+      3840,
+      1646
+    ],
+    "pixel_identical_to_original": true,
+    "difference_bbox": null
+  },
+  "export_validation": {
+    "dimensions": [
+      3840,
+      1646
+    ],
+    "mode": "RGB",
+    "alpha": false,
+    "full_visual_inspection": true,
+    "thumbnail_visual_inspection": true,
+    "sha256": "047dc850df59c2467ca20150af423a3f8ff9de8b04fd412ec8857514c4c919c9"
+  },
+  "workflow": "Built-in imagegen edit explored spacing; final editable SVG preserved original ASC device pixels and typeset real Chinese text. Imagegen exploration is not the final UI source.",
+  "limits": [
+    "User visual acceptance pending",
+    "ASC crop/device preview pending",
+    "Source UI is preserved from existing ASC creative; not a new version-specific app capture",
+    "Chinese-only draft; Traditional Chinese and English require their own copy/layout review"
+  ],
+  "previews": {
+    "before": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/before-preview.png",
+    "after": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/preview.png",
+    "thumbnail": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/thumbnail.png"
+  }
+}

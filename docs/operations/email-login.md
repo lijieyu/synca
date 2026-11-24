@@ -10,7 +10,7 @@ To roll back this Web rollout while preserving desktop email and existing accoun
 
 ## Aliyun DirectMail configuration
 
-Use a dedicated transactional sender subdomain under the existing owned domain, for example `mail.synca.haerth.cn`, without changing the website's current DNS records. Obtain verification/SPF/DKIM records from the actual console; do not invent DNS values. Create a triggered/transactional sender, display name `Synca`. Region must match sender (default `cn-hangzhou`).
+The current production sender, verified on 2026-11-25, is `noreply@synca.haerth.cn` in `cn-hangzhou`, display name `Synca`, configured as triggered/transactional mail. The older `noreply@mail.synca.haerth.cn` still exists in DirectMail but is not the current production setting. Preserve the configured sender and existing website DNS. Obtain verification/SPF/DKIM records from the actual console; do not invent DNS values or switch subdomains to try to evade spam filtering. Region must match sender.
 
 Provision a dedicated RAM identity with `dm:SingleSendMail` only. Use resource scoping if supported by the current console policy; otherwise action-limited resource `*`. Do not use the account owner's all-purpose key. Store only on backend in mode600 environment; no keys in Git, screenshots or client build.
 
@@ -31,6 +31,16 @@ Six-digit codes expire after10minutes. Resend waits60seconds. Five wrong attempt
 SQLite holds throttles shared by all workers:5sends/hour/address,20/hour/clientIP,200/hour/global and1000/day/global; verification60/hour/IP. Apple binding reuses an unexpired session-specific proof and limits newly created proofs to30/hour/user, so unrelated users behind one public IP do not consume each other’s proof quota. Backend trusts forwarded clientIP only from local nginx. Logs omit code, mailbox, credentials and provider response body. Challenge metadata becomes eligible for cleanup24hours after expiry and is removed on the next incoming challenge request. Account deletion immediately removes its bound identities and pending proofs, including login proofs for its verified email. The service does not equate provider acceptance with inbox receipt.
 
 Email identity is separate from the profile email Apple originally returned. Existing Apple users must bind email to make it a login identity. Admin privileges are explicit account data, never bootstrapped from matching an email string. Existing is_admin values are preserved.
+
+## Delivery and junk-folder diagnosis
+
+`sendVerificationEmail` emits one `[email/delivery]` JSON log after confirmed DirectMail API acceptance. `status=provider_accepted` means only API acceptance. Optional `requestId` (UUID) and `envelopeId` (10–32 digit string) are retained for tracing; unexpected identifier formats are omitted without changing send success. Never log recipient/sender mailboxes, OTPs, message contents, credentials, raw errors or entire provider responses. Failures/timeouts do not produce an acceptance receipt and are not retried automatically.
+
+Use the envelope ID to correlate `X-EnvId` in an existing received message, the send timestamp, and DirectMail **发送详情**. Keep RequestId available for a separately authorized provider investigation. A `250 Send Mail OK` result proves SMTP acceptance by the receiving system, not inbox placement. Original `Authentication-Results`, the sending IP, and the final mailbox folder identify the next boundary; forwarding can change the SPF identity and IP.
+
+The [2026-11-25 investigation](../verification/2026-11-25-email-deliverability.md) found successful SPF/DKIM/DMARC and Outlook SCL 5 / Junk placement. The iCloud-forwarded sample was `notspam` at iCloud, then Junk at Outlook. Do not claim that all recipient providers reject or junk these messages.
+
+Keep the authenticated sender stable, send only user-requested transactional codes, and preserve existing throttles. Do not switch DMARC to `reject`, rotate sender domains, buy dedicated IPs, add marketing/unsubscribe links to login codes, or send bulk "warm-up" mail as an assumed fix. For a continuing Outlook issue, prepare the exact send time, envelope ID, outbound IP and redacted authentication/junk headers for Aliyun's shared-pool deliverability investigation; contacting support requires explicit authorization. A user choosing **Not junk** may help that mailbox, but is not evidence of a global fix. Only a later authorized naturally requested code, checked at the actual recipient, can establish improved inbox placement.
 
 ## Migration and rollout
 

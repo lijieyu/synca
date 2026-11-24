@@ -23,8 +23,10 @@ struct SyncaApp: App {
                 .environmentObject(accessManager)
                 .environmentObject(purchaseManager)
                 .environment(\.locale, settings.locale)
+            #if os(iOS)
+                .background(IOSWindowAppearance(appearance: settings.appAppearance))
+            #elseif os(macOS)
                 .preferredColorScheme(settings.appAppearance.colorScheme)
-            #if os(macOS)
                 .background(MacWindowAccessor(isAuthenticated: api.isAuthenticated))
                 .frame(minWidth: 640, idealWidth: 1000, minHeight: 500, idealHeight: 700)
             #endif
