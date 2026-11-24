@@ -1,4 +1,10 @@
 {
+  "shortcuts.title": "键盘快捷键",
+  "shortcuts.fixed": "快捷键为固定设置，不支持修改。",
+  "shortcuts.search": "搜索",
+  "shortcuts.sync": "同步",
+  "shortcuts.close": "关闭窗口",
+  "shortcuts.hide": "隐藏应用",
   "review.action.clear_all_one": "清除全部分类中的 {{count}} 条已完成记录？",
   "review.action.clear_all_other": "清除全部分类中的 {{count}} 条已完成记录？",
   "review.action.clear_category_one": "清除“{{name}}”中的 {{count}} 条已完成记录？",
