@@ -22,4 +22,12 @@ The first download deployment detected old SPA bytes immediately after nginx rel
 
 ASO analysis and three-locale copy are in `docs/marketing/`. Product header is an opaque 3840×1646 draft, with SVG and manifest under `docs/marketing/header-2026-11-25/`. No App Store name/keywords/header were changed and no review submitted.
 
-Google Search Console was opened in the user's existing signed-in browser. A URL-prefix property for `https://synca.haerth.cn/home/` requires an HTML ownership file. The file was downloaded and prepared locally. Automatic approval rejected committing/deploying it because ownership/access authorization was not explicit. User confirmation was requested; the token was not published. Sitemap submission and ownership are therefore not yet complete. Bing ownership/submission and actual Google indexing/rankings are also not confirmed.
+## Google Search Console — authorized and verified
+
+After the initial approval rejection, the owner explicitly authorized using the current Google account for the URL-prefix property `https://synca.haerth.cn/home/`, publishing the verification file and submitting its sitemap. No broader domain ownership was configured.
+
+- Verification file committed in `3e43246` and published in homepage release `/opt/synca/home-releases/20261124T172718Z-3e43246`.
+- Search Console displayed “已完成所有权验证” using the HTML file. Server log records Google-Site-Verification requesting that file successfully.
+- Submitted `https://synca.haerth.cn/home/sitemap.xml`; Search Console displayed “已成功提交站点地图”. The “打开站点地图” action confirmed the exact scoped URL.
+- Subsequent detail view and one reload still displayed “无法读取此站点地图”, zero discovered pages. Public HTTPS checks return 200, `text/xml`, valid sitemap namespace and three in-scope locale URLs. robots.txt does not block them. The bounded recent access-log sample contained no Google sitemap fetch, so the cause is not established; do not claim Google fetched or indexed the pages.
+- Follow-up: recheck Search Console's sitemap result after processing; investigate a concrete fetch error if it persists. Bing verification and actual search rankings remain unconfirmed.

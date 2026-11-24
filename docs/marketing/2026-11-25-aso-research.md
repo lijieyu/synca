@@ -119,4 +119,4 @@ ASC 主语言为英文；英文 App Information 名称/副标题已实时核对�
 
 ## 本轮上线回读补充
 
-正式 Web 邮箱入口、三语官网 Windows x64/ARM64 下载已发布并完成匿名浏览器与下载内容校验。Windows 是未签名便携版，ARM64 原生行为复用既有验收，x64 未做硬件运行测试。详见 `docs/verification/2026-11-25-launch-web-release.md`。这些交付证据不等于 iOS/macOS 1.2.0 已上架，也不等于商店元数据已生效。Google Search Console 的官网所有权验证因权限变更等待用户确认；当前未提交站点地图，也未获得搜索词或排名基线。
+正式 Web 邮箱入口、三语官网 Windows x64/ARM64 下载已发布并完成匿名浏览器与下载内容校验。Windows 是未签名便携版，ARM64 原生行为复用既有验收，x64 未做硬件运行测试。详见 `docs/verification/2026-11-25-launch-web-release.md`。这些交付证据不等于 iOS/macOS 1.2.0 已上架，也不等于商店元数据已生效。Google Search Console 已获用户明确授权并完成官网 `/home/` 范围所有权验证，站点地图提交成功；随后后台仍显示“无法读取此站点地图”。公开 XML 与抓取规则已核验，尚未确认 Google 抓取成功、实际收录或排名基线。详见上述发布记录。

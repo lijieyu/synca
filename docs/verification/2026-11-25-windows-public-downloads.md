@@ -43,3 +43,7 @@ The script uploads into a non-public staging directory, verifies exact pinned pa
 After `nginx -t` and reload, the script downloads each full public HTTPS ZIP and compares its SHA-256, verifies the checksum file, verifies unknown download paths return 404, and checks application health. Public paths use immutable caching and do not fall back to the app HTML. Coordinate nginx-changing deployments sequentially. On a publication error, the script restores its nginx backup; it retains verified package files and staging evidence.
 
 To withdraw downloads later, first remove the website download links and remove only the dedicated downloads location before testing/reloading nginx. Keep immutable files for audit and do not reuse the same version URLs for different bytes. A historical whole-nginx backup must not overwrite homepage/API route changes made after this publication.
+
+## Public delivery confirmed
+
+Both artifacts and checksums were published on November 25 (Asia/Shanghai). Full public HTTPS downloads matched the pinned hashes; unknown artifact paths returned 404. Three locale homepages now link to the downloads. See `2026-11-25-launch-web-release.md` for the deployment and public browser evidence. Runtime verification limits above remain unchanged.
