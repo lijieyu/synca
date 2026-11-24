@@ -36,6 +36,35 @@ async function fixture(width=1280,height=800,desktop=false){
 const results=[];
 async function check(name,fn){if(process.env.SYNCA_CHECK_FILTER&&!new RegExp(process.env.SYNCA_CHECK_FILTER).test(name))return;try{await fn();results.push({name,passed:true});console.log('PASS',name);}catch(e){results.push({name,passed:false,error:e.message});console.error('FAIL',name,e.message);}}
 try{
+await check('settings detail spacing, official logo and retained confirmations', async () => {
+ const f = await fixture(); const p = f.page;
+ try {
+  await p.locator('.settings-entry').click();
+  const nav = p.locator('.desk-settings nav');
+  await nav.getByRole('button', {name:'分类管理', exact:true}).click();
+  const add = p.locator('.settings-embedded .category-manager-add');
+  await add.waitFor(); assert((await add.boundingBox()).height >= 44);
+  await p.screenshot({path:path.join(out,'detail-desktop-categories-light.png')});
+  await nav.getByRole('button', {name:'提交反馈', exact:true}).click();
+  const logo = p.locator('#feedback-form .developer-social-logo');
+  await logo.waitFor(); await logo.evaluate(el => el.decode());
+  assert((await logo.evaluate(el => el.naturalWidth)) >= 256);
+  await p.screenshot({path:path.join(out,'detail-desktop-feedback-light.png')});
+  await nav.getByRole('button', {name:/账号与套餐/}).click();
+  await p.locator('.account-panel').getByRole('button',{name:'退出登录',exact:true}).click();
+  await p.getByRole('button', {name:'取消',exact:true}).last().click();
+  assert(await p.locator('.account-panel').isVisible());
+  await nav.getByRole('button', {name:'通用',exact:true}).click();
+  await p.getByRole('combobox',{name:'外观'}).click();
+  await p.getByRole('option',{name:'深色',exact:true}).click();
+  await nav.getByRole('button',{name:'分类管理',exact:true}).click();
+  await p.screenshot({path:path.join(out,'detail-desktop-categories-dark.png')});
+  await nav.getByRole('button',{name:'关于',exact:true}).click();
+  await p.locator('.developer-social-logo').evaluate(el => el.decode());
+  await p.screenshot({path:path.join(out,'detail-desktop-about-dark.png')});
+  assert.deepEqual(f.errors,[]);
+ } finally { await f.ctx.close(); }
+});
 await check('sidebar resizing, persistence, keyboard and narrowing',async()=>{const f=await fixture();const p=f.page;try{const grip=p.getByRole('separator');assert.equal(await grip.getAttribute('aria-valuenow'),'236');await grip.focus();await grip.press('End');assert.equal(await grip.getAttribute('aria-valuenow'),'360');await p.setViewportSize({width:800,height:700});await p.waitForFunction(()=>document.querySelector('[role=separator]').getAttribute('aria-valuenow')==='320');assert.equal(await grip.getAttribute('aria-valuenow'),'320');await p.setViewportSize({width:1280,height:800});await p.waitForFunction(()=>document.querySelector('[role=separator]').getAttribute('aria-valuenow')==='360');assert.equal(await grip.getAttribute('aria-valuenow'),'360');await p.reload();await grip.waitFor();assert.equal(await grip.getAttribute('aria-valuenow'),'360');const b=await grip.boundingBox();await p.mouse.move(b.x+4,b.y+100);await p.mouse.down();await p.mouse.move(b.x-500,b.y+100,{steps:8});await p.mouse.up();assert.equal(await grip.getAttribute('aria-valuenow'),'200');await grip.focus();await grip.press('ArrowRight');assert.equal(await grip.getAttribute('aria-valuenow'),'210');await grip.dblclick();await grip.dblclick();assert.equal(await grip.getAttribute('aria-valuenow'),'236');}finally{await f.ctx.close();}});
 await check('global search preserves pinyin and late-match navigation',async()=>{const f=await fixture();const p=f.page;try{await p.locator('[data-category-id=work]').click();await p.keyboard.press('Meta+f');await p.locator('.message-search-modal').evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished)));const box=await p.locator('.message-search-modal').boundingBox();assert.equal(await p.locator('.message-search-scopes').count(),0,'scope selector must be removed');for(const q of ['周末','zhoumo','zm']){await p.locator('.message-search-field input').fill(q);await p.locator('.message-search-result').filter({hasText:'周末去公园'}).waitFor();assert.deepEqual(await p.locator('.message-search-modal').boundingBox(),box);}await p.locator('.message-search-field input').fill('紫藤花');const hit=p.locator('.message-search-result').filter({hasText:'紫藤花'});await hit.waitFor();await hit.click();const target=p.locator('[data-message-id=long].search-target');await target.waitFor();assert.equal(await p.locator('[data-category-id=life]').getAttribute('aria-pressed'),'true');assert.equal(await target.locator('.message-expand').getAttribute('aria-expanded'),'true');const visible=await target.evaluate(el=>{const box=document.querySelector('.message-list').getBoundingClientRect();return el.getBoundingClientRect().bottom>box.top&&el.getBoundingClientRect().bottom<box.bottom+100;});assert(visible);assert.deepEqual(f.errors,[]);}finally{await f.ctx.close();}});
 await check('CmdR synchronizes without navigation or losing draft and scroll',async()=>{const f=await fixture();const p=f.page;try{const input=p.locator('.input-bar textarea');await input.fill('同步保留我的草稿');await input.evaluate(el=>el.setSelectionRange(2,5));await p.locator('.message-list').evaluate(el=>el.scrollTop=35);const scroll=await p.locator('.message-list').evaluate(el=>el.scrollTop);let nav=0;p.on('framenavigated',()=>nav++);const reads=f.reads;await p.keyboard.press('Meta+r');await p.waitForFunction(()=>document.body.textContent.includes('同步成功'));assert(f.reads>reads);assert.equal(nav,0);assert.equal(await input.inputValue(),'同步保留我的草稿');assert.equal(await p.locator('.message-list').evaluate(el=>el.scrollTop),scroll);assert.deepEqual(await input.evaluate(el=>[el.selectionStart,el.selectionEnd]),[2,5]);}finally{await f.ctx.close();}});

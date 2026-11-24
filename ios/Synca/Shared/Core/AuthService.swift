@@ -46,13 +46,22 @@ final class AuthService: NSObject, ObservableObject {
             name: name
         )
 
+        completeLogin(response)
+
+        return response
+    }
+
+    /// Same session lifecycle for Apple and email; view dismissal must not cancel token registration.
+    func completeLogin(_ response: AuthResponse) {
         APIClient.shared.setToken(response.token, userId: response.user.id)
         APIClient.shared.setCurrentUserEmail(response.user.email)
         AccessManager.shared.apply(response.accessStatus)
-        await PushTokenManager.shared.uploadCachedTokenIfPossible()
-        _ = try? await PurchaseManager.shared.syncLatestTransactions()
-
-        return response
+        Task {
+            guard APIClient.shared.token == response.token else { return }
+            await PushTokenManager.shared.uploadCachedTokenIfPossible()
+            guard APIClient.shared.token == response.token else { return }
+            _ = try? await PurchaseManager.shared.syncLatestTransactions()
+        }
     }
 
     func signInWithApple() async throws -> AuthResponse {
