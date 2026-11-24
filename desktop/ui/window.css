@@ -46,3 +46,40 @@
 .mac-window .desktop-auth-form {
   padding-top: max(16px, calc((100dvh - var(--window-controls-height) - 440px) / 2));
 }
+
+/* Native Windows controls overlay the page; no separate title row. */
+.win-window { --window-controls-height: max(36px, env(titlebar-area-height, 36px)); }
+.win-window body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: env(titlebar-area-x, 0px);
+  width: env(titlebar-area-width, calc(100% - 138px));
+  height: var(--window-controls-height);
+  z-index: 10000;
+  app-region: drag;
+}
+.win-window body:not(:has([role="dialog"])) :is(.sidebar-brand, .calm-main > .header) {
+  app-region: drag;
+  user-select: none;
+}
+.win-window .calm-shell .calm-main > .header {
+  position: relative;
+  min-height: calc(var(--window-controls-height) + 60px);
+  padding-right: 170px;
+}
+.win-window .calm-main .header-actions {
+  position: absolute;
+  right: 24px;
+  bottom: 10px;
+  app-region: no-drag;
+}
+.win-window .settings-veil .desk-settings {
+  height: min(620px, calc(100dvh - 2 * var(--window-controls-height)));
+}
+.win-window .modal-content { max-height: calc(100dvh - 2 * var(--window-controls-height)); }
+.win-window .desk-workspace:not(:has(.calm-shell)) {
+  box-sizing: border-box;
+  padding-top: var(--window-controls-height);
+}
+.win-window .desktop-auth { height: calc(100dvh - var(--window-controls-height)); }

@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const path=require('node:path');
 const {EventEmitter}=require('node:events');
-const root=process.env.SYNCA_DESKTOP_ROOT||process.cwd();
+const root=process.env.SYNCA_DESKTOP_ROOT||__dirname;
 
 async function saveDialogName(name){
  const handlers={};let selected;
@@ -33,17 +33,20 @@ async function mainFixture(platform){
   constructor(options){super();this.options=options;this.webContents=Object.assign(new EventEmitter(),{sent:[],setWindowOpenHandler(){},send(...args){this.sent.push(args)}});window=this;}
   getSize(){return [1040,760]} getContentSize(){return [1024,721]}
   setMinimumSize(width,height){this.minimum=[width,height]}
+  setTitleBarOverlay(value){this.overlay=value}
   loadURL(){return Promise.resolve()} isVisible(){return true} isFocused(){return true}
  }
- const electron={app,BrowserWindow,Menu:{buildFromTemplate:x=>x,setApplicationMenu:x=>menu=x},session:{defaultSession:{setPermissionRequestHandler(){},setPermissionCheckHandler(){}}},shell:{},dialog:{}};
+ const electron={app,BrowserWindow,ipcMain:new EventEmitter(),nativeTheme:{shouldUseDarkColors:false},Menu:{buildFromTemplate:x=>x,setApplicationMenu:x=>menu=x},session:{defaultSession:{setPermissionRequestHandler(){},setPermissionCheckHandler(){}}},shell:{},dialog:{}};
  const box={module:{exports:{}},__dirname:path.join(root,'app'),process:{platform,env:{}},URL,console,require:id=>id==='electron'?electron:id==='./platform.cjs'?{installPlatform(){}}:id==='./local-ui.cjs'?{installLocalUI(){}}:id.startsWith('./')?require(path.join(root,'app',id)):require(id)};
  vm.runInNewContext(fs.readFileSync(path.join(root,'app/main.cjs'),'utf8'),box);
  await new Promise(resolve=>setImmediate(resolve));
- return {window,items:menu.flatMap(x=>x.submenu||[])};
+ return {window,ipc:electron.ipcMain,items:menu.flatMap(x=>x.submenu||[])};
 }
 
 test('Windows keeps desktop layout and exposes Ctrl+Shift+Delete with IME/repeat guards',async()=>{
  const f=await mainFixture('win32');
+ assert.equal(f.window.options.titleBarStyle,'hidden');
+ assert.equal(f.window.options.titleBarOverlay.height,36);
  assert(f.window.options.minWidth>=640);assert(f.window.options.minHeight>=500);
  assert.deepEqual(f.window.minimum,[656,539], 'minimum applies to the content, excluding Windows frame');
  const item=f.items.find(x=>x.id==='clear-completed');assert(item,'Windows File menu offers scoped clearing');
@@ -62,4 +65,17 @@ test('Windows keeps desktop layout and exposes Ctrl+Shift+Delete with IME/repeat
 test('Mac keeps its existing clear accelerator and minimum window',async()=>{
  const f=await mainFixture('darwin');assert.equal(f.window.options.minWidth,640);assert.equal(f.window.options.minHeight,500);
  const item=f.items.find(x=>x.id==='clear-completed');assert.equal(item.accelerator,'Command+Shift+Backspace');
+});
+
+test('Windows caption appearance accepts only boolean updates from its trusted main frame',async()=>{
+ const f=await mainFixture('win32');
+ const frame={url:'https://synca.haerth.cn/'};f.window.webContents.mainFrame=frame;
+ const event={sender:f.window.webContents,senderFrame:frame};
+ f.ipc.emit('desktop:window-appearance',event,true);assert.equal(f.window.overlay.symbolColor,'#eeecf2');
+ for(const [e,value] of [[event,'dark'],[{...event,senderFrame:{url:frame.url}},false],[{sender:{mainFrame:frame},senderFrame:frame},false]]){
+  f.ipc.emit('desktop:window-appearance',e,value);assert.equal(f.window.overlay.symbolColor,'#eeecf2');
+ }
+ frame.url='https://untrusted.invalid/';f.ipc.emit('desktop:window-appearance',event,false);assert.equal(f.window.overlay.symbolColor,'#eeecf2');
+ frame.url='https://synca.haerth.cn/';f.ipc.emit('desktop:window-appearance',event,false);assert.equal(f.window.overlay.symbolColor,'#29272d');
+ f.window.emit('closed');assert.equal(f.ipc.listenerCount('desktop:window-appearance'),0);
 });

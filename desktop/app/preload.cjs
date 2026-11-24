@@ -4,6 +4,18 @@ const localPreview = process.argv.includes('--synca-local-preview')
 const preview = masPreflight || localPreview || process.argv.includes('--synca-internal-preview')
 const origin = masPreflight ? 'https://synca-testflight.invalid' : localPreview ? 'https://synca-preview.localhost' : preview ? 'https://synca-preview.haerth.cn' : 'https://synca.haerth.cn'
 if (process.isMainFrame && location.origin === origin) {
+  if (process.platform === 'win32') {
+    window.addEventListener('DOMContentLoaded', () => {
+      const system = window.matchMedia('(prefers-color-scheme: dark)')
+      const update = () => {
+        const appearance = document.documentElement.dataset.appearance
+        ipcRenderer.send('desktop:window-appearance', appearance === 'dark' || (appearance !== 'light' && system.matches))
+      }
+      new MutationObserver(update).observe(document.documentElement, {attributes:true, attributeFilter:['data-appearance']})
+      system.addEventListener('change', update)
+      update()
+    }, {once:true})
+  }
   contextBridge.exposeInMainWorld('syncaDesktop', {
     version:process.argv.find(value=>value.startsWith('--synca-version='))?.slice('--synca-version='.length) ?? '',
     build:process.argv.find(value=>value.startsWith('--synca-build='))?.slice('--synca-build='.length) ?? '', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
