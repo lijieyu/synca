@@ -1,5 +1,5 @@
 import { SyncFeedback } from './SyncFeedback';
-import { MAC_CLEAR_LABEL } from './KeyboardShortcuts';
+import { desktopClearShortcut } from '../utils/desktopShortcuts';
 import { MobileCategoryDrawer } from './MobileCategoryDrawer';
 import { SettingsSurface } from './SettingsSurface';
 import { PanelLeft, X, Tags } from 'lucide-react';
@@ -599,9 +599,11 @@ export const MessageListView: React.FC = () => {
 
   useEffect(() => {
     const desktop = window.syncaDesktop;
-    if (desktop?.platform !== 'macOS') return;
+    const clear = desktopClearShortcut(desktop?.platform);
+    if (!desktop || !clear) return;
     const shortcut = (event: KeyboardEvent) => {
-      if (event.key !== 'Backspace' || !event.metaKey || !event.shiftKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== clear.key || !event.shiftKey || event.altKey ||
+          (clear.mac ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey)) return;
       if (event.isComposing || event.keyCode === 229 || clearComposing.current) return;
       // Consume repeated presses even while the confirmation is open: never edit the draft.
       event.preventDefault();
@@ -697,7 +699,7 @@ export const MessageListView: React.FC = () => {
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')} aria-keyshortcuts="Meta+r Control+r"><RotateCw size={18} strokeWidth={1.7} /></button>
-            <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={window.syncaDesktop?.platform === 'macOS' ? 'Meta+Shift+Backspace' : undefined} title={t('message_list.clear_completed') + (window.syncaDesktop?.platform === 'macOS' ? ` · ${MAC_CLEAR_LABEL}` : '')}><BroomIcon size={18} /></button>
+            <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={desktopClearShortcut(window.syncaDesktop?.platform)?.aria} title={t('message_list.clear_completed') + (desktopClearShortcut(window.syncaDesktop?.platform) ? ` · ${desktopClearShortcut(window.syncaDesktop?.platform)!.keys.join(' ')}` : '')}><BroomIcon size={18} /></button>
           </div>
         </header>
           <div className="message-list" ref={listRef}>

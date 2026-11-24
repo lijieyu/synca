@@ -1,6 +1,7 @@
 const { app, dialog, ipcMain, Menu, nativeImage, powerMonitor, pushNotifications, Tray } = require('electron')
 const fs=require('node:fs')
 const path=require('node:path')
+const { safeFileName } = require('./file-names.cjs')
 function installPlatform(window, ses, restore, settings, cfg) {
   const HOME=cfg.home, topic=cfg.bundleId
   const file=path.join(app.getPath('userData'),'desktop-preferences.json')
@@ -97,7 +98,7 @@ function installPlatform(window, ses, restore, settings, cfg) {
   ses.on('will-download',(_event,item,contents)=>{
     if(contents!==window.webContents)return
     const dir=prefs.directory&&fs.existsSync(prefs.directory)?prefs.directory:app.getPath('downloads')
-    const filename=path.basename(item.getFilename())||'attachment'
+    const filename=safeFileName(item.getFilename())
     const target=path.join(dir,filename)
     if(prefs.ask||fs.existsSync(target)||pendingDownloads.has(target))item.setSaveDialogOptions({defaultPath:target})
     else {pendingDownloads.add(target);item.once("done",()=>pendingDownloads.delete(target));item.setSavePath(target)}

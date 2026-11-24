@@ -8,6 +8,7 @@
   "version": "1.2.0",
   "scripts": {
     "build": "node build-ui.mjs && node build.mjs",
+    "build:windows": "node build-ui.mjs && node build.mjs win32",
     "build:mac": "node build-ui.mjs && node build.mjs darwin",
     "build:mac:preview": "node build-ui.mjs && node build.mjs darwin preview",
     "build:mac:local-preview": "node build-ui.mjs && node build.mjs darwin local-preview",

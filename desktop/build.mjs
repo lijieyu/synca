@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process'
 
 const version = JSON.parse(await readFile('package.json')).devDependencies.electron
 const checksums = JSON.parse(await readFile('node_modules/electron/checksums.json'))
-const targets = [['darwin', 'arm64'], ['win32', 'x64']]
+const targets = [['darwin', 'arm64'], ['win32', 'x64'], ['win32', 'arm64']]
 const requestedPlatform = process.argv[2]
 const cfg = variantModule.variant(process.argv[3])
 if (existsSync(path.join('app', 'preview-build.json'))) throw Error('Preview marker may only exist inside packaging staging')
