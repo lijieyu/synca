@@ -1,8 +1,12 @@
-# Desktop email login operations
+# Email login operations
 
 ## Release boundary
 
-Web and Electron share the centered login and settings-only binding. Native iOS/macOS Apple login continues to resolve the same user ID. Email-only users cannot use a native Apple-only client until they bind Apple in desktop settings. No automatic account merge is performed.
+Web and Electron share the centered login and settings-only binding. Apple remains the first sign-in option. Formal Web discovers availability from the headerless `/auth/capabilities` response; missing configuration, a disabled service, or a failed probe hides its email entry. Desktop keeps its existing immediate entry. All clients resolve the same user ID for linked identities. No automatic account merge is performed.
+
+The operator explicitly authorized formal Web email login on 2026-11-25. The prior desktop-only presentation restriction is removed in both backend capabilities and Web discovery. Keep `SYNCA_EMAIL_AUTH_ENABLED=true` and the existing configured sender/signing secret; no new setting, credential rotation, database change, or mail-provider change is needed. Deploy the compatible backend first (restart `synca-api`), then Web. Verify headerless and desktop capabilities both return `email:true`, then open the ordinary browser login and its email form without submitting mail. Real delivery was previously verified on 2026-11-23; entry checks alone do not reverify delivery.
+
+To roll back this Web rollout while preserving desktop email and existing accounts, restore the previous Web assets and previous compatible backend code with the desktop-only capability response. Do not disable the global email switch unless intentionally disabling email for all clients. Do not restore an old database or roll back to the obsolete email-based admin bootstrap.
 
 ## Aliyun DirectMail configuration
 

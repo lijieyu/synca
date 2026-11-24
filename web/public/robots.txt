@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /oauth/
+Disallow: /mcp
+Disallow: /messages
+Disallow: /message-categories
+Disallow: /uploads
+Disallow: /files/
+Disallow: /sync/
+Disallow: /me
+Disallow: /feedback
+Disallow: /access
+
+Sitemap: https://synca.haerth.cn/sitemap.xml
