@@ -39,5 +39,5 @@ Files: ios/Synca/Shared/Core/APIClient.swift, SyncManager.swift, lifecycle and A
 
 ### Task 4: Review and deploy
 - [x] Fresh whole-branch review, resolve significant findings with regression evidence.
-- [ ] Commit explicit files, deploy backend/Web only using release script, verify assets, health, auth caps, actual SSE via controlled test session and no private record reads.
-- [ ] Record tested scope and physical-device/APNs limits; clients wait for next package.
+- [x] Commit explicit files, deploy backend/Web only using release script, verify assets, health, auth caps, actual SSE via controlled test session and no private record reads.
+- [x] Record tested scope and physical-device/APNs limits; clients wait for next package.
