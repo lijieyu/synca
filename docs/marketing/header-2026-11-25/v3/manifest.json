@@ -1,0 +1,201 @@
+{
+  "spec_verified_on": "2026-11-25",
+  "spec_source": "https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications",
+  "spec_verification": "Official Apple creative-assets specification rechecked on 2026-11-25: 3840x1646 opaque PNG; central safe area 1646x661 at x1097/y493.",
+  "status": "draft",
+  "uploaded": false,
+  "submitted": false,
+  "sets": [
+    {
+      "id": "product-header-zh-Hans-v3",
+      "platform": "App Store product page",
+      "slot": "Product page header (title)",
+      "locale": "zh-Hans",
+      "width": 3840,
+      "height": 1646,
+      "assets": [
+        {
+          "path": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/header-v3.png",
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "id": "product-header-zh-Hant-v3",
+      "platform": "App Store product page",
+      "slot": "Product page header (title)",
+      "locale": "zh-Hant",
+      "width": 3840,
+      "height": 1646,
+      "assets": [
+        {
+          "path": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/header-v3-zh-Hant.png",
+          "status": "draft"
+        }
+      ],
+      "editable_source": "header-v3-zh-Hant.svg",
+      "copy": [
+        "靈感記錄",
+        "即刻同步"
+      ],
+      "font_size": 124,
+      "export_validation": {
+        "dimensions": [
+          3840,
+          1646
+        ],
+        "mode": "RGB",
+        "device_region": [
+          1300,
+          0,
+          3840,
+          1646
+        ],
+        "device_difference_bbox": null,
+        "sha256": "9e3510808d4320868a5582d11b1b52824b50285bd04bc61aeb543048b1ee370b"
+      },
+      "text_bounds": [
+        {
+          "text": "靈感記錄",
+          "x": 570,
+          "y": 699,
+          "width": 504,
+          "height": 173,
+          "right": 1074
+        },
+        {
+          "text": "即刻同步",
+          "x": 570,
+          "y": 859,
+          "width": 504,
+          "height": 173,
+          "right": 1074
+        }
+      ]
+    },
+    {
+      "id": "product-header-en-v3",
+      "platform": "App Store product page",
+      "slot": "Product page header (title)",
+      "locale": "en",
+      "width": 3840,
+      "height": 1646,
+      "assets": [
+        {
+          "path": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/header-v3-en.png",
+          "status": "draft"
+        }
+      ],
+      "editable_source": "header-v3-en.svg",
+      "copy": [
+        "Sync Your",
+        "Aha Moment"
+      ],
+      "font_size": 110,
+      "export_validation": {
+        "dimensions": [
+          3840,
+          1646
+        ],
+        "mode": "RGB",
+        "device_region": [
+          1300,
+          0,
+          3840,
+          1646
+        ],
+        "device_difference_bbox": null,
+        "sha256": "33522a1e2178317fe76abbd9352c738d798f62e24853482edca8170302dd59f4"
+      },
+      "text_bounds": [
+        {
+          "text": "Sync Your",
+          "x": 570,
+          "y": 724,
+          "width": 488.234375,
+          "height": 129,
+          "right": 1058.234375
+        },
+        {
+          "text": "Aha Moment",
+          "x": 570,
+          "y": 884,
+          "width": 623.21875,
+          "height": 129,
+          "right": 1193.21875
+        }
+      ]
+    }
+  ],
+  "art_safe_area": {
+    "x": 1097,
+    "y": 493,
+    "width": 1646,
+    "height": 661
+  },
+  "safe_area_status": "Pending ASC crop preview; this visual draft retains original device geometry and does not place every essential element inside the central safe area. Not approved for upload.",
+  "sources": {
+    "original_asc_url": "https://is1-ssl.mzstatic.com/image/thumb/JL9du3NRT56q_xM0-_RkUA/3840x1646bb.png",
+    "original_local": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/original-asc.png",
+    "original_sha256": "f8a59a21b84f0724ee416b558c3b2608a9da5fd9b5e4d19a279eaf64e37c4820",
+    "editable_source": "header-v3.svg",
+    "reference": "/Users/haer/Documents/ChatGPT/久念/AppStore-1.5.1-头图留白/淡云燕子-v4/zh-Hans/header.png"
+  },
+  "copy": [
+    "灵感记录",
+    "即刻同步"
+  ],
+  "changes": [
+    "Removed only the short lavender decorative line; slogan and devices unchanged from v2"
+  ],
+  "preservation_validation": {
+    "region": [
+      1300,
+      0,
+      3840,
+      1646
+    ],
+    "pixel_identical_to_original": true,
+    "difference_bbox": null
+  },
+  "export_validation": {
+    "dimensions": [
+      3840,
+      1646
+    ],
+    "mode": "RGB",
+    "difference_from_v2_bbox": [
+      570,
+      685,
+      634,
+      693
+    ]
+  },
+  "workflow": "Removed one SVG rect from v2 editable source and rendered in Chromium.",
+  "limits": [
+    "ASC crop/device preview pending",
+    "Source UI is preserved from existing ASC creative; not a new version-specific app capture",
+    "Headlines are localized for zh-Hant and English; the original device UI remains Simplified Chinese exactly as explicitly requested. No replacement UI capture or device edit was performed."
+  ],
+  "previews": {
+    "before": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v2/preview.png",
+    "after": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/preview.png"
+  },
+  "visual_acceptance": {
+    "accepted": true,
+    "date": "2026-11-25",
+    "scope": "User accepted v3: keep original devices and slogan, no logo, remove lavender decoration.",
+    "evidence": "Parent task handoff on 2026-11-25; acceptance is visual direction only, not final crop validation or current-build UI verification."
+  },
+  "localized_variants": {
+    "date": "2026-11-25",
+    "scope": "Requested Traditional Chinese and existing English slogan in approved v3 no-logo/no-decoration composition. Device region x1300–3840 pixel-identical to original v3.",
+    "visual_review": "Both final exports and 1440px previews inspected; English second-line right edge x1193.22 remains inside left x0–1300 region.",
+    "previews": {
+      "zh-Hant": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/preview-zh-Hant.png",
+      "en": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header-v3/preview-en.png"
+    },
+    "uploaded": false,
+    "submitted": false
+  }
+}

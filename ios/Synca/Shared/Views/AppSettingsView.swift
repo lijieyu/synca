@@ -9,8 +9,7 @@ struct AppSettingsView: View {
 
     var body: some View {
         settingsContent
-            .environment(\.locale, settings.locale)
-            .preferredColorScheme(settings.appAppearance.colorScheme)
+            .syncaPreferences()
     }
 
     @ViewBuilder

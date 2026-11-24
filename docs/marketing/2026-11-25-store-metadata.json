@@ -1,0 +1,151 @@
+{
+  "status": "prepared_for_draft_review",
+  "app_id": "6761647007",
+  "version": "1.2.0",
+  "source_revision": "15ed2319fc7b01c1990c5b5a24e11ea828c8535e plus locally verified search/appearance/feed changes",
+  "selected_builds": {
+    "ios": null,
+    "macos": null
+  },
+  "scope_note": "Local paste source only; no ASC save, upload, submission or release is implied. App name/subtitle are shared App Information; other text is platform-version metadata.",
+  "keyword_limit_note": "Apple product-page guide says 100 characters; field reference says 100 bytes. Existing ASC readback supports 100 characters for this app. Confirm actual save/readback; fallback is provided, not automatically selected.",
+  "localizations": {
+    "zh-Hans": {
+      "name": "Synca · 笔记与文件传输",
+      "subtitle": "文字图片随手记，手机电脑多端同步",
+      "keywords": "备忘录,便签,待办,清单,灵感,跨设备,跨平台,传图,资料,分类,拼音,附件,MCP,速记,摘录,记事本,工作记录,任务,收集,随笔,互传",
+      "promotional_text": "灵感记录，即刻同步。随手记下文字与图片，从手机到电脑继续处理。Synca Pro 支持文件传输，也能让兼容的外部 AI 应用经授权查找、整理记录，再把结果存回 Synca。",
+      "description": "灵感记录，即刻同步。\n\nSynca 帮你快速记下想法、收集待办、传送图片和文件。在手机上先记下来，再到电脑上接着处理，让工作笔记和日常灵感随时在手边。\n\n随手记录\n• 保存文字与图片，支持基本 Markdown 显示。\n• 编辑文字，按分类整理记录，完成一项就标记处理。\n• 用文字、文件名、拼音或拼音首字母快速查找，点开结果即可回到原记录。\n\n手机电脑同步\n• 在 iPhone、iPad、Mac 与网页版之间继续使用同一账号的记录。\n• Windows 版可从官网下载。\n• Synca Pro 支持普通文件传输，把需要的附件带到另一台设备。\n\n让 AI 用上你的记录\nSynca Pro 可连接支持 MCP 的外部 AI 应用。经你授权后，AI 可以查找、整理记录，并把讨论结果保存回 Synca。需要自行使用兼容的 AI 客户端；Synca 不内置 AI 模型或聊天服务，外部服务的要求及费用由其提供方决定。\n\n选择适合你的登录方式\n使用 Apple 或邮箱验证码登录，无需为邮箱登录设置密码。可在账号设置中绑定另一种登录方式：Apple 账号添加邮箱，邮箱账号绑定 Apple，继续使用同一账号的记录。不同账号不会自动合并。\n\n套餐与附件保存\n免费版每日可新增 20 条内容，支持文字与图片，提供 100 MB 附件空间，附件保留 3 天。\nSynca Pro 不限新增记录数量，支持普通文件传输与 AI 连接，提供 1 GB 附件空间，附件保留 30 天，通过 App 内购买解锁。\n附件到期后自动删除，重要图片和文件请提前另存。文字记录不随附件到期删除。终身购买解锁功能，不代表永久保存附件。\n\n官网与下载：https://synca.haerth.cn/home/\n网页版：https://synca.haerth.cn/\n隐私政策：https://synca.haerth.cn/zh-hans/privacy-policy\n使用条款（EULA）：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+      "whats_new_ios": "• 更新分类侧栏，查看数量、切换分类与整理记录更方便。\n• 重新整理设置界面，集中管理账号、显示偏好、分类与 AI 连接。\n• 新增邮箱验证码登录，支持 Apple 与邮箱双向绑定，继续使用同一账号的记录。\n• 优化跨端记录与分类同步，切换页面时保留草稿和阅读位置。\n• 修复跟随系统外观切换与短列表首屏留白。",
+      "whats_new_macos": "• 更新桌面布局与分类侧栏，让查看、切换和整理记录更顺手。\n• 重新整理设置界面，集中管理账号、显示偏好、分类与 AI 连接。\n• 新增邮箱验证码登录，支持 Apple 与邮箱双向绑定，继续使用同一账号的记录。\n• 优化跨端记录与分类同步，更新内容时保留草稿和阅读位置。\n• 修复搜索窗口在部分滚动条设置下出现横向滚动的问题。",
+      "counts": {
+        "name": {
+          "characters": 15,
+          "utf8_bytes": 30
+        },
+        "subtitle": {
+          "characters": 16,
+          "utf8_bytes": 48
+        },
+        "keywords": {
+          "characters": 69,
+          "utf8_bytes": 161
+        },
+        "promotional_text": {
+          "characters": 86,
+          "utf8_bytes": 218
+        },
+        "description": {
+          "characters": 898,
+          "utf8_bytes": 1974
+        },
+        "whats_new_ios": {
+          "characters": 155,
+          "utf8_bytes": 425
+        },
+        "whats_new_macos": {
+          "characters": 163,
+          "utf8_bytes": 449
+        },
+        "keywords_100_bytes_fallback": {
+          "characters": 35,
+          "utf8_bytes": 79
+        }
+      },
+      "keywords_100_bytes_fallback": "备忘录,便签,待办,清单,灵感,跨设备,分类,拼音,附件,MCP,互传",
+      "support_url": "https://synca.haerth.cn/zh-hans/support",
+      "privacy_policy_url": "https://synca.haerth.cn/zh-hans/privacy-policy",
+      "marketing_url": "https://synca.haerth.cn/home/"
+    },
+    "zh-Hant": {
+      "name": "Synca · 筆記與檔案傳輸",
+      "subtitle": "文字圖片隨手記，手機電腦跨裝置同步",
+      "keywords": "備忘錄,便條,待辦,清單,靈感,跨平台,傳圖,資料,分類,拼音,附件,MCP,速記,摘錄,記事本,工作記錄,任務,收集,隨筆,互傳",
+      "promotional_text": "靈感記錄，即刻同步。隨手記下文字與圖片，從手機到電腦接著處理。Synca Pro 支援檔案傳輸，也能讓相容的外部 AI 應用程式經授權尋找、整理記錄，再將結果存回 Synca。",
+      "description": "靈感記錄，即刻同步。\n\nSynca 幫你快速記下想法、收集待辦、傳送圖片與檔案。在手機上先記下來，再到電腦上接著處理，讓工作筆記與日常靈感隨時在手邊。\n\n隨手記錄\n• 儲存文字與圖片，支援基本 Markdown 顯示。\n• 編輯文字，透過分類整理記錄，完成一項就標記處理。\n• 使用文字、檔案名稱、拼音或拼音首字母快速搜尋，點選結果即可回到原記錄。\n\n手機電腦同步\n• 在 iPhone、iPad、Mac 與網頁版之間接著使用同一帳號的記錄。\n• Windows 版可從官網下載。\n• Synca Pro 支援一般檔案傳輸，將需要的附件帶到另一部裝置。\n\n讓 AI 用上你的記錄\nSynca Pro 可連接支援 MCP 的外部 AI 應用程式。經你授權後，AI 可以尋找、整理記錄，並將討論結果儲存回 Synca。需要自行使用相容的 AI 用戶端；Synca 不內建 AI 模型或聊天服務，外部服務的要求與費用由其提供者決定。\n\n選擇適合你的登入方式\n使用「透過 Apple 登入」或電子郵件驗證碼登入，無須為電子郵件登入設定密碼。可在帳號設定中綁定另一種登入方式：Apple 帳號新增信箱，電子郵件帳號綁定 Apple，繼續使用同一帳號的記錄。不同帳號不會自動合併。\n\n方案與附件保存\n免費版每日可新增 20 筆內容，支援文字與圖片，提供 100 MB 附件空間，附件保留 3 天。\nSynca Pro 不限新增記錄數量，支援一般檔案傳輸與 AI 連接，提供 1 GB 附件空間，附件保留 30 天，透過 App 內購買解鎖。\n附件到期後會自動刪除，重要圖片與檔案請提前另行儲存。文字記錄不會隨附件到期刪除。終身購買解鎖功能，不代表永久保存附件。\n\n官網與下載：https://synca.haerth.cn/home/zh-Hant/\n網頁版：https://synca.haerth.cn/\n隱私權政策：https://synca.haerth.cn/zh-hans/privacy-policy\n使用條款（EULA）：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+      "whats_new_ios": "• 更新分類側欄，查看數量、切換分類與整理記錄更方便。\n• 重新整理設定介面，集中管理帳號、顯示偏好、分類與 AI 連接。\n• 新增電子郵件驗證碼登入，支援 Apple 與電子郵件雙向綁定，繼續使用同一帳號的記錄。\n• 改善跨裝置記錄與分類同步，切換頁面時保留草稿與閱讀位置。\n• 修正跟隨系統外觀切換與短清單首屏留白。",
+      "whats_new_macos": "• 更新桌面版面與分類側欄，讓查看、切換與整理記錄更順手。\n• 重新整理設定介面，集中管理帳號、顯示偏好、分類與 AI 連接。\n• 新增電子郵件驗證碼登入，支援 Apple 與電子郵件雙向綁定，繼續使用同一帳號的記錄。\n• 改善跨裝置記錄與分類同步，更新內容時保留草稿與閱讀位置。\n• 修正搜尋視窗在部分捲動軸設定下出現水平捲動的問題。",
+      "counts": {
+        "name": {
+          "characters": 15,
+          "utf8_bytes": 30
+        },
+        "subtitle": {
+          "characters": 17,
+          "utf8_bytes": 51
+        },
+        "keywords": {
+          "characters": 65,
+          "utf8_bytes": 151
+        },
+        "promotional_text": {
+          "characters": 88,
+          "utf8_bytes": 224
+        },
+        "description": {
+          "characters": 928,
+          "utf8_bytes": 2048
+        },
+        "whats_new_ios": {
+          "characters": 160,
+          "utf8_bytes": 440
+        },
+        "whats_new_macos": {
+          "characters": 168,
+          "utf8_bytes": 464
+        },
+        "keywords_100_bytes_fallback": {
+          "characters": 35,
+          "utf8_bytes": 79
+        }
+      },
+      "keywords_100_bytes_fallback": "備忘錄,便條,待辦,清單,靈感,跨平台,分類,拼音,附件,MCP,互傳",
+      "support_url": "https://synca.haerth.cn/zh-hans/support",
+      "privacy_policy_url": "https://synca.haerth.cn/zh-hans/privacy-policy",
+      "marketing_url": "https://synca.haerth.cn/home/zh-Hant/"
+    },
+    "en-US": {
+      "name": "Synca: Notes & File Transfer",
+      "subtitle": "Quick capture, sync everywhere",
+      "keywords": "memo,notepad,todo,list,idea,text,image,photo,attachment,organize,search,pinyin,desktop,mcp",
+      "promotional_text": "Sync Your Aha Moment. Capture text and images across devices. Synca Pro adds file transfer and record access from compatible external AI apps.",
+      "description": "Sync Your Aha Moment.\n\nQuickly capture ideas, collect to-dos, and send images and files with Synca. Start on your phone and pick things up on your computer, with work notes and everyday ideas close at hand.\n\nCAPTURE AND ORGANIZE\n• Save text and images, with basic Markdown display.\n• Edit text, organize records by category, and mark items as handled when you finish.\n• Search by text, filename, pinyin, or pinyin initials. Open a result to return to the original record.\n\nCONTINUE ACROSS DEVICES\n• Use the same account to access your records on iPhone, iPad, Mac, and the web.\n• Download the Windows app from our website.\n• Synca Pro adds file transfer so you can access your attachments on another device.\n\nCONNECT YOUR RECORDS TO AI\nWith Synca Pro, compatible external AI apps can connect through MCP. After you authorize access, they can find and organize records and save the results back to Synca. A compatible AI client is required. Synca does not include an AI model or chat service; external providers set their own requirements and fees.\n\nCHOOSE HOW TO SIGN IN\nUse Sign in with Apple or an email verification code. No password is needed for email sign-in. Link the other sign-in method in account settings: add an email to an Apple-linked account, or link Apple to an email account. Both methods access the same account and records. Separate accounts are not merged automatically.\n\nPLANS AND ATTACHMENT RETENTION\nThe free plan includes up to 20 new entries per day, text and image capture, 100 MB of attachment space, and 3-day attachment retention.\nSynca Pro includes unlimited new entries, file transfer, AI connections, 1 GB of attachment space, and 30-day attachment retention. Unlock Pro through In-App Purchase.\nAttachments are deleted automatically when they expire. Save important images and files elsewhere before expiry. Text records do not expire with their attachments. A lifetime purchase unlocks features, not permanent attachment storage.\n\nWebsite and downloads: https://synca.haerth.cn/home/en/\nWeb app: https://synca.haerth.cn/\nPrivacy policy: https://synca.haerth.cn/en/privacy-policy\nTerms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+      "whats_new_ios": "• Updated the category sidebar to make counts, switching, and organization easier to access.\n• Redesigned settings for your account, appearance, categories, and AI connections.\n• Added email-code sign-in. Link Apple and email in either direction to keep using the same account and records.\n• Improved record and category sync across devices while preserving drafts and reading position as you move between screens.\n• Fixed switching back to the system appearance and excess space above short lists.",
+      "whats_new_macos": "• Updated the desktop layout and category sidebar for easier browsing and organization.\n• Redesigned settings for your account, appearance, categories, and AI connections.\n• Added email-code sign-in. Link Apple and email in either direction to keep using the same account and records.\n• Improved record and category sync across devices while preserving drafts and reading position as content updates.\n• Fixed unwanted horizontal scrolling in search with some scrollbar settings.",
+      "counts": {
+        "name": {
+          "characters": 28,
+          "utf8_bytes": 28
+        },
+        "subtitle": {
+          "characters": 30,
+          "utf8_bytes": 30
+        },
+        "keywords": {
+          "characters": 90,
+          "utf8_bytes": 90
+        },
+        "promotional_text": {
+          "characters": 142,
+          "utf8_bytes": 142
+        },
+        "description": {
+          "characters": 2199,
+          "utf8_bytes": 2211
+        },
+        "whats_new_ios": {
+          "characters": 498,
+          "utf8_bytes": 508
+        },
+        "whats_new_macos": {
+          "characters": 478,
+          "utf8_bytes": 488
+        }
+      },
+      "support_url": "https://synca.haerth.cn/en/support",
+      "privacy_policy_url": "https://synca.haerth.cn/en/privacy-policy",
+      "marketing_url": "https://synca.haerth.cn/home/en/"
+    }
+  },
+  "url_verification": "Legal/support paths verified against backend/src/app.ts, backend/src/legalPages.ts and current localized homepage source. The live web fetch did not finish; verify rendered destination before submission. Traditional Chinese intentionally uses existing Simplified Chinese legal/support pages."
+}

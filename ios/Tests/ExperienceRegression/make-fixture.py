@@ -29,6 +29,9 @@ if '--drawer' in sys.argv[2:]:
       'onCompletion: { completePreservingViewport(message, proxy: proxy) })',
       'onCompletion: { completePreservingViewport(message, proxy: proxy) }).accessibilityElement(children: .contain).accessibilityIdentifier("qa-record-" + message.id)')
 seed='private init() { categories = try! JSONDecoder().decode([SyncaMessageCategory].self, from: Data(#"'+json.dumps(cats,ensure_ascii=False)+'"#.utf8)); messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(msgs,ensure_ascii=False)+'"#.utf8)); hasCompletedInitialLoad = true; unclearedCount = '+str(len(msgs))+'; selectedCategoryId = "__all__" }'
+if '--feed-layout' in sys.argv[2:]:
+ long_msgs=[dict(msgs[0], id=f'{i:02d}', textContent=f'Layout record {i:02d}\nKeep the existing latest-record behavior for a long feed.', categoryId='0') for i in range(50)]
+ seed=seed[:-1]+'; if ProcessInfo.processInfo.arguments.contains("-qa-long-feed") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(long_msgs,ensure_ascii=False)+'"#.utf8)); unclearedCount = 50 } }'
 edit('Shared/Core/SyncManager.swift','private init() {}',seed)
 edit('Shared/Core/SyncManager.swift','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool {','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool { return true;')
 edit('Shared/Core/SyncManager.swift','func startPolling() {','func startPolling() { return;')
@@ -59,5 +62,18 @@ if '--email' in sys.argv[2:]:
  shutil.copy(tests/'EmailUITests.swift',dst/'UITests/EmailUITests.swift')
 if '--drawer' in sys.argv[2:]:
  shutil.copy(tests/'DrawerGestureTests.swift',dst/'UITests/DrawerGestureTests.swift')
+if '--appearance' in sys.argv[2:]:
+ shutil.copy(tests/'AppearanceTests.swift',dst/'UITests/AppearanceTests.swift')
+ edit('Shared/App/SyncaApp.swift', 'RootView()', 'RootView().overlay(alignment: .bottomTrailing) { AppearanceProbe(identifier: "qa-root-scheme") }')
+ edit('Shared/Views/AppSettingsView.swift',
+      'ForEach(AppAppearance.allCases) { item in Text(LocalizedStringKey(item.labelKey)).tag(item) }\n                    }',
+      'ForEach(AppAppearance.allCases) { item in Text(LocalizedStringKey(item.labelKey)).tag(item) }\n                    }.accessibilityIdentifier("qa-appearance-picker")')
+ edit('Shared/Views/AppSettingsView.swift',
+      '.tint(.primary)\n        .sheet(isPresented: $feedbackPresented)',
+      '.overlay(alignment: .bottomTrailing) { AppearanceProbe(identifier: "qa-settings-scheme") }\n        .tint(.primary)\n        .sheet(isPresented: $feedbackPresented)')
+ with (dst/'Shared/Core/SettingsManager.swift').open('a') as f:
+  f.write('\nstruct AppearanceProbe: View { @Environment(\\.colorScheme) private var scheme; let identifier: String; var body: some View { Text(scheme == .dark ? "dark" : "light").font(.system(size: 8)).accessibilityIdentifier(identifier).allowsHitTesting(false) } }\n')
+if '--feed-layout' in sys.argv[2:]:
+ shutil.copy(tests/'FeedLayoutTests.swift',dst/'UITests/FeedLayoutTests.swift')
 (dst/'fixture-records.json').write_text(json.dumps(msgs,ensure_ascii=False))
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)

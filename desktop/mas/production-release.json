@@ -5,10 +5,12 @@
   "productionMigrationVerified": true,
   "safeRollbackVerified": true,
   "realEmailLoginAndSyncVerified": true,
-  "webEmailHidden": true,
   "backendRelease": "20261124T051640Z-ddadaf9",
   "backendReleaseHashFormat": "sha256 sorted dist relative path + newline + file bytes; paths ordered by JS localeCompare",
   "verificationEvidence": "docs/verification/2026-11-24-notification-tf.md",
   "realEmailVerificationCommit": "e111f532669aca8f59add1f097860c446e99e76d",
-  "realEmailVerificationReused": true
+  "realEmailVerificationReused": true,
+  "webEmailEnabled": true,
+  "webEmailVerificationEvidence": "docs/verification/2026-11-25-launch-web-release.md",
+  "backendIdentityScope": "Historical verified migration/rollback and email-login compatibility baseline; not a claim that this is the currently deployed backend release."
 }

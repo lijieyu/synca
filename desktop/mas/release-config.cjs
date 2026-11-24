@@ -5,8 +5,9 @@ function validateRelease(release, mode) {
   if (release.origin !== origin || !/^[a-f0-9]{40}$/.test(release.backendCommit || '') || !/^[a-f0-9]{64}$/.test(release.backendReleaseSha256 || ''))
     throw Error('Missing exact backend release identity')
   const evidence = production
-    ? ['productionMigrationVerified', 'safeRollbackVerified', 'realEmailLoginAndSyncVerified', 'webEmailHidden']
+    ? ['productionMigrationVerified', 'safeRollbackVerified', 'realEmailLoginAndSyncVerified', 'webEmailEnabled']
     : ['realEmailDeliveryVerified', 'verificationAndSyncVerifiedWithSyntheticCode']
+  if (production && release.webEmailHidden === true) throw Error('Retired hidden-Web email policy conflicts with production release')
   if (evidence.some(key => release[key] !== true)) throw Error('Missing release verification evidence')
   return production ? 'verified-tf-production' : 'verified-tf-remote'
 }

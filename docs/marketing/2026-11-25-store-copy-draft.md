@@ -1,16 +1,17 @@
 # Synca 1.2.0 三语商店文案与审核说明草稿
 
-编制日期：2026-11-25。状态：供审核的完整草稿，未保存至 App Store Connect、未提交审核。以下按 1.2.0 发布时能力写作，**邮箱登录、双向绑定、正式 Web 邮箱入口及 Windows 下载须通过最终构建/公开入口验收**。
+编制日期：2026-11-25。状态：供审核的完整草稿；本文件不代表 App Store Connect 已保存或已提交。以下按 1.2.0 发布时能力写作。正式 Web 邮箱入口与 Windows 下载已有发布回读；**iOS/macOS 邮箱登录、双向绑定及最终构建仍按实际送审包验收**。本地审计基线为 `15ed2319fc7b01c1990c5b5a24e11ea828c8535e` 加当前已验收的搜索/外观/首屏修复，最终发布提交由主会话补齐。
 
 ## 发布条件与文案边界
 
-- 当前 ASC 正式 iOS/macOS 均为 1.1.0；Mac 1.2.0 处于 TestFlight 阶段，iOS 邮箱登录已进入下一包代码。不能把以下文案当作当前正式版功能公告。
+- 主会话 2026-11-25 较早回读 ASC 正式 iOS/macOS 均为 1.1.0；Mac 1.2.0 处于 TestFlight 阶段，iOS 邮箱登录已进入下一包代码。不能把以下文案当作当前正式版功能公告。
 - 官网 Windows x64 / ARM64 便携包已公开，完整下载哈希校验通过。ARM64 原生行为复用既有验收；新包未重新跑虚拟机，x64 尚无硬件运行验证。详见本次发布记录。
 - 免费版支持文字、图片、分类及搜索；普通文件传输、外部 AI 连接为 Synca Pro。附件有期限，终身购买不是永久附件存储。当前源码额度为：免费每日 20 条、100 MB、3 天；Pro 新增记录不限量、1 GB、30 天。须与发布时正式服务回读核对后使用。
+- 繁中隐私/支持链接沿用现有 `/zh-hans/` 页面（内容为简中）；后端仅提供 `en|zh-hans` 法律路由，不使用不存在的 `/zh-hant/` 路由。
 - AI 是经用户授权后由兼容 MCP 的外部客户端访问 Synca；不提供内置模型或聊天服务，不承诺外部服务免费。
 - 正式 Web 邮箱登录已发布，匿名浏览器确认入口和表单；本次上线检查未重新发送真实邮件。公开文案自然描述 Apple/邮箱登录和双向绑定，不加入构建版本或开关等实施细节。
 - 不包含旧 SYNCA99 优惠码或价格。准备新宣传文本并不等于取消当前活动；是否替换旧活动文案由主会话按用户授权处理。
-- 计数采用 Unicode 字符数，包含标点、空格和换行。宣传文本 ≤170；描述 ≤4000；更新内容 ≤4000。名称/副标题/关键词见同目录 ASO 研究。
+- 计数采用 Unicode 字符数，包含标点、空格和换行。宣传文本 ≤170；描述 ≤4000；更新内容 ≤4000。名称/副标题/关键词见同目录 ASO 研究；可粘贴字段汇总见 `2026-11-25-store-metadata.json`，版本与素材门槛见 `2026-11-25-store-readiness.md`。
 
 ## 简体中文
 
@@ -61,6 +62,7 @@ Synca Pro 不限新增记录数量，支持普通文件传输与 AI 连接，提
 • 重新整理设置界面，集中管理账号、显示偏好、分类与 AI 连接。
 • 新增邮箱验证码登录，支持 Apple 与邮箱双向绑定，继续使用同一账号的记录。
 • 优化跨端记录与分类同步，切换页面时保留草稿和阅读位置。
+• 修复跟随系统外观切换与短列表首屏留白。
 ```
 
 ### macOS 更新内容
@@ -70,6 +72,7 @@ Synca Pro 不限新增记录数量，支持普通文件传输与 AI 连接，提
 • 重新整理设置界面，集中管理账号、显示偏好、分类与 AI 连接。
 • 新增邮箱验证码登录，支持 Apple 与邮箱双向绑定，继续使用同一账号的记录。
 • 优化跨端记录与分类同步，更新内容时保留草稿和阅读位置。
+• 修复搜索窗口在部分滚动条设置下出现横向滚动的问题。
 ```
 
 ## 繁體中文
@@ -110,7 +113,7 @@ Synca Pro 不限新增記錄數量，支援一般檔案傳輸與 AI 連接，提
 
 官網與下載：https://synca.haerth.cn/home/zh-Hant/
 網頁版：https://synca.haerth.cn/
-隱私權政策：https://synca.haerth.cn/zh-hant/privacy-policy
+隱私權政策：https://synca.haerth.cn/zh-hans/privacy-policy
 使用條款（EULA）：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 ```
 
@@ -121,6 +124,7 @@ Synca Pro 不限新增記錄數量，支援一般檔案傳輸與 AI 連接，提
 • 重新整理設定介面，集中管理帳號、顯示偏好、分類與 AI 連接。
 • 新增電子郵件驗證碼登入，支援 Apple 與電子郵件雙向綁定，繼續使用同一帳號的記錄。
 • 改善跨裝置記錄與分類同步，切換頁面時保留草稿與閱讀位置。
+• 修正跟隨系統外觀切換與短清單首屏留白。
 ```
 
 ### macOS 更新內容
@@ -130,6 +134,7 @@ Synca Pro 不限新增記錄數量，支援一般檔案傳輸與 AI 連接，提
 • 重新整理設定介面，集中管理帳號、顯示偏好、分類與 AI 連接。
 • 新增電子郵件驗證碼登入，支援 Apple 與電子郵件雙向綁定，繼續使用同一帳號的記錄。
 • 改善跨裝置記錄與分類同步，更新內容時保留草稿與閱讀位置。
+• 修正搜尋視窗在部分捲動軸設定下出現水平捲動的問題。
 ```
 
 ## English
@@ -181,6 +186,7 @@ Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/st
 • Redesigned settings for your account, appearance, categories, and AI connections.
 • Added email-code sign-in. Link Apple and email in either direction to keep using the same account and records.
 • Improved record and category sync across devices while preserving drafts and reading position as you move between screens.
+• Fixed switching back to the system appearance and excess space above short lists.
 ```
 
 ### What's New — macOS
@@ -190,6 +196,7 @@ Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/st
 • Redesigned settings for your account, appearance, categories, and AI connections.
 • Added email-code sign-in. Link Apple and email in either direction to keep using the same account and records.
 • Improved record and category sync across devices while preserving drafts and reading position as content updates.
+• Fixed unwanted horizontal scrolling in search with some scrollbar settings.
 ```
 
 ## 审核说明草稿（提交英文；不公开显示）
@@ -229,6 +236,7 @@ The Windows download is a separate companion client distributed from our website
 - 侧栏、分类与设置：`b1515f7`、`0f532b8`、`9245b66`、`7a3f17b`；`docs/verification/2026-11-24-ios-experience-polish.md`、`2026-11-25-ios-sidebar-gesture.md`。
 - 桌面布局与设置：`docs/verification/2026-11-20-desktop-design.md`、`2026-11-23-desktop-settings-restoration.md`、`2026-11-24-desktop-polish-round2.md`。
 - 邮箱登录与双向绑定：`fbcdcb7`、`24056e3`；`docs/verification/2026-11-25-account-settings-details.md`。正式 Web 邮箱准备见 `2d1a1b1`，不将准备提交视为已经上线。
+- 本轮搜索、系统外观与短列表修复：`docs/verification/2026-11-25-search-appearance-feed-polish.md`；只依据已完成的定向验收，不扩大为全平台无缺陷声明。
 - 跨端同步与草稿/阅读位置保留：`docs/verification/2026-11-24-change-notifications.md` 及上述 iOS/桌面验收；文案不承诺绝对即时、后台必达或固定速度提升。
 
 ## 字段长度核对
@@ -237,16 +245,16 @@ The Windows download is a separate companion client distributed from our website
 | --- | --- | ---: | ---: |
 | 简体中文 | 宣传文本 | 86 | 170 |
 | 简体中文 | 描述 | 898 | 4000 |
-| 简体中文 | iOS 更新内容 | 133 | 4000 |
-| 简体中文 | macOS 更新内容 | 135 | 4000 |
+| 简体中文 | iOS 更新内容 | 155 | 4000 |
+| 简体中文 | macOS 更新内容 | 163 | 4000 |
 | 繁體中文 | 宣傳文字 | 88 | 170 |
 | 繁體中文 | 描述 | 928 | 4000 |
-| 繁體中文 | iOS 更新內容 | 138 | 4000 |
-| 繁體中文 | macOS 更新內容 | 140 | 4000 |
+| 繁體中文 | iOS 更新內容 | 160 | 4000 |
+| 繁體中文 | macOS 更新內容 | 168 | 4000 |
 | English | Promotional text | 142 | 170 |
 | English | Description | 2199 | 4000 |
-| English | What's New — iOS | 414 | 4000 |
-| English | What's New — macOS | 400 | 4000 |
+| English | What's New — iOS | 498 | 4000 |
+| English | What's New — macOS | 478 | 4000 |
 
 ## 验证来源
 

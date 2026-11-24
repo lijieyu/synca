@@ -10,7 +10,8 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
       const response = await page.goto(baseURL + path);
       await page.locator('footer').scrollIntoViewIfNeeded();
-      await page.evaluate(async () => { await Promise.all([...document.images].map(image => image.decode().catch(() => {}))); });
+      // Decode offscreen lazy images too; a jump to the footer can skip them on narrow screens.
+      await page.evaluate(async () => { for (const image of document.images) image.loading = 'eager'; await Promise.all([...document.images].map(image => image.decode().catch(() => {}))); });
       const result = await page.evaluate(() => ({
         language: document.documentElement.lang,
         overflow: document.documentElement.scrollWidth > innerWidth,
@@ -31,7 +32,7 @@ module.exports = async function checkHome(page, { baseURL = 'http://127.0.0.1:41
         registrations: [...document.querySelectorAll('.registration a')].map(a => a.textContent.trim()),
       }));
       const label = `${language} ${width}px ${scheme}`;
-      const windowsBase = 'https://synca.haerth.cn/downloads/windows/1.2.0-20261125/';
+      const windowsBase = 'https://synca.haerth.cn/downloads/windows/1.2.0-20261125-r2/';
       if (result.windowsDownloads.length !== 2 || result.windowsDownloads.some(href => href !== windowsBase + 'Synca-1.2.0-Windows-x64.zip') || result.windowsArmDownloads.length !== 2 || result.windowsArmDownloads.some(href => href !== windowsBase + 'Synca-1.2.0-Windows-arm64.zip')) failures.push({ label, windowsDownloads: result.windowsDownloads, windowsArmDownloads: result.windowsArmDownloads });
       if (response.status() !== 200 || result.language !== language || result.overflow || result.brokenImages.length || result.headings !== 1 || result.macDownloads !== 2 || result.scripts !== 1 || result.outsideAssets.length || result.relativeServiceLinks.length || result.webLinks !== 3 || result.unsafePageLinks.length || result.missingAnchors.length || result.missingAlt || result.horizontalActions || result.canonical !== 'https://synca.haerth.cn' + path || result.registrations.join('|') !== '浙ICP备2026013056号|浙公网安备33010602014403号') failures.push({ label, result });
       await page.evaluate(() => scrollTo(0, 0));
