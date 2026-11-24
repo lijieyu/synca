@@ -11,7 +11,7 @@
 - [x] Add failing tests for delta merge, deletion, unchanged data, same-timestamp boundaries, empty initial list, failed/stale sync, category metadata, session isolation and conditional responses.
 - [x] Add isolated Web delta reader/state helpers and integrate with existing guarded fetchData. Preserve Electron list API/patch and snapshot behavior.
 - [x] Run focused unit/browser regressions, shared build compatibility and independent review. Validate network response volume using synthetic records, not private user records.
-- [ ] Commit and deploy Web plus the required cursor protection; verify live HTML/assets and email capability. Do not merge to main or trigger TF in this task.
+- [x] Commit and deploy Web plus the required cursor protection; verify live HTML/assets and email capability. Do not merge to main or trigger TF in this task.
 
 ## Next client release and follow-up
 
@@ -28,3 +28,5 @@
 - Fixed: remote category deletion reproduced in the production browser fixture (RED); current/default-send selection now falls back, both unsent drafts are retained, and caret is restored (GREEN).
 - Final minor (deferred): an accepted HTTP 304 still traverses the local record map. This does not send record bodies; skip redundant merging in the later all-client synchronization pass.
 - Review boundaries: production authenticated ETag traffic and APNs delivery are not claimed from local tests. Validate live release assets and public capability endpoints after deployment; real billing impact requires subsequent traffic observation. No client build or TF is included.
+
+Deployment: 20261124T040638Z-e275d97. Formal Web HTML + entry/lazy assets match local hashes; backend helper hash and account/revision index verified. Health passed; Web email=false, desktop email=true. No main merge or TF trigger.
