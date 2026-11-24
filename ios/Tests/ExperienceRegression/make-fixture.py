@@ -17,8 +17,11 @@ edit('Shared/Core/AccessManager.swift','func refresh() async -> Bool {','func re
 edit('Shared/Core/AccessManager.swift','private init() {}','private init() { status = AccessStatus(plan: "free", isUnlimited: false, isTrial: false, unlimitedSource: nil, trialEndsAt: nil, daysLeft: nil, todayUsed: 7, todayLimit: 20, dailyResetAt: "2026-11-25T00:00:00Z", purchaseDate: nil, subscriptionExpiresAt: nil, storeProductId: nil, lifetimeUpgradeOffer: nil) }')
 now='2026-11-24T05:30:00.000Z'
 cats=[dict(id=str(i),userId='visual-fixture',name=n,color=c,isDefault=i==0,sortOrder=i,createdAt=now,updatedAt=now) for i,(n,c) in enumerate([('默认','slate'),('工作','sky'),('生活','mint'),('灵感','violet')])]
-msgs=[dict(id=str(i),userId='visual-fixture',type='text',textContent=t,categoryId=str(c),categoryName=cats[c]['name'],categoryColor=cats[c]['color'],categoryIsDefault=c==0,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i,(t,c) in enumerate([('把零散的想法，留在一个地方。',0),('周末去看新展览，记得提前预约。',2),('下一版：让记录和整理，都更轻松。',3)])]
-seed='private init() { categories = try! JSONDecoder().decode([SyncaMessageCategory].self, from: Data(#"'+json.dumps(cats,ensure_ascii=False)+'"#.utf8)); messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(msgs,ensure_ascii=False)+'"#.utf8)); hasCompletedInitialLoad = true; unclearedCount = 3; selectedCategoryId = "__all__" }'
+msgs=[dict(id=str(i),userId='visual-fixture',type='text',textContent=t,categoryId=str(c),categoryName=cats[c]['name'],categoryColor=cats[c]['color'],categoryIsDefault=c==0,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i,(t,c) in enumerate([('把零散的想法，留在一个地方。 https://example.com',0),('周末去看新展览，记得提前预约。',2),('下一版：让记录和整理，都更轻松。',3)])]
+# Optional image-heavy feed uses only deterministic loopback attachments.
+if '--images' in sys.argv[2:]:
+ msgs=[dict(id=str(i),userId='visual-fixture',type='image',imageUrl='http://127.0.0.1:54671/image/'+str(i)+'.png',categoryId='1',categoryName='工作',categoryColor='sky',categoryIsDefault=False,isCleared=False,isDeleted=False,sourceDevice='iPhone',createdAt=now,updatedAt=now) for i in range(6)]
+seed='private init() { categories = try! JSONDecoder().decode([SyncaMessageCategory].self, from: Data(#"'+json.dumps(cats,ensure_ascii=False)+'"#.utf8)); messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(msgs,ensure_ascii=False)+'"#.utf8)); hasCompletedInitialLoad = true; unclearedCount = '+str(len(msgs))+'; selectedCategoryId = "__all__" }'
 edit('Shared/Core/SyncManager.swift','private init() {}',seed)
 edit('Shared/Core/SyncManager.swift','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool {','func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool { return true;')
 edit('Shared/Core/SyncManager.swift','func startPolling() {','func startPolling() { return;')
@@ -39,4 +42,5 @@ else:
  edit('Shared/Core/EmbeddedAISession.swift','url.host?.lowercased() == "synca.haerth.cn"','url.host?.lowercased() == "127.0.0.1"')
  edit('Shared/Core/EmbeddedAISession.swift','(url.port == nil || url.port == 443)','url.port == 54671')
  edit('Shared/Views/AIConnectionView.swift','if scheme == "https", url.user == nil','if scheme == "http", url.host == "127.0.0.1", url.port == 54671, url.user == nil')
+(dst/'fixture-records.json').write_text(json.dumps(msgs,ensure_ascii=False))
 subprocess.run(['xcodegen','generate'],cwd=dst,check=True)

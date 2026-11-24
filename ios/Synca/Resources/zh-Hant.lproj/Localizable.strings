@@ -416,3 +416,5 @@
 "search.located" = "已定位到原記錄";
 
 "search.count" = "找到 %ld 筆記錄";
+
+"account.current_plan" = "目前方案";

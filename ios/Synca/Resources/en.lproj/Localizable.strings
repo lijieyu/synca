@@ -416,3 +416,5 @@
 "search.located" = "Record located";
 
 "search.count" = "%ld records found";
+
+"account.current_plan" = "Current plan";
