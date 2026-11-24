@@ -631,7 +631,7 @@ struct MessageListView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 #if os(iOS)
-                .simultaneousGesture(DragGesture(minimumDistance: 12)
+                .simultaneousGesture(phoneLayout && syncManager.hasCompletedInitialLoad && !filteredMessages.isEmpty ? nil : DragGesture(minimumDistance: 12)
                     .updating($drawerGestureActive) { _, active, _ in active = true }
                     .onChanged { value in
                         if categorySwipeIsHorizontal == nil {
@@ -948,6 +948,21 @@ struct MessageListView: View {
         return categoryDisplayColor(category.color, hex: category.colorHex)
     }
 
+    /// UIKit arbitrates this edge drag before the feed's vertical pan can begin.
+    private func handleDrawerEdgePan(_ state: UIGestureRecognizer.State, _ translation: CGFloat, _ velocity: CGFloat) {
+        switch state {
+        case .began, .changed:
+            drawerTranslation = min(drawerWidth, max(0, translation))
+        case .ended:
+            let projectedTranslation = translation + velocity * DrawerEdgePan.projectionDuration
+            toggleDrawer(projectedTranslation > drawerWidth * 0.4)
+        case .cancelled, .failed:
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { drawerTranslation = 0 }
+        default:
+            break
+        }
+    }
+
     private func toggleDrawer(_ open: Bool) {
         if open { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.92)) {
@@ -999,7 +1014,7 @@ struct MessageListView: View {
                             HStack {
                                 Text("message_category.section_title").font(.caption).foregroundStyle(.secondary)
                                 Spacer()
-                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image(systemName: "tag").frame(width:44,height:44) }
+                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image("TagsOutline").resizable().scaledToFit().frame(width: 18, height: 18).frame(width: 44, height: 44) }
                                     .accessibilityLabel(Text("message_list.manage_categories"))
                             }.padding(.leading,12)
                             ForEach(syncManager.categories) { category in
@@ -1266,7 +1281,9 @@ struct MessageListView: View {
                             .id("bottom")
                     }
                     #if os(iOS)
-                    .background(FeedViewportReader(reference: feedViewport))
+                    .background(FeedViewportReader(reference: feedViewport,
+                        edgePanEnabled: phoneLayout && !drawerOpen,
+                        onEdgePan: handleDrawerEdgePan))
                     #endif
                     .frame(maxWidth: streamMaximumWidth)
                     .frame(maxWidth: .infinity)
@@ -3783,12 +3800,36 @@ private struct RecordViewportFrames: PreferenceKey {
 @MainActor private final class FeedViewportReference {
     weak var scrollView: UIScrollView?
 }
+private enum DrawerEdgePan {
+    static let activationWidth: CGFloat = 32
+    static let horizontalBias: CGFloat = 1.5
+    static let projectionDuration: CGFloat = 0.2
+}
+
 private struct FeedViewportReader: UIViewRepresentable {
     let reference: FeedViewportReference
+    let edgePanEnabled: Bool
+    let onEdgePan: (UIGestureRecognizer.State, CGFloat, CGFloat) -> Void
+
     func makeUIView(context: Context) -> Probe { Probe(reference: reference) }
-    func updateUIView(_ uiView: Probe, context: Context) { uiView.resolve() }
-    final class Probe: UIView {
+    func updateUIView(_ uiView: Probe, context: Context) {
+        uiView.onEdgePan = onEdgePan
+        if uiView.edgePan.isEnabled != edgePanEnabled { uiView.edgePan.isEnabled = edgePanEnabled }
+        uiView.resolve()
+    }
+    static func dismantleUIView(_ uiView: Probe, coordinator: ()) { uiView.detach() }
+
+    final class Probe: UIView, UIGestureRecognizerDelegate {
         let reference: FeedViewportReference
+        private weak var attachedScrollView: UIScrollView?
+        var onEdgePan: ((UIGestureRecognizer.State, CGFloat, CGFloat) -> Void)?
+        lazy var edgePan: UIPanGestureRecognizer = {
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+            pan.delegate = self
+            pan.maximumNumberOfTouches = 1
+            pan.isEnabled = false
+            return pan
+        }()
         init(reference: FeedViewportReference) {
             self.reference = reference
             super.init(frame: .zero)
@@ -3801,9 +3842,38 @@ private struct FeedViewportReader: UIViewRepresentable {
         func resolve() {
             var ancestor = superview
             while let view = ancestor {
-                if let scrollView = view as? UIScrollView { reference.scrollView = scrollView; return }
+                if let scrollView = view as? UIScrollView {
+                    reference.scrollView = scrollView
+                    if attachedScrollView !== scrollView {
+                        detach()
+                        attachedScrollView = scrollView
+                        scrollView.addGestureRecognizer(edgePan)
+                        // A vertical edge drag fails our recognizer immediately. A horizontal
+                        // one owns the entire gesture, so the feed never moves underneath it.
+                        scrollView.panGestureRecognizer.require(toFail: edgePan)
+                    }
+                    return
+                }
                 ancestor = view.superview
             }
+        }
+        func detach() {
+            attachedScrollView?.removeGestureRecognizer(edgePan)
+            attachedScrollView = nil
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let scrollView = attachedScrollView else { return false }
+            let x = touch.location(in: scrollView).x - scrollView.bounds.minX
+            return x >= 0 && x < DrawerEdgePan.activationWidth
+        }
+        override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let scrollView = attachedScrollView else { return false }
+            let translation = edgePan.translation(in: scrollView)
+            return translation.x > 0 && translation.x > abs(translation.y) * DrawerEdgePan.horizontalBias
+        }
+        @objc private func handlePan(_ pan: UIPanGestureRecognizer) {
+            guard let scrollView = attachedScrollView else { return }
+            onEdgePan?(pan.state, pan.translation(in: scrollView).x, pan.velocity(in: scrollView).x)
         }
     }
 }
