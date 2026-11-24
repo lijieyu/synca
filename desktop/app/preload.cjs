@@ -12,9 +12,10 @@ if (process.isMainFrame && location.origin === origin) {
     change:(key,value)=>ipcRenderer.invoke('desktop:change',key,value),
     directory:()=>ipcRenderer.invoke('desktop:directory'),
     count:n=>ipcRenderer.send('desktop:count',n),
+    clearCompletedAvailable:available=>ipcRenderer.send('desktop:clear-available',available),
     session:token=>ipcRenderer.send('desktop:session',token),
     subscribe:(name,fn)=>{
-      if (!['settings','refresh','sync'].includes(name)) throw Error('Unknown desktop event')
+      if (!['settings','refresh','sync','clear-completed'].includes(name)) throw Error('Unknown desktop event')
       const listener=()=>fn()
       ipcRenderer.on('desktop:'+name,listener)
       return ()=>ipcRenderer.removeListener('desktop:'+name,listener)

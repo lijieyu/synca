@@ -1,4 +1,10 @@
 {
+  "shortcuts.title": "鍵盤快速鍵",
+  "shortcuts.fixed": "快速鍵為固定設定，不支援修改。",
+  "shortcuts.search": "搜尋",
+  "shortcuts.sync": "同步",
+  "shortcuts.close": "關閉視窗",
+  "shortcuts.hide": "隱藏應用程式",
   "review.action.clear_all_one": "清除所有分類中的 {{count}} 筆已完成記錄？",
   "review.action.clear_all_other": "清除所有分類中的 {{count}} 筆已完成記錄？",
   "review.action.clear_category_one": "清除「{{name}}」中的 {{count}} 筆已完成記錄？",

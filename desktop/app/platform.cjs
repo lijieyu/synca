@@ -49,6 +49,13 @@ function installPlatform(window, ses, restore, settings, cfg) {
     return result.canceled?prefs:save({...prefs,directory:result.filePaths[0]})
   })
   ipcMain.on('desktop:count',(e,n)=>{if(trusted(e)&&token&&Number.isSafeInteger(n)&&n>=0) badge(n)})
+  const clearAvailability=(event,available)=>{
+    if(!trusted(event)||typeof available!=='boolean')return
+    const item=Menu.getApplicationMenu()?.getMenuItemById('clear-completed')
+    if(item)item.enabled=available
+  }
+  ipcMain.on('desktop:clear-available',clearAvailability)
+  window.on('closed',()=>ipcMain.removeListener('desktop:clear-available',clearAvailability))
   function refreshView(){if(window.isVisible()&&!window.isDestroyed())window.webContents.send('desktop:refresh')}
   async function refresh(){
     if(!token||window.isDestroyed())return

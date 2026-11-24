@@ -1,4 +1,10 @@
 {
+  "shortcuts.title": "Keyboard shortcuts",
+  "shortcuts.fixed": "Shortcuts are fixed and cannot be changed.",
+  "shortcuts.search": "Search",
+  "shortcuts.sync": "Sync",
+  "shortcuts.close": "Close window",
+  "shortcuts.hide": "Hide app",
   "review.action.clear_all_one": "Clear {{count}} completed record from all categories?",
   "review.action.clear_all_other": "Clear {{count}} completed records from all categories?",
   "review.action.clear_category_one": "Clear {{count}} completed record from “{{name}}”?",

@@ -1,4 +1,5 @@
 import { SyncFeedback } from './SyncFeedback';
+import { MAC_CLEAR_LABEL } from './KeyboardShortcuts';
 import { MobileCategoryDrawer } from './MobileCategoryDrawer';
 import { SettingsSurface } from './SettingsSurface';
 import { PanelLeft, X, Tags } from 'lucide-react';
@@ -589,6 +590,44 @@ export const MessageListView: React.FC = () => {
   const completed = filteredMessages.filter((message) => message.isCleared && !message.isDeleted);
   const pending = filteredMessages.filter((message) => !message.isCleared);
 
+  const clearComposing = useRef(false);
+  const requestClearCompleted = useCallback(() => {
+    if (!completed.length || clearing || clearComposing.current || document.querySelector('[role="dialog"]')) return;
+    setClearError(false);
+    setShowClearModal(true);
+  }, [completed.length, clearing]);
+
+  useEffect(() => {
+    const desktop = window.syncaDesktop;
+    if (desktop?.platform !== 'macOS') return;
+    const shortcut = (event: KeyboardEvent) => {
+      if (event.key !== 'Backspace' || !event.metaKey || !event.shiftKey || event.ctrlKey || event.altKey) return;
+      if (event.isComposing || event.keyCode === 229 || clearComposing.current) return;
+      // Consume repeated presses even while the confirmation is open: never edit the draft.
+      event.preventDefault();
+      if (!event.repeat) requestClearCompleted();
+    };
+    const compositionStart = () => { clearComposing.current = true; };
+    const compositionEnd = () => { clearComposing.current = false; };
+    const unsubscribe = desktop.subscribe('clear-completed', requestClearCompleted);
+    window.addEventListener('keydown', shortcut);
+    window.addEventListener('compositionstart', compositionStart);
+    window.addEventListener('compositionend', compositionEnd);
+    window.addEventListener('blur', compositionEnd);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('keydown', shortcut);
+      window.removeEventListener('compositionstart', compositionStart);
+      window.removeEventListener('compositionend', compositionEnd);
+      window.removeEventListener('blur', compositionEnd);
+    };
+  }, [requestClearCompleted]);
+
+  useEffect(() => {
+    window.syncaDesktop?.clearCompletedAvailable?.(completed.length > 0 && !clearing);
+    return () => window.syncaDesktop?.clearCompletedAvailable?.(false);
+  }, [completed.length, clearing]);
+
   const sidebar=(
       <SidebarFrame>
         <div className="sidebar-brand"><img src="/logo.png?v=a2" alt="" /><span>Synca</span>{compact && <button type="button" className="close-categories" aria-label={t('navigation.close')} onClick={()=>setDrawerOpen(false)}><X size={18}/></button>}</div>
@@ -658,7 +697,7 @@ export const MessageListView: React.FC = () => {
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')} aria-keyshortcuts="Meta+r Control+r"><RotateCw size={18} strokeWidth={1.7} /></button>
-            <button className="header-btn" disabled={!completed.length} onClick={() => { setClearError(false); setShowClearModal(true); }} aria-label={t('message_list.clear_completed')} title={t('message_list.clear_completed')}><BroomIcon size={18} /></button>
+            <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={window.syncaDesktop?.platform === 'macOS' ? 'Meta+Shift+Backspace' : undefined} title={t('message_list.clear_completed') + (window.syncaDesktop?.platform === 'macOS' ? ` · ${MAC_CLEAR_LABEL}` : '')}><BroomIcon size={18} /></button>
           </div>
         </header>
           <div className="message-list" ref={listRef}>
