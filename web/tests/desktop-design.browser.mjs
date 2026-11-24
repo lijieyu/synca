@@ -1,3 +1,5 @@
+import { recordPolishChecks } from './record-polish.checks.mjs';
+import { aiClientBrandChecks } from './ai-client-brand.checks.mjs';
 import { aboutVersionChecks } from './about-version.checks.mjs';
 import { toastPositionChecks } from './toast-position.checks.mjs';
 import { keyboardShortcutChecks } from './keyboard-shortcuts.checks.mjs';
@@ -47,6 +49,8 @@ await aboutVersionChecks({fixture,check,assert,out});
 await toastPositionChecks({fixture,check,assert,out});
 await desktopPolishChecks({fixture,check,assert,out});
 await keyboardShortcutChecks({fixture,check,assert,out});
+await aiClientBrandChecks({fixture,check,assert,out});
+await recordPolishChecks({fixture,check,assert,out});
 await fs.writeFile(path.join(out,'results.json'),JSON.stringify({date:new Date().toISOString(),baseline,results},null,2));
 }finally{await browser.close();await server.close();}
 if(results.some(x=>!x.passed))process.exitCode=1;

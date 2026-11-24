@@ -1,0 +1,34 @@
+{
+  "identifier": "D517D0D1-3B93-4C4E-8925-62FC7930AB08",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "98.00",
+      "familyShareable": false,
+      "internalID": "10001",
+      "localizations": [
+        {
+          "description": "Local preview only",
+          "displayName": "Synca Pro",
+          "locale": "zh_CN"
+        }
+      ],
+      "productID": "org.haerth.synca.unlimited.lifetime",
+      "referenceName": "Synca Pro Preview",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "",
+    "_developerTeamID": "",
+    "_failTransactionsEnabled": false,
+    "_locale": "zh_CN",
+    "_storefront": "CHN",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

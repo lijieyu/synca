@@ -1,4 +1,5 @@
 import XCTest
+import StoreKitTest
 final class PolishTests: XCTestCase {
  func shot(_ app: XCUIApplication, _ name: String) { Thread.sleep(forTimeInterval: 0.4); let a = XCTAttachment(screenshot: UIDevice.current.userInterfaceIdiom == .pad ? app.screenshot() : XCUIScreen.main.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a) }
  func launch(_ extra: [String] = []) -> XCUIApplication {
@@ -103,17 +104,27 @@ final class PolishTests: XCTestCase {
   let app = launch()
   let link = app.links.firstMatch
   XCTAssertTrue(link.waitForExistence(timeout: 5))
-  link.press(forDuration: 1.2)
-  XCTAssertTrue(app.menuItems["拷贝链接"].waitForExistence(timeout: 3) || app.buttons["拷贝链接"].exists || app.buttons["拷贝"].exists || app.menuItems["拷贝"].exists)
+  link.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(forDuration: 1.2)
+  let copyPredicate = NSPredicate(format: "label == '拷贝链接' OR label == 'Copy Link'")
+  let copy = app.descendants(matching: .any).matching(copyPredicate).firstMatch
+  // A record-level Copy action is not evidence that the URL menu works.
+  guard copy.waitForExistence(timeout: 5) else {
+   shot(app,"link-menu-not-found")
+   XCTFail("The URL-specific Copy Link action was not found")
+   return
+  }
   XCTAssertEqual(app.state, .runningForeground)
+  let openLink = app.descendants(matching: .any).matching(NSPredicate(format: "label == '打开链接' OR label == 'Open Link' OR label == '打开' OR label == 'Open'")).firstMatch
+  XCTAssertTrue(openLink.exists, "This must be the link menu, not the record menu")
+  XCTAssertEqual(app.webViews.count, 0, "Long press must not load a remote webpage preview")
+  XCTAssertFalse(app.buttons["隐藏预览"].exists)
   shot(app,"link-long-press")
-  let copy = app.buttons.matching(NSPredicate(format: "label == '拷贝' OR label == '拷贝链接' OR label == 'Copy' OR label == 'Copy Link'")).firstMatch
-  XCTAssertTrue(copy.exists); copy.tap(); XCTAssertEqual(app.state, .runningForeground)
+  copy.tap(); XCTAssertEqual(app.state, .runningForeground)
  }
  func testLinkTap() {
   let app = launch()
   XCTAssertTrue(app.links.firstMatch.waitForExistence(timeout: 5))
-  app.links.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.8)).tap()
+  app.links.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
   XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 8))
   app.activate()
@@ -151,14 +162,123 @@ final class PolishTests: XCTestCase {
   XCTAssertTrue(app.buttons["settings-account"].waitForExistence(timeout: 4))
   app.buttons["settings-close"].tap(); XCUIDevice.shared.orientation = .portrait
  }
+ func testSettingsRefinement() {
+  for style in ["light", "dark"] {
+   let app = launch(["-appAppearance",style])
+   app.buttons["phone-categories"].tap()
+   XCTAssertTrue(app.buttons["drawer-settings"].waitForExistence(timeout: 4))
+   XCTAssertTrue(app.buttons["drawer-settings"].label.contains("设置"))
+   shot(app,"refined-drawer-"+style)
+   app.buttons["drawer-settings"].tap()
+   app.buttons["settings-account"].tap()
+   XCTAssertTrue(app.buttons["account-plan"].waitForExistence(timeout: 4))
+   XCTAssertTrue(app.buttons["account-delete"].isHittable)
+   shot(app,"refined-account-"+style)
+   app.buttons["account-plan"].tap(); back(app)
+   XCTAssertTrue(app.buttons["account-signout"].waitForExistence(timeout: 4))
+   back(app)
+   app.buttons["settings-feedback"].tap()
+   let editor = app.textViews["feedback-content"]
+   XCTAssertTrue(editor.waitForExistence(timeout: 4))
+   shot(app,"refined-feedback-"+style)
+   editor.tap(); editor.typeText("Feedback draft")
+   app.buttons.matching(identifier:"取消").allElementsBoundByIndex.first(where: { $0.isHittable })!.tap()
+   XCTAssertTrue(app.buttons["放弃修改"].waitForExistence(timeout: 3))
+   if app.buttons["继续编辑"].exists { app.buttons["继续编辑"].tap() }
+   else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap() }
+   XCTAssertFalse(app.buttons["放弃修改"].exists)
+   XCTAssertEqual(editor.value as? String,"Feedback draft")
+   app.terminate()
+  }
+ }
  @MainActor func testAIPlans() async throws {
-  for plan in ["free", "pro", "pro-dark"] {
+  for plan in ["free", "free-dark", "pro", "pro-dark", "connected", "connected-dark", "pro-large"] {
    _ = try await URLSession.shared.data(from: URL(string: "http://127.0.0.1:54671/__qa/plan/" + plan)!)
-   let app=launch(plan == "pro-dark" ? ["-appAppearance", "dark"] : []); settings(app); app.buttons["settings-ai"].tap()
+   var extra = ["-appAppearance", plan.hasSuffix("dark") ? "dark" : "light"]
+   if plan.hasSuffix("large") { extra += ["-UIPreferredContentSizeCategoryName","UICTContentSizeCategoryAccessibilityXXXL"] }
+   let app=launch(extra); settings(app)
+   for _ in 0..<8 { if app.buttons["settings-ai"].isHittable { break }; app.swipeUp() }
+   app.buttons["settings-ai"].tap()
    XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 8))
-   let label = plan == "free" ? "查看升级权益" : "复制连接指令"
-   XCTAssertTrue(app.webViews.buttons[label].waitForExistence(timeout: 10))
-   shot(app,"ai-"+plan); back(app); app.terminate()
+   let label = plan.hasPrefix("free") ? "升级 Synca Pro" : plan.hasPrefix("connected") ? "撤销连接" : "复制连接指令"
+   let action = app.webViews.buttons[label].firstMatch
+   XCTAssertTrue(action.waitForExistence(timeout: 10))
+   shot(app,"refined-ai-"+plan)
+   if !plan.hasPrefix("free") && !plan.hasPrefix("connected") {
+    for _ in 0..<8 { if action.isHittable { break }; app.webViews.firstMatch.swipeUp() }
+    XCTAssertTrue(action.isHittable)
+    shot(app,"refined-ai-actions-"+plan)
+    if !plan.hasSuffix("large") {
+     let preview = app.webViews.buttons["查看指令"]
+     for _ in 0..<4 { if preview.isHittable { break }; app.webViews.firstMatch.swipeUp() }
+     preview.tap()
+     XCTAssertTrue(app.webViews.buttons["收起指令"].waitForExistence(timeout: 3))
+    }
+   }
+   back(app); app.terminate()
+  }
+ }
+ @MainActor func testAIUpgradeAndDrawerPlacement() async throws {
+  for style in ["light", "dark"] {
+   _ = try await URLSession.shared.data(from: URL(string:"http://127.0.0.1:54671/__qa/plan/free")!)
+   let app = launch(["-appAppearance",style])
+   app.buttons["phone-categories"].tap()
+   let account = app.buttons["drawer-settings"]
+   let quota = app.staticTexts.matching(NSPredicate(format:"label CONTAINS '今日记录'")).firstMatch
+   XCTAssertTrue(quota.waitForExistence(timeout: 3))
+   XCTAssertGreaterThan(quota.frame.minY, account.frame.maxY)
+   shot(app,"round4-drawer-"+style)
+   account.tap(); app.buttons["settings-ai"].tap()
+   let upgrade=app.webViews.buttons["升级 Synca Pro"]
+   XCTAssertTrue(upgrade.waitForExistence(timeout: 8))
+   if !upgrade.isHittable { app.webViews.firstMatch.swipeUp() }
+   shot(app,"round4-ai-free-"+style)
+   upgrade.tap()
+   XCTAssertTrue(app.buttons["upgrade-primary"].waitForExistence(timeout: 5))
+   XCTAssertTrue(app.buttons["恢复购买"].exists)
+   shot(app,"round4-native-upgrade-"+style)
+   app.buttons["关闭"].tap()
+   XCTAssertTrue(app.webViews.buttons["升级 Synca Pro"].waitForExistence(timeout:5))
+   app.terminate()
+   _ = try await URLSession.shared.data(from: URL(string:"http://127.0.0.1:54671/__qa/plan/connected")!)
+   let connected=launch(["-appAppearance",style]); settings(connected); connected.buttons["settings-ai"].tap()
+   XCTAssertTrue(connected.webViews.buttons["撤销连接"].firstMatch.waitForExistence(timeout:8))
+   shot(connected,"round4-ai-connected-"+style); connected.terminate()
+  }
+ }
+ @MainActor func testUpgradePresentation() async throws {
+  let session = try SKTestSession(configurationFileNamed: "UpgradePreview")
+  session.disableDialogs = true
+  session.storefront = "CHN"
+  defer { session.resetToDefaultState() }
+  _ = try await URLSession.shared.data(from: URL(string:"http://127.0.0.1:54671/__qa/plan/free")!)
+  for mode in ["light", "dark", "failure-light", "failure-dark", "large", "english"] {
+   var extra = ["-appAppearance", mode.hasSuffix("dark") ? "dark" : "light"]
+   if mode.hasPrefix("failure") { extra += ["-qa-products-unavailable"] }
+   if mode == "large" { extra += ["-UIPreferredContentSizeCategoryName","UICTContentSizeCategoryAccessibilityXXXL"] }
+   if mode == "english" { extra += ["-AppleLanguages", "(en)", "-appLanguage", "en"] }
+   let app=launch(extra); settings(app)
+   for _ in 0..<8 { if app.buttons["settings-ai"].isHittable { break }; app.swipeUp() }
+   app.buttons["settings-ai"].tap()
+   let entry=app.webViews.buttons[mode == "english" ? "Upgrade to Synca Pro" : "升级 Synca Pro"]
+   XCTAssertTrue(entry.waitForExistence(timeout:8))
+   for _ in 0..<8 { if entry.isHittable { break }; app.webViews.firstMatch.swipeUp() }
+   entry.tap()
+   let primary=app.buttons["upgrade-primary"]
+   XCTAssertTrue(primary.waitForExistence(timeout:8))
+   if mode.hasPrefix("failure") {
+    XCTAssertEqual(primary.label,"重试")
+    XCTAssertFalse(app.staticTexts["upgrade-price"].exists)
+   } else { XCTAssertTrue(app.staticTexts["upgrade-price"].waitForExistence(timeout:8)) }
+   XCTAssertFalse(app.staticTexts["附件空间"].exists)
+   shot(app,"upgrade-"+mode)
+   for _ in 0..<8 { if primary.isHittable { break }; app.swipeUp() }
+   XCTAssertTrue(primary.isHittable)
+   if mode == "large" { shot(app,"upgrade-large-actions") }
+   let restore = app.buttons[mode == "english" ? "Restore Purchases" : "恢复购买"]
+   for _ in 0..<6 { if restore.isHittable { break }; app.swipeUp() }
+   XCTAssertTrue(restore.isHittable)
+   app.buttons["upgrade-close"].tap(); XCTAssertTrue(entry.waitForExistence(timeout:5)); app.terminate()
   }
  }
  func testDarkAndLargeType() {

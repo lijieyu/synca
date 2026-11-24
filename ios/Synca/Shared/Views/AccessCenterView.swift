@@ -9,6 +9,10 @@ import WebKit
 struct AccessCenterView: View {
     var embedded = false
     private var showsInlineStorage: Bool { !embedded }
+    private var isUpgradePresentation: Bool {
+        guard let status = accessManager.status else { return false }
+        return status.unlimitedSource != "lifetime" && status.unlimitedSource != "subscription"
+    }
     @EnvironmentObject private var accessManager: AccessManager
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @Environment(\.dismiss) private var dismiss
@@ -77,11 +81,12 @@ struct AccessCenterView: View {
             #else
             NavigationStack {
                 contentContainer
-                    .navigationTitle(String(syncaLocalized: "access.center_title", bundle: .main))
+                    .navigationTitle(isUpgradePresentation ? "" : String(syncaLocalized: "access.center_title", bundle: .main))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("common.close") { dismiss() }
+                            Button { dismiss() } label: { Image(systemName: "xmark") }
+                                .accessibilityLabel(Text("common.close")).accessibilityIdentifier("upgrade-close")
                         }
                     }
             }
@@ -98,8 +103,12 @@ struct AccessCenterView: View {
         } else if status.unlimitedSource == "subscription" {
             subscriptionCurrentCard(status)
         } else {
+            #if os(iOS)
+            upgradePresentation(status)
+            #else
             currentFreeCard(status)
             unlockUnlimitedCard(status)
+            #endif
         }
     }
 
@@ -148,6 +157,98 @@ struct AccessCenterView: View {
         }
     }
 
+    #if os(iOS)
+    private func upgradePresentation(_ status: AccessStatus) -> some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack(spacing: 14) {
+                Image("LoginLogo").resizable().scaledToFit()
+                    .frame(width: 48, height: 48).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("access.pro_name").font(.title.bold()).accessibilityAddTraits(.isHeader)
+                    Text(status.isTrial
+                         ? String(format: String(syncaLocalized: "access.status_trial"), status.daysLeft ?? 0)
+                         : String(syncaLocalized: "upgrade.current_free"))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 20) {
+                upgradeBenefit("infinity", title: "access.unlock_benefit_unlimited")
+                upgradeBenefit("doc", title: "upgrade.files_title", detail: "upgrade.files_detail")
+                upgradeBenefit("externaldrive", title: "upgrade.storage_title", detail: "upgrade.storage_detail")
+                upgradeBenefit("sparkles", title: "upgrade.ai_title", detail: "upgrade.ai_detail")
+            }
+            upgradePurchaseArea
+            VStack(spacing: 6) {
+                restoreInlineButton(alignment: .center, color: .primary, minimumHitHeight: 44)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .disabled(purchaseManager.purchasingProductID != nil)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 20) { upgradeLegalLinks }
+                    VStack(spacing: 8) { upgradeLegalLinks }
+                }.frame(maxWidth: .infinity)
+            }
+        }
+        .frame(maxWidth: 480, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4).padding(.top, 8)
+    }
+
+    private func upgradeBenefit(_ icon: String, title: LocalizedStringKey, detail: LocalizedStringKey? = nil) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon).font(.system(size: 18, weight: .regular))
+                .foregroundStyle(.secondary).frame(width: 24, height: 24).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.body.weight(.medium))
+                if let detail { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+            }.fixedSize(horizontal: false, vertical: true)
+        }.accessibilityElement(children: .combine)
+    }
+
+    private var upgradePurchaseArea: some View {
+        let loading = purchaseManager.isLoadingProducts
+        let available = purchaseManager.lifetimeProduct != nil
+        let busy = purchaseManager.purchasingProductID != nil || purchaseManager.isRestoring
+        return VStack(spacing: 14) {
+            VStack(spacing: 5) {
+                if let price = purchaseManager.lifetimeProduct?.displayPrice {
+                    Text(price).font(.system(size: lifetimePriceSize, weight: .semibold))
+                        .accessibilityIdentifier("upgrade-price")
+                    Text("access.buyout_label").font(.footnote).foregroundStyle(.secondary)
+                } else if loading {
+                    ProgressView("message_list.loading")
+                } else {
+                    Text("access.purchase_fetch_failed").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }.frame(maxWidth: .infinity, minHeight: 56)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Button {
+                Task {
+                    if available { _ = await purchaseManager.purchase(.lifetime) }
+                    else { await purchaseManager.loadProducts() }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if purchaseManager.purchasingProductID != nil { ProgressView().tint(Color(uiColor: .systemBackground)) }
+                    Text(available ? "upgrade.purchase" : loading ? "message_list.loading" : "common.retry")
+                        .font(.body.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity, minHeight: 44).padding(.vertical, 2)
+                .foregroundStyle(Color(uiColor: .systemBackground))
+                .background(Color.primary, in: RoundedRectangle(cornerRadius: 12))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).disabled(loading || busy)
+                .opacity(loading || busy ? 0.55 : 1)
+                .accessibilityIdentifier("upgrade-primary")
+        }
+        .frame(minHeight: 132, alignment: .top)
+    }
+
+    @ViewBuilder private var upgradeLegalLinks: some View {
+        legalLinkButton(titleKey: "access.privacy_policy_link_title", url: AppLinks.privacyPolicyURL, minimumHitHeight: 44)
+        legalLinkButton(titleKey: "access.terms_link_title", url: AppLinks.termsOfUseURL, minimumHitHeight: 44)
+    }
+    #endif
+
     private func currentFreeCard(_ status: AccessStatus) -> some View {
         AccessModuleCard(style: .neutral) {
             VStack(alignment: .leading, spacing: 14) {
@@ -193,7 +294,7 @@ struct AccessCenterView: View {
                     }
                 }
 
-                restoreInlineButton.frame(maxWidth: .infinity, alignment: .trailing)
+                restoreInlineButton().frame(maxWidth: .infinity, alignment: .trailing)
                 legalLinksSection
             }
         }
@@ -457,7 +558,7 @@ struct AccessCenterView: View {
         .system(size: purchaseSubtitleSize, weight: .regular)
     }
 
-    private var restoreInlineButton: some View {
+    private func restoreInlineButton(alignment: Alignment = .trailing, color: Color = .accentColor, minimumHitHeight: CGFloat = 0) -> some View {
         Button {
             Task { await purchaseManager.restorePurchases() }
         } label: {
@@ -472,11 +573,12 @@ struct AccessCenterView: View {
                         .font(.footnote.weight(.semibold))
                 }
             }
-            .frame(minWidth: 88, alignment: .trailing)
+            .frame(minWidth: 88, minHeight: minimumHitHeight, alignment: alignment)
+            .contentShape(Rectangle())
             .animation(.easeOut(duration: 0.16), value: purchaseManager.isRestoring)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(color)
         .disabled(purchaseManager.isRestoring)
     }
 
@@ -565,7 +667,7 @@ struct AccessCenterView: View {
         }
     }
 
-    private func legalLinkButton(titleKey: LocalizedStringKey, url: URL) -> some View {
+    private func legalLinkButton(titleKey: LocalizedStringKey, url: URL, minimumHitHeight: CGFloat = 0) -> some View {
         Button {
             legalDocument = LegalDocument(url: url, title: titleKey)
         } label: {
@@ -575,6 +677,8 @@ struct AccessCenterView: View {
             }
             .font(.footnote)
             .foregroundStyle(Color.secondary.opacity(0.9))
+            .frame(minHeight: minimumHitHeight)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

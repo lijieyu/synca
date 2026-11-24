@@ -10,8 +10,10 @@ struct AIConnectionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var guideBodySize: CGFloat = 15
     @StateObject private var browser = AIConnectionBrowser()
     @State private var initialToken: String?
+    @State private var showUpgrade = false
 
     #if os(macOS)
     private var macSheetSize: CGSize {
@@ -73,16 +75,23 @@ struct AIConnectionView: View {
             }
             #endif
         }
+        .sheet(isPresented: $showUpgrade, onDismiss: { browser.refreshAccessStatus() }) {
+            AccessCenterView().syncaPreferences()
+        }
         .onAppear {
+            browser.onUpgrade = { showUpgrade = true }
             guard initialToken == nil, let token = api.token else { return }
             initialToken = token
-            browser.start(token: token, email: api.currentUserEmail, appearance: resolvedAppearance, language: AppLocalization.identifier) { url in openURL(url) }
+            browser.start(token: token, email: api.currentUserEmail, appearance: resolvedAppearance, language: AppLocalization.identifier, bodySize: guideBodySize) { url in openURL(url) }
         }
         .onChange(of: colorScheme) { _ in
-            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier)
+            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier, bodySize: guideBodySize)
         }
         .onChange(of: locale.identifier) { _ in
-            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier)
+            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier, bodySize: guideBodySize)
+        }
+        .onChange(of: dynamicTypeSize) { _ in
+            browser.updatePreferences(appearance: resolvedAppearance, language: AppLocalization.identifier, bodySize: guideBodySize)
         }
         .onChange(of: api.token) { token in
             guard token != initialToken else { return }
@@ -131,6 +140,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     @Published private(set) var hasLoadedDocument = false
     @Published private(set) var contentHeight: CGFloat?
     let webView: WKWebView
+    var onUpgrade: (() -> Void)?
     private var externalOpen: ((URL) -> Void)?
     private var observations: [NSKeyValueObservation] = []
     private var started = false
@@ -138,6 +148,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     private var sessionEmail: String?
     private var appearance = "light"
     private var language = "en"
+    private var bodySize: CGFloat = 17
     private var permittedDocumentOrigins: Set<String> = []
 
     override init() {
@@ -161,6 +172,9 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
                 }
             }
         }, name: "syncaAIContentHeight")
+        configuration.userContentController.add(AIUpgradeHandler { [weak self] in
+            self?.onUpgrade?()
+        }, name: "syncaAIUpgrade")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -174,18 +188,25 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         ]
     }
 
-    func start(token: String, email: String?, appearance: String, language: String, externalOpen: @escaping (URL) -> Void) {
+    func refreshAccessStatus() {
+        guard let url = webView.url, EmbeddedAISession.isTrusted(url),
+              ["/ai", "/ai/"].contains(url.path) else { return }
+        webView.evaluateJavaScript("window.dispatchEvent(new Event('synca-native-access-updated'))", completionHandler: nil)
+    }
+
+    func start(token: String, email: String?, appearance: String, language: String, bodySize: CGFloat, externalOpen: @escaping (URL) -> Void) {
         guard !started else { return }
         started = true
         self.externalOpen = externalOpen
         sessionToken = token
         sessionEmail = email
-        updatePreferences(appearance: appearance, language: language)
+        updatePreferences(appearance: appearance, language: language, bodySize: bodySize)
         webView.load(URLRequest(url: AppLinks.aiConnectionURL))
     }
-    func updatePreferences(appearance: String, language: String) {
+    func updatePreferences(appearance: String, language: String, bodySize: CGFloat) {
         self.appearance = appearance
         self.language = language
+        self.bodySize = bodySize
         guard let sessionToken else { return }
         let controller = webView.configuration.userContentController
         controller.removeAllUserScripts()
@@ -196,21 +217,70 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
         controller.addUserScript(WKUserScript(source: Self.contentHeightScript,
             injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         #if os(iOS)
-        // Keep the shared guide's actions aligned with the native settings palette.
-        controller.addUserScript(WKUserScript(source: """
-        (() => {
-          if (window.top !== window || location.origin !== 'https://synca.haerth.cn' ||
-              !['/ai', '/ai/'].includes(location.pathname)) return;
-          const style = document.createElement('style');
-          style.textContent = '.ai-embedded .ai-primary { background:var(--ai-ink); color:var(--ai-surface) } .ai-embedded .ai-text-link { color:var(--ai-ink) }';
-          document.head.appendChild(style);
-        })();
-        """, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        // The guide shares its interactions with Web; only the iOS presentation is adapted.
+        let traits = UITraitCollection(userInterfaceStyle: appearance == "dark" ? .dark : .light)
+        let surface = UIColor.systemBackground.resolvedColor(with: traits)
+        webView.isOpaque = false
+        webView.backgroundColor = surface
+        webView.scrollView.backgroundColor = surface
+        webView.underPageBackgroundColor = surface
+        let presentation = Self.nativePresentationScript(appearance: appearance, bodySize: bodySize)
+        controller.addUserScript(WKUserScript(source: presentation,
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #endif
         if let url = webView.url, EmbeddedAISession.isTrusted(url) {
             webView.evaluateJavaScript(EmbeddedAISession.preferences(appearance: appearance, language: language), completionHandler: nil)
+            #if os(iOS)
+            webView.evaluateJavaScript(presentation, completionHandler: nil)
+            #endif
         }
     }
+
+    #if os(iOS)
+    private static func nativePresentationScript(appearance: String, bodySize: CGFloat) -> String {
+        let traits = UITraitCollection(userInterfaceStyle: appearance == "dark" ? .dark : .light)
+        func cssColor(_ color: UIColor) -> String {
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            color.resolvedColor(with: traits).getRed(&r, green: &g, blue: &b, alpha: &a)
+            return "rgba(\(Int((r * 255).rounded())),\(Int((g * 255).rounded())),\(Int((b * 255).rounded())),\(a))"
+        }
+        return """
+        (() => {
+          if (window.top !== window || location.origin !== 'https://synca.haerth.cn' ||
+              !['/ai', '/ai/'].includes(location.pathname)) return;
+          const root = document.documentElement;
+          root.dataset.syncaIos = 'true';
+          let style = document.getElementById('synca-ios-presentation');
+          if (!style) { style = document.createElement('style'); style.id = 'synca-ios-presentation'; (document.head || root).appendChild(style); }
+          style.textContent = `
+            html:root[data-synca-ios], html:root[data-synca-ios] body { background: \(cssColor(.systemBackground)); }
+            html:root[data-synca-ios] .ai-page {
+              --ai-surface: \(cssColor(.systemBackground)); --ai-subtle: \(cssColor(.secondarySystemBackground));
+              --ai-ink: \(cssColor(.label)); --ai-muted: \(cssColor(.secondaryLabel)); --ai-line: \(cssColor(.separator));
+              --ai-native-body: \(bodySize)px; --ai-native-secondary: \(bodySize * 13 / 15)px;
+              --ai-native-heading: \(bodySize * 18 / 15)px;
+              font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+              font-size: var(--ai-native-body); line-height: 1.55; scrollbar-gutter: auto; -webkit-text-size-adjust: 100%;
+            }
+            html:root[data-synca-ios] .ai-page .ai-content { padding: 16px 20px 28px; }
+            html:root[data-synca-ios] .ai-page h1 { font-size: var(--ai-native-heading); }
+            html:root[data-synca-ios] .ai-page :is(h2,h3,.ai-intro,.ai-steps strong,.ai-copy) { font-size: var(--ai-native-body); }
+            html:root[data-synca-ios] .ai-page :is(.ai-muted,.ai-steps p,.ai-text-link,.ai-revoke,.ai-copy-foot,.ai-prompt,.ai-environment-note,.ai-log small,.ai-log time,.ai-section-actions button) { font-size: var(--ai-native-secondary); }
+            html:root[data-synca-ios] .ai-page .ai-log li { font-size: var(--ai-native-body); flex-wrap: wrap; }
+            html:root[data-synca-ios] .ai-page .ai-steps li { grid-template-columns: 1.65em minmax(0,1fr); }
+            html:root[data-synca-ios] .ai-page .ai-steps li::before { width: 1.87em; height: 1.87em; font-size: var(--ai-native-secondary); }
+            html:root[data-synca-ios] .ai-page button { min-height: 44px; white-space: normal; }
+            html:root[data-synca-ios] .ai-page .ai-primary { background:var(--ai-ink); color:var(--ai-surface); }
+            html:root[data-synca-ios] .ai-page .ai-copy { min-height:48px; width:100%; }
+            html:root[data-synca-ios] .ai-page .ai-text-link { color:var(--ai-ink); }
+            html:root[data-synca-ios] .ai-page .ai-section-heading { flex-wrap:wrap; }
+            html:root[data-synca-ios] .ai-page .ai-connection { grid-template-columns:32px minmax(0,1fr); }
+            html:root[data-synca-ios] .ai-page .ai-connection-heading { grid-template-columns:32px minmax(0,1fr) auto; }
+          `;
+        })();
+        """
+    }
+    #endif
 
     // Both native platforms reveal the full instruction after expansion.
     // Only the Mac presentation uses the measured height to resize its sheet.
@@ -290,7 +360,7 @@ private final class AIConnectionBrowser: NSObject, ObservableObject, WKNavigatio
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         hasLoadedDocument = true
-        updatePreferences(appearance: appearance, language: language)
+        updatePreferences(appearance: appearance, language: language, bodySize: bodySize)
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { failed = false }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { handle(error) }
@@ -330,5 +400,19 @@ private final class AIContentHeightHandler: NSObject, WKScriptMessageHandler {
         guard height.isFinite, height > 0 else { return }
         let scroll = body["scroll"] as? String
         onHeight(height, ["end", "start"].contains(scroll ?? "") ? scroll : nil)
+    }
+}
+
+/// Only the authenticated first-party guide can present the native purchase screen.
+@MainActor
+private final class AIUpgradeHandler: NSObject, WKScriptMessageHandler {
+    let onUpgrade: () -> Void
+    init(onUpgrade: @escaping () -> Void) { self.onUpgrade = onUpgrade }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame,
+              let url = message.frameInfo.request.url, EmbeddedAISession.isTrusted(url),
+              ["/ai", "/ai/"].contains(url.path),
+              message.body as? String == "upgrade" else { return }
+        onUpgrade()
     }
 }

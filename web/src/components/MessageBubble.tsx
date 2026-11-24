@@ -288,7 +288,6 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
         onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) void openRecordMenu(event); }}
         className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
-        {message.type !== 'text' && !expired && message.attachmentExpiresAt && <p className="attachment-expiry">{t('storage.expires')}: {new Date(message.attachmentExpiresAt).toLocaleString()}</p>}
         {message.type === 'text' && (
           <ExpandableMessageText text={message.textContent ?? ''}>
             <MessageMarkdown text={message.textContent ?? ''} taskLabel={t('message_task.label')}
@@ -332,6 +331,9 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
                 <span>·</span>
                 <CategoryAssignmentMenu categories={categories} categoryId={message.categoryId} disabled={isProcessing} onChange={handleCategoryChange} />
               </>
+            )}
+            {message.type !== 'text' && !expired && message.attachmentExpiresAt && (
+              <span className="attachment-expiry">{t('storage.expires')}: <time dateTime={message.attachmentExpiresAt}>{new Date(message.attachmentExpiresAt).toLocaleString(i18n.language)}</time></span>
             )}
           </div>
           

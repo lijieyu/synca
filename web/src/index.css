@@ -406,11 +406,7 @@ button.category-chip:hover {
   border-radius: 8px;
   object-fit: cover;
   cursor: zoom-in;
-  transition: opacity 0.16s ease, transform 0.16s ease;
-}
-
-.message-image:hover {
-  transform: translateY(-1px);
+  transition: opacity 0.16s ease;
 }
 
 .message-image.opening {
@@ -1399,3 +1395,5 @@ button.attachment-placeholder { cursor: pointer; }
 
 :root { --link-color:light-dark(#146ac2,#79b7ff); }
 .message-content .message-link, .shell-links a, .ai-page .ai-text-link, .message-expand { color:var(--link-color); }
+
+.message-metadata .attachment-expiry { margin:0; font:inherit; color:inherit; }
