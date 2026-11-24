@@ -91,12 +91,13 @@
      }
 --- a/src/main.tsx
 +++ b/src/main.tsx
-@@ -11,6 +11,9 @@
+@@ -11,6 +11,10 @@
  import './DesktopDesign.css';
  import { installFocusModality } from './utils/focusModality';
 
 +import './desktop/window.css';
 +if (window.syncaDesktop?.platform === 'macOS') document.documentElement.classList.add('mac-window');
++if (window.syncaDesktop?.platform === 'Windows') document.documentElement.classList.add('win-window');
 +
  installFocusModality();
 
