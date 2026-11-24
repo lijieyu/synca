@@ -64,7 +64,7 @@ it('fails closed on network failure without touching the account session', async
   expect(storage.removeItem).not.toHaveBeenCalled();
 });
 
-it('identifies only opted-in desktop capability probes, leaving published Web unchanged',async()=>{
+it('identifies opted-in desktop probes while ordinary browser discovery stays headerless',async()=>{
  const fetch=vi.fn(async()=>new Response(JSON.stringify({email:false})));
  vi.stubGlobal('fetch',fetch);
  vi.stubGlobal('window',{});

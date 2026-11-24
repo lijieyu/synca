@@ -26,13 +26,18 @@ describe('email login and settings identities',()=>{
  beforeAll(async()=>{process.env.EMAIL_AUTH_SECRET='test-secret-only-012345678901234567890123456789';await runMigrations();});
  beforeEach(async()=>{await resetDb();vi.clearAllMocks();delivery.mockResolvedValue();});
  it('advertises email only with both signing and delivery configuration', async () => {
-  expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
+  const browser = await request(app).get('/auth/capabilities');
+  expect(browser.body).toEqual({email:true});
+  expect(browser.headers['cache-control']).toBe('no-store');
   expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:true});
   const saved = process.env.EMAIL_AUTH_SECRET;
   try {
    process.env.EMAIL_AUTH_SECRET = 'too-short';
+   expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
    expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:false});
   } finally { process.env.EMAIL_AUTH_SECRET = saved; }
+  vi.mocked(isEmailDeliveryConfigured).mockReturnValueOnce(false);
+  expect((await request(app).get('/auth/capabilities')).body).toEqual({email:false});
   vi.mocked(isEmailDeliveryConfigured).mockReturnValueOnce(false);
   expect((await request(app).get('/auth/capabilities').set('X-Synca-Client','desktop')).body).toEqual({email:false});
  });
