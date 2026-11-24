@@ -1,0 +1,27 @@
+{
+  "spec_verified_on": "2026-11-25",
+  "spec_source": "https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications",
+  "slot": "App Store product page header (title)",
+  "width": 3840,
+  "height": 1646,
+  "art_safe_area": {
+    "x": 1097,
+    "y": 493,
+    "width": 1646,
+    "height": 661
+  },
+  "format": "PNG RGB opaque",
+  "locales": [
+    "zh-Hans",
+    "zh-Hant",
+    "en-US"
+  ],
+  "shared_localization_reason": "No text, brand mark, screenshot or language-dependent elements",
+  "status": "draft",
+  "uploaded": false,
+  "submitted": false,
+  "source": "header.svg",
+  "export_path": "/Users/haer/Documents/Codex/2026-11-25/synca-launch/header/header.png",
+  "sha256": "bd070b80076ad350f708723121c19603d984f77ca88c94d0101b068fa96b0b02",
+  "design": "Sparse abstract paper, picture and capture illustration; whitespace; no logo or slogan. Not a product UI screenshot."
+}

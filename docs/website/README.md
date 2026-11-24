@@ -72,3 +72,11 @@ Copy feedback is a temporary fixed-position toast with a live region; it must ne
 ## Follow-up copy feedback (2026-11-12)
 
 Per updated review, successful copying changes the primary button label to a check and localized “Copied” for 2.5 seconds, then restores it, matching the in-app tutorial. It must not add text to document flow or show a success toast. Failure feedback retains the non-layout-changing error toast.
+
+## Public launch preparation (2026-11-25)
+
+Three-locale metadata now explicitly covers notes, file transfer and device sync. Canonical and reciprocal hreflang remain; social cards and truthful SoftwareApplication/WebSite JSON-LD are included. Root `robots.txt` and `sitemap.xml` are published via exact nginx locations: a SPA HTML response is a deployment failure, even with HTTP 200. `deploy-home.sh` checks actual response bytes after nginx workers become ready and preserves the root app index.
+
+Download navigation now targets the on-page download section. Both hero and final download section offer iPhone/iPad, Mac, Windows x64 and Web; Windows ARM64 and SHA-256 checksums are secondary links. Windows builds are unsigned portable archives with architecture/extraction guidance. The immutable `/downloads/windows/1.2.0-20261125/` release is maintained by `scripts/deploy-windows-downloads.sh`, independently of Web/home release directories. Exact artifacts and verification boundaries are in `docs/verification/2026-11-25-windows-public-downloads.md`.
+
+SEO files make the site crawlable; they do not establish search-engine ownership, submission, indexing, ranking or rich-result eligibility. Search Console/Bing property verification and sitemap submission remain separate follow-up work unless independently confirmed. App Store keyword optimization is separate from website SEO.
