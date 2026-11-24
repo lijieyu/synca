@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, session, shell, ipcMain, nativeTheme } = require('electron')
 const {readBuildInfo}=require('./build-info.cjs')
 const path = require('node:path')
 const fs = require('node:fs')
@@ -61,12 +61,19 @@ function createWindow() {
   const identity = readBuildInfo(process.resourcesPath, app.getVersion())
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
+    ...(process.platform === 'win32' && {titleBarStyle:'hidden', titleBarOverlay:{color:'#00000000',symbolColor:nativeTheme.shouldUseDarkColors?'#eeecf2':'#29272d',height:36}}),
     minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: ['--synca-version='+identity.version, '--synca-build='+identity.build, ...(cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : [])]} })
   // BrowserWindow minimum dimensions include the native Windows frame.
   if (process.platform === 'win32') {
     const [width, height] = window.getSize()
     const [contentWidth, contentHeight] = window.getContentSize()
     window.setMinimumSize(640 + Math.max(0, width - contentWidth), 500 + Math.max(0, height - contentHeight))
+    const appearance = (event, dark) => {
+      if (typeof dark !== 'boolean' || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame || !event.senderFrame.url.startsWith(home+'/')) return
+      window.setTitleBarOverlay({symbolColor:dark?'#eeecf2':'#29272d'})
+    }
+    ipcMain.on('desktop:window-appearance', appearance)
+    window.on('closed',()=>ipcMain.removeListener('desktop:window-appearance',appearance))
   }
   mainWindow = window
   const page = window.webContents
