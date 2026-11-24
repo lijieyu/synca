@@ -181,23 +181,33 @@ final class PurchaseManager: ObservableObject {
     }
 
     func syncLatestTransactions() async throws -> RestoreOutcome {
-        guard APIClient.shared.isAuthenticated else { return .noPurchasesFound }
+        guard let session = APIClient.shared.token else { return .noPurchasesFound }
+
+        func requireCurrentSession() throws {
+            try Task.checkCancellation()
+            guard APIClient.shared.token == session else { throw CancellationError() }
+        }
 
         var signedTransactions: [String] = []
         for productID in SyncaProductID.allCases.map(\.rawValue) {
-            guard let latest = await Transaction.latest(for: productID) else { continue }
+            let latest = await Transaction.latest(for: productID)
+            try requireCurrentSession()
+            guard let latest else { continue }
             if case .verified = latest {
                 signedTransactions.append(latest.jwsRepresentation)
             }
         }
 
+        try requireCurrentSession()
         if signedTransactions.isEmpty {
             let status = try await APIClient.shared.getAccessStatus()
+            try requireCurrentSession()
             AccessManager.shared.apply(status)
             return .noPurchasesFound
         }
 
         let status = try await APIClient.shared.syncPurchases(signedTransactions: signedTransactions)
+        try requireCurrentSession()
         AccessManager.shared.apply(status)
         return .restoredPurchases
     }

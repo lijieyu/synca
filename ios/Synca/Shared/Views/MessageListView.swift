@@ -144,9 +144,6 @@ struct MessageListView: View {
     @State private var showAccountInfo = false
     @State private var showFeedbackComposer = false
     @State private var showSessionExpired = false
-    @State private var showDeleteAccountConfirm = false
-    @State private var showDeleteAccountSuccess = false
-    @State private var deleteAccountErrorMessage: String?
     @State private var inputHeight: CGFloat = 40
     @State private var editingMessage: SyncaMessage?
     @State private var selectedImageMessage: SyncaMessage? // #NEW: Centralized gallery state
@@ -226,32 +223,6 @@ struct MessageListView: View {
             } message: {
                 Text("message_list.logout_confirm_message")
             }
-            .alert("account.delete_confirm_title", isPresented: $showDeleteAccountConfirm) {
-                Button("common.cancel", role: .cancel) {}
-                Button("account.delete_action", role: .destructive) {
-                    Task { await deleteAccount() }
-                }
-            } message: {
-                Text("account.delete_confirm_message")
-            }
-            .alert("account.delete_success_title", isPresented: $showDeleteAccountSuccess) {
-                Button("common.ok") {
-                    syncManager.reset()
-                    AuthService.shared.signOut()
-                }
-            } message: {
-                Text("account.delete_success_message")
-            }
-            .alert("account.delete_failed_title", isPresented: Binding(
-                get: { deleteAccountErrorMessage != nil },
-                set: { if !$0 { deleteAccountErrorMessage = nil } }
-            )) {
-                Button("common.ok", role: .cancel) {
-                    deleteAccountErrorMessage = nil
-                }
-            } message: {
-                Text(deleteAccountErrorMessage ?? String(syncaLocalized: "account.delete_failed_message", bundle: .main))
-            }
             #if os(iOS)
             .fullScreenCover(isPresented: $showSearch, onDismiss: finishSearchPresentation) { searchSheet }
             #else
@@ -260,13 +231,10 @@ struct MessageListView: View {
             .sheet(isPresented: $showAccountInfo) {
                 AccountSheet(
                     accountEmail: api.currentUserEmail,
-                    onRequestDeleteAccount: {
-                        showAccountInfo = false
-                        showDeleteAccountConfirm = true
-                    },
-                    onRequestLogout: {
-                        showAccountInfo = false
-                        showLogoutConfirm = true
+                    onDeleteAccount: { try await api.deleteAccount() },
+                    onLogout: {
+                        syncManager.reset()
+                        AuthService.shared.signOut()
                     }
                 ).syncaPreferences()
             }
@@ -532,12 +500,10 @@ struct MessageListView: View {
     #if os(iOS)
     private var iosSettings: some View {
         IOSSettingsView(onClose: { showIOSSettings = false },
-            onRequestDeleteAccount: {
-                showIOSSettings = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showDeleteAccountConfirm = true }
-            }, onRequestLogout: {
-                showIOSSettings = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showLogoutConfirm = true }
+            onDeleteAccount: { try await api.deleteAccount() },
+            onLogout: {
+                syncManager.reset()
+                AuthService.shared.signOut()
             })
     }
     #endif
@@ -1792,18 +1758,6 @@ struct MessageListView: View {
             if result != .sent {
                 inputText = text
             }
-        }
-    }
-
-    @MainActor
-    private func deleteAccount() async {
-        do {
-            try await api.deleteAccount()
-            showDeleteAccountSuccess = true
-        } catch {
-            let message = (error as? LocalizedError)?.errorDescription
-                ?? String(syncaLocalized: "account.delete_failed_message", bundle: .main)
-            deleteAccountErrorMessage = message
         }
     }
 

@@ -100,6 +100,12 @@
 		A81300000000000000000000 /* MessageSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000000 /* MessageSearchView.swift */; };
 		A81200000000000000000001 /* MessageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000001 /* MessageSearchIndex.swift */; };
 		A81300000000000000000001 /* MessageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000001 /* MessageSearchIndex.swift */; };
+		0B6AF57E6DCD8504EA04E223 /* EmailAuthModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */; };
+		0BAC04B0506D1A6332BC1A86 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4593423B04D33BB6703900 /* EmailLoginView.swift */; };
+		4B62992575150D4677D45220 /* EmailAuthModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */; };
+		609C8B8F9B250F0EE1661673 /* LoginMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433FB1024BE83661B63550B2 /* LoginMethodsView.swift */; };
+		A974C13CDAD794B5090DDE52 /* LoginMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433FB1024BE83661B63550B2 /* LoginMethodsView.swift */; };
+		FEF4D597D39A8D3AE15F2E43 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4593423B04D33BB6703900 /* EmailLoginView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -161,6 +167,9 @@
 		F3D2FBEFA9843DF39BC7AD10 /* RichClipboardText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Utilities/RichClipboardText.swift"; sourceTree = "<group>"; };
 		A81100000000000000000000 /* MessageSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MessageSearchView.swift"; sourceTree = "<group>"; };
 		A81100000000000000000001 /* MessageSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Utilities/MessageSearchIndex.swift"; sourceTree = "<group>"; };
+		433FB1024BE83661B63550B2 /* LoginMethodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginMethodsView.swift; sourceTree = "<group>"; };
+		AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailAuthModel.swift; sourceTree = "<group>"; };
+		BD4593423B04D33BB6703900 /* EmailLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailLoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -227,6 +236,8 @@
 				5529D0F531D1905D77573C52 /* CachedAsyncImage.swift */,
 				B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */,
 				21F9D56D31EE3F71693E82FB /* ImagePreviewView.swift */,
+				BD4593423B04D33BB6703900 /* EmailLoginView.swift */,
+				433FB1024BE83661B63550B2 /* LoginMethodsView.swift */,
 				E4DC5D5E94792579FCAC8891 /* LoginView.swift */,
 				34076DDAB8A2E0C4E48AF5BA /* MacInputTextView.swift */,
 				A70000000000000000000003 /* MacPlainTextScrollView.swift */,
@@ -268,6 +279,7 @@
 				DCD82BEB61C9FD499168F3E0 /* AccessManager.swift */,
 				56C5DCEF981E4EB4CB624A02 /* APIClient.swift */,
 				F738F8804D71775824642ECA /* AppLinks.swift */,
+				AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */,
 				7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */,
 				59A75DF29F39A3101A840136 /* DeviceInfo.swift */,
 				1C014E56D2EA5861FAF53A61 /* ImageCacheManager.swift */,
@@ -422,6 +434,9 @@
 				7226861FFA06046C52089877 /* AccessStatus.swift in Sources */,
 				BC3A500FF20CBE0DB879F0F8 /* AppLinks.swift in Sources */,
 				3125EC6B63ABB474CADC60ED /* AppleSignInButton.swift in Sources */,
+				0B6AF57E6DCD8504EA04E223 /* EmailAuthModel.swift in Sources */,
+				FEF4D597D39A8D3AE15F2E43 /* EmailLoginView.swift in Sources */,
+				A974C13CDAD794B5090DDE52 /* LoginMethodsView.swift in Sources */,
 				D54983B06DC7AA2BC3BEA61A /* AuthService.swift in Sources */,
 				29A708E0786C6EFE3092A188 /* CachedAsyncImage.swift in Sources */,
 				469BCD5C3A88D031D09DC9B5 /* Colors.swift in Sources */,
@@ -474,6 +489,9 @@
 				9534DCACDD00423836BEE59B /* AppDelegate.swift in Sources */,
 				9F853553D220BFB305C29582 /* AppLinks.swift in Sources */,
 				1A6A29714500F0C89262C1FF /* AppleSignInButton.swift in Sources */,
+				4B62992575150D4677D45220 /* EmailAuthModel.swift in Sources */,
+				0BAC04B0506D1A6332BC1A86 /* EmailLoginView.swift in Sources */,
+				609C8B8F9B250F0EE1661673 /* LoginMethodsView.swift in Sources */,
 				A16A287E64BFBF1885A8E998 /* AuthService.swift in Sources */,
 				581766CDB40726133E251876 /* CachedAsyncImage.swift in Sources */,
 				0393BE189E5E59ECB336D90B /* Colors.swift in Sources */,

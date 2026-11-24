@@ -139,6 +139,31 @@ final class APIClient: ObservableObject {
 
     // MARK: - Auth
 
+    func sendEmailCode(email: String, binding: Bool) async throws -> EmailChallenge {
+        try await post(binding ? "/me/login-methods/email/code" : "/auth/email/code",
+                       body: ["email": email, "locale": AppLocalization.identifier], authenticated: binding)
+    }
+
+    func verifyEmailCode(challengeId: String, code: String, deviceId: String?) async throws -> AuthResponse {
+        var body: [String: Any] = ["challengeId": challengeId, "code": code]
+        if let deviceId { body["deviceId"] = deviceId }
+        return try await post("/auth/email/verify", body: body, authenticated: false)
+    }
+
+    func getLoginMethods() async throws -> LoginMethods { try await get("/me/login-methods") }
+
+    func bindEmail(challengeId: String, code: String) async throws -> LoginMethods {
+        try await post("/me/login-methods/email/verify", body: ["challengeId": challengeId, "code": code])
+    }
+
+    func appleBindingChallenge() async throws -> AppleBindingChallenge {
+        try await post("/me/login-methods/apple/challenge", body: [:])
+    }
+
+    func bindApple(challengeId: String, idToken: String) async throws -> LoginMethods {
+        try await post("/me/login-methods/apple", body: ["challengeId": challengeId, "idToken": idToken])
+    }
+
     func loginWithApple(idToken: String, deviceId: String?, name: String? = nil) async throws -> AuthResponse {
         var body: [String: Any] = ["idToken": idToken]
         if let deviceId { body["deviceId"] = deviceId }
@@ -601,40 +626,51 @@ final class APIClient: ObservableObject {
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer().decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: value) { return date }
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: value) { return date }
+            throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Invalid timestamp")
+        }
         return try decoder.decode(T.self, from: data)
     }
 
-    private func decodeAPIError(statusCode: Int, data: Data) -> APIError {
+    private func decodeAPIError(statusCode: Int, data: Data) -> any Error {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         if statusCode == 401 {
-            return .unauthorized
+            return APIError.unauthorized
         }
 
         if let error = try? decoder.decode(ServerErrorResponse.self, from: data) {
-            if error.error == "storage_limit_reached" { return .storageFull }
-            if error.error == "file_upload_requires_paid" { return .fileRequiresPaid }
-            if error.error == "attachment_expired" { return .attachmentExpired }
-            if error.error == "message_edit_conflict" { return .textEditConflict }
-            if error.error == "message_not_text" { return .textEditUnavailable }
+            let authErrors = ["invalid_email", "invalid_code", "code_expired", "code_attempts_exceeded", "rate_limited", "email_unavailable", "email_send_failed", "email_in_use", "apple_in_use", "email_already_bound", "apple_already_bound", "apple_auth_failed"]
+            if authErrors.contains(error.error) { return EmailAuthFailure(code: error.error, retryAfter: error.retryAfter) }
+            if error.error == "storage_limit_reached" { return APIError.storageFull }
+            if error.error == "file_upload_requires_paid" { return APIError.fileRequiresPaid }
+            if error.error == "attachment_expired" { return APIError.attachmentExpired }
+            if error.error == "message_edit_conflict" { return APIError.textEditConflict }
+            if error.error == "message_not_text" { return APIError.textEditUnavailable }
         }
 
         if statusCode == 413 {
-            return .fileTooLarge
+            return APIError.fileTooLarge
         }
 
         if statusCode == 400,
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
             switch serverError.error {
             case "message_too_long":
-                return .messageTooLong(MessageTextPolicy.maximumCharacters)
+                return APIError.messageTooLong(MessageTextPolicy.maximumCharacters)
             case "feedback_too_long":
-                return .feedbackTooLong(2000)
+                return APIError.feedbackTooLong(2000)
             case "file_too_large":
-                return .fileTooLarge
+                return APIError.fileTooLarge
             case "unsupported_file_type", "invalid_upload", "no_file_provided":
-                return .unsupportedFileType
+                return APIError.unsupportedFileType
             default:
                 break
             }
@@ -644,7 +680,7 @@ final class APIClient: ObservableObject {
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data) {
             switch serverError.error {
             case "offer_not_eligible", "offer_code_unavailable":
-                return .offerUnavailable
+                return APIError.offerUnavailable
             default:
                 break
             }
@@ -653,10 +689,10 @@ final class APIClient: ObservableObject {
         if statusCode == 403,
            let serverError = try? decoder.decode(ServerErrorResponse.self, from: data),
            serverError.error == "daily_limit_reached" {
-            return .dailyLimitReached(serverError.accessStatus)
+            return APIError.dailyLimitReached(serverError.accessStatus)
         }
 
-        return .httpError(statusCode, String(data: data, encoding: .utf8))
+        return APIError.httpError(statusCode, String(data: data, encoding: .utf8))
     }
 }
 
@@ -723,6 +759,7 @@ enum APIError: LocalizedError {
 
 private struct ServerErrorResponse: Decodable {
     let error: String
+    let retryAfter: Int?
     let accessStatus: AccessStatus?
 }
 

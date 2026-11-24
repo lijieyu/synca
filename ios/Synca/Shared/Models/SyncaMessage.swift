@@ -230,7 +230,7 @@ struct SyncaMessageCategory: Codable, Identifiable, Equatable, Sendable {
 
 struct SyncaUser: Codable {
     let id: String
-    let appleUserId: String
+    let appleUserId: String?
     var email: String?
     var nickname: String
     let createdAt: String

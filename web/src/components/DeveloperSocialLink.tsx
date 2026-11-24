@@ -9,7 +9,7 @@ export function DeveloperSocialLink({ context = 'about' }: { context?: 'about' |
   const label = t(context === 'feedback' ? 'developer_social.contact' : 'developer_social.follow');
   return <a className="developer-social-link" href={developerProfileURL} target="_blank" rel="noopener noreferrer"
     aria-label={`${label}, ${t('developer_social.external')}`}>
-    <img className="developer-social-logo" src="/xiaohongshu.png" width={24} height={24} alt="" aria-hidden="true"/><span>{label}</span>
+    <img className="developer-social-logo" src="/xiaohongshu.jpg" width={24} height={24} alt="" aria-hidden="true"/><span>{label}</span>
     <ArrowUpRight size={16} aria-hidden="true" />
   </a>;
 }
