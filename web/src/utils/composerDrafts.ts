@@ -29,6 +29,20 @@ export function createComposerDrafts(storage?: DraftStorage, owner?: string, ses
 
   return {
     get,
+    // A deleted category must not strand its draft or overwrite the fallback's draft.
+    recoverScopes(valid: readonly string[], fallback: string, active: string) {
+      const lost = [...entries].filter(([scope, draft]) => !valid.includes(scope) && draft.text);
+      if (!lost.length || !valid.includes(fallback)) return;
+      lost.sort(([a], [b]) => Number(b === active) - Number(a === active));
+      const target = get(fallback);
+      const prefix = lost.map(([, draft]) => draft.text).join('\n\n');
+      const text = target.text ? prefix + '\n\n' + target.text : prefix;
+      const activeLost = lost.find(([scope]) => scope === active)?.[1];
+      const offset = target.text ? prefix.length + 2 : prefix.length;
+      const selection = activeLost ?? { ...target, start: target.start + offset, end: target.end + offset };
+      this.set(fallback, text, selection.start, selection.end, selection.direction);
+      lost.forEach(([scope]) => this.set(scope, '', 0, 0));
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };

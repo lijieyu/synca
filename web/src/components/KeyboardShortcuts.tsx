@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-export const MAC_CLEAR_KEYS = ['⌘', '⇧', '⌫'] as const;
-export const MAC_CLEAR_LABEL = MAC_CLEAR_KEYS.join(' ');
+import { desktopClearShortcut } from '../utils/desktopShortcuts';
 
 /** Read-only, platform-specific reference; browser-reserved commands are omitted. */
 export function KeyboardShortcuts() {
@@ -9,11 +8,12 @@ export function KeyboardShortcuts() {
   const desktop = window.syncaDesktop;
   const mac = desktop ? desktop.platform === 'macOS' : /Mac/.test(navigator.platform);
   const modifier = mac ? '⌘' : 'Ctrl';
+  const clear = desktopClearShortcut(desktop?.platform);
   const rows = [
     { label: 'shortcuts.search', keys: [modifier, 'F'], spoken: mac ? 'Command + F' : 'Control + F' },
     { label: 'shortcuts.sync', keys: [modifier, 'R'], spoken: mac ? 'Command + R' : 'Control + R' },
-    ...(desktop?.platform === 'macOS' ? [
-      { label: 'message_list.clear_completed', keys: MAC_CLEAR_KEYS, spoken: 'Command + Shift + Delete' },
+    ...(clear ? [
+      { label: 'message_list.clear_completed', keys: clear.keys, spoken: clear.spoken },
     ] : []),
     ...(desktop ? [
       { label: 'preferences.title', keys: [modifier, ','], spoken: mac ? 'Command + ,' : 'Control + ,' },

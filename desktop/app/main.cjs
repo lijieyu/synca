@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
+const {readBuildInfo}=require('./build-info.cjs')
 const path = require('node:path')
 const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
@@ -57,15 +58,25 @@ function restore(){
 }
 function showSettings(){restore();mainWindow?.webContents.send('desktop:settings')}
 function createWindow() {
+  const identity = readBuildInfo(process.resourcesPath, app.getVersion())
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
-    minWidth: process.platform === 'darwin' ? 640 : 480, minHeight: process.platform === 'darwin' ? 500 : 400, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : []} })
+    minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: ['--synca-version='+identity.version, '--synca-build='+identity.build, ...(cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : [])]} })
+  // BrowserWindow minimum dimensions include the native Windows frame.
+  if (process.platform === 'win32') {
+    const [width, height] = window.getSize()
+    const [contentWidth, contentHeight] = window.getContentSize()
+    window.setMinimumSize(640 + Math.max(0, width - contentWidth), 500 + Math.max(0, height - contentHeight))
+  }
   mainWindow = window
   const page = window.webContents
   // Intercept before both Chromium and the native menu. registerAccelerator:false
   // only applies on Windows/Linux and cannot guard the Mac accelerator.
   page.on('before-input-event', (event, input) => {
-    if (process.platform !== 'darwin' || input.key !== 'Backspace' || !input.meta || !input.shift || input.control || input.alt) return
+    const matches = process.platform === 'darwin'
+      ? input.key === 'Backspace' && input.meta && !input.control
+      : process.platform === 'win32' && input.key === 'Delete' && input.control && !input.meta
+    if (!matches || !input.shift || input.alt) return
     event.preventDefault()
     if (input.type === 'keyDown' && !input.isAutoRepeat && !input.isComposing && window.isVisible() && window.isFocused())
       page.send('desktop:clear-completed')
@@ -117,18 +128,19 @@ else {
     app.setAppUserModelId(cfg.bundleId)
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     session.defaultSession.setPermissionCheckHandler(() => false)
+    const clearCompletedItem = {id:'clear-completed',label:app.getLocale().startsWith('zh')?'清除已完成…':'Clear Completed…',
+          accelerator:process.platform==='darwin'?'Command+Shift+Backspace':'Control+Shift+Delete',enabled:false,
+          // Keyboard activation is handled above; explicit menu selection shares the renderer guard.
+          click:(_item,_window,event)=>{if(!event?.triggeredByAccelerator&&mainWindow?.isVisible()&&mainWindow.isFocused())mainWindow.webContents.send('desktop:clear-completed')}}
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {label:process.platform==='darwin'?cfg.name:'File',submenu:[
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
         ...(process.platform==='darwin'?[{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'}]:[]),
-        ...(process.platform!=='darwin'?[{role:'close'}]:[]),
+        ...(process.platform!=='darwin'?[clearCompletedItem,{type:'separator'},{role:'close'}]:[]),
         {type:'separator'},{role:'quit'}]},
       ...(process.platform==='darwin'?[{label:'File',submenu:[{role:'close'},{type:'separator'},
-        {id:'clear-completed',label:app.getLocale().startsWith('zh')?'清除已完成…':'Clear Completed…',
-          accelerator:'Command+Shift+Backspace',enabled:false,
-          // Keyboard activation is handled above; explicit menu selection shares the renderer guard.
-          click:(_item,_window,event)=>{if(!event?.triggeredByAccelerator&&mainWindow?.isVisible()&&mainWindow.isFocused())mainWindow.webContents.send('desktop:clear-completed')}}]}]:[]),
+        clearCompletedItem]}]:[]),
       {role:'editMenu'}, {label:'View', submenu:[{label:app.getLocale().startsWith('zh')?'同步':'Sync',accelerator:'CommandOrControl+R',click:()=>mainWindow?.webContents.send('desktop:sync')},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}, {role:'windowMenu'}
     ]))
     void openWorkspace()

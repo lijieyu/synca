@@ -804,7 +804,7 @@ export async function createMessage(message: {
             is_deleted: 0,
             source_device: message.sourceDevice ?? null,
             created_at: message.now,
-            updated_at: message.now,
+            updated_at: nextMessageTimestamp(message.now, message.userId),
         }).execute();
 
         if (message.reservationId) {

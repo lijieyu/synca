@@ -51,3 +51,9 @@ test('production Mac TF uses real accounts without the isolated gate or profile'
  const {requestInstance}=require('./app/instance.cjs')
  assert.equal(requestInstance({platform:'darwin',mas:true},'mas-production',()=>false),true)
 })
+
+test('production MAS enables APNs with the macOS-specific signed entitlement',()=>{
+ assert.equal(variant('mas-production').push,true);
+ const fs=require('node:fs');
+ assert.match(fs.readFileSync('mas/app.entitlements.plist','utf8'),/<key>com\.apple\.developer\.aps-environment<\/key>\s*<string>production<\/string>/);
+});

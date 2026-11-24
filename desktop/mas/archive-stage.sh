@@ -24,6 +24,7 @@ for d in Frameworks Library Resources; do
     /usr/bin/ditto "$root/$d" "$dst/Contents/$d"
   fi
 done
+/bin/bash "$SRCROOT/mas/write-build-info.sh" "$TARGET_BUILD_DIR/$INFOPLIST_PATH" "$dst/Contents/Resources"
 /usr/bin/ditto "$root/MacOS/Synca" "$TARGET_BUILD_DIR/$EXECUTABLE_PATH"
 /usr/bin/cmp -s "$root/MacOS/Synca" "$TARGET_BUILD_DIR/$EXECUTABLE_PATH"
 if [ "${CODE_SIGNING_ALLOWED:-NO}" = YES ]; then

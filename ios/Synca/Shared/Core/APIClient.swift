@@ -513,6 +513,17 @@ final class APIClient: ObservableObject {
         let _: OkResponse = try await execute(request)
     }
 
+    func getSyncState() async throws -> SyncServerState { try await get("/sync/state") }
+
+    func syncNotificationRequest() -> URLRequest? {
+        guard let token, let url = URL(string: "\(baseURL)/sync/events") else { return nil }
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        return request
+    }
+
     // MARK: - Generic HTTP Methods
 
     private func get<T: Decodable>(_ path: String, params: [String: String] = [:],

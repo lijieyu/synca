@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B24112400000000000000002 /* SyncNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24112400000000000000001 /* SyncNotifications.swift */; };
+		B24112400000000000000003 /* SyncNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24112400000000000000001 /* SyncNotifications.swift */; };
 		02132BF3E09B519CC7E95D37 /* PushTokenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297BDECDF8299BE751AA053B /* PushTokenManager.swift */; };
 		0393BE189E5E59ECB336D90B /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC41A2920E4F23AD06E4ED3 /* Colors.swift */; };
 		04C9E4F9F04764F84F1331EF /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51089FFA181C08EC6703E065 /* KeychainHelper.swift */; };
@@ -101,6 +103,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B24112400000000000000001 /* SyncNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncNotifications.swift; sourceTree = "<group>"; };
 		0829B728B1C63CE05222E991 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0D2726295D2A4F43DCB7E7E5 /* AccessCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessCenterView.swift; sourceTree = "<group>"; };
 		1C014E56D2EA5861FAF53A61 /* ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheManager.swift; sourceTree = "<group>"; };
@@ -278,6 +281,7 @@
 				A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */,
 				7CA8F92004259A6E22176A45 /* SyncDebugLogger.swift */,
 				CF22CD531D738808F3F6842B /* SyncManager.swift */,
+				B24112400000000000000001 /* SyncNotifications.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -448,6 +452,7 @@
 				C4393D82FD4E5C987A62CF95 /* EmbeddedAISession.swift in Sources */,
 				30B06B0E77D483682C3E4824 /* SyncDebugLogger.swift in Sources */,
 				CF5703DAD26C41CF5518B6A3 /* SyncManager.swift in Sources */,
+				B24112400000000000000003 /* SyncNotifications.swift in Sources */,
 				D66EF16019B62463726A3438 /* SyncaApp.swift in Sources */,
 				91523672D2BF57850D30F0F6 /* SyncaMessage.swift in Sources */,
 			);
@@ -497,6 +502,7 @@
 				C10B81D5B20397C6072C61C6 /* EmbeddedAISession.swift in Sources */,
 				354FE5D9DB2C6854EB4A8DF6 /* SyncDebugLogger.swift in Sources */,
 				25B2C81D280D21FFB0A39AC0 /* SyncManager.swift in Sources */,
+				B24112400000000000000002 /* SyncNotifications.swift in Sources */,
 				D65FBF54CD73B1D744C6C6B7 /* SyncaApp.swift in Sources */,
 				D22A04F53C899772210C705E /* SyncaMessage.swift in Sources */,
 			);

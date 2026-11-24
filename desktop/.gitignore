@@ -3,3 +3,6 @@ dist/
 app/renderer/
 
 .mas-prepared/
+
+# Generated from the shared Web/main-process notification transport.
+app/change-notifications.cjs

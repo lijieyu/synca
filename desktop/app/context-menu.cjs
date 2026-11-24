@@ -25,10 +25,7 @@ function attachmentURL(value, home) {
   } catch { return null }
 }
 
-function safeName(value) {
-  const name = typeof value === 'string' ? path.basename(value).replace(/[\u0000-\u001f\u007f/:\\]/g, '_') : ''
-  return name && !name.startsWith('.') ? Array.from(name).slice(0, 150).join('') : 'attachment'
-}
+const { safeFileName } = require('./file-names.cjs')
 
 function installContextMenus(window, ses, handle, getSession, getDirectory, cfg) {
   const home=cfg.home
@@ -45,7 +42,7 @@ function installContextMenus(window, ses, handle, getSession, getDirectory, cfg)
     const url = attachmentURL(attachment?.url, home)
     const token = getSession()
     if (!url || !token || (action === 'preview' && (attachment?.kind !== 'image' || process.platform !== 'darwin'))) throw Error('Invalid attachment')
-    const name = safeName(attachment.name || new URL(url).pathname.split('/').pop())
+    const name = safeFileName(attachment.name || new URL(url).pathname.split('/').pop())
     let destination
     if (action === 'saveAs') {
       const chosen = await dialog.showSaveDialog(window, {defaultPath: path.join(getDirectory(), name)})

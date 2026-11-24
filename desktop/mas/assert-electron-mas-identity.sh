@@ -12,3 +12,6 @@ group=$(/usr/bin/codesign -d --entitlements - --xml "$app" 2>/dev/null | /usr/bi
 renderer="$app/Contents/Frameworks/Synca Helper (Renderer).app"
 renderer_jit=$(/usr/bin/codesign -d --entitlements - --xml "$renderer" 2>/dev/null | /usr/bin/plutil -extract com\\.apple\\.security\\.cs\\.allow-jit raw -o - - 2>/dev/null || true)
 [[ "$renderer_jit" = true ]] || { echo 'Missing required signed MAS renderer JIT entitlement' >&2; exit 1; }
+
+# Verify what was actually signed, not only the source entitlement template.
+/usr/bin/codesign -d --entitlements - --xml "$app" 2>/dev/null | /bin/bash "$(dirname "$0")/assert-push-entitlement.sh" -

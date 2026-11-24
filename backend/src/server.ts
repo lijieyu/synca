@@ -1,5 +1,6 @@
 // Load configuration before any dependency captures environment variables.
 import 'dotenv/config';
+import { closeSyncStreams } from './syncEvents.js';
 import { apnsProvider } from './apns.js';
 import { logEvent } from './observability.js';
 import { cleanupAIState } from './aiCore.js';
@@ -25,12 +26,14 @@ const server = app.listen(port, '0.0.0.0', () => {
 
 process.on('SIGINT', () => {
     logEvent('info', 'server.shutdown', { reason: 'signal' });
+    closeSyncStreams();
     apnsProvider.close();
     server.close(() => process.exit(0));
 });
 
 process.on('SIGTERM', () => {
     logEvent('info', 'server.shutdown', { reason: 'signal' });
+    closeSyncStreams();
     apnsProvider.close();
     server.close(() => process.exit(0));
 });
