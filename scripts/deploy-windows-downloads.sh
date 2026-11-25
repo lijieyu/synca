@@ -10,7 +10,7 @@ if [ "$#" != 1 ] || [ ! -d "$1" ]; then
   echo 'Expected [--check] /path/to/synca-windows-public' >&2; exit 2
 fi
 source_dir="$(cd "$1" && pwd)"
-release_id=1.2.0-20261125-r2
+release_id=1.2.0-20261125-r3
 remote_host=root@123.56.247.129
 artifact="$(mktemp -d "${TMPDIR:-/tmp}/synca-windows-downloads.XXXXXX")"
 trap 'rm -rf "$artifact"' EXIT
@@ -19,8 +19,8 @@ python3 - "$source_dir" "$artifact" <<'PY'
 import hashlib,json,pathlib,shutil,struct,sys,zipfile
 source,out=map(pathlib.Path,sys.argv[1:])
 expected={
- 'arm64':'33bbad92f518498d0801066149f0ade4269dc4594eddaa29770c323016e09017',
- 'x64':'d1ce67cb7ed7a004d8864efa9bd34811d07c99c1ff011e642d687e4b8294a402',
+ 'arm64':'3526b7be1429d4e21d0c24c16562b5de0f4202307b57b9e2ab5ed5884a323068',
+ 'x64':'988ad348b73e2690b0f8ce2807bf370c669c42060e44d08ab21aba0db8f2711e',
 }
 rows=[]
 for arch,digest in expected.items():
@@ -35,7 +35,7 @@ for arch,digest in expected.items():
   if archive.testzip() is not None: raise SystemExit(f'ZIP CRC failed: {src.name}')
   root=f'Synca Electron-win32-{arch}/'
   info=json.loads(archive.read(root+'resources/build-info.json'))
-  if info!={'version':'1.2.0','build':'88'}: raise SystemExit('Unexpected package version')
+  if info!={'version':'1.2.0','build':'89'}: raise SystemExit('Unexpected package version')
   exe=archive.read(root+'Synca Electron.exe')
   pe=struct.unpack_from('<I',exe,0x3c)[0]
   if exe[pe:pe+4]!=b'PE\0\0' or struct.unpack_from('<H',exe,pe+4)[0]!={'arm64':0xaa64,'x64':0x8664}[arch]:
@@ -44,7 +44,7 @@ for arch,digest in expected.items():
    raise SystemExit('Expected unsigned PE32+ portable build')
  rows.append(f'{digest}  {dest.name}\n')
 (out/'SHA256SUMS.txt').write_text(''.join(rows))
-print('Verified immutable Windows 1.2.0 (88), ARM64 and x64, including SHA-256, ZIP CRC and PE architecture.')
+print('Verified immutable Windows 1.2.0 (89), ARM64 and x64, including SHA-256, ZIP CRC and PE architecture.')
 PY
 
 if [ "$mode" = check ]; then
@@ -61,7 +61,7 @@ ssh -o BatchMode=yes "$remote_host" bash -s -- "$incoming" "$release_id" <<'REMO
 set -euo pipefail
 incoming="$1"
 release_id="$2"
-test "$release_id" = 1.2.0-20261125-r2
+test "$release_id" = 1.2.0-20261125-r3
 case "$incoming" in /opt/synca/download-staging/windows.[A-Za-z0-9]*) ;; *) exit 2 ;; esac
 target="/opt/synca/downloads/windows/$release_id"
 conf=/etc/nginx/sites-enabled/synca-haerth-cn
