@@ -141,7 +141,7 @@
   .developer-social-link > span:not(.developer-social-icon) { flex:1; }
   .developer-social-icon { display:inline-grid; place-items:center; flex:none; width:32px; height:24px; border-radius:6px; background:light-dark(#fff0f0,#3c272b); color:light-dark(#ad3c46,#e7a4ad); font-size:8px; font-weight:650; letter-spacing:-.3px; }
   .modal-content.message-search-modal { padding:20px; }
-  .message-search-field { background:var(--sidebar-bg); }
+  .message-search-modal .message-search-field { background:var(--panel-bg-color); box-shadow:0 3px 18px #20203004; }
   .message-search-result mark { background:var(--selection-bg); }
 }
 @media (min-width:640px) and (hover:hover) and (pointer:fine) {
