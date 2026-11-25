@@ -97,6 +97,7 @@ struct MessageListView: View {
     @GestureState private var drawerGestureActive = false
     @State private var showIOSSettings = false
     private var phoneLayout: Bool { horizontalSize == .compact }
+    private let drawerContentInset: CGFloat = 12
     #endif
     private enum Timing {
         static let scrollCoalescingNanoseconds: UInt64 = 50_000_000
@@ -982,9 +983,11 @@ struct MessageListView: View {
                 else { Image(systemName: "square.grid.2x2") }
                 Text(title).lineLimit(2)
                 Spacer()
-                Text("\(count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: 24, alignment: .trailing)
+                if count > 0 {
+                    Text("\(count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: 24, alignment: .trailing)
+                }
 
-            }.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 44)
+            }.padding(.horizontal, drawerContentInset).frame(maxWidth: .infinity, minHeight: 44)
              .background((color ?? Color.primary).opacity(selected ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 10))
              .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityIdentifier("drawer-category-" + id)
@@ -1014,9 +1017,9 @@ struct MessageListView: View {
                             HStack {
                                 Text("message_category.section_title").font(.caption).foregroundStyle(.secondary)
                                 Spacer()
-                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image(systemName: "tag").font(.system(size: 18, weight: .regular)).foregroundStyle(.secondary).frame(width: 44, height: 44) }
+                                Button { toggleDrawer(false); showCategoryManager = true } label: { Image(systemName: "tag").font(.system(size: 16, weight: .regular)).foregroundStyle(.secondary).frame(width: 44, height: 44).contentShape(Rectangle()) }
                                     .accessibilityLabel(Text("message_list.manage_categories"))
-                            }.padding(.leading,12)
+                            }.padding(.leading, drawerContentInset)
                             ForEach(syncManager.categories) { category in
                                 drawerRow(id: category.id, title: category.isDefault ? String(syncaLocalized: "message_category.default_badge") : category.name, color: categoryDisplayColor(category.color, hex: category.colorHex), count: todoCount(for: category.id))
                             }
@@ -1038,11 +1041,12 @@ struct MessageListView: View {
                             Spacer(minLength: 8)
                             Image(systemName: "gearshape").font(.system(size: 19)).foregroundStyle(.secondary)
                                 .accessibilityHidden(true)
-                        }.frame(minHeight: 44).contentShape(Rectangle())
+                        }.padding(.horizontal, drawerContentInset)
+                         .frame(minHeight: 44).contentShape(Rectangle())
                     }.accessibilityIdentifier("drawer-settings").keyboardShortcut(",", modifiers:.command)
                      .accessibilityLabel(Text("settings.title") + Text("、" + (api.currentUserEmail ?? String(syncaLocalized: "account.and_plan"))))
                     if let status = accessManager.status {
-                        DailyQuotaView(status: status).padding(.horizontal, 12)
+                        DailyQuotaView(status: status).padding(.horizontal, drawerContentInset)
                             .accessibilityIdentifier("drawer-daily-quota")
                     }
                 }
