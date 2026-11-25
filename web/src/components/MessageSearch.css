@@ -3,8 +3,7 @@
   /* Match the desktop panel's 20px inset instead of the shared modal's 24px. */
   .modal-content.message-search-modal .modal-header { top:-20px; margin:-20px -20px 0; padding-left:20px; }
 }
-.message-search-field { display:flex; align-items:center; gap:10px; box-sizing:border-box; min-height:52px; flex-shrink:0; border:1px solid color-mix(in srgb,var(--text-secondary) 45%,var(--border-color)); background:var(--bg-color); border-radius:12px; padding:11px; color:var(--text-secondary); }
-.message-search-field:focus-within { border-color:var(--accent-color); }
+.message-search-field { display:flex; align-items:center; gap:10px; box-sizing:border-box; min-height:52px; flex-shrink:0; border:1px solid var(--border-color); background:var(--panel-bg-color); border-radius:14px; box-shadow:0 3px 18px #20203005; padding:11px; color:var(--text-secondary); }
 @media(forced-colors:active) { .message-search-field { border-color:CanvasText; } .message-search-field:focus-within { border-color:Highlight; } }
 
 .message-search-field > svg { flex:0 0 18px; width:18px; height:18px; }
