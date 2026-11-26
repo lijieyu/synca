@@ -60,9 +60,8 @@
 
 @media (min-width:640px) {
   .calm-sidebar .account-menu-panel { width:100%; max-width:100%; padding:6px; border-radius:12px; }
-  .account-menu-identity { display:flex; align-items:center; gap:10px; padding:8px; min-height:44px; }
-  .account-menu-identity strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:550; }
-  .account-menu-identity .identity-avatar { width:28px; height:28px; flex:none; }
+  .account-menu-identity { display:flex; align-items:center; padding:8px 10px; min-height:36px; color:var(--text-secondary); }
+  .account-menu-identity strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:500; }
   .calm-sidebar .account-menu-panel button { min-height:36px; padding:8px 10px; gap:10px; font-size:14px; line-height:20px; }
   .account-menu-panel button svg { flex:none; color:var(--text-secondary); }
   .account-menu-panel hr { margin:5px 4px; }
