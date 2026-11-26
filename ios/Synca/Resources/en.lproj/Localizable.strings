@@ -498,3 +498,31 @@
 "collections.move" = "Move to collections";
 "collections.saved" = "Moved to collections";
 "collections.empty" = "Keep useful information here. Add a record or move one from your tasks.";
+
+// Shared scratchpad
+"scratch.title" = "Scratchpad";
+"scratch.edit" = "Edit";
+"scratch.preview" = "Preview";
+"scratch.image" = "Add image";
+"scratch.uploading" = "Uploading…";
+"scratch.copies" = "Conflict copies";
+"scratch.images" = "Images";
+"scratch.local" = "Saved on device";
+"scratch.saving" = "Syncing…";
+"scratch.saved" = "Synced";
+"scratch.conflict" = "Conflict";
+"scratch.conflict_detail" = "Another device changed this page. Your writing is saved as a copy. Choose which version to continue; both versions will be kept.";
+"scratch.use_cloud" = "Use cloud version";
+"scratch.use_local" = "Continue local version";
+"scratch.local_error" = "Local saving failed. Copy your writing somewhere safe and retry.";
+"scratch.offline" = "Waiting to sync. Your writing is saved on this device and will retry automatically.";
+"scratch.upload_error" = "Image upload failed. Check your connection, storage and image size.";
+"scratch.finish_current" = "Finish syncing or resolving the current draft first.";
+"scratch.no_copies" = "No conflict copies";
+"scratch.restore" = "Restore to scratchpad";
+"scratch.delete_copy" = "Delete this conflict copy? This cannot be undone.";
+"scratch.insert" = "Insert";
+"scratch.delete_image" = "Delete this unused image? Offline drafts on another device may still need it.";
+"scratch.image_in_use" = "The image is used by the scratchpad or a conflict copy, or deletion failed.";
+"scratch.editor" = "Markdown scratchpad";
+"scratch.placeholder" = "Pick up where you left off…\nWrite Markdown, or paste and insert images.";

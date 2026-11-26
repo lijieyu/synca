@@ -557,5 +557,33 @@
     "move": "移入收藏",
     "empty": "还没有收藏",
     "empty_detail": "保存常用资料，随时查找。"
+  },
+  "scratch": {
+    "title": "草稿本",
+    "edit": "编辑",
+    "preview": "预览",
+    "image": "插入图片",
+    "uploading": "上传中…",
+    "copies": "冲突副本",
+    "images": "图片",
+    "local": "已保存本机",
+    "saving": "同步中…",
+    "saved": "已同步",
+    "conflict": "存在冲突",
+    "conflict_detail": "另一台设备修改了这页。你的内容已保留为副本，请选择继续哪一份；另一份也会保留。",
+    "use_cloud": "使用云端内容",
+    "use_local": "继续本机内容",
+    "local_error": "本机保存失败，请复制内容备份后重试。",
+    "offline": "暂未同步，内容已留在本机，将自动重试。",
+    "upload_error": "图片上传失败，请检查网络、容量和图片大小后重试。",
+    "finish_current": "请先完成当前草稿的同步或冲突处理。",
+    "no_copies": "没有冲突副本",
+    "restore": "恢复到草稿",
+    "delete_copy": "删除这份冲突副本？此操作不能撤销。",
+    "insert": "插入",
+    "delete_image": "删除这张未使用图片？其他设备离线草稿可能仍需它，请先确认。",
+    "image_in_use": "图片仍被草稿或冲突副本引用，或删除暂时失败。",
+    "editor": "Markdown 草稿",
+    "placeholder": "在这里随时接着写…\n支持 Markdown，也可以粘贴或插入图片。"
   }
 }

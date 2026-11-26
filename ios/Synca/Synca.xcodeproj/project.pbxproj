@@ -14,6 +14,7 @@
 		04C9E4F9F04764F84F1331EF /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51089FFA181C08EC6703E065 /* KeychainHelper.swift */; };
 		0FF0EEC3F397F13776D60ED8 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2785A785C0B3EEDDE7B108AB /* Notifications.swift */; };
 		12D9E3A6641B9E11DEB2372D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 522C09F13322D85989CF219D /* Assets.xcassets */; };
+		146A6CD065CCD2601B09614D /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E704900AB7D4E36E2EC1C8B0 /* ScratchpadView.swift */; };
 		1757B485F5383E25C955DFD5 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 70DE0078AC87764CD2422D4D /* Localizable.strings */; };
 		1A6A29714500F0C89262C1FF /* AppleSignInButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6DFB39806FCF535EC272BB /* AppleSignInButton.swift */; };
 		1F55C1860A50C27B34C64B73 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56C5DCEF981E4EB4CB624A02 /* APIClient.swift */; };
@@ -38,6 +39,7 @@
 		5AC7FC9A70BA564222DE8E74 /* FeedbackComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */; };
 		65622D9D20FB2E2576E38C41 /* AccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD82BEB61C9FD499168F3E0 /* AccessManager.swift */; };
 		65D5A623B8F6815BF0D62997 /* ImagePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F9D56D31EE3F71693E82FB /* ImagePreviewView.swift */; };
+		6A8936189C52C35C0044545B /* Scratchpad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A3EB5B02A5AB970E136C4D /* Scratchpad.swift */; };
 		6AE2C2896ABABD6C23A05D34 /* MacAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69CDF4F4158B8DC08EEB02F /* MacAppDelegate.swift */; };
 		6E1A36B7C3885524FF136B44 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343DDA8855897A304AD57A8E /* SettingsManager.swift */; };
 		C4393D82FD4E5C987A62CF95 /* EmbeddedAISession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */; };
@@ -61,6 +63,7 @@
 		A65B9A694FE63B8BA0E32C34 /* MessageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1E757E6D45FD90B41342C3 /* MessageListView.swift */; };
 		A90CBAB01ADF8A038EE0B19F /* ImagePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F9D56D31EE3F71693E82FB /* ImagePreviewView.swift */; };
 		AA934C798D617792C78ADEC8 /* ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C014E56D2EA5861FAF53A61 /* ImageCacheManager.swift */; };
+		B57539AEDE6D382A2CF66DA5 /* Scratchpad.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A3EB5B02A5AB970E136C4D /* Scratchpad.swift */; };
 		BC3A500FF20CBE0DB879F0F8 /* AppLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = F738F8804D71775824642ECA /* AppLinks.swift */; };
 		BEBB2397B1310C7B7D5E071B /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEBBBA283A7E06383C93FA9 /* MessageBubbleView.swift */; };
 		C3A76E9824A504BBCB960BD6 /* PushTokenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297BDECDF8299BE751AA053B /* PushTokenManager.swift */; };
@@ -68,6 +71,7 @@
 		CF5703DAD26C41CF5518B6A3 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF22CD531D738808F3F6842B /* SyncManager.swift */; };
 		D117C3C82A310C8C65CAD7D2 /* FeedbackComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C01E27DB9C0FDB64DC9468 /* FeedbackComposerView.swift */; };
 		D22A04F53C899772210C705E /* SyncaMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2C6FC12E0A28BF2FC06593 /* SyncaMessage.swift */; };
+		D32AA988EF8076C3948E0B18 /* ScratchpadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6728B78821BCDA9747E9847B /* ScratchpadStore.swift */; };
 		D32FA024B382AA7FE4EA9FE0 /* AccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD82BEB61C9FD499168F3E0 /* AccessManager.swift */; };
 		D54983B06DC7AA2BC3BEA61A /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */; };
 		D65FBF54CD73B1D744C6C6B7 /* SyncaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0C31D4323A66C9C6E9B8EC /* SyncaApp.swift */; };
@@ -102,8 +106,10 @@
 		A81300000000000000000001 /* MessageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81100000000000000000001 /* MessageSearchIndex.swift */; };
 		0B6AF57E6DCD8504EA04E223 /* EmailAuthModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */; };
 		0BAC04B0506D1A6332BC1A86 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4593423B04D33BB6703900 /* EmailLoginView.swift */; };
+		0CBF97B7BCA9EEBF456C2B7D /* ScratchpadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6728B78821BCDA9747E9847B /* ScratchpadStore.swift */; };
 		4B62992575150D4677D45220 /* EmailAuthModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */; };
 		609C8B8F9B250F0EE1661673 /* LoginMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433FB1024BE83661B63550B2 /* LoginMethodsView.swift */; };
+		621DE4AB3E34B64E389A488B /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E704900AB7D4E36E2EC1C8B0 /* ScratchpadView.swift */; };
 		A974C13CDAD794B5090DDE52 /* LoginMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433FB1024BE83661B63550B2 /* LoginMethodsView.swift */; };
 		FEF4D597D39A8D3AE15F2E43 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4593423B04D33BB6703900 /* EmailLoginView.swift */; };
 /* End PBXBuildFile section */
@@ -131,6 +137,7 @@
 		5529D0F531D1905D77573C52 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 		56C5DCEF981E4EB4CB624A02 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		59A75DF29F39A3101A840136 /* DeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInfo.swift; sourceTree = "<group>"; };
+		6728B78821BCDA9747E9847B /* ScratchpadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadStore.swift; sourceTree = "<group>"; };
 		6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSelectableText.swift; sourceTree = "<group>"; };
 		7B2DCCA72152ACD4E67BE946 /* Synca.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Synca.entitlements; sourceTree = "<group>"; };
 		7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
@@ -148,6 +155,7 @@
 		CF22CD531D738808F3F6842B /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		DCD82BEB61C9FD499168F3E0 /* AccessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessManager.swift; sourceTree = "<group>"; };
 		E4DC5D5E94792579FCAC8891 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		E704900AB7D4E36E2EC1C8B0 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		E7602FAE500EA6A8B83C53BE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteAwareTextView.swift; sourceTree = "<group>"; };
 		F738F8804D71775824642ECA /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
@@ -170,6 +178,7 @@
 		433FB1024BE83661B63550B2 /* LoginMethodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginMethodsView.swift; sourceTree = "<group>"; };
 		AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailAuthModel.swift; sourceTree = "<group>"; };
 		BD4593423B04D33BB6703900 /* EmailLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailLoginView.swift; sourceTree = "<group>"; };
+		C1A3EB5B02A5AB970E136C4D /* Scratchpad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scratchpad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -220,6 +229,7 @@
 			children = (
 				4FF1234287F38B3116511492 /* AccessStatus.swift */,
 				20C443E869542BFAC55FE508 /* ImagePayload.swift */,
+				C1A3EB5B02A5AB970E136C4D /* Scratchpad.swift */,
 				BA2C6FC12E0A28BF2FC06593 /* SyncaMessage.swift */,
 			);
 			path = Models;
@@ -250,6 +260,7 @@
 				AD1E757E6D45FD90B41342C3 /* MessageListView.swift */,
 				529B3820535EE8B4BC8FE755 /* MessageTextEditorView.swift */,
 				EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */,
+				E704900AB7D4E36E2EC1C8B0 /* ScratchpadView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -288,6 +299,7 @@
 				B1ED3B83974ACF7FA273BDC4 /* PhotoLibrarySaver.swift */,
 				7E303199D1B3CC0E8B523373 /* PurchaseManager.swift */,
 				297BDECDF8299BE751AA053B /* PushTokenManager.swift */,
+				6728B78821BCDA9747E9847B /* ScratchpadStore.swift */,
 				8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */,
 				343DDA8855897A304AD57A8E /* SettingsManager.swift */,
 				A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */,
@@ -425,6 +437,9 @@
 			files = (
 				424F6054C2A0D22413708252 /* MessageMarkdownRenderer.swift in Sources */,
 				44E8481E7D0CED0BC9FE178A /* RichClipboardText.swift in Sources */,
+				B57539AEDE6D382A2CF66DA5 /* Scratchpad.swift in Sources */,
+				0CBF97B7BCA9EEBF456C2B7D /* ScratchpadStore.swift in Sources */,
+				146A6CD065CCD2601B09614D /* ScratchpadView.swift in Sources */,
 				327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */,
 				7B65706CEA0F08B118AE81A0 /* AIConnectionView.swift in Sources */,
 				1B9E8569C64B852288CD04DA /* AccountSheet.swift in Sources */,
@@ -479,6 +494,9 @@
 			files = (
 				88B18FF1179B124CE66ACFD9 /* MessageMarkdownRenderer.swift in Sources */,
 				70B6BF0BA33B89BE97DF16BC /* RichClipboardText.swift in Sources */,
+				6A8936189C52C35C0044545B /* Scratchpad.swift in Sources */,
+				D32AA988EF8076C3948E0B18 /* ScratchpadStore.swift in Sources */,
+				621DE4AB3E34B64E389A488B /* ScratchpadView.swift in Sources */,
 				45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */,
 				92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */,
 				81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */,

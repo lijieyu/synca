@@ -78,7 +78,7 @@ export const searchSchema = z.object({
 }).strict();
 export async function searchMessages(actor: Actor, args: z.infer<typeof searchSchema>) {
     requireScope(actor, 'read');
-    let q = db.selectFrom('messages').select(['id', 'created_at']).where('user_id', '=', actor.userId).where('is_deleted', '=', 0);
+    let q = db.selectFrom('messages').select(['id', 'created_at']).where('user_id', '=', actor.userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0);
     if (args.query) {
         const pattern = `%${args.query.replace(/[\\%_]/g, '\\$&')}%`;
         q = q.where(sql<boolean>`(text_content LIKE ${pattern} ESCAPE ${String.fromCharCode(92)} OR file_name LIKE ${pattern} ESCAPE ${String.fromCharCode(92)})`);
@@ -103,7 +103,7 @@ export async function searchMessages(actor: Actor, args: z.infer<typeof searchSc
 export async function readMessage(actor: Actor, id: string) {
     requireScope(actor, 'read');
     const message = await getMessage(id, publicOrigin());
-    if (!message || message.userId !== actor.userId || message.isDeleted) throw new AIError(404, 'message_not_found');
+    if (!message || message.userId !== actor.userId || message.isDeleted || message.scratchpadAsset) throw new AIError(404, 'message_not_found');
     // URLs are protected; attachment scope is enforced again at download time.
     return message;
 }
@@ -148,7 +148,7 @@ export async function updateMessages(actor: Actor, args: z.infer<typeof mutation
         const after = [];
         for (const item of args.items) {
             const row = await trx.selectFrom('messages').selectAll().where('id', '=', item.id).where('user_id', '=', actor.userId)
-                .where('is_deleted', '=', 0).executeTakeFirst();
+                .where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0).executeTakeFirst();
             if (!row) throw new AIError(404, 'message_not_found');
             if (row.updated_at !== item.expectedUpdatedAt) throw new AIError(409, 'version_conflict');
             if (args.isCleared !== undefined && (row.collected_at || args.isCollected)) throw new AIError(409, 'collection_not_task');
@@ -228,7 +228,7 @@ export async function prepareDelete(actor: Actor, args: z.infer<typeof deleteSch
     requireScope(actor, 'delete');
     return db.transaction().execute(async trx => {
         await assertActive(actor, trx);
-        let q = trx.selectFrom('messages').selectAll().where('user_id', '=', actor.userId).where('is_deleted', '=', 0);
+        let q = trx.selectFrom('messages').selectAll().where('user_id', '=', actor.userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0);
         if (args.items) q = q.where('id', 'in', args.items.map(i => i.id));
         if (args.completedOnly) q = q.where('collected_at', 'is', null).where('is_cleared', '=', 1);
         if (args.categoryId) q = q.where('category_id', '=', args.categoryId);
@@ -268,7 +268,7 @@ export async function executeDelete(actor: Actor, args: z.infer<typeof executeDe
             const now = new Date(Math.max(Date.now(), Date.parse(item.updatedAt) + 1)).toISOString();
             const result = await trx.updateTable('messages').set({ is_deleted: 1, text_content: null, file_name: null,
                 file_size: null, file_mime_type: null, attachment_expires_at: now, updated_at: nextMessageTimestamp(now) })
-                .where('id', '=', item.id).where('user_id', '=', userId).where('is_deleted', '=', 0).where('updated_at', '=', item.updatedAt).executeTakeFirst();
+                .where('id', '=', item.id).where('user_id', '=', userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0).where('updated_at', '=', item.updatedAt).executeTakeFirst();
             if (result.numUpdatedRows !== 1n) throw new AIError(409, 'version_conflict_prepare_again');
         }
         const result = { deletedCount: items.length };

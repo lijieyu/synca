@@ -557,5 +557,33 @@
     "move": "Move to Collections",
     "empty": "No collections yet",
     "empty_detail": "Keep useful information close at hand."
+  },
+  "scratch": {
+    "title": "Scratchpad",
+    "edit": "Edit",
+    "preview": "Preview",
+    "image": "Add image",
+    "uploading": "Uploading…",
+    "copies": "Conflict copies",
+    "images": "Images",
+    "local": "Saved on device",
+    "saving": "Syncing…",
+    "saved": "Synced",
+    "conflict": "Conflict",
+    "conflict_detail": "Another device changed this page. Your writing is saved as a copy. Choose which version to continue; both versions will be kept.",
+    "use_cloud": "Use cloud version",
+    "use_local": "Continue local version",
+    "local_error": "Local saving failed. Copy your writing somewhere safe and retry.",
+    "offline": "Waiting to sync. Your writing is saved on this device and will retry automatically.",
+    "upload_error": "Image upload failed. Check your connection, storage and image size.",
+    "finish_current": "Finish syncing or resolving the current draft first.",
+    "no_copies": "No conflict copies",
+    "restore": "Restore to scratchpad",
+    "delete_copy": "Delete this conflict copy? This cannot be undone.",
+    "insert": "Insert",
+    "delete_image": "Delete this unused image? Offline drafts on another device may still need it.",
+    "image_in_use": "The image is used by the scratchpad or a conflict copy, or deletion failed.",
+    "editor": "Markdown scratchpad",
+    "placeholder": "Pick up where you left off…\nWrite Markdown, or paste and insert images."
   }
 }

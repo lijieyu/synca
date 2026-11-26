@@ -80,6 +80,8 @@ final class SyncManager: ObservableObject {
     @Published var sessionExpired = false
     @Published var remoteAppendEvent = UUID()
     @Published var collectionCategoryId: String? = nil
+    var scratchpadPseudoId: String { "__scratchpad__" }
+    var showingScratchpad: Bool { selectedCategoryId == scratchpadPseudoId }
     var collectionsPseudoId: String { "__collections__" }
     var showingCollections: Bool { selectedCategoryId == collectionsPseudoId }
     @Published var selectedCategoryId: String? = nil
@@ -1022,7 +1024,7 @@ final class SyncManager: ObservableObject {
 
         let validIds = Set(categories.map(\.id))
         if let collectionCategoryId, !validIds.contains(collectionCategoryId) { self.collectionCategoryId = nil }
-        if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, selectedCategoryId != collectionsPseudoId, !validIds.contains(selectedCategoryId) {
+        if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, selectedCategoryId != collectionsPseudoId, selectedCategoryId != scratchpadPseudoId, !validIds.contains(selectedCategoryId) {
             self.selectedCategoryId = allCategoryPseudoId
         } else if self.selectedCategoryId == nil {
             restoreLocalCategorySelections()

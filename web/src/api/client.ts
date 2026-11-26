@@ -1,3 +1,6 @@
+import type { ScratchDocument } from '../utils/scratchpad';
+export class ScratchConflict extends Error { readonly current: ScratchDocument; constructor(current: ScratchDocument) { super('scratchpad_conflict'); this.current=current; } }
+export interface ScratchCopy { id:string; content:string; created_at:string }
 export interface SyncState { messages: string; categories: string; access: string; latestMessage: string | null; count: number }
 import { saveDownload } from '../utils/downloads';
 export class SessionExpiredError extends Error {}
@@ -210,6 +213,7 @@ class APIClient {
       if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
       try {
         const errorJson = JSON.parse(errorText);
+        if (errorJson.error === "scratchpad_conflict") throw new ScratchConflict(errorJson.current);
         if (typeof errorJson.error === 'string' && (anonymous || response.url.includes('/login-methods') || ['invalid_payload','invalid_email','invalid_code','code_expired','code_attempts_exceeded','apple_auth_failed','email_in_use','apple_in_use','email_already_bound','apple_already_bound','rate_limited','email_unavailable','email_send_failed'].includes(errorJson.error))) throw new AuthError(errorJson.error, errorJson.retryAfter);
         if (['message_edit_conflict', 'message_not_found', 'message_not_text'].includes(errorJson.error)) throw new MessageEditError(errorJson.error);
         if (['file_upload_requires_paid', 'storage_limit_reached', 'attachment_expired', 'file_too_large'].includes(errorJson.error)) throw new StorageError(errorJson.error);
@@ -217,7 +221,7 @@ class APIClient {
           throw new DailyLimitError();
         }
       } catch (e) {
-        if (e instanceof AuthError || e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
+        if (e instanceof ScratchConflict || e instanceof AuthError || e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
       }
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
@@ -316,6 +320,19 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null, isCollected }),
     });
+  }
+
+  getScratchpad():Promise<ScratchDocument> {return this.fetch('/scratchpad',{cache:'no-store'});}
+  saveScratchpad(content:string,expectedRevision:number,mutationId:string,preserveCurrent=false):Promise<ScratchDocument> {
+    return this.fetch('/scratchpad',{method:'PUT',body:JSON.stringify({content,expectedRevision,mutationId,preserveCurrent})});
+  }
+  getScratchCopies():Promise<{conflicts:ScratchCopy[]}> {return this.fetch('/scratchpad/conflicts');}
+  deleteScratchCopy(id:string):Promise<unknown> {return this.fetch(`/scratchpad/conflicts/${id}`,{method:'DELETE'});}
+  getScratchImages():Promise<{images:SyncaMessage[]}> {return this.fetch('/scratchpad/images');}
+  deleteScratchImage(id:string):Promise<unknown> {return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE'});}
+  async uploadScratchImage(file:File):Promise<SyncaMessage> {
+    const data=new FormData();data.append('image',file);
+    return this.upload('/scratchpad/images',data,file);
   }
 
   async sendImageMessage(file: File, categoryId?: string | null, options?: UploadOptions): Promise<SyncaMessage> {

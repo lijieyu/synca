@@ -557,5 +557,33 @@
     "move": "移入收藏",
     "empty": "還沒有收藏",
     "empty_detail": "儲存常用資料，隨時查找。"
+  },
+  "scratch": {
+    "title": "草稿本",
+    "edit": "編輯",
+    "preview": "預覽",
+    "image": "插入圖片",
+    "uploading": "上傳中…",
+    "copies": "衝突副本",
+    "images": "圖片",
+    "local": "已儲存本機",
+    "saving": "同步中…",
+    "saved": "已同步",
+    "conflict": "存在衝突",
+    "conflict_detail": "另一台裝置修改了這頁。你的內容已保留為副本，請選擇繼續哪一份；另一份也會保留。",
+    "use_cloud": "使用雲端內容",
+    "use_local": "繼續本機內容",
+    "local_error": "本機儲存失敗，請複製內容備份後重試。",
+    "offline": "暫未同步，內容已留在本機，將自動重試。",
+    "upload_error": "圖片上傳失敗，請檢查網路、容量和圖片大小後重試。",
+    "finish_current": "請先完成目前草稿的同步或衝突處理。",
+    "no_copies": "沒有衝突副本",
+    "restore": "恢復到草稿",
+    "delete_copy": "刪除這份衝突副本？此操作不能撤銷。",
+    "insert": "插入",
+    "delete_image": "刪除這張未使用圖片？其他裝置離線草稿可能仍需它，請先確認。",
+    "image_in_use": "圖片仍被草稿或衝突副本引用，或刪除暫時失敗。",
+    "editor": "Markdown 草稿",
+    "placeholder": "在這裡隨時接著寫…\n支援 Markdown，也可以貼上或插入圖片。"
   }
 }

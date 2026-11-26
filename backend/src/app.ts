@@ -1,3 +1,4 @@
+import {readScratchpad, writeScratchpad, scratchpadImages, deleteScratchpadImage} from './scratchpad.js';
 import { notifySync, openSyncStream, syncState } from './syncEvents.js';
 import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
@@ -61,6 +62,7 @@ app.use(['/mcp', '/api/ai/tools/create_attachment'], async (req, res, next) => {
 const recordTextJson = express.json({ limit: '1mb' });
 app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_records'], recordTextJson);
 app.patch('/messages/:id/text', recordTextJson);
+app.use('/scratchpad', express.json({limit:'2mb'}));
 app.use(express.json());
 // Keep email sign-in and binding off until the operator explicitly enables them.
 const emailAuthEnabled = process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true';
@@ -451,6 +453,33 @@ app.delete('/message-categories/:id', auth, async (req, res) => {
     res.json({ ok: true });
 });
 
+app.get('/scratchpad', auth, async (req, res, next) => {
+    try { res.json(await readScratchpad(getUserId(req))); } catch(error) { next(error); }
+});
+app.put('/scratchpad', auth, async (req, res, next) => {
+    const parsed = z.object({content:z.string().max(250000),expectedRevision:z.number().int().nonnegative(),mutationId:z.string().uuid(),preserveCurrent:z.boolean().optional()}).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({error:'invalid_payload'});
+    try {
+        const result=await writeScratchpad(getUserId(req),parsed.data);
+        if(result.status===200) notifyOtherDevices(getUserId(req),req.header('Authorization')).catch(()=>{});
+        res.status(result.status).json(result.body);
+    } catch(error) { next(error); }
+});
+app.get('/scratchpad/conflicts', auth, async(req,res,next)=>{
+    try { res.json({conflicts:await db.selectFrom('scratchpad_conflicts').select(['id','content','created_at']).where('user_id','=',getUserId(req)).orderBy('created_at','desc').execute()}); }
+    catch(error){next(error);}
+});
+app.delete('/scratchpad/conflicts/:id', auth, async(req,res,next)=>{
+    try { await db.deleteFrom('scratchpad_conflicts').where('user_id','=',getUserId(req)).where('id','=',req.params.id).execute();res.json({ok:true}); }
+    catch(error){next(error);}
+});
+app.get('/scratchpad/images', auth, async(req,res,next)=>{
+    try {res.json({images:await scratchpadImages(getUserId(req),getBaseUrl(req))});}catch(error){next(error);}
+});
+app.delete('/scratchpad/images/:id', auth, async(req,res,next)=>{
+    try {const status=await deleteScratchpadImage(getUserId(req),req.params.id,uploadsDir,filesDir);res.status(status).json(status===200?{ok:true}:{error:status===409?'scratchpad_image_in_use':'image_not_found'});}catch(error){next(error);}
+});
+
 // Send text message
 app.post('/messages', auth, async (req, res, next) => {
     try {
@@ -505,7 +534,7 @@ app.post('/messages', auth, async (req, res, next) => {
 });
 
 // Send image message
-app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('image'), async (req, res, next) => {
+app.post(['/messages/image', '/scratchpad/images'], auth, prepareUpload('image'), receiveAttachment('image'), async (req, res, next) => {
     res.locals.upload.processing = true;
     try {
     if (req.aborted || res.destroyed) return;
@@ -540,7 +569,8 @@ app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('ima
     const expiresAt = new Date(Date.now() + res.locals.upload.retentionDays * 86400000).toISOString();
     await createMessage({
         attachmentExpiresAt: expiresAt,
-        isCollected: metadata.data.isCollected,
+        isCollected: req.path === '/scratchpad/images' || metadata.data.isCollected,
+        scratchpadAsset: req.path === '/scratchpad/images',
         reservationId: res.locals.upload.reservationId,
         beforeCommit: res.locals.aiActor ? async trx => {
             const actor = res.locals.aiActor as Actor;
@@ -676,6 +706,7 @@ app.use('/messages/:id', auth, async (req, res, next) => {
     if (!['PATCH', 'DELETE'].includes(req.method)) return next();
     try {
         const message = await getMessage(req.params.id);
+        if(message?.userId === getUserId(req) && message.scratchpadAsset) return res.status(409).json({error:'scratchpad_image_requires_document_api'});
         if (message?.userId === getUserId(req) && message.collectedAt &&
             (!supportsCollections(req) || ['/completion', '/clear'].includes(req.path))) {
             return res.status(409).json({ error: 'collection_not_task' });

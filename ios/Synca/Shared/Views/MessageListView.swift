@@ -569,7 +569,7 @@ struct MessageListView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(selectedCategoryTitle).font(.title2.weight(.semibold))
-                        if !syncManager.showingCollections { (Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId)))
+                        if !syncManager.showingCollections && !syncManager.showingScratchpad { (Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId)))
                             + Text(" · ")
                             + Text(String(format: String(syncaLocalized: "message_list.completed_count"), filteredMessages.filter { $0.isCleared }.count)))
                             .font(.caption).foregroundStyle(.secondary) }
@@ -578,7 +578,7 @@ struct MessageListView: View {
                     HStack(spacing: 8) {
                         searchButton
                         refreshButton.help(Text("message_list.sync"))
-                        if !syncManager.showingCollections { clearAllButton.help(Text("message_list.clear_completed")) }
+                        if !syncManager.showingCollections && !syncManager.showingScratchpad { clearAllButton.help(Text("message_list.clear_completed")) }
                     }
                 }
                 .padding(.horizontal, 28).padding(.vertical, 18)
@@ -627,7 +627,13 @@ struct MessageListView: View {
         #endif
     }
 
-    private var singleMessageContent: some View {
+    @ViewBuilder private var singleMessageContent: some View {
+        if syncManager.showingScratchpad {
+            ScratchpadView(account: APIClient.shared.currentUserId ?? "signed-in").id(APIClient.shared.currentUserId)
+        } else { messageContent }
+    }
+
+    private var messageContent: some View {
         VStack(spacing: 0) {
             if syncManager.showingCollections {
                 HStack {
@@ -680,6 +686,7 @@ struct MessageListView: View {
     #endif
 
     private var selectedCategoryTitle: String {
+        if syncManager.showingScratchpad { return String(syncaLocalized: "scratch.title") }
         if syncManager.showingCollections { return String(syncaLocalized: "collections.title") }
         guard let category = syncManager.categories.first(where: { $0.id == selectedFilterCategoryId }) else {
             return String(syncaLocalized: "message_list.all_records")
@@ -698,6 +705,7 @@ struct MessageListView: View {
                 .background(MacWindowDragArea())
             MacSidebarScrollView {
                 VStack(alignment: .leading, spacing: 4) {
+                    sidebarCategory(id: syncManager.scratchpadPseudoId, title: String(syncaLocalized: "scratch.title"), color: nil, count: 0)
                     sidebarCategory(id: syncManager.collectionsPseudoId, title: String(syncaLocalized: "collections.title"), color: nil, count: 0)
                     sidebarCategory(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "message_list.all_records"), color: nil, count: allTodoCount)
                         .padding(.bottom, 16)
@@ -909,7 +917,7 @@ struct MessageListView: View {
             refreshButton.accessibilityLabel(Text("message_list.sync")).accessibilityIdentifier("phone-sync")
         }
         ToolbarItem(placement: .topBarTrailing) {
-            if !syncManager.showingCollections { clearAllButton.accessibilityIdentifier("phone-clear") }
+            if !syncManager.showingCollections && !syncManager.showingScratchpad { clearAllButton.accessibilityIdentifier("phone-clear") }
         }
         if !phoneLayout { ToolbarItem(placement: .topBarTrailing) {
             Button { showIOSSettings = true } label: { Image(systemName: "person.crop.circle") }
@@ -929,7 +937,7 @@ struct MessageListView: View {
                         Text(selectedCategoryTitle)
                             .font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
                             .lineLimit(1).truncationMode(.tail)
-                        if !syncManager.showingCollections { Text("\(todoCount(for: selectedFilterCategoryId))")
+                        if !syncManager.showingCollections && !syncManager.showingScratchpad { Text("\(todoCount(for: selectedFilterCategoryId))")
                             .font(.caption.weight(.semibold)).monospacedDigit()
                             .foregroundStyle(Color.primary.opacity(0.85))
                             .padding(.horizontal, 6)
@@ -941,7 +949,7 @@ struct MessageListView: View {
 
                 }
                 .accessibilityIdentifier("phone-categories")
-                .accessibilityLabel(syncManager.showingCollections ? Text(selectedCategoryTitle) : Text(selectedCategoryTitle) + Text("、") + Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId))))
+                .accessibilityLabel(syncManager.showingCollections || syncManager.showingScratchpad ? Text(selectedCategoryTitle) : Text(selectedCategoryTitle) + Text("、") + Text(String(format: String(syncaLocalized: "message_list.pending_count"), todoCount(for: selectedFilterCategoryId))))
                 .accessibilityHint(Text("message_category.section_title"))
             }
         } else {
@@ -994,7 +1002,7 @@ struct MessageListView: View {
         } label: {
             HStack(spacing: 10) {
                 if let color { Circle().fill(color).frame(width: 9, height: 9) }
-                else { Image(systemName: id == syncManager.collectionsPseudoId ? "bookmark" : "square.grid.2x2") }
+                else { Image(systemName: id == syncManager.scratchpadPseudoId ? "doc.text" : id == syncManager.collectionsPseudoId ? "bookmark" : "square.grid.2x2") }
                 Text(title).lineLimit(2)
                 Spacer()
                 if count > 0 {
@@ -1027,6 +1035,7 @@ struct MessageListView: View {
                     }
                     ScrollView {
                         VStack(spacing: 4) {
+                            drawerRow(id: syncManager.scratchpadPseudoId, title: String(syncaLocalized: "scratch.title"), color: nil, count: 0)
                             drawerRow(id: syncManager.collectionsPseudoId, title: String(syncaLocalized: "collections.title"), color: nil, count: 0)
                             drawerRow(id: syncManager.allCategoryPseudoId, title: String(syncaLocalized: "common.all"), color: nil, count: allTodoCount)
                             HStack {
@@ -1174,6 +1183,10 @@ struct MessageListView: View {
                         syncManager.selectCategory(syncManager.allCategoryPseudoId)
                     }
                     .id(syncManager.allCategoryPseudoId)
+                    categoryChip(title: String(syncaLocalized: "scratch.title"), color: .primary,
+                                 neutral: true, isSelected: syncManager.showingScratchpad, badgeCount: 0) {
+                        syncManager.selectCategory(syncManager.scratchpadPseudoId)
+                    }.id(syncManager.scratchpadPseudoId)
                     categoryChip(title: String(syncaLocalized: "collections.title"), color: .primary,
                                  neutral: true, isSelected: syncManager.showingCollections, badgeCount: 0) {
                         syncManager.selectCategory(syncManager.collectionsPseudoId)

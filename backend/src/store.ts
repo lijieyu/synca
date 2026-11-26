@@ -28,6 +28,7 @@ function toUser(row: UsersTable): SyncaUser {
 function toMessage(row: Selectable<MessagesTable>, baseUrl?: string): SyncaMessage {
     const expired = Boolean(row.attachment_purged || (row.attachment_expires_at && row.attachment_expires_at <= new Date().toISOString()));
     return {
+        scratchpadAsset: row.scratchpad_asset === 1,
         collectedAt: row.collected_at ?? null,
         attachmentExpiresAt: row.attachment_expires_at,
         attachmentExpired: expired,
@@ -699,7 +700,7 @@ export async function listMessages(params: {
             'message_categories.color as category_color', 'message_categories.color_hex as category_color_hex',
             'message_categories.is_default as category_is_default',
         ])
-        .where('messages.user_id', '=', params.userId);
+        .where('messages.user_id', '=', params.userId).where('messages.scratchpad_asset', '=', 0);
 
     if (params.since) {
         query = query.where('messages.updated_at', '>', params.since);
@@ -762,6 +763,7 @@ export async function createMessage(message: {
     sourceDevice?: string | null;
     now: string;
     attachmentExpiresAt?: string;
+    scratchpadAsset?: boolean;
     isCollected?: boolean;
     reservationId?: string;
     beforeCommit?: (trx: Transaction<Database>) => Promise<void>;
@@ -794,6 +796,7 @@ export async function createMessage(message: {
         }
         const resolvedCategoryId = await resolveCategoryId(message.userId, message.categoryId, message.now, trx);
         await trx.insertInto('messages').values({
+            scratchpad_asset: message.scratchpadAsset ? 1 : 0,
             collected_at: message.isCollected ? message.now : null,
             attachment_expires_at: message.isCollected ? null : message.attachmentExpiresAt ?? null,
             id: message.id,
@@ -1164,6 +1167,8 @@ export async function resetDb() {
     await db.deleteFrom('lifetime_upgrade_offer_codes').execute();
     await sql`DELETE FROM daily_activities`.execute(db);
     await db.deleteFrom('message_usage_events').execute();
+    await db.deleteFrom('scratchpad_conflicts').execute();
+    await db.deleteFrom('scratchpads').execute();
     await db.deleteFrom('messages').execute();
     await db.deleteFrom('message_categories').execute();
     await db.deleteFrom('sessions').execute();

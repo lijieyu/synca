@@ -300,14 +300,14 @@ final class APIClient: ObservableObject {
         return ("image/jpeg", ".jpg") // Default to JPEG
     }
 
-    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false,
+    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false, scratchpad: Bool = false,
                           progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> SyncaMessage {
         let generation = sessionGeneration
         let cacheGeneration = ImageCache.generation
         let authorizationToken = token
         try Task.checkCancellation()
         guard imageData.count <= PendingFileUpload.maxImageSize else { throw APIError.imageTooLarge }
-        let url = URL(string: "\(baseURL)/messages/image")!
+        let url = URL(string: "\(baseURL)\(scratchpad ? "/scratchpad/images" : "/messages/image")")!
         var request = URLRequest(url: url)
         request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "POST"
@@ -563,6 +563,16 @@ final class APIClient: ObservableObject {
         return request
     }
 
+    func getScratchpad() async throws -> ScratchDocument { try await get("/scratchpad") }
+    func saveScratchpad(_ draft: ScratchDraft) async throws -> ScratchDocument {
+        try await put("/scratchpad", body: ["content":draft.content, "expectedRevision":draft.revision,
+                                            "mutationId":UUID().uuidString, "preserveCurrent":draft.preserveCurrent])
+    }
+    func getScratchCopies() async throws -> ScratchCopies { try await get("/scratchpad/conflicts") }
+    func getScratchImages() async throws -> ScratchImages { try await get("/scratchpad/images") }
+    func deleteScratchCopy(_ id: String) async throws { let _: OkResponse = try await delete("/scratchpad/conflicts/\(id)") }
+    func deleteScratchImage(_ id: String) async throws { let _: OkResponse = try await delete("/scratchpad/images/\(id)") }
+
     // MARK: - Generic HTTP Methods
 
     private func get<T: Decodable>(_ path: String, params: [String: String] = [:],
@@ -619,6 +629,13 @@ final class APIClient: ObservableObject {
         return try await execute(request)
     }
 
+    private func delete<T: Decodable>(_ path: String) async throws -> T {
+        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.httpMethod = "DELETE"
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        return try await execute(request)
+    }
+
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         #if DEBUG
         print("[APIClient] >>> \(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "")")
@@ -637,6 +654,9 @@ final class APIClient: ObservableObject {
 
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
+        }
+        if httpResponse.statusCode == 409, let conflict = try? JSONDecoder().decode(ScratchConflict.self, from: data) {
+            throw conflict
         }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw decodeAPIError(statusCode: httpResponse.statusCode, data: data)

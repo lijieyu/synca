@@ -498,3 +498,31 @@
 "collections.move" = "移入收藏";
 "collections.saved" = "已移入收藏";
 "collections.empty" = "長期保存資料，在這裡新增或從待辦移入。";
+
+// Shared scratchpad
+"scratch.title" = "草稿本";
+"scratch.edit" = "編輯";
+"scratch.preview" = "預覽";
+"scratch.image" = "插入圖片";
+"scratch.uploading" = "上傳中…";
+"scratch.copies" = "衝突副本";
+"scratch.images" = "圖片";
+"scratch.local" = "已儲存本機";
+"scratch.saving" = "同步中…";
+"scratch.saved" = "已同步";
+"scratch.conflict" = "存在衝突";
+"scratch.conflict_detail" = "另一台裝置修改了這頁。你的內容已保留為副本，請選擇繼續哪一份；另一份也會保留。";
+"scratch.use_cloud" = "使用雲端內容";
+"scratch.use_local" = "繼續本機內容";
+"scratch.local_error" = "本機儲存失敗，請複製內容備份後重試。";
+"scratch.offline" = "暫未同步，內容已留在本機，將自動重試。";
+"scratch.upload_error" = "圖片上傳失敗，請檢查網路、容量和圖片大小後重試。";
+"scratch.finish_current" = "請先完成目前草稿的同步或衝突處理。";
+"scratch.no_copies" = "沒有衝突副本";
+"scratch.restore" = "恢復到草稿";
+"scratch.delete_copy" = "刪除這份衝突副本？此操作不能撤銷。";
+"scratch.insert" = "插入";
+"scratch.delete_image" = "刪除這張未使用圖片？其他裝置離線草稿可能仍需它，請先確認。";
+"scratch.image_in_use" = "圖片仍被草稿或衝突副本引用，或刪除暫時失敗。";
+"scratch.editor" = "Markdown 草稿";
+"scratch.placeholder" = "在這裡隨時接著寫…\n支援 Markdown，也可以貼上或插入圖片。";

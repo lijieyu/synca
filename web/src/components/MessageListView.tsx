@@ -1,3 +1,5 @@
+import { FileText } from 'lucide-react';
+import { Scratchpad } from './Scratchpad';
 import { createChangeNotifications } from '../utils/changeNotifications';
 import type { SyncState } from '../api/client';
 import { mergeMessageChanges, messageChangesSince, nextMessageCheckpoint } from '../utils/messageSync';
@@ -121,6 +123,7 @@ export const MessageListView: React.FC = () => {
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [composerFocusRequest, requestComposerFocus] = useState(0);
+  const [showScratchpad, setShowScratchpad] = useState(false);
   const [showCollections, setShowCollections] = useState(false);
   const collectionsViewRef = useRef(false);
   collectionsViewRef.current = showCollections;
@@ -164,7 +167,7 @@ export const MessageListView: React.FC = () => {
   const managerBaseline = useRef(new Map<string, MessageCategory>());
   useEffect(() => { categoryWritePending.current = categorySaving; }, [categorySaving]);
 
-  const { token, logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
+  const { userId, token, logout, email, plan, accessStatus, refreshAccessStatus } = useAuth();
   const { t } = useTranslation();
 
   const fetchData = async (scrollToBottom = false, state?: SyncState) => {
@@ -295,9 +298,9 @@ export const MessageListView: React.FC = () => {
   );
 
   const effectiveDefaultSendCategoryId = defaultSendCategoryId ?? defaultCategory?.id ?? null;
-  const selectedScopeIsAll = !showCollections && selectedCategoryId === ALL_CATEGORY_ID;
+  const selectedScopeIsAll = !showScratchpad && !showCollections && selectedCategoryId === ALL_CATEGORY_ID;
   const selectedCategory = showCollections ? undefined : categories.find(category => category.id === selectedCategoryId);
-  const heading = showCollections ? t('collections.title') : selectedScopeIsAll ? t('common.all') : selectedCategory?.isDefault ? t('message_category.default_badge') : selectedCategory?.name;
+  const heading = showScratchpad ? t('scratch.title') : showCollections ? t('collections.title') : selectedScopeIsAll ? t('common.all') : selectedCategory?.isDefault ? t('message_category.default_badge') : selectedCategory?.name;
   const activeSendCategoryId = showCollections ? (collectionCategory === ALL_CATEGORY_ID ? defaultCategory?.id : collectionCategory) : selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
 
   const filteredMessages = useMemo(() => recordsInArea(messages, showCollections,
@@ -570,6 +573,7 @@ export const MessageListView: React.FC = () => {
   } });
 
   const activateCategory = (id: string) => {
+    setShowScratchpad(false);
     setShowCollections(false);
     setDrawerOpen(false);
     setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
@@ -586,6 +590,7 @@ export const MessageListView: React.FC = () => {
       : Math.max(0, Math.min(buttons.length - 1, index + (['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1)));
     buttons[next].focus();
     setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
+    setShowScratchpad(false);
     setShowCollections(false);
     setSelectedCategoryId(buttons[next].dataset.categoryId!);
   };
@@ -622,6 +627,7 @@ export const MessageListView: React.FC = () => {
     const live = messages.find(message => message.id === id && !message.isDeleted);
     if (!live) { setToastMsg(t('search.unavailable')); setShowToast(true); return false; }
     ++scrollRevision.current; searchNavigation.current = true;
+    setShowScratchpad(false);
     setShowCollections(Boolean(live.collectedAt));
     if (live.collectedAt) setCollectionCategory(ALL_CATEGORY_ID);
     setSelectedCategoryId(categories.some(category => category.id === live.categoryId) ? live.categoryId! : ALL_CATEGORY_ID);
@@ -686,7 +692,8 @@ export const MessageListView: React.FC = () => {
               <LayoutGrid size={16} aria-hidden="true" />{t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
-            <button className={`category-chip ${showCollections ? 'active' : ''}`} aria-pressed={showCollections} onClick={() => { setShowCollections(true); setDrawerOpen(false); setSearchTarget(null); }}><Bookmark size={16} aria-hidden="true"/>{t('collections.title')}</button>
+            <button className={`category-chip ${showScratchpad ? 'active' : ''}`} aria-pressed={showScratchpad} onClick={()=>{setShowScratchpad(true);setDrawerOpen(false);}}><FileText size={16} aria-hidden="true"/>{t('scratch.title')}</button>
+            <button className={`category-chip ${!showScratchpad && showCollections ? 'active' : ''}`} aria-pressed={!showScratchpad && showCollections} onClick={() => { setShowScratchpad(false); setShowCollections(true); setDrawerOpen(false); setSearchTarget(null); }}><Bookmark size={16} aria-hidden="true"/>{t('collections.title')}</button>
             <div className="category-section-heading">
               <span>{t('message_category.section_title')}</span>
               <button type="button" onClick={()=>{setDrawerOpen(false);openSettings('categories')}} aria-label={t('message_list.manage_categories')} title={t('message_list.manage_categories')}>
@@ -696,9 +703,9 @@ export const MessageListView: React.FC = () => {
             {visibleSingleModeCategories.map((category) => (
               <button
                 key={category.id}
-                className={`category-chip has-badge color-${category.color} ${!showCollections && selectedCategoryId === category.id ? 'active' : ''}`}
+                className={`category-chip has-badge color-${category.color} ${!showScratchpad && !showCollections && selectedCategoryId === category.id ? 'active' : ''}`}
                 data-category-id={category.id}
-                aria-pressed={!showCollections && selectedCategoryId === category.id}
+                aria-pressed={!showScratchpad && !showCollections && selectedCategoryId === category.id}
                 onContextMenu={event => { event.preventDefault(); setCategoryMenu({ id: category.id, x: event.clientX, y: event.clientY, trigger: event.currentTarget }); }}
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
@@ -739,16 +746,17 @@ export const MessageListView: React.FC = () => {
       <main className="calm-main">
         <header className="header">
           {!compact && <SyncFeedback sequence={syncSequence} label={t('message_list.sync_success', 'Synced')}/>}
-          {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+(showCollections ? '' : ' · '+pending.length)}>
-            <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong>{!showCollections && <span>{pending.length}</span>}
+          {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+(showScratchpad || showCollections ? '' : ' · '+pending.length)}>
+            <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong>{!showScratchpad && !showCollections && <span>{pending.length}</span>}
           </button> : <div className="stream-heading"><h1 title={heading}>{heading}</h1>
-          {!showCollections && <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p>}</div>}
+          {!showScratchpad && !showCollections && <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p>}</div>}
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')} aria-keyshortcuts="Meta+r Control+r"><RotateCw size={18} strokeWidth={1.7} /></button>
-            {!showCollections && <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={desktopClearShortcut(window.syncaDesktop?.platform)?.aria} title={t('message_list.clear_completed') + (desktopClearShortcut(window.syncaDesktop?.platform) ? ` · ${desktopClearShortcut(window.syncaDesktop?.platform)!.keys.join(' ')}` : '')}><BroomIcon size={18} /></button>}
+            {!showScratchpad && !showCollections && <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={desktopClearShortcut(window.syncaDesktop?.platform)?.aria} title={t('message_list.clear_completed') + (desktopClearShortcut(window.syncaDesktop?.platform) ? ` · ${desktopClearShortcut(window.syncaDesktop?.platform)!.keys.join(' ')}` : '')}><BroomIcon size={18} /></button>}
           </div>
         </header>
+        {showScratchpad ? (userId ? <Scratchpad key={userId} account={userId}/> : <AppLoading/>) : <>
         {showCollections && <div className="collection-filter"><label>{t('collections.category')} <select value={collectionCategory} onChange={e=>{setCollectionCategory(e.target.value);setSearchTarget(null);}}>
           <option value={ALL_CATEGORY_ID}>{t('collections.all')}</option>{categories.map(category=><option key={category.id} value={category.id}>{category.isDefault?t('message_category.default_badge'):category.name}</option>)}
         </select></label><span>{t('collections.save_to', {name: categories.find(c=>c.id===activeSendCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c=>c.id===activeSendCategoryId)?.name})}</span></div>}
@@ -781,6 +789,7 @@ export const MessageListView: React.FC = () => {
           </div>
 
           <InputBar key={token} isCollected={showCollections} availableScopeIds={window.syncaDesktop ? undefined : [ALL_CATEGORY_ID, ...categories.map(category => category.id), `collection:${ALL_CATEGORY_ID}`, ...categories.map(category => `collection:${category.id}`)]} fallbackScopeId={defaultCategory?.id} scopeId={showCollections ? `collection:${collectionCategory}` : selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
+        </>}
       </main>
 
       {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={undefined} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}

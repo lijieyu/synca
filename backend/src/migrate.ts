@@ -320,7 +320,7 @@ export async function runMigrations() {
 
     const messageColumns = await sql<{ name: string }>`PRAGMA table_info(messages)`.execute(db);
     for (const [name, definition] of [
-        ['collected_at', 'TEXT'], ['attachment_expires_at', 'TEXT'], ['attachment_purged', 'INTEGER NOT NULL DEFAULT 0'],
+        ['scratchpad_asset', 'INTEGER NOT NULL DEFAULT 0'], ['collected_at', 'TEXT'], ['attachment_expires_at', 'TEXT'], ['attachment_purged', 'INTEGER NOT NULL DEFAULT 0'],
     ]) {
         if (!messageColumns.rows.some(column => column.name === name)) {
             await sql.raw(`ALTER TABLE messages ADD COLUMN ${name} ${definition}`).execute(db);
@@ -333,6 +333,14 @@ export async function runMigrations() {
     )`.execute(db);
     await sql`CREATE INDEX IF NOT EXISTS idx_upload_user ON upload_reservations(user_id)`.execute(db);
 
+    await sql`CREATE TABLE IF NOT EXISTS scratchpads (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL,
+        revision INTEGER NOT NULL, updated_at TEXT NOT NULL, mutation_id TEXT NOT NULL
+    )`.execute(db);
+    await sql`CREATE TABLE IF NOT EXISTS scratchpad_conflicts (
+        id TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id,id)
+    )`.execute(db);
     await sql`CREATE TABLE IF NOT EXISTS ai_connections (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
         token_hash TEXT UNIQUE NOT NULL, scopes TEXT NOT NULL, created_at TEXT NOT NULL,
