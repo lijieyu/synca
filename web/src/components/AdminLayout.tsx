@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { RefreshCcw, LogOut, User, MessageSquare, BarChart3, Heart, CreditCard } from 'lucide-react';
 import { Modal } from './Modal';
+import { AdminLoginMethods } from './AdminLoginMethods';
 
 export const AdminLayout: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -140,12 +141,10 @@ export const AdminLayout: React.FC = () => {
                     {stats?.users?.slice().sort((a: any, b: any) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()).map((u: any) => (
                       <tr key={u.id}>
                         <td>
-                          <div style={{ fontWeight: 500 }}>
-                            {u.nickname !== 'Synca 用户' ? u.nickname : (u.email || 'Anonymous')}
+                          <div className="admin-user-email">
+                            <AdminLoginMethods methods={u.loginMethods} />
+                            <span>{u.email || 'Anonymous'}</span>
                           </div>
-                          {u.nickname !== 'Synca 用户' && u.email && (
-                            <div style={{ fontSize: '12px', opacity: 0.7 }}>{u.email}</div>
-                          )}
                           <div style={{ fontSize: '11px', opacity: 0.5 }}>{u.id}</div>
                         </td>
                         <td>

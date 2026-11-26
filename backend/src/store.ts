@@ -1221,6 +1221,7 @@ export async function getAdminUserList() {
     // We join users with message counts and last activity
     const users = await db.selectFrom('users')
         .selectAll()
+        .select(sql<number>`EXISTS (SELECT 1 FROM email_identities WHERE email_identities.user_id = users.id)`.as('has_email_login'))
         .execute();
 
     const result = [];
@@ -1246,6 +1247,10 @@ export async function getAdminUserList() {
         result.push({
             id: u.id,
             email: u.email,
+            loginMethods: [
+                ...(u.apple_user_id ? ['apple' as const] : []),
+                ...(u.has_email_login ? ['email' as const] : []),
+            ],
             plan,
             todoCount: Number(msgCount?.count ?? 0),
             lastActive: lastMsg?.created_at ?? u.created_at,
