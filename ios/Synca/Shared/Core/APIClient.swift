@@ -563,6 +563,8 @@ final class APIClient: ObservableObject {
         return request
     }
 
+    func getStoreReleases() async throws -> StoreReleases { try await get("/app-updates", authenticated: false) }
+
     func getScratchpad() async throws -> ScratchDocument { try await get("/scratchpad") }
     func saveScratchpad(_ draft: ScratchDraft) async throws -> ScratchDocument {
         try await put("/scratchpad", body: ["content":draft.content, "expectedRevision":draft.revision,

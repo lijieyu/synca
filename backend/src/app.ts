@@ -1,3 +1,4 @@
+import { appReleases } from './appReleases.js';
 import {readScratchpad, writeScratchpad, scratchpadImages, deleteScratchpadImage} from './scratchpad.js';
 import { notifySync, openSyncStream, syncState } from './syncEvents.js';
 import { isEmailAuthConfigured } from './emailAuth.js';
@@ -451,6 +452,11 @@ app.delete('/message-categories/:id', auth, async (req, res) => {
 
     notifyOtherDevices(getUserId(req), req.header('Authorization')).catch(() => {});
     res.json({ ok: true });
+});
+
+app.get('/app-updates', async (_req,res) => {
+    try { res.set('Cache-Control','public, max-age=300').json(await appReleases()); }
+    catch { res.status(503).json({error:'release_catalog_unavailable'}); }
 });
 
 app.get('/scratchpad', auth, async (req, res, next) => {

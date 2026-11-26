@@ -526,3 +526,21 @@
 "scratch.image_in_use" = "圖片仍被草稿或衝突副本引用，或刪除暫時失敗。";
 "scratch.editor" = "Markdown 草稿";
 "scratch.placeholder" = "在這裡隨時接著寫…\n支援 Markdown，也可以貼上或插入圖片。";
+
+// Update reminders
+"updates.idle" = "檢查是否有新版本";
+"updates.checking" = "正在檢查更新…";
+"updates.current" = "已是最新版本";
+"updates.available" = "Synca {{version}} 可更新";
+"updates.available_native" = "Synca %@ 可更新";
+"updates.downloading" = "正在下載更新…";
+"updates.ready" = "更新已下載，可以重新啟動安裝";
+"updates.installing" = "正在重新啟動安裝…";
+"updates.error" = "暫時無法檢查或下載更新，請重試。";
+"updates.store" = "前往商店更新";
+"updates.download" = "下載更新";
+"updates.restart" = "重新啟動並安裝";
+"updates.check" = "檢查更新";
+"updates.later" = "稍後提醒";
+"updates.migration" = "此次更新將遷移到安裝版，保留帳號和本機資料。";
+"updates.finish_edit" = "請先完成目前編輯或上傳，再重新啟動更新。";

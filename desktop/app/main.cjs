@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
+const {installUpdater,squirrelEvent}=require('./updater.cjs')
 const {requestInstance}=require('./instance.cjs')
 
 const marker = path.join(__dirname, 'preview-build.json')
@@ -119,11 +120,12 @@ function createWindow() {
   })
   window.on('close', event => { if(!quitting){event.preventDefault();window.hide()} })
   installPlatform(window,session.defaultSession,restore,showSettings,cfg)
+  installUpdater(window,cfg,identity.version,()=>{quitting=true})
   window.on('closed', () => { mainWindow = undefined })
   void window.loadURL(home).catch(() => {})
 }
 
-if (!requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
+if (squirrelEvent(app) || !requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
 else {
   app.on('second-instance', () => {
     if (app.isReady()) void openWorkspace()
@@ -132,7 +134,7 @@ else {
     installLocalUI(session.defaultSession,cfg)
     if (cfg.isolated) session.defaultSession.webRequest.onBeforeRequest((details, done) =>
       done({ cancel: !cfg.allows(details.url) && !/^(?:data|blob|devtools):/.test(details.url) }))
-    app.setAppUserModelId(cfg.bundleId)
+    app.setAppUserModelId(process.platform==='win32' && fs.existsSync(require('./update-policy.cjs').installerPath(process.execPath)) ? 'com.squirrel.Synca.Synca Electron' : cfg.bundleId)
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     session.defaultSession.setPermissionCheckHandler(() => false)
     const clearCompletedItem = {id:'clear-completed',label:app.getLocale().startsWith('zh')?'清除已完成…':'Clear Completed…',

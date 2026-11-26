@@ -1,3 +1,4 @@
+import { UpdateNotice } from './UpdateNotice';
 import { FileText } from 'lucide-react';
 import { Scratchpad } from './Scratchpad';
 import { createChangeNotifications } from '../utils/changeNotifications';
@@ -744,6 +745,7 @@ export const MessageListView: React.FC = () => {
         onDelete={() => setCategoryManagerDeleteTarget({ ...menuCategory, clientId: menuCategory.id })} />}
       {compact ? <MobileCategoryDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)}>{sidebar}</MobileCategoryDrawer> : sidebar}
       <main className="calm-main">
+        <UpdateNotice/>
         <header className="header">
           {!compact && <SyncFeedback sequence={syncSequence} label={t('message_list.sync_success', 'Synced')}/>}
           {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+(showScratchpad || showCollections ? '' : ' · '+pending.length)}>

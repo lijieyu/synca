@@ -585,5 +585,23 @@
     "image_in_use": "The image is used by the scratchpad or a conflict copy, or deletion failed.",
     "editor": "Markdown scratchpad",
     "placeholder": "Pick up where you left off…\nWrite Markdown, or paste and insert images."
+  },
+  "updates": {
+    "idle": "Check for a new version",
+    "checking": "Checking for updates…",
+    "current": "You’re up to date",
+    "available": "Synca {{version}} is available",
+    "available_native": "Synca %@ is available",
+    "downloading": "Downloading update…",
+    "ready": "Update downloaded. Ready to restart.",
+    "installing": "Restarting to install…",
+    "error": "Unable to check or download updates. Please retry.",
+    "store": "Update in App Store",
+    "download": "Download update",
+    "restart": "Restart and install",
+    "check": "Check for updates",
+    "later": "Remind me later",
+    "migration": "This update moves to the installed app and keeps your account and local data.",
+    "finish_edit": "Finish editing or uploading before restarting to update."
   }
 }

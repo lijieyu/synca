@@ -19,6 +19,7 @@ if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
     version:process.argv.find(value=>value.startsWith('--synca-version='))?.slice('--synca-version='.length) ?? '',
     build:process.argv.find(value=>value.startsWith('--synca-build='))?.slice('--synca-build='.length) ?? '', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
+    ...(!preview ? {updateState:()=>ipcRenderer.invoke('desktop:update-state'), updateAction:action=>ipcRenderer.invoke('desktop:update-action',action)} : {}),
     recordMenu:options=>ipcRenderer.invoke('desktop:record-menu',options),
     copyRecord:options=>ipcRenderer.invoke('desktop:copy-record',options),
     preferences:()=>ipcRenderer.invoke('desktop:preferences'),
@@ -28,7 +29,7 @@ if (process.isMainFrame && location.origin === origin) {
     clearCompletedAvailable:available=>ipcRenderer.send('desktop:clear-available',available),
     session:token=>ipcRenderer.send('desktop:session',token),
     subscribe:(name,fn)=>{
-      if (!['settings','refresh','sync','clear-completed'].includes(name)) throw Error('Unknown desktop event')
+      if (!['settings','refresh','sync','clear-completed','update'].includes(name)) throw Error('Unknown desktop event')
       const listener=()=>fn()
       ipcRenderer.on('desktop:'+name,listener)
       return ()=>ipcRenderer.removeListener('desktop:'+name,listener)

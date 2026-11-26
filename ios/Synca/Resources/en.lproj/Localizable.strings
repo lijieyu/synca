@@ -526,3 +526,21 @@
 "scratch.image_in_use" = "The image is used by the scratchpad or a conflict copy, or deletion failed.";
 "scratch.editor" = "Markdown scratchpad";
 "scratch.placeholder" = "Pick up where you left off…\nWrite Markdown, or paste and insert images.";
+
+// Update reminders
+"updates.idle" = "Check for a new version";
+"updates.checking" = "Checking for updates…";
+"updates.current" = "You’re up to date";
+"updates.available" = "Synca {{version}} is available";
+"updates.available_native" = "Synca %@ is available";
+"updates.downloading" = "Downloading update…";
+"updates.ready" = "Update downloaded. Ready to restart.";
+"updates.installing" = "Restarting to install…";
+"updates.error" = "Unable to check or download updates. Please retry.";
+"updates.store" = "Update in App Store";
+"updates.download" = "Download update";
+"updates.restart" = "Restart and install";
+"updates.check" = "Check for updates";
+"updates.later" = "Remind me later";
+"updates.migration" = "This update moves to the installed app and keeps your account and local data.";
+"updates.finish_edit" = "Finish editing or uploading before restarting to update.";

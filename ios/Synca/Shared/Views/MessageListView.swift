@@ -297,6 +297,11 @@ struct MessageListView: View {
 
     var body: some View {
         workspaceNavigation
+        .safeAreaInset(edge: .bottom, spacing: 0) { StoreUpdateNotice() }
+        .task {
+            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            await StoreUpdateManager.shared.check()
+        }
         #if os(iOS)
         .accessibilityHidden(drawerOpen)
         .allowsHitTesting(!drawerOpen)
@@ -3585,6 +3590,7 @@ struct AboutSyncaSheet: View {
                         Text(versionText).font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.frame(maxWidth: .infinity).padding(.top, 0)
+                StoreUpdateNotice(manual: true)
                 Text(String(syncaLocalized: "app.slogan", bundle: .main))
                     .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 VStack(spacing: 12) {

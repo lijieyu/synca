@@ -1,3 +1,4 @@
+import { UpdateNotice } from './UpdateNotice';
 import { useEmailAvailability } from '../auth/useEmailAvailability';
 import { LoginMethods } from './LoginMethods';
 import { DeveloperSocialLink } from './DeveloperSocialLink';
@@ -123,6 +124,7 @@ export function ShellPanel({ kind, email, onClose, onLogout, inline, accountPage
     </div>}
     {kind === 'about' && <div className="about-panel">
       <div className="about-identity"><img src="/logo.png?v=a2" alt="" width={48} height={48} /><div><h4>Synca</h4><p>{window.syncaDesktop?.platform ?? t('navigation.web')} · {window.syncaDesktop ? `${window.syncaDesktop.version}${window.syncaDesktop.build ? ` (${window.syncaDesktop.build})` : ''}` : webRelease}</p></div></div>
+      <UpdateNotice manual/>
       <p className="about-description">{t('app.slogan')}</p>
       <nav className="about-links" aria-label={t('message_list.about')}>
         <a href={`/${locale}/privacy-policy`} target="_blank" rel="noopener noreferrer">{t('navigation.privacy')}<ArrowUpRight size={16} aria-hidden="true" /></a>

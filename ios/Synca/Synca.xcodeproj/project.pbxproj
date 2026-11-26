@@ -32,6 +32,7 @@
 		3DA6CC99F925197F6A81B479 /* ImagePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C443E869542BFAC55FE508 /* ImagePayload.swift */; };
 		469BCD5C3A88D031D09DC9B5 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC41A2920E4F23AD06E4ED3 /* Colors.swift */; };
 		46C8499654425F9E7267E2E8 /* MacSelectableText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FB09E899EF580EA655ABD32 /* MacSelectableText.swift */; };
+		4A805B96B0183593AAE8CFC8 /* AppUpdate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB0EFE2A91C4BE956398CA9 /* AppUpdate.swift */; };
 		4C15C5535484F9E97B8C3F91 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343DDA8855897A304AD57A8E /* SettingsManager.swift */; };
 		C10B81D5B20397C6072C61C6 /* EmbeddedAISession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52248271C5FE0022FFEBE74 /* EmbeddedAISession.swift */; };
 		4EC8950E05CA871DBE19B428 /* PasteAwareTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA69B1180D5A87EE290F4E1C /* PasteAwareTextView.swift */; };
@@ -112,6 +113,7 @@
 		621DE4AB3E34B64E389A488B /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E704900AB7D4E36E2EC1C8B0 /* ScratchpadView.swift */; };
 		A974C13CDAD794B5090DDE52 /* LoginMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 433FB1024BE83661B63550B2 /* LoginMethodsView.swift */; };
 		FEF4D597D39A8D3AE15F2E43 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD4593423B04D33BB6703900 /* EmailLoginView.swift */; };
+		FFBC421D65A0103A5FD58030 /* AppUpdate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB0EFE2A91C4BE956398CA9 /* AppUpdate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -143,6 +145,7 @@
 		7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		7CA8F92004259A6E22176A45 /* SyncDebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDebugLogger.swift; sourceTree = "<group>"; };
 		7E303199D1B3CC0E8B523373 /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
+		7FB0EFE2A91C4BE956398CA9 /* AppUpdate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdate.swift; sourceTree = "<group>"; };
 		89039A9E9399426CB387B3BD /* Synca.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Synca.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		891CF9713534ED8E2977AA0E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		8C0C58D8B5A443199CE8FE0F /* SaveFailurePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveFailurePresentation.swift; sourceTree = "<group>"; };
@@ -290,6 +293,7 @@
 				DCD82BEB61C9FD499168F3E0 /* AccessManager.swift */,
 				56C5DCEF981E4EB4CB624A02 /* APIClient.swift */,
 				F738F8804D71775824642ECA /* AppLinks.swift */,
+				7FB0EFE2A91C4BE956398CA9 /* AppUpdate.swift */,
 				AB23AAFFE4E12583F9ADF0BC /* EmailAuthModel.swift */,
 				7B67C73FE48E92ABF0FE9F68 /* AuthService.swift */,
 				59A75DF29F39A3101A840136 /* DeviceInfo.swift */,
@@ -441,6 +445,7 @@
 				0CBF97B7BCA9EEBF456C2B7D /* ScratchpadStore.swift in Sources */,
 				146A6CD065CCD2601B09614D /* ScratchpadView.swift in Sources */,
 				327CB396A90A43449F4CAAAA /* AppSettingsView.swift in Sources */,
+				FFBC421D65A0103A5FD58030 /* AppUpdate.swift in Sources */,
 				7B65706CEA0F08B118AE81A0 /* AIConnectionView.swift in Sources */,
 				1B9E8569C64B852288CD04DA /* AccountSheet.swift in Sources */,
 				FA4BD0B10B94F90D70F4F844 /* APIClient.swift in Sources */,
@@ -498,6 +503,7 @@
 				D32AA988EF8076C3948E0B18 /* ScratchpadStore.swift in Sources */,
 				621DE4AB3E34B64E389A488B /* ScratchpadView.swift in Sources */,
 				45FC08000364FC08A81B1662 /* AppSettingsView.swift in Sources */,
+				4A805B96B0183593AAE8CFC8 /* AppUpdate.swift in Sources */,
 				92600CF23DC46BF56724B87F /* AIConnectionView.swift in Sources */,
 				81692EAEC08E5742C10D4EC8 /* AccountSheet.swift in Sources */,
 				1F55C1860A50C27B34C64B73 /* APIClient.swift in Sources */,

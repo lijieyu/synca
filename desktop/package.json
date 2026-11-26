@@ -2,6 +2,7 @@
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "electron": "45.3.2",
+    "electron-winstaller": "5.4.4",
     "playwright-core": "1.65.1"
   },
   "name": "synca-electron-build",
@@ -12,6 +13,7 @@
     "build:mac": "node build-ui.mjs && node build.mjs darwin",
     "build:mac:preview": "node build-ui.mjs && node build.mjs darwin preview",
     "build:mac:local-preview": "node build-ui.mjs && node build.mjs darwin local-preview",
-    "build:ui": "node build-ui.mjs"
+    "build:ui": "node build-ui.mjs",
+    "build:windows:installer": "node build-windows-installer.mjs"
   }
 }

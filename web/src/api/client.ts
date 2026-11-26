@@ -131,6 +131,8 @@ class APIClient {
   constructor() {
     if (typeof window !== 'undefined' && 'caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
+  canRestartForUpdate(): boolean { return this.editingDrafts.size === 0 && this.pendingUploads === 0; }
+  private pendingUploads = 0;
   private readonly editingDrafts = new Set<() => void>();
   private pendingSessionReload = false;
 
@@ -412,11 +414,13 @@ class APIClient {
   }
 
   private async upload(path: string, form: FormData, file: File, options?: UploadOptions): Promise<SyncaMessage> {
+    this.pendingUploads++;
+    try {
     form.set('isCollected', String(options?.isCollected ?? false));
     const size = file.size;
     const uploadID = this.uploadIDs.get(file) ?? crypto.randomUUID();
     this.uploadIDs.set(file, uploadID);
-    if (!options) return this.fetch(path, { method: 'POST', body: form, headers: { 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
+    if (!options) return await this.fetch(path, { method: 'POST', body: form, headers: { 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
     const requestToken = this.token;
     const response = await new Promise<Response>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -439,6 +443,7 @@ class APIClient {
       xhr.send(form);
     });
     return this.decodeResponse(response, requestToken);
+    } finally { this.pendingUploads--; }
   }
 
   async getProtectedFileBlob(url: string, options: AttachmentOptions = {}): Promise<Blob> {

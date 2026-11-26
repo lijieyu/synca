@@ -585,5 +585,23 @@
     "image_in_use": "图片仍被草稿或冲突副本引用，或删除暂时失败。",
     "editor": "Markdown 草稿",
     "placeholder": "在这里随时接着写…\n支持 Markdown，也可以粘贴或插入图片。"
+  },
+  "updates": {
+    "idle": "检查是否有新版本",
+    "checking": "正在检查更新…",
+    "current": "已是最新版本",
+    "available": "Synca {{version}} 可更新",
+    "available_native": "Synca %@ 可更新",
+    "downloading": "正在下载更新…",
+    "ready": "更新已下载，可以重启安装",
+    "installing": "正在重启安装…",
+    "error": "暂时无法检查或下载更新，请重试。",
+    "store": "前往商店更新",
+    "download": "下载更新",
+    "restart": "重启并安装",
+    "check": "检查更新",
+    "later": "稍后提醒",
+    "migration": "此次更新将迁移到安装版，保留账号和本机资料。",
+    "finish_edit": "请先完成当前编辑或上传，再重启更新。"
   }
 }
