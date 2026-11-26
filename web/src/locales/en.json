@@ -603,5 +603,13 @@
     "later": "Remind me later",
     "migration": "This update moves to the installed app and keeps your account and local data.",
     "finish_edit": "Finish editing or uploading before restarting to update."
+  },
+  "capture": {
+    "title": "Screenshot",
+    "shortcut": "Capture shortcut",
+    "help": "Focus the field and press a new key combination.",
+    "conflict": "The shortcut is unavailable. Your previous setting is kept. Try another combination.",
+    "description": "Select a window or region, annotate, then copy or save.",
+    "start": "Capture screen"
   }
 }

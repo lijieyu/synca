@@ -1,3 +1,4 @@
+import {buildCaptureHelper} from './build-capture-helper.mjs'
 import { releaseVersion } from './release-version.mjs'
 import { packager } from '@electron/packager'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -34,6 +35,7 @@ for (const [platform, arch] of targets) {
   const resources = platform === 'darwin' ? path.join(directory, cfg.name+'.app/Contents/Resources') : path.join(directory, 'resources')
   await writeFile(path.join(resources, 'build-info.json'), JSON.stringify(identity))
   if (platform === 'darwin') {
+    await buildCaptureHelper(resources)
     const bundle = path.join(directory, cfg.name + '.app')
     execFileSync('codesign', ['--force', '--deep', '--sign', '-', bundle])
     execFileSync('codesign', ['--verify', '--deep', '--strict', bundle])

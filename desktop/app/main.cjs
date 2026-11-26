@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
+const {installCapture}=require('./capture/main.cjs')
 const {installUpdater,squirrelEvent}=require('./updater.cjs')
 const {requestInstance}=require('./instance.cjs')
 
@@ -39,7 +40,7 @@ const apple = 'https://appleid.apple.com'
 let quitting = false
 app.on('before-quit',()=>{quitting=true})
 const preferences = { sandbox: true, contextIsolation: true, nodeIntegration: false, webviewTag: false }
-let mainWindow, opening
+let mainWindow, opening, capture
 async function openWorkspace(){
   if(mainWindow)return restore()
   if(!opening)opening=(async()=>{
@@ -121,6 +122,7 @@ function createWindow() {
   window.on('close', event => { if(!quitting){event.preventDefault();window.hide()} })
   installPlatform(window,session.defaultSession,restore,showSettings,cfg)
   installUpdater(window,cfg,identity.version,()=>{quitting=true})
+  capture=installCapture(window,cfg)
   window.on('closed', () => { mainWindow = undefined })
   void window.loadURL(home).catch(() => {})
 }
@@ -144,6 +146,7 @@ else {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {label:process.platform==='darwin'?cfg.name:'File',submenu:[
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
+        {label:app.getLocale().startsWith('zh')?'截图':'Capture Screen',click:()=>void capture?.start()},
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
         ...(process.platform==='darwin'?[{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'}]:[]),
         ...(process.platform!=='darwin'?[clearCompletedItem,{type:'separator'},{role:'close'}]:[]),

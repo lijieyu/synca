@@ -1,3 +1,4 @@
+import {buildCaptureHelper} from './build-capture-helper.mjs';
 import { releaseVersion } from './release-version.mjs'
 import {packager} from '@electron/packager';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -39,6 +40,7 @@ const [out]=await packager({dir:'app',out:output,name:'Synca',platform:'mas',arc
  extendInfo:{NSAppTransportSecurity:{},ITSAppUsesNonExemptEncryption:false},
  afterCopy:[({buildPath})=>writeFile(path.join(buildPath,'preview-build.json'),JSON.stringify({mode}))],
 });
+await buildCaptureHelper(path.join(out,'Synca.app/Contents/Resources'));
 await writeFile(path.join(out,'Synca.app/Contents/Resources/build-info.json'),JSON.stringify(identity));
 execFileSync('/bin/bash',[path.resolve('mas/assert-export-compliance.sh'),path.join(out,'Synca.app/Contents/Info.plist')],{stdio:'inherit'});
 // Preserve the Electron app/binaries. Only the separate Xcode wrapper input

@@ -1,3 +1,4 @@
+import { CaptureSettings } from './CaptureSettings';
 import { SettingsSelect } from './SettingsSelect';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { SettingsSurface, type SettingsAction } from './SettingsSurface';
@@ -46,6 +47,9 @@ declare global {
       platform: string;
       version: string;
       build?: string;
+      captureSettings?: () => Promise<{shortcut:string;error:boolean}>;
+      captureShortcut?: (shortcut:string) => Promise<{shortcut:string;error:boolean}>;
+      captureStart?: () => Promise<unknown>;
       updateState?: () => Promise<import('./UpdateNotice').UpdateState>;
       updateAction?: (action: 'check' | 'download' | 'install') => Promise<import('./UpdateNotice').UpdateState>;
       recordMenu?: (options: RecordMenuOptions) => Promise<string | null>;
@@ -338,6 +342,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                     />
                   </label>
                   </div>
+                  <CaptureSettings/>
                   <h3>{t('review.page.downloads')}</h3>
                   <div className="settings-pref-group">
                   <label>
