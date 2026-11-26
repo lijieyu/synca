@@ -1,4 +1,6 @@
-import {beforeAll,beforeEach,it,expect} from 'vitest';
+import fs from 'node:fs/promises';
+import {cleanupExpiredAttachments} from '../src/storage.js';
+import {beforeAll,beforeEach,it,expect,vi} from 'vitest';
 import request from 'supertest';
 import {randomUUID} from 'node:crypto';
 import app from '../src/app.js';
@@ -47,4 +49,26 @@ it('preserves the cloud version when resolving and isolates other accounts',asyn
  expect((await auth(request(app).get('/scratchpad/conflicts'))).body.conflicts).toHaveLength(0);
  await auth(request(app).delete(`/scratchpad/conflicts/${copies[0].id}`));
  token=firstToken;expect((await auth(request(app).get('/scratchpad/conflicts'))).body.conflicts).toHaveLength(1);
+});
+it('keeps the latest cloud page unchanged when preserving local text for cloud resolution',async()=>{
+ await save('First cloud',0);await save('Newer third-device edit',1);
+ const copy=await auth(request(app).post('/scratchpad/conflicts')).send({content:'My offline writing',mutationId:randomUUID()});
+ expect(copy.status).toBe(200);expect(copy.body.content).toBe('Newer third-device edit');expect(copy.body.revision).toBe(2);
+ expect((await auth(request(app).get('/scratchpad'))).body.content).toBe('Newer third-device edit');
+ expect((await auth(request(app).get('/scratchpad/conflicts'))).body.conflicts.map((c:any)=>c.content)).toContain('My offline writing');
+});
+it('rejects scratchpad writes intended for an account different from the active token',async()=>{
+ const response=await auth(request(app).put('/scratchpad')).set('X-Synca-Account',randomUUID()).send({content:'Wrong account draft',expectedRevision:0,mutationId:randomUUID()});
+ expect(response.status).toBe(409);expect((await auth(request(app).get('/scratchpad'))).body.content).toBe('');
+});
+
+it('retries scratchpad image deletion after a transient disk failure',async()=>{
+ const upload=await auth(request(app).post('/scratchpad/images')).set('X-Upload-Size','4').attach('image',Buffer.from('test'),'retry.png');
+ expect(upload.status).toBe(201);const id=upload.body.id;
+ const unlink=vi.spyOn(fs,'unlink').mockRejectedValueOnce(Object.assign(new Error('busy'),{code:'EBUSY'}));
+ try{expect((await auth(request(app).delete(`/scratchpad/images/${id}`))).status).toBe(200);}finally{unlink.mockRestore();}
+ const queued=await db.selectFrom('messages').selectAll().where('id','=',id).executeTakeFirstOrThrow();
+ expect(queued.attachment_expires_at).not.toBeNull();expect(queued.attachment_purged).toBe(2);
+ await cleanupExpiredAttachments();
+ expect((await db.selectFrom('messages').selectAll().where('id','=',id).executeTakeFirstOrThrow()).attachment_purged).toBe(1);
 });

@@ -1,5 +1,5 @@
 import { appReleases } from './appReleases.js';
-import {readScratchpad, writeScratchpad, scratchpadImages, deleteScratchpadImage} from './scratchpad.js';
+import {readScratchpad, writeScratchpad, preserveScratchpadCopy, scratchpadImages, deleteScratchpadImage} from './scratchpad.js';
 import { notifySync, openSyncStream, syncState } from './syncEvents.js';
 import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
@@ -42,7 +42,7 @@ app.use(requestContext);
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'X-Synca-Client', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'X-Synca-Client', 'X-Synca-Features', 'X-Synca-Account', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
     exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id', 'X-Request-ID'],
 }));
 
@@ -459,6 +459,17 @@ app.get('/app-updates', async (_req,res) => {
     catch { res.status(503).json({error:'release_catalog_unavailable'}); }
 });
 
+// Bind every scratchpad operation (including uploads) to its originating account.
+app.use('/scratchpad', auth, (req,res,next) => {
+    const account = req.header('X-Synca-Account');
+    if (account && account !== getUserId(req)) return res.status(409).json({error:'scratchpad_account_changed'});
+    next();
+});
+app.post('/scratchpad/conflicts', async(req,res,next)=>{
+    const parsed=z.object({content:z.string().max(250000),mutationId:z.string().uuid()}).strict().safeParse(req.body);
+    if(!parsed.success)return res.status(400).json({error:'invalid_payload'});
+    try{res.json(await preserveScratchpadCopy(getUserId(req),parsed.data));}catch(error){next(error);}
+});
 app.get('/scratchpad', auth, async (req, res, next) => {
     try { res.json(await readScratchpad(getUserId(req))); } catch(error) { next(error); }
 });

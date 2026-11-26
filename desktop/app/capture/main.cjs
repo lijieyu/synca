@@ -78,13 +78,16 @@ function installCapture(mainWindow,cfg,services={}){
   try{
    if(!['copy','save'].includes(value?.action))throw Error('Invalid action');validateSelection(value,entry.display);
    if(typeof value.png!=='string'||!value.png.startsWith('data:image/png;base64,')||value.png.length>160*1024*1024)throw Error('Invalid image');
-   const bytes=Buffer.from(value.png.slice(22),'base64');const image=nativeImage.createFromBuffer(bytes);const expected=pixels(value.rect,entry.size,entry.display),size=image.getSize();
+   const bytes=Buffer.from(value.png.slice(22),'base64');
+   const expected=pixels(value.rect,entry.size,entry.display);
+   if(bytes.length<33||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||bytes.readUInt32BE(8)!==13||bytes.toString('ascii',12,16)!=='IHDR'||bytes.readUInt32BE(16)!==expected.width||bytes.readUInt32BE(20)!==expected.height||expected.width*expected.height>40000000)throw Error('Invalid PNG');
+   const image=nativeImage.createFromBuffer(bytes);const size=image.getSize();
    if(image.isEmpty()||size.width!==expected.width||size.height!==expected.height)throw Error('Invalid crop size');
    if(value.action==='copy'){(services.clipboard??clipboard).writeImage(image);cancel();return{ok:true};}
    for(const item of state.entries)item.window.setAlwaysOnTop(false);
    const result=await (services.dialog??dialog).showSaveDialog(entry.window,{defaultPath:path.join(app.getPath('pictures'),`Synca-${new Date().toISOString().replace(/[:.]/g,'-')}.png`),filters:[{name:'PNG',extensions:['png']}]});
-   if(result.canceled||!result.filePath)return{cancelled:true};
-   await fs.writeFile(result.filePath,bytes);cancel();return{ok:true};
+   if(active!==state||result.canceled||!result.filePath)return{cancelled:true};
+   await fs.writeFile(result.filePath,image.toPNG());if(active===state)cancel();return{ok:true};
   }catch{return{error:true};}finally{state.finishing=false;if(active===state)for(const item of state.entries)if(!item.window.isDestroyed())item.window.setAlwaysOnTop(true,'screen-saver');}
  });
  mainWindow.on('closed',()=>{cancel();globalShortcut.unregister(shortcut);ipcMain.removeListener('capture:cancel',onCancel);for(const channel of ['desktop:capture-settings','desktop:capture-shortcut','desktop:capture-start','capture:load','capture:finish'])ipcMain.removeHandler(channel);});

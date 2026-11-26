@@ -13,6 +13,9 @@ import Foundation
   let blocks = ScratchBlock.parse("Before\n![](synca-image:01234567-0123-0123-0123-012345678901)\nAfter")
   precondition(blocks.count == 3 && blocks[1].imageID != nil && blocks[2].text.contains("After"))
   precondition(ScratchBlock.parse("![](https://example.com/tracker.png)").allSatisfy { $0.imageID == nil })
+  let paragraphs = ScratchParagraph.parse("# Heading\n\nBody **bold**\n\n```swift\n# code is literal\n```\n> Quote")
+  precondition(paragraphs.map(\.kind) == [.heading(1),.body,.code,.quote])
+  precondition(paragraphs[2].text == "# code is literal")
   print("PASS: in-flight typing, offline preservation, cache roundtrip and owned image parsing")
  }
 }

@@ -26,7 +26,7 @@ function installLocalUI(ses,cfg){
   })
 }
 // The walkthrough transport cannot talk to the preview website or production.
-const localRoute = /^(?:\/(?:auth\/email\/(?:code|verify)|me(?:[\/]|$)|messages(?:[\/]|$)|message-categories(?:[\/]|$)|api\/media(?:[\/]|$)|__local-test-outbox$))/
+const localRoute = /^(?:\/(?:auth\/email\/(?:code|verify)|me(?:[\/]|$)|messages(?:[\/]|$)|scratchpad(?:[\/]|$)|app-updates$|sync(?:[\/]|$)|message-categories(?:[\/]|$)|api\/media(?:[\/]|$)|__local-test-outbox$))/
 async function localRequest(cfg,url,request){
   if(!localRoute.test(url.pathname))return new Response(null,{status:404})
   try{
@@ -34,13 +34,30 @@ async function localRequest(cfg,url,request){
     const headers=new Headers({'X-Synca-Local-Admission': admission})
     const health=await fetch(cfg.upstream+'/__local-test-health',{headers,redirect:'error',signal:AbortSignal.timeout(2000)})
     if(!health.ok||(await health.json()).purpose!=='synca-electron-local-preview')throw Error('Wrong fixture')
-    for(const key of ['authorization','content-type','accept']){
+    for(const key of ['authorization','content-type','accept','x-synca-features','x-synca-account','x-upload-size','x-upload-id']){
       const value=request.headers.get(key)
       if(value)headers.set(key,value)
     }
     const body=['GET','HEAD'].includes(request.method)?undefined:request.body
-    return await fetch(cfg.upstream+url.pathname+url.search,{method:request.method,headers,body,
+    const response=await fetch(cfg.upstream+url.pathname+url.search,{method:request.method,headers,body,
       ...(body ? {duplex:'half'} : {}),redirect:'error',signal:AbortSignal.timeout(30000)})
+    return localMediaResponse(response,cfg)
   }catch{return Response.json({error:'email_unavailable'},{status:503})}
 }
-module.exports={installLocalUI,localRequest}
+// Electron fetch owns Host. Project only API-generated media fields to the virtual origin.
+async function localMediaResponse(response,cfg){
+  if(!response.headers.get('content-type')?.includes('application/json'))return response
+  const payload=await response.json()
+  function visit(value){
+    if(!value||typeof value!=='object')return
+    for(const [key,child] of Object.entries(value)){
+      if(['imageUrl','fileUrl'].includes(key)&&typeof child==='string'){
+        try{const url=new URL(child);if(url.origin===new URL(cfg.upstream).origin&&url.pathname.startsWith('/api/media/'))value[key]=cfg.home+url.pathname+url.search}catch{}
+      }else visit(child)
+    }
+  }
+  visit(payload)
+  const headers=new Headers(response.headers);headers.delete('content-length');headers.delete('content-encoding')
+  return new Response(JSON.stringify(payload),{status:response.status,headers})
+}
+module.exports={installLocalUI,localRequest,localMediaResponse}

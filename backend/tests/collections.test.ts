@@ -98,3 +98,6 @@ it('enforces legacy protection in conditional writes after the HTTP guard', asyn
  expect(edited.status).toBe(200);expect(edited.body.collectedAt).toBeTruthy();
  expect((await modern(request(app).delete(`/messages/${m.id}`))).status).toBe(200);
 });
+it('excludes long-term material from the server badge count',async()=>{
+ await record(true);const state=await modern(request(app).get('/sync/state'));expect(state.body.count).toBe(0);
+});

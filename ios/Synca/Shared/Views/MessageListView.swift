@@ -1677,6 +1677,11 @@ struct MessageListView: View {
 
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: 6) {
+        if syncManager.showingCollections {
+            let target = syncManager.categories.first { $0.id == activeSendCategoryId } ?? syncManager.categories.first { $0.isDefault }
+            Text(String(format: String(syncaLocalized: "collections.save_to"), target?.isDefault == true ? String(syncaLocalized: "message_category.default_badge") : (target?.name ?? String(syncaLocalized: "message_category.default_badge"))))
+                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 8)
+        }
         HStack(spacing: composerControlSpacing) {
             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 9, matching: .images) {
                 Image(systemName: "photo.badge.plus")

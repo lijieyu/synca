@@ -300,7 +300,7 @@ final class APIClient: ObservableObject {
         return ("image/jpeg", ".jpg") // Default to JPEG
     }
 
-    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false, scratchpad: Bool = false,
+    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false, scratchpad: Bool = false, scratchpadAccount: String? = nil,
                           progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> SyncaMessage {
         let generation = sessionGeneration
         let cacheGeneration = ImageCache.generation
@@ -310,6 +310,10 @@ final class APIClient: ObservableObject {
         let url = URL(string: "\(baseURL)\(scratchpad ? "/scratchpad/images" : "/messages/image")")!
         var request = URLRequest(url: url)
         request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
+        if scratchpad {
+            guard let scratchpadAccount, currentUserId == scratchpadAccount else { throw CancellationError() }
+            request.setValue(scratchpadAccount, forHTTPHeaderField: "X-Synca-Account")
+        }
         request.httpMethod = "POST"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -565,15 +569,31 @@ final class APIClient: ObservableObject {
 
     func getStoreReleases() async throws -> StoreReleases { try await get("/app-updates", authenticated: false) }
 
-    func getScratchpad() async throws -> ScratchDocument { try await get("/scratchpad") }
-    func saveScratchpad(_ draft: ScratchDraft) async throws -> ScratchDocument {
-        try await put("/scratchpad", body: ["content":draft.content, "expectedRevision":draft.revision,
+    private func scratchRequest<T: Decodable>(_ path: String, account: String, method: String = "GET", body: [String: Any]? = nil) async throws -> T {
+        guard currentUserId == account else { throw CancellationError() }
+        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue(account, forHTTPHeaderField: "X-Synca-Account")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+        return try await execute(request)
+    }
+    func getScratchpad(account: String) async throws -> ScratchDocument { try await scratchRequest("/scratchpad", account: account) }
+    func saveScratchpad(_ draft: ScratchDraft, account: String) async throws -> ScratchDocument {
+        try await scratchRequest("/scratchpad", account: account, method: "PUT", body: ["content":draft.content, "expectedRevision":draft.revision,
                                             "mutationId":UUID().uuidString, "preserveCurrent":draft.preserveCurrent])
     }
-    func getScratchCopies() async throws -> ScratchCopies { try await get("/scratchpad/conflicts") }
-    func getScratchImages() async throws -> ScratchImages { try await get("/scratchpad/images") }
-    func deleteScratchCopy(_ id: String) async throws { let _: OkResponse = try await delete("/scratchpad/conflicts/\(id)") }
-    func deleteScratchImage(_ id: String) async throws { let _: OkResponse = try await delete("/scratchpad/images/\(id)") }
+    func preserveScratchCopy(_ content: String, account: String) async throws -> ScratchDocument {
+        try await scratchRequest("/scratchpad/conflicts", account: account, method: "POST", body: ["content":content,"mutationId":UUID().uuidString])
+    }
+    func getScratchCopies(account: String) async throws -> ScratchCopies { try await scratchRequest("/scratchpad/conflicts", account: account) }
+    func getScratchImages(account: String) async throws -> ScratchImages { try await scratchRequest("/scratchpad/images", account: account) }
+    func deleteScratchCopy(_ id: String, account: String) async throws { let _: OkResponse = try await scratchRequest("/scratchpad/conflicts/\(id)", account: account, method: "DELETE") }
+    func deleteScratchImage(_ id: String, account: String) async throws { let _: OkResponse = try await scratchRequest("/scratchpad/images/\(id)", account: account, method: "DELETE") }
 
     // MARK: - Generic HTTP Methods
 

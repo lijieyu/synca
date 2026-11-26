@@ -645,10 +645,10 @@ export const MessageListView: React.FC = () => {
 
   const clearComposing = useRef(false);
   const requestClearCompleted = useCallback(() => {
-    if (!completed.length || clearing || clearComposing.current || document.querySelector('[role="dialog"]')) return;
+    if (showScratchpad || showCollections || !completed.length || clearing || clearComposing.current || document.querySelector('[role="dialog"]')) return;
     setClearError(false);
     setShowClearModal(true);
-  }, [completed.length, clearing]);
+  }, [completed.length, clearing, showScratchpad, showCollections]);
 
   useEffect(() => {
     const desktop = window.syncaDesktop;
@@ -679,9 +679,9 @@ export const MessageListView: React.FC = () => {
   }, [requestClearCompleted]);
 
   useEffect(() => {
-    window.syncaDesktop?.clearCompletedAvailable?.(completed.length > 0 && !clearing);
+    window.syncaDesktop?.clearCompletedAvailable?.(!showScratchpad && !showCollections && completed.length > 0 && !clearing);
     return () => window.syncaDesktop?.clearCompletedAvailable?.(false);
-  }, [completed.length, clearing]);
+  }, [completed.length, clearing, showScratchpad, showCollections]);
 
   const sidebar=(
       <SidebarFrame>

@@ -544,3 +544,5 @@
 "updates.later" = "稍後提醒";
 "updates.migration" = "此次更新將遷移到安裝版，保留帳號和本機資料。";
 "updates.finish_edit" = "請先完成目前編輯或上傳，再重新啟動更新。";
+
+"collections.save_to" = "儲存到%@";

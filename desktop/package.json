@@ -6,7 +6,7 @@
     "playwright-core": "1.65.1"
   },
   "name": "synca-electron-build",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "scripts": {
     "build": "node build-ui.mjs && node build.mjs",
     "build:windows": "node build-ui.mjs && node build.mjs win32",

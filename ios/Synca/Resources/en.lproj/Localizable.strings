@@ -544,3 +544,5 @@
 "updates.later" = "Remind me later";
 "updates.migration" = "This update moves to the installed app and keeps your account and local data.";
 "updates.finish_edit" = "Finish editing or uploading before restarting to update.";
+
+"collections.save_to" = "Save to %@";

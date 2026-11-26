@@ -37,7 +37,7 @@ async function mainFixture(platform){
   loadURL(){return Promise.resolve()} isVisible(){return true} isFocused(){return true}
  }
  const electron={app,BrowserWindow,ipcMain:new EventEmitter(),nativeTheme:{shouldUseDarkColors:false},Menu:{buildFromTemplate:x=>x,setApplicationMenu:x=>menu=x},session:{defaultSession:{setPermissionRequestHandler(){},setPermissionCheckHandler(){}}},shell:{},dialog:{}};
- const box={module:{exports:{}},__dirname:path.join(root,'app'),process:{platform,env:{}},URL,console,require:id=>id==='electron'?electron:id==='./platform.cjs'?{installPlatform(){}}:id==='./local-ui.cjs'?{installLocalUI(){}}:id.startsWith('./')?require(path.join(root,'app',id)):require(id)};
+ const box={module:{exports:{}},__dirname:path.join(root,'app'),process:{platform,env:{},execPath:'/fixture/Synca'},URL,console,require:id=>id==='electron'?electron:id==='./platform.cjs'?{installPlatform(){}}:id==='./updater.cjs'?{installUpdater(){},squirrelEvent(){return false}}:id==='./capture/main.cjs'?{installCapture(){return {start(){}}}}:id==='./local-ui.cjs'?{installLocalUI(){}}:id.startsWith('./')?require(path.join(root,'app',id)):require(id)};
  vm.runInNewContext(fs.readFileSync(path.join(root,'app/main.cjs'),'utf8'),box);
  await new Promise(resolve=>setImmediate(resolve));
  return {window,ipc:electron.ipcMain,items:menu.flatMap(x=>x.submenu||[])};

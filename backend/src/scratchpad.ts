@@ -35,6 +35,16 @@ export async function writeScratchpad(userId: string, input: { content: string; 
         return {status: 200, body: {content: updated.content, revision: updated.revision, updatedAt: now}};
     });
 }
+// Save a recovery copy without ever writing the main page, even if another device advances it.
+export async function preserveScratchpadCopy(userId: string, input: {content: string; mutationId: string}) {
+    return db.transaction().execute(async trx => {
+        await trx.insertInto('scratchpad_conflicts').values({id:input.mutationId,user_id:userId,
+            content:input.content,created_at:new Date().toISOString()})
+            .onConflict(oc=>oc.columns(['user_id','id']).doNothing()).execute();
+        const row = await trx.selectFrom('scratchpads').selectAll().where('user_id','=',userId).executeTakeFirst();
+        return row ? {content:row.content,revision:row.revision,updatedAt:row.updated_at} : empty;
+    });
+}
 export async function scratchpadImages(userId: string, baseUrl: string) {
     const rows = await db.selectFrom('messages').select('id').where('user_id','=',userId)
         .where('scratchpad_asset','=',1).where('is_deleted','=',0).execute();
@@ -48,7 +58,7 @@ export async function deleteScratchpadImage(userId: string, id: string, uploadsD
         const main = await trx.selectFrom('scratchpads').select('content').where('user_id','=',userId).execute();
         const copies = await trx.selectFrom('scratchpad_conflicts').select('content').where('user_id','=',userId).execute();
         if ([...main,...copies].some(doc => imageIDs(doc.content).includes(id))) return {status: 409 as const};
-        await trx.updateTable('messages').set({is_deleted:1,updated_at:nextMessageTimestamp(new Date().toISOString())})
+        await trx.updateTable('messages').set({is_deleted:1,attachment_expires_at:new Date().toISOString(),updated_at:nextMessageTimestamp(new Date().toISOString())})
             .where('id','=',id).where('user_id','=',userId).execute();
         return {status:200 as const,row};
     });

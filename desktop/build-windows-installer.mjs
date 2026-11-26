@@ -12,7 +12,7 @@ const outputDirectory=path.resolve('dist','updates',arch);
 const setupExe=`Synca-${version}-${arch}-Setup.exe`;
 await fs.access(path.join(appDirectory,'Synca Electron.exe'));
 // Preserve the established app/profile name while giving Squirrel a stable NuGet identity.
-await createWindowsInstaller({appDirectory,outputDirectory,authors:'Synca',name:'Synca',version,
+await createWindowsInstaller({appDirectory,outputDirectory,authors:'Synca',description:'Capture ideas and keep your notes in sync across devices.',name:'Synca',version,
  exe:'Synca Electron.exe',title:'Synca',setupExe,noMsi:true,setupIcon:path.resolve('icons/Synca.ico'),
  iconUrl:'https://synca.haerth.cn/favicon.ico',
  ...(process.env.SYNCA_WINDOWS_CERTIFICATE_FILE?{certificateFile:process.env.SYNCA_WINDOWS_CERTIFICATE_FILE,certificatePassword:process.env.SYNCA_WINDOWS_CERTIFICATE_PASSWORD}:{}),

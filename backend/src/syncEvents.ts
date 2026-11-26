@@ -19,8 +19,8 @@ const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(valu
 export async function syncState(userId: string) {
     const [record, categories, access] = await Promise.all([
         sql<{ latest: string | null; total: number; count: number }>`SELECT MAX(updated_at) AS latest, COUNT(*) AS total,
-          COALESCE(SUM(CASE WHEN is_deleted=0 AND is_cleared=0 THEN 1 ELSE 0 END),0) AS count
-          FROM messages WHERE user_id=${userId}`.execute(db),
+          COALESCE(SUM(CASE WHEN is_deleted=0 AND is_cleared=0 AND collected_at IS NULL THEN 1 ELSE 0 END),0) AS count
+          FROM messages WHERE user_id=${userId} AND scratchpad_asset=0`.execute(db),
         listMessageCategories(userId), buildAccessStatus(userId),
     ]);
     const row = record.rows[0];

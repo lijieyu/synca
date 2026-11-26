@@ -55,11 +55,11 @@ final class ScratchpadStore: ObservableObject {
         do {
             if sent.dirty {
                 status = "scratch.saving"
-                let document = try await APIClient.shared.saveScratchpad(sent)
+                let document = try await APIClient.shared.saveScratchpad(sent, account: account)
                 guard sameAccount else { return }
                 draft.accept(sent: sent.content, remote: document)
             } else {
-                let document = try await APIClient.shared.getScratchpad()
+                let document = try await APIClient.shared.getScratchpad(account: account)
                 guard sameAccount else { return }
                 let changed = draft.revision != document.revision
                 draft.receive(document)
@@ -77,8 +77,8 @@ final class ScratchpadStore: ObservableObject {
     }
     func loadExtras() async {
         do {
-            async let c = APIClient.shared.getScratchCopies()
-            async let i = APIClient.shared.getScratchImages()
+            async let c = APIClient.shared.getScratchCopies(account: account)
+            async let i = APIClient.shared.getScratchImages(account: account)
             let (newCopies,newImages) = try await (c,i)
             guard sameAccount else { return }
             copies = newCopies.conflicts; images = newImages.images
@@ -94,10 +94,7 @@ final class ScratchpadStore: ObservableObject {
         busy = true
         let local = draft.content
         do {
-            var cloud = remote
-            let copy = ScratchDraft(content: local, revision: remote.revision + 1, dirty: true)
-            do { cloud = try await APIClient.shared.saveScratchpad(copy) }
-            catch let conflict as ScratchConflict { cloud = conflict.current }
+            let cloud = try await APIClient.shared.preserveScratchCopy(local, account: account)
             guard sameAccount else { busy = false; return }
             guard draft.content == local else { error = String(syncaLocalized: "scratch.finish_current"); busy = false; return }
             draft = ScratchDraft(content: cloud.content, revision: cloud.revision)
@@ -109,7 +106,7 @@ final class ScratchpadStore: ObservableObject {
         guard sameAccount, !uploading else { return }
         uploading = true; defer { uploading = false }
         do {
-            let image = try await APIClient.shared.sendImageMessage(imageData: data, scratchpad: true)
+            let image = try await APIClient.shared.sendImageMessage(imageData: data, scratchpad: true, scratchpadAccount: account)
             guard sameAccount else { return }
             images.append(image)
             try JSONEncoder().encode(images).write(to: imageFile, options: .atomic)
@@ -123,12 +120,12 @@ final class ScratchpadStore: ObservableObject {
         return true
     }
     func deleteCopy(_ id: String) async {
-        do { try await APIClient.shared.deleteScratchCopy(id); await loadExtras() }
+        do { try await APIClient.shared.deleteScratchCopy(id, account: account); await loadExtras() }
         catch { self.error = String(syncaLocalized: "scratch.offline") }
     }
     func deleteImage(_ id: String) async {
         guard !draft.dirty else { error = String(syncaLocalized: "scratch.finish_current"); return }
-        do { try await APIClient.shared.deleteScratchImage(id); await loadExtras() }
+        do { try await APIClient.shared.deleteScratchImage(id, account: account); await loadExtras() }
         catch { self.error = String(syncaLocalized: "scratch.image_in_use") }
     }
 }

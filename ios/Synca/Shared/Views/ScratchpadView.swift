@@ -33,7 +33,11 @@ struct ScratchpadView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(ScratchBlock.parse(store.draft.content)) { block in
                             if let id = block.imageID { image(id) }
-                            else { markdown(block.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+                            else {
+                                ForEach(ScratchParagraph.parse(block.text)) { paragraph in
+                                    paragraphView(paragraph).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
                         }
                     }.padding(16)
                 }
@@ -83,6 +87,20 @@ struct ScratchpadView: View {
                 else { Image(systemName: "photo").foregroundStyle(.secondary).frame(height: 64) }
             }.accessibilityLabel(Text("scratch.image"))
         } else { Image(systemName: "photo").foregroundStyle(.secondary).accessibilityLabel(Text("scratch.image")) }
+    }
+    @ViewBuilder private func paragraphView(_ paragraph: ScratchParagraph) -> some View {
+        switch paragraph.kind {
+        case .heading(let level):
+            Text((try? AttributedString(markdown: paragraph.text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(paragraph.text)).font(level == 1 ? .title : level == 2 ? .title2 : .headline)
+                .fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+        case .code:
+            ScrollView(.horizontal) { Text(paragraph.text).font(.system(.body, design: .monospaced)).padding(12) }
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        case .quote:
+            HStack(alignment: .top, spacing: 12) { Rectangle().fill(.secondary).frame(width: 3); markdown(paragraph.text).foregroundStyle(.secondary) }
+                .fixedSize(horizontal: false, vertical: true)
+        case .body: markdown(paragraph.text)
+        }
     }
     private func markdown(_ text: String) -> Text {
         #if os(iOS)

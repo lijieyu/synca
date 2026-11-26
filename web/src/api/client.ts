@@ -324,17 +324,21 @@ class APIClient {
     });
   }
 
-  getScratchpad():Promise<ScratchDocument> {return this.fetch('/scratchpad',{cache:'no-store'});}
-  saveScratchpad(content:string,expectedRevision:number,mutationId:string,preserveCurrent=false):Promise<ScratchDocument> {
-    return this.fetch('/scratchpad',{method:'PUT',body:JSON.stringify({content,expectedRevision,mutationId,preserveCurrent})});
+  private scratchHeaders(account:string) { return {'X-Synca-Account':account}; }
+  getScratchpad(account:string):Promise<ScratchDocument> {return this.fetch('/scratchpad',{cache:'no-store',headers:this.scratchHeaders(account)});}
+  saveScratchpad(account:string,content:string,expectedRevision:number,mutationId:string,preserveCurrent=false):Promise<ScratchDocument> {
+    return this.fetch('/scratchpad',{method:'PUT',headers:this.scratchHeaders(account),body:JSON.stringify({content,expectedRevision,mutationId,preserveCurrent})});
   }
-  getScratchCopies():Promise<{conflicts:ScratchCopy[]}> {return this.fetch('/scratchpad/conflicts');}
-  deleteScratchCopy(id:string):Promise<unknown> {return this.fetch(`/scratchpad/conflicts/${id}`,{method:'DELETE'});}
-  getScratchImages():Promise<{images:SyncaMessage[]}> {return this.fetch('/scratchpad/images');}
-  deleteScratchImage(id:string):Promise<unknown> {return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE'});}
-  async uploadScratchImage(file:File):Promise<SyncaMessage> {
+  preserveScratchCopy(account:string,content:string):Promise<ScratchDocument> {
+    return this.fetch('/scratchpad/conflicts',{method:'POST',headers:this.scratchHeaders(account),body:JSON.stringify({content,mutationId:crypto.randomUUID()})});
+  }
+  getScratchCopies(account:string):Promise<{conflicts:ScratchCopy[]}> {return this.fetch('/scratchpad/conflicts',{headers:this.scratchHeaders(account)});}
+  deleteScratchCopy(account:string,id:string):Promise<unknown> {return this.fetch(`/scratchpad/conflicts/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  getScratchImages(account:string):Promise<{images:SyncaMessage[]}> {return this.fetch('/scratchpad/images',{headers:this.scratchHeaders(account)});}
+  deleteScratchImage(account:string,id:string):Promise<unknown> {return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  async uploadScratchImage(account:string,file:File):Promise<SyncaMessage> {
     const data=new FormData();data.append('image',file);
-    return this.upload('/scratchpad/images',data,file);
+    return this.upload('/scratchpad/images',data,file,undefined,this.scratchHeaders(account));
   }
 
   async sendImageMessage(file: File, categoryId?: string | null, options?: UploadOptions): Promise<SyncaMessage> {
@@ -413,14 +417,14 @@ class APIClient {
     return this.upload('/messages/file', formData, file, options);
   }
 
-  private async upload(path: string, form: FormData, file: File, options?: UploadOptions): Promise<SyncaMessage> {
+  private async upload(path: string, form: FormData, file: File, options?: UploadOptions, extraHeaders:Record<string,string>={}): Promise<SyncaMessage> {
     this.pendingUploads++;
     try {
     form.set('isCollected', String(options?.isCollected ?? false));
     const size = file.size;
     const uploadID = this.uploadIDs.get(file) ?? crypto.randomUUID();
     this.uploadIDs.set(file, uploadID);
-    if (!options) return await this.fetch(path, { method: 'POST', body: form, headers: { 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
+    if (!options) return await this.fetch(path, { method: 'POST', body: form, headers: { ...extraHeaders, 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
     const requestToken = this.token;
     const response = await new Promise<Response>((resolve, reject) => {
       const xhr = new XMLHttpRequest();

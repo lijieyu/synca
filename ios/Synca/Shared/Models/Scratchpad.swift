@@ -46,3 +46,38 @@ struct ScratchBlock: Identifiable {
         return result
     }
 }
+
+/// Block structure for the native scratchpad preview; inline styling uses the shared renderer.
+struct ScratchParagraph: Identifiable {
+    enum Kind: Equatable { case body, heading(Int), code, quote }
+    let id: Int
+    let kind: Kind
+    let text: String
+    static func parse(_ source: String) -> [ScratchParagraph] {
+        var result: [ScratchParagraph] = [], lines: [String] = []
+        var fence: String?
+        func flush(_ kind: Kind = .body) {
+            guard !lines.isEmpty else { return }
+            result.append(.init(id: result.count, kind: kind, text: lines.joined(separator: "\n")))
+            lines.removeAll()
+        }
+        for line in source.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let active = fence {
+                if trimmed.hasPrefix(active) { flush(.code); fence = nil } else { lines.append(line) }
+            } else if trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~") {
+                flush(); fence = String(trimmed.prefix(3))
+            } else {
+                let hashes = trimmed.prefix { $0 == "#" }.count
+                if (1...6).contains(hashes), trimmed.dropFirst(hashes).first == " " {
+                    flush(); result.append(.init(id: result.count, kind: .heading(hashes), text: String(trimmed.dropFirst(hashes+1))))
+                } else if trimmed.hasPrefix("> ") {
+                    flush(); result.append(.init(id: result.count, kind: .quote, text: String(trimmed.dropFirst(2))))
+                } else if trimmed.isEmpty { flush() }
+                else { lines.append(line) }
+            }
+        }
+        flush(fence == nil ? .body : .code)
+        return result
+    }
+}

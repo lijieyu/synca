@@ -13,9 +13,9 @@ try{
   for(const name of ['src','public','package.json','index.html','vite.config.ts','tsconfig.json','tsconfig.app.json','tsconfig.node.json']){
     await fs.cp(path.join(root,name),path.join(stage,name),{recursive:true})
   }
-  await fs.symlink(modules,path.join(stage,'node_modules'),'dir')
+  await fs.symlink(modules,path.join(stage,'node_modules'),process.platform==='win32'?'junction':'dir')
   execFileSync('git',['apply','--no-index',path.resolve('frontend.patch')],{cwd:stage,stdio:'inherit'})
   await fs.cp('ui',path.join(stage,'src/desktop'),{recursive:true})
-  execFileSync(path.join(modules,'.bin/tsc'),['-b'],{cwd:stage,stdio:'inherit'})
-  execFileSync(path.join(modules,'.bin/vite'),['build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit',env:{...process.env,SYNCA_SOURCE_ROOT:root}})
+  execFileSync(process.execPath,[path.join(modules,'typescript/bin/tsc'),'-b'],{cwd:stage,stdio:'inherit'})
+  execFileSync(process.execPath,[path.join(modules,'vite/bin/vite.js'),'build','--outDir',path.resolve('app/renderer'),'--emptyOutDir'],{cwd:stage,stdio:'inherit',env:{...process.env,SYNCA_SOURCE_ROOT:root}})
 }finally{await fs.rm(stage,{recursive:true,force:true})}
