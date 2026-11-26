@@ -490,3 +490,11 @@
 "email_auth.logged_in" = "登入成功";
 
 "email_auth.signup_agreement" = "未註冊的電子郵件驗證後將自動建立帳號。繼續即表示你同意%@和%@。";
+
+// Long-term collections
+"collections.title" = "收藏";
+"collections.category" = "分類";
+"collections.all" = "全部分類";
+"collections.move" = "移入收藏";
+"collections.saved" = "已移入收藏";
+"collections.empty" = "長期保存資料，在這裡新增或從待辦移入。";

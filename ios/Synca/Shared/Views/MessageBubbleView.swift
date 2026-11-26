@@ -131,7 +131,14 @@ struct MessageBubbleView: View {
                     .accessibilityLabel(Text("common.delete"))
                     .help(Text("common.delete"))
                     #endif
-                    clearButton
+                    if message.collectedAt == nil {
+                        Button { Task { await SyncManager.shared.collectMessage(message) } } label: {
+                            Image(systemName: "bookmark").frame(width: actionTargetSize, height: actionTargetSize)
+                        }.buttonStyle(.plain).foregroundStyle(.secondary)
+                         .disabled(message.isAttachmentExpired)
+                         .accessibilityLabel(Text("collections.move"))
+                        clearButton
+                    }
                 }
             }
             .foregroundStyle(message.isCleared ? .tertiary : .secondary)
@@ -346,6 +353,11 @@ struct MessageBubbleView: View {
             }
         }
         #else
+        if message.collectedAt == nil {
+            Button { Task { await SyncManager.shared.collectMessage(message) } } label: {
+                Label("collections.move", systemImage: "bookmark")
+            }.disabled(message.isAttachmentExpired)
+        }
         if message.type == .text {
             if message.canEditText, let onEdit {
                 Button(action: onEdit) { Label("message_edit.title", image: "EditOutline") }
@@ -449,6 +461,11 @@ struct MessageBubbleView: View {
 
     private var macMessageMenuActions: [MacMessageMenuAction] {
         var actions: [MacMessageMenuAction] = []
+        if message.collectedAt == nil {
+            actions.append(.init(String(syncaLocalized: "collections.move"), symbol: "bookmark", isEnabled: !message.isAttachmentExpired) {
+                Task { await SyncManager.shared.collectMessage(message) }
+            })
+        }
         if message.type == .text {
             if message.canEditText, let onEdit {
                 actions.append(.init(String(syncaLocalized: "message_edit.title"), assetName: "EditOutline", action: onEdit))

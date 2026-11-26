@@ -548,5 +548,14 @@
     "preview": "AI connections are unavailable in this preview. You can explore the guide.",
     "operation_failed": "Could not complete the action. Please try again.",
     "failed": "Could not load connection details. Please try again."
+  },
+  "collections": {
+    "title": "Collections",
+    "category": "Category",
+    "all": "All categories",
+    "save_to": "Save to {{name}}",
+    "move": "Move to Collections",
+    "empty": "No collections yet",
+    "empty_detail": "Keep useful information close at hand."
   }
 }

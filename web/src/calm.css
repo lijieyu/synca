@@ -373,3 +373,8 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
   width:100%; min-width:0; max-width:100%; box-sizing:border-box;
 }
 .mobile-categories .category-chip {box-sizing:border-box}
+
+.collection-filter { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:8px 20px; color:var(--text-secondary); font-size:13px; }
+.collection-filter label { display:flex; align-items:center; gap:8px; }
+.collection-filter select { max-width:220px; min-height:36px; padding:6px 10px; border:1px solid var(--border-color); border-radius:8px; color:var(--text-main); background:var(--card-bg-color); font:inherit; }
+.collection-filter select:focus-visible { outline:2px solid var(--text-secondary); outline-offset:2px; }

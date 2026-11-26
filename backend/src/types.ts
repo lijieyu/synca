@@ -37,6 +37,7 @@ export interface SyncaAccessStatus {
 }
 
 export interface SyncaMessage {
+    collectedAt?: string | null;
     attachmentExpiresAt?: string | null;
     attachmentExpired?: boolean;
     id: string;

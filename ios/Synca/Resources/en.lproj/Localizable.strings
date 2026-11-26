@@ -490,3 +490,11 @@
 "email_auth.logged_in" = "Signed in";
 
 "email_auth.signup_agreement" = "New email addresses create an account after verification. By continuing, you agree to the %@ and %@.";
+
+// Long-term collections
+"collections.title" = "Collections";
+"collections.category" = "Category";
+"collections.all" = "All categories";
+"collections.move" = "Move to collections";
+"collections.saved" = "Moved to collections";
+"collections.empty" = "Keep useful information here. Add a record or move one from your tasks.";

@@ -17,7 +17,7 @@ export async function reserveUpload(userId: string, bytes: number, capacity: num
     const result = await sql`INSERT INTO upload_reservations(id,user_id,bytes,expires_at,kind)
         SELECT ${id},${userId},${bytes},${expires},${kind}
         WHERE (SELECT COALESCE(SUM(file_size),0) FROM messages WHERE user_id=${userId}
-            AND is_deleted=0 AND attachment_purged=0 AND type IN ('image','file'))
+            AND is_deleted=0 AND attachment_purged!=1 AND type IN ('image','file'))
           + (SELECT COALESCE(SUM(bytes),0) FROM upload_reservations WHERE user_id=${userId})
           + ${bytes} <= ${capacity}
           AND (SELECT COUNT(*) FROM upload_reservations WHERE user_id=${userId}) < 4
@@ -89,7 +89,7 @@ export async function cleanupExpiredAttachments(now = new Date()) {
     if (cleaning) return;
     cleaning = true;
     try {
-        const rows = await db.selectFrom('messages').selectAll().where('attachment_purged', '=', 0)
+        const rows = await db.selectFrom('messages').selectAll().where('attachment_purged', 'in', [0, 2])
             .where('attachment_expires_at', '<=', now.toISOString()).limit(200).execute();
         for (const row of rows) {
             try {

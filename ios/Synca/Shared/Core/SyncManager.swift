@@ -79,6 +79,9 @@ final class SyncManager: ObservableObject {
     @Published var errorMessage: String?
     @Published var sessionExpired = false
     @Published var remoteAppendEvent = UUID()
+    @Published var collectionCategoryId: String? = nil
+    var collectionsPseudoId: String { "__collections__" }
+    var showingCollections: Bool { selectedCategoryId == collectionsPseudoId }
     @Published var selectedCategoryId: String? = nil
     @Published var selectedCategoryIDsForTiledLayout: [String] = []
 
@@ -126,7 +129,7 @@ final class SyncManager: ObservableObject {
         if let cachedCategories { categories = cachedCategories }
         if let cachedMessages, !cachedMessages.isEmpty {
             messages = cachedMessages
-            unclearedCount = cachedMessages.filter { !$0.isCleared }.count
+            unclearedCount = cachedMessages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             // A cache contains visible messages, not the complete change stream (including deletions).
             lastSyncTimestamp = nil
             hasCompletedInitialLoad = true
@@ -167,7 +170,7 @@ final class SyncManager: ObservableObject {
             }
             if messages != allMessages { messages = allMessages; persistMessages() }
             if categories != allCategories { categories = allCategories; persistCategories() }
-            unclearedCount = allMessages.filter { !$0.isCleared }.count
+            unclearedCount = allMessages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             lastSyncTimestamp = allMessages.compactMap(\.updatedAt).max() ?? "1970-01-01T00:00:00.000Z"
             lastRefreshDate = Date()
             normalizeCategorySelections()
@@ -230,7 +233,7 @@ final class SyncManager: ObservableObject {
             }
             if categories != allCategories { categories = allCategories; persistCategories() }
             normalizeCategorySelections()
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             if state == nil || state?.access != confirmedServerState?.access {
                 guard await AccessManager.shared.refresh() else { return false }
             }
@@ -367,6 +370,7 @@ final class SyncManager: ObservableObject {
 
     @Published var uploadProgress: Double?
     @Published var failedFile: PendingFileUpload?
+    private var failedFileIsCollected = false
     private var failedFileCategory: String?
     private var fileUploadTask: Task<SyncaMessage, Error>?
     private var uploadOperationID: UUID?
@@ -403,12 +407,14 @@ final class SyncManager: ObservableObject {
     }
     func retryFileUpload() async {
         guard let file = failedFile, !isSending else { return }
-        await sendFile(file: file, categoryId: failedFileCategory)
+        await sendFile(file: file, categoryId: failedFileCategory, isCollected: failedFileIsCollected)
     }
 
     // MARK: - Send Messages
 
     func sendText(_ text: String, categoryId: String? = nil) async -> SendResult {
+        let targetIsCollected = showingCollections
+        let targetCategory = resolvedSendCategoryId(explicitCategoryId: categoryId)
         let operationGeneration = syncState.generation
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return .failed }
@@ -423,11 +429,12 @@ final class SyncManager: ObservableObject {
             let message = try await api.sendTextMessage(
                 text: trimmedText,
                 sourceDevice: currentDeviceName(),
-                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId)
+                categoryId: targetCategory,
+                isCollected: targetIsCollected
             )
             guard operationGeneration == syncState.generation else { return .failed }
             messages.append(message)
-            unclearedCount += 1
+            unclearedCount = messageIndex.todoCount
             lastRefreshDate = Date()
             persistMessages()
             await AccessManager.shared.refresh()
@@ -448,6 +455,8 @@ final class SyncManager: ObservableObject {
     }
 
     func sendImage(_ imageData: Data, categoryId: String? = nil) async {
+        let targetIsCollected = showingCollections
+        let targetCategory = resolvedSendCategoryId(explicitCategoryId: categoryId)
         let operationGeneration = syncState.generation
         let cancellationID = uploadCancellationID
         errorMessage = nil
@@ -459,12 +468,13 @@ final class SyncManager: ObservableObject {
             let message = try await api.sendImageMessage(
                 imageData: imageData,
                 sourceDevice: currentDeviceName(),
-                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId),
+                categoryId: targetCategory,
+                isCollected: targetIsCollected,
                 progress: uploadProgressHandler(uploadID, generation: operationGeneration)
             )
             guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
             messages.append(message)
-            unclearedCount += 1
+            unclearedCount = messageIndex.todoCount
             lastRefreshDate = Date()
             persistMessages()
             await AccessManager.shared.refresh()
@@ -479,8 +489,10 @@ final class SyncManager: ObservableObject {
 
     }
 
-    func sendFile(file: PendingFileUpload, categoryId: String? = nil) async {
+    func sendFile(file: PendingFileUpload, categoryId: String? = nil, isCollected: Bool? = nil) async {
         guard !isSending else { return }
+        let targetIsCollected = isCollected ?? showingCollections
+        let targetCategory = resolvedSendCategoryId(explicitCategoryId: categoryId)
         let operationGeneration = syncState.generation
         let cancellationID = uploadCancellationID
         guard file.fileSize <= PendingFileUpload.maxFileSize else {
@@ -496,7 +508,8 @@ final class SyncManager: ObservableObject {
               cancellationID == uploadCancellationID, !Task.isCancelled else { return }
         if let status = AccessManager.shared.status, !(status.storage?.canUploadFiles ?? (!status.isTrial && status.isUnlimited)) {
             failedFile = file
-            failedFileCategory = categoryId
+            failedFileCategory = targetCategory
+            failedFileIsCollected = targetIsCollected
             AccessManager.shared.presentUpgrade(using: nil)
             return
         }
@@ -507,7 +520,8 @@ final class SyncManager: ObservableObject {
             let task = Task { try await api.sendFileMessage(
                 file: file,
                 sourceDevice: currentDeviceName(),
-                categoryId: resolvedSendCategoryId(explicitCategoryId: categoryId),
+                categoryId: targetCategory,
+                isCollected: targetIsCollected,
                 progress: uploadProgressHandler(uploadID, generation: operationGeneration)
             ) }
             fileUploadTask = task
@@ -515,7 +529,7 @@ final class SyncManager: ObservableObject {
             let message = try await task.value
             guard operationGeneration == syncState.generation else { return }
             if !messages.contains(where: { $0.id == message.id }) { messages.append(message) }
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             lastRefreshDate = Date()
             persistMessages()
             await AccessManager.shared.refresh()
@@ -525,7 +539,8 @@ final class SyncManager: ObservableObject {
         } catch {
             guard operationGeneration == syncState.generation else { return }
             failedFile = file
-            failedFileCategory = categoryId
+            failedFileCategory = targetCategory
+            failedFileIsCollected = targetIsCollected
             if case APIError.fileRequiresPaid = error { AccessManager.shared.presentUpgrade(using: nil) }
             handleError(error, contextKey: "sync.error_context.send_file")
         }
@@ -539,6 +554,8 @@ final class SyncManager: ObservableObject {
     /// Load just the next original, so a selection does not retain nine full images.
     func sendImages(count: Int, categoryId: String? = nil,
                     loadImage: (Int) async -> Data?) async {
+        let targetIsCollected = showingCollections
+        let targetCategory = resolvedSendCategoryId(explicitCategoryId: categoryId)
         let operationGeneration = syncState.generation
         let cancellationID = uploadCancellationID
         guard count > 0 else { return }
@@ -546,7 +563,7 @@ final class SyncManager: ObservableObject {
         let sendGeneration = beginSending()
         let uploadID = beginUploadProgress()
         defer { endSending(sendGeneration); finishUploadProgress(uploadID) }
-        let targetCategoryId = resolvedSendCategoryId(explicitCategoryId: categoryId)
+        let targetCategoryId = targetCategory
         var sentCount = 0
         var firstError: Error?
         var wasBlocked = false
@@ -564,11 +581,12 @@ final class SyncManager: ObservableObject {
                     imageData: imageData,
                     sourceDevice: currentDeviceName(),
                     categoryId: targetCategoryId,
+                    isCollected: targetIsCollected,
                     progress: uploadProgressHandler(uploadID, generation: operationGeneration, index: index, count: count)
                 )
                 guard operationGeneration == syncState.generation, cancellationID == uploadCancellationID else { return }
                 messages.append(message)
-                unclearedCount += 1
+                unclearedCount = messageIndex.todoCount
                 sentCount += 1
                 persistMessages()
             } catch APIError.dailyLimitReached(let status) {
@@ -605,7 +623,7 @@ final class SyncManager: ObservableObject {
     @Published private(set) var completionUpdates: Set<String> = []
 
     func clearMessage(_ id: String) async {
-        guard !completionUpdates.contains(id), let current = messages.first(where: { $0.id == id }) else { return }
+        guard !completionUpdates.contains(id), let current = messages.first(where: { $0.id == id }), current.collectedAt == nil else { return }
         completionUpdates.insert(id)
         defer { completionUpdates.remove(id) }
         let operationGeneration = syncState.generation
@@ -618,7 +636,7 @@ final class SyncManager: ObservableObject {
                 objectWillChange.send()
                 persistMessages()
             }
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             #if canImport(UIKit)
             UISelectionFeedbackGenerator().selectionChanged()
             UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: updated.isCleared ? "message_bubble.completed" : "message_bubble.restored"))
@@ -629,13 +647,34 @@ final class SyncManager: ObservableObject {
         }
     }
 
+    func collectMessage(_ message: SyncaMessage) async {
+        let generation = syncState.generation
+        do {
+            let updated = try await api.collectMessage(id: message.id, expectedUpdatedAt: message.updatedAt)
+            guard generation == syncState.generation else { return }
+            if let index = messages.firstIndex(where: { $0.id == message.id }),
+               MessageSyncState.acceptingMutation(updated, over: messages[index]) {
+                messages[index] = updated
+                unclearedCount = messageIndex.todoCount
+                persistMessages()
+            }
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            UIAccessibility.post(notification: .announcement, argument: String(syncaLocalized: "collections.saved"))
+            #endif
+        } catch {
+            guard generation == syncState.generation else { return }
+            handleError(error, contextKey: "collections.move")
+        }
+    }
+
     func deleteMessage(_ id: String) async {
         let operationGeneration = syncState.generation
         do {
             try await api.deleteMessage(id: id)
             guard operationGeneration == syncState.generation else { return }
             messages.removeAll { $0.id == id }
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             persistMessages()
         } catch {
             guard operationGeneration == syncState.generation else { return }
@@ -718,7 +757,7 @@ final class SyncManager: ObservableObject {
                 let authoritative = try await api.listMessages()
                 guard syncState.accepts(ticket) else { return operationGeneration == syncState.generation }
                 messages = authoritative
-                unclearedCount = messages.filter { !$0.isCleared }.count
+                unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
                 persistMessages()
             } catch {
                 guard operationGeneration == syncState.generation else { return false }
@@ -793,11 +832,11 @@ final class SyncManager: ObservableObject {
             _ = try await api.deleteCompletedMessages(categoryId: categoryId)
             guard operationGeneration == syncState.generation else { return }
             messages.removeAll { message in
-                guard message.isCleared else { return false }
+                guard message.isCleared && message.collectedAt == nil else { return false }
                 guard let categoryId else { return true }
                 return message.categoryId == categoryId
             }
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             persistMessages()
         } catch {
             guard operationGeneration == syncState.generation else { return }
@@ -811,14 +850,14 @@ final class SyncManager: ObservableObject {
             _ = try await api.clearAllMessages(categoryId: categoryId)
             guard operationGeneration == syncState.generation else { return }
             for index in messages.indices {
-                guard !messages[index].isCleared else { continue }
+                guard !messages[index].isCleared && messages[index].collectedAt == nil else { continue }
                 if let categoryId, messages[index].categoryId != categoryId {
                     continue
                 }
                 messages[index].isCleared = true
                 messages[index].updatedAt = Date().ISO8601Format()
             }
-            unclearedCount = messages.filter { !$0.isCleared }.count
+            unclearedCount = messages.filter { !$0.isCleared && $0.collectedAt == nil && !$0.isDeleted }.count
             persistMessages()
         } catch {
             guard operationGeneration == syncState.generation else { return }
@@ -849,6 +888,7 @@ final class SyncManager: ObservableObject {
         unclearedCount = 0
         hasCompletedInitialLoad = false
         categories = []
+        collectionCategoryId = nil
         selectedCategoryId = nil
         selectedCategoryIDsForTiledLayout = []
         lastSyncTimestamp = nil
@@ -956,6 +996,7 @@ final class SyncManager: ObservableObject {
     }
 
     private func resolvedSendCategoryId(explicitCategoryId: String?) -> String? {
+        if showingCollections { return explicitCategoryId ?? collectionCategoryId ?? defaultCategory?.id }
         if let explicitCategoryId, explicitCategoryId != allCategoryPseudoId {
             return explicitCategoryId
         }
@@ -980,7 +1021,8 @@ final class SyncManager: ObservableObject {
         }
 
         let validIds = Set(categories.map(\.id))
-        if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, !validIds.contains(selectedCategoryId) {
+        if let collectionCategoryId, !validIds.contains(collectionCategoryId) { self.collectionCategoryId = nil }
+        if let selectedCategoryId, selectedCategoryId != allCategoryPseudoId, selectedCategoryId != collectionsPseudoId, !validIds.contains(selectedCategoryId) {
             self.selectedCategoryId = allCategoryPseudoId
         } else if self.selectedCategoryId == nil {
             restoreLocalCategorySelections()

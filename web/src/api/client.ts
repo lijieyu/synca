@@ -18,6 +18,7 @@ const BASE_URL = '';
 const ATTACHMENT_CACHE_NAME = 'synca-attachment-cache-v1';
 
 export interface SyncaMessage {
+  collectedAt?: string | null;
   attachmentExpiresAt?: string | null;
   attachmentExpired?: boolean;
   id: string;
@@ -103,7 +104,7 @@ export class StorageError extends Error {
   readonly code: string;
   constructor(code: string) { super(code); this.code = code; }
 }
-export interface UploadOptions { signal: AbortSignal; onProgress: (value: number) => void }
+export interface UploadOptions { isCollected?: boolean; signal: AbortSignal; onProgress: (value: number) => void }
 export interface AttachmentOptions { signal?: AbortSignal; expiresAt?: string | null; cacheImage?: boolean }
 const IMAGE_CACHE_LIMIT_BYTES = 16 * 1024 * 1024;
 const IMAGE_CACHE_ITEM_LIMIT_BYTES = 4 * 1024 * 1024;
@@ -174,6 +175,7 @@ class APIClient {
   private async fetch<T>(path: string, options: RequestInit = {}, anonymous = false): Promise<T> {
     const requestToken = this.token;
     const headers: Record<string, string> = {
+      'X-Synca-Features': 'collections',
       ...(!options.body || typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers as Record<string, string>),
     };
@@ -240,6 +242,7 @@ class APIClient {
         // Explicit max-age permits origin ETag validation while no-store prevents
         // disk caching of protected record content in the browser.
         'Cache-Control': 'max-age=0',
+        'X-Synca-Features': 'collections',
         ...(cached ? { 'If-None-Match': cached.etag } : {}),
       },
     });
@@ -308,10 +311,10 @@ class APIClient {
     });
   }
 
-  async sendTextMessage(text: string, categoryId?: string | null): Promise<SyncaMessage> {
+  async sendTextMessage(text: string, categoryId?: string | null, isCollected = false): Promise<SyncaMessage> {
     return this.fetch<SyncaMessage>('/messages', {
       method: 'POST',
-      body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null }),
+      body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null, isCollected }),
     });
   }
 
@@ -392,6 +395,7 @@ class APIClient {
   }
 
   private async upload(path: string, form: FormData, file: File, options?: UploadOptions): Promise<SyncaMessage> {
+    form.set('isCollected', String(options?.isCollected ?? false));
     const size = file.size;
     const uploadID = this.uploadIDs.get(file) ?? crypto.randomUUID();
     this.uploadIDs.set(file, uploadID);
@@ -403,6 +407,7 @@ class APIClient {
       xhr.open('POST', `${BASE_URL}${path}`);
       xhr.timeout = 15 * 60 * 1000;
       if (requestToken) xhr.setRequestHeader('Authorization', `Bearer ${requestToken}`);
+      xhr.setRequestHeader('X-Synca-Features', 'collections');
       xhr.setRequestHeader('X-Upload-Size', String(size));
       xhr.setRequestHeader('X-Upload-ID', uploadID);
       const abort = () => xhr.abort();
@@ -488,6 +493,10 @@ class APIClient {
     return this.fetch<SyncaMessage>(`/messages/${id}/text`, {
       method: 'PATCH', body: JSON.stringify({ textContent, expectedUpdatedAt }),
     });
+  }
+
+  collectMessage(id: string, expectedUpdatedAt: string): Promise<SyncaMessage> {
+    return this.fetch(`/messages/${id}/collect`, { method: 'PATCH', body: JSON.stringify({ expectedUpdatedAt }) });
   }
 
   async setMessageCompletion(id: string, isCleared: boolean): Promise<SyncaMessage> {

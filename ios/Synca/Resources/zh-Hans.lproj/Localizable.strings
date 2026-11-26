@@ -490,3 +490,11 @@
 "email_auth.logged_in" = "登录成功";
 
 "email_auth.signup_agreement" = "未注册的邮箱验证后将自动创建账号。继续即表示你同意%@和%@。";
+
+// Long-term collections
+"collections.title" = "收藏";
+"collections.category" = "分类";
+"collections.all" = "全部分类";
+"collections.move" = "移入收藏";
+"collections.saved" = "已移入收藏";
+"collections.empty" = "长期保存资料，在这里新增或从待办移入。";

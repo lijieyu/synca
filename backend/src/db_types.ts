@@ -18,6 +18,7 @@ export interface UsersTable {
 }
 
 export interface MessagesTable {
+    collected_at: Generated<string | null>;
     attachment_expires_at: string | null;
     attachment_purged: Generated<number>;
     id: string;

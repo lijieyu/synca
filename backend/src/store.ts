@@ -28,6 +28,7 @@ function toUser(row: UsersTable): SyncaUser {
 function toMessage(row: Selectable<MessagesTable>, baseUrl?: string): SyncaMessage {
     const expired = Boolean(row.attachment_purged || (row.attachment_expires_at && row.attachment_expires_at <= new Date().toISOString()));
     return {
+        collectedAt: row.collected_at ?? null,
         attachmentExpiresAt: row.attachment_expires_at,
         attachmentExpired: expired,
         id: row.id,
@@ -657,6 +658,7 @@ export async function updateMessageCategoryAssignment(input: {
     id: string;
     userId: string;
     categoryId?: string | null;
+    allowCollected?: boolean;
     now: string;
     baseUrl?: string;
 }): Promise<SyncaMessage | undefined> {
@@ -668,6 +670,8 @@ export async function updateMessageCategoryAssignment(input: {
         })
         .where('id', '=', input.id)
         .where('user_id', '=', input.userId)
+        .where('is_deleted', '=', 0)
+        .$if(!input.allowCollected, q => q.where('collected_at', 'is', null))
         .execute();
 
     if (result[0].numUpdatedRows === 0n) {
@@ -758,6 +762,7 @@ export async function createMessage(message: {
     sourceDevice?: string | null;
     now: string;
     attachmentExpiresAt?: string;
+    isCollected?: boolean;
     reservationId?: string;
     beforeCommit?: (trx: Transaction<Database>) => Promise<void>;
 }): Promise<void> {
@@ -774,7 +779,7 @@ export async function createMessage(message: {
         }
         if (message.reservationId) {
             const usage = await trx.selectFrom('messages').select(eb => eb.fn.sum<number>('file_size').as('bytes'))
-                .where('user_id', '=', message.userId).where('is_deleted', '=', 0).where('attachment_purged', '=', 0)
+                .where('user_id', '=', message.userId).where('is_deleted', '=', 0).where('attachment_purged', '!=', 1)
                 .where('type', 'in', ['image', 'file']).executeTakeFirst();
             if (Number(usage?.bytes ?? 0) + (message.fileSize ?? 0) > storagePolicy(isPaid).limitBytes) {
                 throw new MessageWriteError('storage_limit_reached');
@@ -789,7 +794,8 @@ export async function createMessage(message: {
         }
         const resolvedCategoryId = await resolveCategoryId(message.userId, message.categoryId, message.now, trx);
         await trx.insertInto('messages').values({
-            attachment_expires_at: message.attachmentExpiresAt ?? null,
+            collected_at: message.isCollected ? message.now : null,
+            attachment_expires_at: message.isCollected ? null : message.attachmentExpiresAt ?? null,
             id: message.id,
             user_id: message.userId,
             type: message.type,
@@ -825,13 +831,13 @@ export async function createMessage(message: {
 
 /** A conditional write fences stale drafts and never converts attachment records to text. */
 export async function updateMessageText(input: {
-    id: string; userId: string; textContent: string; expectedUpdatedAt: string; baseUrl?: string;
+    id: string; userId: string; textContent: string; expectedUpdatedAt: string; baseUrl?: string; allowCollected?: boolean;
 }): Promise<{ message: SyncaMessage } | { error: 'message_not_found' | 'message_not_text' | 'message_edit_conflict' }> {
     return db.transaction().execute(async trx => {
         const existing = await trx.selectFrom('messages').selectAll()
             .where('id', '=', input.id).where('user_id', '=', input.userId)
             .where('is_deleted', '=', 0).executeTakeFirst();
-        if (!existing) return { error: 'message_not_found' as const };
+        if (!existing || (existing.collected_at && !input.allowCollected)) return { error: 'message_not_found' as const };
         if (existing.type !== 'text' || existing.image_path || existing.file_path) return { error: 'message_not_text' as const };
         if (existing.updated_at !== input.expectedUpdatedAt) return { error: 'message_edit_conflict' as const };
         const now = new Date(Math.max(Date.now(), Date.parse(existing.updated_at) + 1)).toISOString();
@@ -854,7 +860,7 @@ export async function setMessageCompletion(id: string, userId: string, completed
     return db.transaction().execute(async trx => {
         const existing = await trx.selectFrom('messages').selectAll().where('id', '=', id)
             .where('user_id', '=', userId).where('is_deleted', '=', 0).executeTakeFirst();
-        if (!existing) return undefined;
+        if (!existing || existing.collected_at) return undefined;
         if (Boolean(existing.is_cleared) !== completed) {
             const now = new Date(Math.max(Date.now(), Date.parse(existing.updated_at) + 1)).toISOString();
             await trx.updateTable('messages').set({ is_cleared: completed ? 1 : 0, updated_at: nextMessageTimestamp(now) })
@@ -876,6 +882,7 @@ export async function clearMessage(id: string, userId: string): Promise<boolean>
         .set({ is_cleared: 1, updated_at: nextMessageTimestamp(now) })
         .where('id', '=', id)
         .where('user_id', '=', userId)
+        .where('collected_at', 'is', null)
         .where('is_cleared', '=', 0)
         .execute();
     return result[0].numUpdatedRows > 0n;
@@ -884,7 +891,13 @@ export async function clearMessage(id: string, userId: string): Promise<boolean>
 // Preserve paths until unlink succeeds; the expiry sweeper retries disk failures.
 export async function purgeMessageMedia(message: Pick<MessagesTable, 'id' | 'image_path' | 'file_path' | 'is_deleted'>,
     uploadsDir: string, filesDir: string, now = new Date().toISOString()): Promise<void> {
-    for (const [directory, filename] of [[uploadsDir, message.image_path], [filesDir, message.file_path]]) {
+    const claimed = await db.updateTable('messages').set({ attachment_purged: 2 })
+        .where('id', '=', message.id).where('attachment_purged', 'in', [0, 2])
+        .where(eb => eb.or([eb('is_deleted', '=', 1), eb.and([
+            eb('collected_at', 'is', null), eb('attachment_expires_at', '<=', now),
+        ])])).returningAll().executeTakeFirst();
+    if (!claimed) return;
+    for (const [directory, filename] of [[uploadsDir, claimed.image_path], [filesDir, claimed.file_path]]) {
         if (!filename) continue;
         if (path.basename(filename) !== filename) throw new Error('invalid_media_path');
         try { await fs.unlink(path.resolve(directory!, filename)); }
@@ -892,21 +905,23 @@ export async function purgeMessageMedia(message: Pick<MessagesTable, 'id' | 'ima
     }
     await db.updateTable('messages').set({
         attachment_purged: 1, updated_at: nextMessageTimestamp(now),
-        ...(message.is_deleted ? { image_path: null, file_path: null } : {}),
+        ...(claimed.is_deleted ? { image_path: null, file_path: null } : {}),
     }).where('id', '=', message.id).execute();
 }
 
-export async function deleteMessage(id: string, userId: string, uploadsDir: string, filesDir: string): Promise<boolean> {
+export async function deleteMessage(id: string, userId: string, uploadsDir: string, filesDir: string, allowCollected = false): Promise<boolean> {
     const now = new Date().toISOString();
     const message = await db.selectFrom('messages').selectAll()
         .where('id', '=', id).where('user_id', '=', userId).executeTakeFirst();
     if (!message) return false;
 
-    await db.updateTable('messages').set({
+    const deletion = await db.updateTable('messages').set({
         is_deleted: 1, updated_at: nextMessageTimestamp(now), text_content: null,
         attachment_expires_at: now,
         file_name: null, file_size: null, file_mime_type: null,
-    }).where('id', '=', id).where('user_id', '=', userId).execute();
+    }).where('id', '=', id).where('user_id', '=', userId)
+        .$if(!allowCollected, q => q.where('collected_at', 'is', null)).executeTakeFirst();
+    if (!deletion.numUpdatedRows) return false;
     try { await purgeMessageMedia({ ...message, is_deleted: 1 }, uploadsDir, filesDir, now); }
     catch (error) { console.error('[delete] Media cleanup queued for retry', id, error); }
     return true;
@@ -917,6 +932,7 @@ export async function clearAllMessages(userId: string, categoryId?: string | nul
     let query = db.updateTable('messages')
         .set({ is_cleared: 1, updated_at: nextMessageTimestamp(now) })
         .where('user_id', '=', userId)
+        .where('collected_at', 'is', null)
         .where('is_cleared', '=', 0);
 
     if (categoryId) {
@@ -930,7 +946,7 @@ export async function clearAllMessages(userId: string, categoryId?: string | nul
 export async function deleteCompletedMessages(userId: string, uploadsDir: string, filesDir: string, categoryId?: string | null): Promise<number> {
     const now = new Date().toISOString();
     let query = db.selectFrom('messages').selectAll()
-        .where('user_id', '=', userId).where('is_cleared', '=', 1).where('is_deleted', '=', 0);
+        .where('user_id', '=', userId).where('collected_at', 'is', null).where('is_cleared', '=', 1).where('is_deleted', '=', 0);
     if (categoryId) query = query.where('category_id', '=', categoryId);
     const messages = await query.execute();
     if (messages.length === 0) return 0;
@@ -943,6 +959,8 @@ export async function deleteCompletedMessages(userId: string, uploadsDir: string
             attachment_purged: sql<number>`CASE WHEN image_path IS NULL AND file_path IS NULL THEN 1 ELSE attachment_purged END`,
             file_name: null, file_size: null, file_mime_type: null,
         }).where('user_id', '=', userId)
+            .where('collected_at', 'is', null)
+            .where('is_cleared', '=', 1)
             .where('id', 'in', messages.slice(offset, offset + 200).map(message => message.id)).execute();
     }
     for (const message of messages) {
@@ -957,6 +975,7 @@ export async function getUnclearedCount(userId: string): Promise<number> {
     const row = await db.selectFrom('messages')
         .select((eb) => eb.fn.count<string>('id').as('count'))
         .where('user_id', '=', userId)
+        .where('collected_at', 'is', null)
         .where('is_cleared', '=', 0)
         .where('is_deleted', '=', 0)
         .executeTakeFirst();

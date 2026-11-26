@@ -320,7 +320,7 @@ export async function runMigrations() {
 
     const messageColumns = await sql<{ name: string }>`PRAGMA table_info(messages)`.execute(db);
     for (const [name, definition] of [
-        ['attachment_expires_at', 'TEXT'], ['attachment_purged', 'INTEGER NOT NULL DEFAULT 0'],
+        ['collected_at', 'TEXT'], ['attachment_expires_at', 'TEXT'], ['attachment_purged', 'INTEGER NOT NULL DEFAULT 0'],
     ]) {
         if (!messageColumns.rows.some(column => column.name === name)) {
             await sql.raw(`ALTER TABLE messages ADD COLUMN ${name} ${definition}`).execute(db);

@@ -7,7 +7,7 @@ const { execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const openApplication = promisify(execFile)
 const actionIds = new Set(['edit', 'copyRecord', 'copySelection', 'openLink', 'copyLink', 'complete',
-  'category', 'delete', 'preview', 'save', 'saveAs', 'reveal'])
+  'collect', 'category', 'delete', 'preview', 'save', 'saveAs', 'reveal'])
 const attachmentActions = new Set(['preview', 'saveAs', 'reveal'])
 
 function webLink(value) {

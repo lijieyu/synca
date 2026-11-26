@@ -98,6 +98,7 @@ struct SyncaMessage: Codable, Identifiable, Equatable, Sendable {
     var categoryColor: MessageCategoryColor?
     var categoryColorHex: String?
     var categoryIsDefault: Bool?
+    var collectedAt: String?
     var isCleared: Bool
     var isDeleted: Bool
     var sourceDevice: String?
@@ -273,7 +274,7 @@ struct MessageListIndex {
     let todoCountsByCategory: [String: Int]
 
     init(messages: [SyncaMessage]) {
-        ordered = messages.sorted {
+        ordered = messages.filter { $0.collectedAt == nil && !$0.isDeleted }.sorted {
             if $0.isCleared != $1.isCleared { return $0.isCleared }
             if $0.createdAt != $1.createdAt { return $0.createdAt < $1.createdAt }
             return $0.id < $1.id

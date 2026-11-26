@@ -548,5 +548,14 @@
     "preview": "此預覽環境暫不支援連接 AI，可先查看教學。",
     "operation_failed": "操作未完成，請重試。",
     "failed": "暫時無法載入連接資訊，請重試。"
+  },
+  "collections": {
+    "title": "收藏",
+    "category": "分類",
+    "all": "全部分類",
+    "save_to": "存入 {{name}}",
+    "move": "移入收藏",
+    "empty": "還沒有收藏",
+    "empty_detail": "儲存常用資料，隨時查找。"
   }
 }

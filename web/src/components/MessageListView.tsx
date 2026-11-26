@@ -5,7 +5,8 @@ import { SyncFeedback } from './SyncFeedback';
 import { desktopClearShortcut } from '../utils/desktopShortcuts';
 import { MobileCategoryDrawer } from './MobileCategoryDrawer';
 import { SettingsSurface } from './SettingsSurface';
-import { PanelLeft, X, Tags } from 'lucide-react';
+import { recordsInArea, taskCounts } from '../utils/collections';
+import { PanelLeft, X, Tags, Bookmark } from 'lucide-react';
 import { categoryEditPatch } from '../utils/categoryEdit';
 import { AppLoading } from './AppLoading';
 import { CategoryContextMenu, type CategoryMenuAnchor } from './CategoryContextMenu';
@@ -120,6 +121,10 @@ export const MessageListView: React.FC = () => {
   const [categories, setCategories] = useState<MessageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [composerFocusRequest, requestComposerFocus] = useState(0);
+  const [showCollections, setShowCollections] = useState(false);
+  const collectionsViewRef = useRef(false);
+  collectionsViewRef.current = showCollections;
+  const [collectionCategory, setCollectionCategory] = useState(ALL_CATEGORY_ID);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(ALL_CATEGORY_ID);
   const [defaultSendCategoryId, setDefaultSendCategoryId] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -216,10 +221,11 @@ export const MessageListView: React.FC = () => {
         setDefaultSendCategoryId(current => exists(current) ? current : (defaultCategory?.id ?? null));
       }
 
+      setCollectionCategory(current => current === ALL_CATEGORY_ID || categoriesRes.categories.some(c => c.id === current) ? current : ALL_CATEGORY_ID);
       if (scrollToBottom) {
         requestAnimationFrame(() => {
           if (listRef.current && scrollVersion === scrollRevision.current && !searchNavigation.current) {
-            listRef.current.scrollTop = listRef.current.scrollHeight;
+            listRef.current.scrollTop = collectionsViewRef.current ? 0 : listRef.current.scrollHeight;
           }
         });
       }
@@ -289,25 +295,17 @@ export const MessageListView: React.FC = () => {
   );
 
   const effectiveDefaultSendCategoryId = defaultSendCategoryId ?? defaultCategory?.id ?? null;
-  const selectedScopeIsAll = selectedCategoryId === ALL_CATEGORY_ID;
-  const selectedCategory = categories.find(category => category.id === selectedCategoryId);
-  const heading = selectedScopeIsAll ? t('common.all') : selectedCategory?.isDefault ? t('message_category.default_badge') : selectedCategory?.name;
-  const activeSendCategoryId = selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
+  const selectedScopeIsAll = !showCollections && selectedCategoryId === ALL_CATEGORY_ID;
+  const selectedCategory = showCollections ? undefined : categories.find(category => category.id === selectedCategoryId);
+  const heading = showCollections ? t('collections.title') : selectedScopeIsAll ? t('common.all') : selectedCategory?.isDefault ? t('message_category.default_badge') : selectedCategory?.name;
+  const activeSendCategoryId = showCollections ? (collectionCategory === ALL_CATEGORY_ID ? defaultCategory?.id : collectionCategory) : selectedScopeIsAll ? effectiveDefaultSendCategoryId : selectedCategoryId;
 
-  const filteredMessages = useMemo(() => {
-    if (selectedCategoryId === ALL_CATEGORY_ID) return messages;
-    return messages.filter((message) => message.categoryId === selectedCategoryId);
-  }, [messages, selectedCategoryId]);
-
-  const todoCountByCategoryId = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const message of messages) {
-      if (message.isCleared || !message.categoryId) continue;
-      counts[message.categoryId] = (counts[message.categoryId] ?? 0) + 1;
-    }
-    return counts;
-  }, [messages]);
-  const allTodoCount = useMemo(() => messages.filter((message) => !message.isCleared).length, [messages]);
+  const filteredMessages = useMemo(() => recordsInArea(messages, showCollections,
+    (showCollections ? collectionCategory : selectedCategoryId) === ALL_CATEGORY_ID ? undefined : (showCollections ? collectionCategory : selectedCategoryId)),
+    [messages, showCollections, collectionCategory, selectedCategoryId]);
+  const counts = useMemo(() => taskCounts(messages), [messages]);
+  const todoCountByCategoryId = counts.categories;
+  const allTodoCount = counts.total;
   const visibleSingleModeCategories = useMemo(() => categories, [categories]);
   const [syncSequence, setSyncSequence] = useState(0);
   const handleRefresh = async () => {
@@ -572,6 +570,7 @@ export const MessageListView: React.FC = () => {
   } });
 
   const activateCategory = (id: string) => {
+    setShowCollections(false);
     setDrawerOpen(false);
     setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
     setSelectedCategoryId(id);
@@ -587,6 +586,7 @@ export const MessageListView: React.FC = () => {
       : Math.max(0, Math.min(buttons.length - 1, index + (['ArrowDown', 'ArrowRight'].includes(event.key) ? 1 : -1)));
     buttons[next].focus();
     setSearchTarget(null); searchNavigation.current = false; ++scrollRevision.current;
+    setShowCollections(false);
     setSelectedCategoryId(buttons[next].dataset.categoryId!);
   };
 
@@ -622,6 +622,8 @@ export const MessageListView: React.FC = () => {
     const live = messages.find(message => message.id === id && !message.isDeleted);
     if (!live) { setToastMsg(t('search.unavailable')); setShowToast(true); return false; }
     ++scrollRevision.current; searchNavigation.current = true;
+    setShowCollections(Boolean(live.collectedAt));
+    if (live.collectedAt) setCollectionCategory(ALL_CATEGORY_ID);
     setSelectedCategoryId(categories.some(category => category.id === live.categoryId) ? live.categoryId! : ALL_CATEGORY_ID);
     setShowSearch(false); setSearchTarget({ id, matchedText, nonce: Date.now() });
     return true;
@@ -684,6 +686,7 @@ export const MessageListView: React.FC = () => {
               <LayoutGrid size={16} aria-hidden="true" />{t('common.all', 'All')}
               <CategoryTodoBadge count={allTodoCount} />
             </button>
+            <button className={`category-chip ${showCollections ? 'active' : ''}`} aria-pressed={showCollections} onClick={() => { setShowCollections(true); setDrawerOpen(false); setSearchTarget(null); }}><Bookmark size={16} aria-hidden="true"/>{t('collections.title')}</button>
             <div className="category-section-heading">
               <span>{t('message_category.section_title')}</span>
               <button type="button" onClick={()=>{setDrawerOpen(false);openSettings('categories')}} aria-label={t('message_list.manage_categories')} title={t('message_list.manage_categories')}>
@@ -693,9 +696,9 @@ export const MessageListView: React.FC = () => {
             {visibleSingleModeCategories.map((category) => (
               <button
                 key={category.id}
-                className={`category-chip has-badge color-${category.color} ${selectedCategoryId === category.id ? 'active' : ''}`}
+                className={`category-chip has-badge color-${category.color} ${!showCollections && selectedCategoryId === category.id ? 'active' : ''}`}
                 data-category-id={category.id}
-                aria-pressed={selectedCategoryId === category.id}
+                aria-pressed={!showCollections && selectedCategoryId === category.id}
                 onContextMenu={event => { event.preventDefault(); setCategoryMenu({ id: category.id, x: event.clientX, y: event.clientY, trigger: event.currentTarget }); }}
                 onClick={() => activateCategory(category.id)}
                 onDoubleClick={() => { setEditingCategory(category); setNewCategoryHex(category.colorHex); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCreateCategoryModal(true); }}
@@ -736,21 +739,24 @@ export const MessageListView: React.FC = () => {
       <main className="calm-main">
         <header className="header">
           {!compact && <SyncFeedback sequence={syncSequence} label={t('message_list.sync_success', 'Synced')}/>}
-          {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+' · '+pending.length}>
-            <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong><span>{pending.length}</span>
+          {compact ? <button type="button" className="mobile-category-trigger" onClick={()=>setDrawerOpen(true)} aria-haspopup="dialog" aria-expanded={drawerOpen} aria-label={t('message_category.section_title')+' · '+heading+(showCollections ? '' : ' · '+pending.length)}>
+            <PanelLeft size={19}/>{selectedCategory && <i style={categoryStyle(selectedCategory.colorHex,selectedCategory.color)} />}<strong>{heading}</strong>{!showCollections && <span>{pending.length}</span>}
           </button> : <div className="stream-heading"><h1 title={heading}>{heading}</h1>
-          <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p></div>}
+          {!showCollections && <p>{t('preferences.pending_count', { count: pending.length })}<span aria-hidden="true"> · </span>{t('preferences.completed_count', { count: completed.length })}</p>}</div>}
           <div className="header-actions">
             <button className="header-btn search-trigger" data-pointer-opened={searchPointerOpened} onPointerDown={() => setSearchPointerOpened(true)} onKeyDown={() => setSearchPointerOpened(false)} onClick={() => setShowSearch(true)} aria-label={t('search.title')} title={t('search.title')} aria-keyshortcuts="Meta+f Control+f"><Search size={18} strokeWidth={1.7} /></button>
             <button className="header-btn" onClick={() => void handleRefresh()} aria-label={t('navigation.sync')} title={t('navigation.sync')} aria-keyshortcuts="Meta+r Control+r"><RotateCw size={18} strokeWidth={1.7} /></button>
-            <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={desktopClearShortcut(window.syncaDesktop?.platform)?.aria} title={t('message_list.clear_completed') + (desktopClearShortcut(window.syncaDesktop?.platform) ? ` · ${desktopClearShortcut(window.syncaDesktop?.platform)!.keys.join(' ')}` : '')}><BroomIcon size={18} /></button>
+            {!showCollections && <button className="header-btn" disabled={!completed.length || clearing} onClick={requestClearCompleted} aria-label={t('message_list.clear_completed')} aria-keyshortcuts={desktopClearShortcut(window.syncaDesktop?.platform)?.aria} title={t('message_list.clear_completed') + (desktopClearShortcut(window.syncaDesktop?.platform) ? ` · ${desktopClearShortcut(window.syncaDesktop?.platform)!.keys.join(' ')}` : '')}><BroomIcon size={18} /></button>}
           </div>
         </header>
+        {showCollections && <div className="collection-filter"><label>{t('collections.category')} <select value={collectionCategory} onChange={e=>{setCollectionCategory(e.target.value);setSearchTarget(null);}}>
+          <option value={ALL_CATEGORY_ID}>{t('collections.all')}</option>{categories.map(category=><option key={category.id} value={category.id}>{category.isDefault?t('message_category.default_badge'):category.name}</option>)}
+        </select></label><span>{t('collections.save_to', {name: categories.find(c=>c.id===activeSendCategoryId)?.isDefault ? t('message_category.default_badge') : categories.find(c=>c.id===activeSendCategoryId)?.name})}</span></div>}
           <div className="message-list" ref={listRef}>
             {isLoading && messages.length === 0 && <AppLoading overlay />}
 
             {!isLoading && filteredMessages.length === 0 && (
-              <EmptyMessageState />
+              showCollections ? <div className="empty-state"><Bookmark size={48} aria-hidden="true"/><h2>{t('collections.empty')}</h2><p>{t('collections.empty_detail')}</p></div> : <EmptyMessageState />
             )}
 
             {filteredMessages.length > 0 && (
@@ -759,7 +765,7 @@ export const MessageListView: React.FC = () => {
                   <MessageBubble key={message.id} showsSeparator={message.id !== (pending.at(-1)?.id ?? completed.at(-1)?.id)} message={message} categories={categories} onEdit={editMessage} onTextSaved={applySavedText} onUpdate={updateMessageList} />
                 ))}
 
-                {pending.length > 0 && (
+                {!showCollections && pending.length > 0 && (
                   <div style={{ marginTop: '8px', marginBottom: '4px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', background: 'var(--border-color)', padding: '2px 8px', borderRadius: '4px' }}>
                       {t('message_list.todo_section', 'Inbox')}
@@ -774,10 +780,10 @@ export const MessageListView: React.FC = () => {
             )}
           </div>
 
-          <InputBar key={token} availableScopeIds={window.syncaDesktop ? undefined : [ALL_CATEGORY_ID, ...categories.map(category => category.id)]} fallbackScopeId={defaultCategory?.id} scopeId={selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
+          <InputBar key={token} isCollected={showCollections} availableScopeIds={window.syncaDesktop ? undefined : [ALL_CATEGORY_ID, ...categories.map(category => category.id), `collection:${ALL_CATEGORY_ID}`, ...categories.map(category => `collection:${category.id}`)]} fallbackScopeId={defaultCategory?.id} scopeId={showCollections ? `collection:${collectionCategory}` : selectedCategoryId} focusRequest={composerFocusRequest} categoryId={activeSendCategoryId} onSent={() => { setSearchTarget(null); searchNavigation.current = false; void fetchData(true); }} />
       </main>
 
-      {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={selectedScopeIsAll ? undefined : selectedCategoryId} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
+      {showSearch && <MessageSearch key={email} query={searchQuery} onQueryChange={setSearchQuery} messages={messages} categories={categories} currentCategoryId={undefined} onCancel={() => setShowSearch(false)} onSelect={selectSearchResult} />}
 
       {editingMessage && <MessageTextEditor key={editingMessage.id} message={editingMessage}
         onCancel={() => setEditingMessage(null)} onSaved={updated => {
