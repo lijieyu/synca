@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import './UpdateNotice.css';
 import {useTranslation} from 'react-i18next';
 import {api} from '../api/client';
 export interface UpdateState {phase:'idle'|'checking'|'current'|'available'|'downloading'|'ready'|'installing'|'error';version?:string;store?:boolean;migration?:boolean}
@@ -14,7 +15,7 @@ export function UpdateNotice({manual=false}:{manual?:boolean}) {
   setBlocked(false);setHidden(false);
   try{setState(await desktop!.updateAction!(action));}catch{setState({phase:'error'});}
  }
- return <div className="update-notice" role="status" style={{padding:'10px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',borderBottom:'1px solid var(--border-color)'}}>
+ return <div className="update-notice" role="status">
   <span>{t(`updates.${state.phase}`,{version:state.version})}</span>
   {state.phase==='available'&&<button onClick={()=>void act('download')}>{t(state.store?'updates.store':'updates.download')}</button>}
   {state.phase==='available'&&state.migration&&!state.store&&<small>{t('updates.migration')}</small>}
