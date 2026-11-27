@@ -30,3 +30,14 @@ Live privacy/support pages return successfully, but currently describe Apple-onl
 Review fixes isolate the fixture under temporary AppData, own and await the backend process, and test two independent launches. The builder unpacks the actual final MSIX and verifies exact manifest plus executable/ASAR/build-info bytes, recording package SHA-256. Screenshot inspection caught a weak assertion that could match unsent composer text; f26fa90 now clicks Send and requires the record in the message list after reload. Earlier create/read evidence is superseded by this stricter run.
 
 Final technical validation: [run 46001240270](https://github.com/lijieyu/synca/actions/runs/46001240270), commit `f26fa9089a1daf5e515902712ac7191233561208`, completed **success** on native x64 and ARM64. Both perform final MSIX content verification and two consecutive isolated runtime checks, including send/reload persistence. Actual Chinese light/dark and English screenshots archived locally at `/Users/haer/Documents/ChatGPT/Synca/acceptance/1.2.0-store/index.html`. Packages still use CI identity and are not submittable. Microsoft-signed installation and certification remain unverified.
+
+## Name reserved and official identity
+On 2026-11-27 the user approved **Synca Notes**. Partner Center successfully created the draft MSIX/PWA product. Assigned public identifiers, read directly from Product identity:
+- Store ID: `9PJ7VZ48QM81`
+- Package Identity Name: `JieyuLi.SyncaNotes`
+- Publisher: `CN=EFB41A73-FB6E-4C6E-9E94-53511FFD42FF`
+- PublisherDisplayName: `Jieyu Li`
+- English display name: `Synca Notes`
+- Package Family Name: `JieyuLi.SyncaNotes_n7haejrbvpnsy`
+
+Chinese localized name remains under discussion. The assigned Store URL is not evidence of public availability; the product is still a draft and no submission exists yet.
