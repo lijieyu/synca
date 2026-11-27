@@ -97,3 +97,11 @@ The agent selected **提交进行认证**. Partner Center transitioned from draf
 Identifiers: Store product `9PJ7VZ48QM81`; submission `1152921505702525382`; MSIX `1.2.0.0` x64/ARM64 from website 1.2.0 (89). Receipt was visually checked in Partner Center and a screenshot is included in this chat's browser tool evidence. Dashboard: https://partner.microsoft.com/zh-cn/dashboard/products/9PJ7VZ48QM81/overview
 
 No additional agreement or personal verification was presented for this submission. The Microsoft feedback survey was not submitted. No website download link was changed. Microsoft-signed installation, production account smoke testing, Pro reviewer access and update verification remain unverified; do not turn this submission receipt into a claim of approval or install readiness. Reviewer notes describe normal self-service email verification sign-in and disclose existing Pro gates; no fixed-code bypass or private credential was created. If certification requests dedicated access, supply an authorized supported method and verify it before resubmission.
+
+## Monitoring and conditional website switch
+
+User requested continued monitoring and authorized the website Windows primary button to open the Microsoft download page after approval. First follow-up observed preprocessing finished and **certification in progress**; publication has not started. Current live download links remain unchanged.
+
+The prepared three-language patch is archived at `/Users/haer/Documents/ChatGPT/Synca/acceptance/1.2.0-store/website-switch-ready/website-switch.patch`, with baseline hashes in `baseline.json`. It points both Windows primary buttons in each locale to `https://apps.microsoft.com/detail/9PJ7VZ48QM81`, adds x64 portable as an explicit secondary link, and retains ARM64 portable and checksums. It is intentionally not applied to the homepage source or deployed yet.
+
+Before switching: confirm Partner Center publication, verify the public product page offers the correct app, then verify Microsoft Store installation/version/login/basic record operations on Windows. Re-check source/live homepage drift before applying the prepared patch; deploy only the marketing page using the existing scoped process. The existing Windows 11 Parallels VM is running; do not interrupt unrelated work or treat its presence as installation evidence.
