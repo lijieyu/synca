@@ -42,7 +42,7 @@ function installCapture(mainWindow,cfg,services={}){
    for(const display of displays){
     const source=sources.find(item=>String(item.display_id)===String(display.id));if(!source||source.thumbnail.isEmpty())throw Error('Missing screen');
     const frozen=source.thumbnail.toPNG();const size=nativeImage.createFromBuffer(frozen).getSize();
-    const window=new BrowserWindow({...display.bounds,frame:false,transparent:false,backgroundColor:'#000000',show:false,resizable:false,movable:false,skipTaskbar:true,alwaysOnTop:true,fullscreenable:false,hasShadow:false,enableLargerThanScreen:true,
+    const window=new BrowserWindow({...display.bounds,frame:false,transparent:false,backgroundColor:'#000000',show:false,resizable:false,movable:false,skipTaskbar:true,alwaysOnTop:true,fullscreenable:process.platform==='win32',fullscreen:process.platform==='win32',hasShadow:false,enableLargerThanScreen:true,
      webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:path.join(__dirname,'preload.cjs'),partition:`capture-${Date.now()}-${display.id}`,backgroundThrottling:false}});
     if(process.platform==='darwin')window.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
     window.setAlwaysOnTop(true,'screen-saver');window.setMenu(null);
@@ -88,7 +88,7 @@ function installCapture(mainWindow,cfg,services={}){
    const result=await (services.dialog??dialog).showSaveDialog(entry.window,{defaultPath:path.join(app.getPath('pictures'),`Synca-${new Date().toISOString().replace(/[:.]/g,'-')}.png`),filters:[{name:'PNG',extensions:['png']}]});
    if(active!==state||result.canceled||!result.filePath)return{cancelled:true};
    await fs.writeFile(result.filePath,image.toPNG());if(active===state)cancel();return{ok:true};
-  }catch{return{error:true};}finally{state.finishing=false;if(active===state)for(const item of state.entries)if(!item.window.isDestroyed())item.window.setAlwaysOnTop(true,'screen-saver');}
+  }catch(error){console.warn('[capture] finish failed',error?.message??'unknown');return{error:true};}finally{state.finishing=false;if(active===state)for(const item of state.entries)if(!item.window.isDestroyed())item.window.setAlwaysOnTop(true,'screen-saver');}
  });
  mainWindow.on('closed',()=>{cancel();globalShortcut.unregister(shortcut);ipcMain.removeListener('capture:cancel',onCancel);for(const channel of ['desktop:capture-settings','desktop:capture-shortcut','desktop:capture-start','capture:load','capture:finish'])ipcMain.removeHandler(channel);});
  app.once('will-quit',()=>{cancel();globalShortcut.unregister(shortcut);});
