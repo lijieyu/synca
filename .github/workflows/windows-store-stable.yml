@@ -12,7 +12,7 @@ on:
       - '.github/workflows/windows-store-stable.yml'
       - 'desktop/build-stable-store.mjs'
       - 'desktop/stable-store*'
-      - 'desktop/store/stable-1.2.0.mjs'
+      - 'desktop/store/stable*.mjs'
 permissions:
   contents: read
 concurrency:
@@ -73,7 +73,11 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Native stable version UI and profile isolation
         working-directory: desktop
-        run: node stable-store-acceptance.mjs
+        run: |
+          node stable-store-acceptance.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node stable-store-acceptance.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -88,4 +92,7 @@ jobs:
           name: synca-1.2.0-store-${{ matrix.arch }}-${{ github.sha }}
           retention-days: 30
           if-no-files-found: error
-          path: desktop/dist/stable/${{ matrix.arch }}/package/**
+          path: |
+            desktop/dist/stable/${{ matrix.arch }}/package/*.msix
+            desktop/dist/stable/${{ matrix.arch }}/package/AppxManifest.xml
+            desktop/dist/stable/${{ matrix.arch }}/package/build-evidence.json

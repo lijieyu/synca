@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
 import {packageMSIX} from 'electron-windows-msix';
 import {stableSource,verifyStableArchive,prepareStableAsar} from './store/stable-1.2.0.mjs';
+import {verifyUnpackedStableMsix} from './store/stable-msix-verification.mjs';
 import {storeManifest} from './store/manifest.mjs';
 if(process.platform!=='win32')throw Error('Run stable MSIX packaging on a Windows runner');
 const arch=process.argv[2]??process.arch,ci=process.argv.includes('--ci'),source=stableSource(arch);
@@ -23,6 +24,10 @@ const preservation=await prepareStableAsar(path.join(appDir,'resources/app.asar'
 const appManifest=path.join(root,'AppxManifest.xml');await fs.writeFile(appManifest,manifest);
 const outputDir=path.join(root,'package');
 const result=await packageMSIX({appDir,appManifest,packageAssets:path.resolve('store/assets'),outputDir,packageName:`Synca-1.2.0-${arch}${ci?'-CI-NOT-FOR-SUBMISSION':''}.msix`,sign:false,windowsKitPath:process.env.WINDOWS_KIT_PATH});
+const unpacked=path.join(root,'verified-msix');await fs.rm(unpacked,{recursive:true,force:true});
+execFileSync(path.join(process.env.WINDOWS_KIT_PATH,'makeappx.exe'),['unpack','/p',result.msixPackage,'/d',unpacked,'/o'],{stdio:'inherit',timeout:180000});
+const packaged=await verifyUnpackedStableMsix(appDir,unpacked,manifest);
+packaged.msixSha256=createHash('sha256').update(await fs.readFile(result.msixPackage)).digest('hex');
 await fs.copyFile(appManifest,path.join(outputDir,'AppxManifest.xml'));
-await fs.writeFile(path.join(outputDir,'build-evidence.json'),JSON.stringify({source,build,channel:'store',submittableIdentity:!ci,signed:false,commit:process.env.GITHUB_SHA??null,executableSha256:createHash('sha256').update(exe).digest('hex'),preservation,artifact:path.basename(result.msixPackage)},null,2)+'\n');
+await fs.writeFile(path.join(outputDir,'build-evidence.json'),JSON.stringify({source,build,channel:'store',submittableIdentity:!ci,signed:false,commit:process.env.GITHUB_SHA??null,executableSha256:createHash('sha256').update(exe).digest('hex'),preservation,packaged,artifact:path.basename(result.msixPackage)},null,2)+'\n');
 console.log('Stable 1.2.0 Store package ready; original executable, renderer and modules preserved.');

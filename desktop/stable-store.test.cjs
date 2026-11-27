@@ -23,3 +23,15 @@ test('stable Store adapter preserves every original module and renderer, and iso
  await fs.writeFile(path.join(input,'updater.cjs'),'unexpected updater');await createPackage(input,asar);await assert.rejects(prepareStableAsar(asar,{version:'1.2.0',build:'89'}));
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });
+test('final MSIX payload verification rejects changed manifest or packaged application bytes',async()=>{
+ const {verifyUnpackedStableMsix}=await import('./store/stable-msix-verification.mjs');
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'synca-msix-test-'));
+ try {
+  const source=path.join(root,'source'),unpacked=path.join(root,'unpacked');
+  for(const dir of [source,path.join(unpacked,'app')]){await fs.mkdir(path.join(dir,'resources'),{recursive:true});for(const name of ['Synca Electron.exe','resources/app.asar','resources/build-info.json'])await fs.writeFile(path.join(dir,name),name);}
+  await fs.writeFile(path.join(unpacked,'AppxManifest.xml'),'<expected identity="test"/>');
+  const verified=await verifyUnpackedStableMsix(source,unpacked,'<expected identity="test"/>');assert.equal(verified.files.length,3);
+  await fs.writeFile(path.join(unpacked,'app/resources/app.asar'),'wrong payload');await assert.rejects(verifyUnpackedStableMsix(source,unpacked,'<expected identity="test"/>'),/app.asar/);
+  await fs.copyFile(path.join(source,'resources/app.asar'),path.join(unpacked,'app/resources/app.asar'));await fs.writeFile(path.join(unpacked,'AppxManifest.xml'),'<wrong/>');await assert.rejects(verifyUnpackedStableMsix(source,unpacked,'<expected identity="test"/>'),/manifest/);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
