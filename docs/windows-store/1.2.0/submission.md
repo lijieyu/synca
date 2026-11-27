@@ -1,5 +1,7 @@
 # Stable Store submission — 1.2.0 (89)
 
+**Current status (2026-11-27 23:04 Asia/Shanghai): submitted successfully; Partner Center shows “正在认证”, preprocessing in progress. Certification and public release are not yet complete.**
+
 User changed the first Store release to the mature website version on 2026-11-27. Publisher display name selected: Jieyu Li. Registration was completed on the user's MacBook; authenticated access from the Mac mini is now established.
 
 ## Source and packaging
@@ -79,3 +81,19 @@ Live stable source was read from `/opt/synca/releases/20261126T050231Z-f03b149/b
 First attempt copied only dist and failed module resolution (`dotenv` missing from the new release ancestry), causing a brief service interruption; the health-check rollback restored the original release and health returned OK. Root cause was reproduced without starting a service. The release was repaired with the original package metadata and a symlink to its existing locked dependencies; all 144 static import resolutions passed before retry.
 
 Final active copy: `/opt/synca/releases/20261127-store-legal-stable/dist`; only `src/legalPages.js` differs. Module SHA-256 `95d1d0c3c94bd2e98c4778d647f8e0cfcf061220fad33bbea42728a8873a8b9b`. Original release retained for rollback and dependency reuse. All six public HTTPS pages and health passed after successful activation. Evidence: `/Users/haer/Documents/ChatGPT/Synca/acceptance/1.2.0-store/legal-20261127/verification.json`. Current dev legal source received the matching factual corrections for the next normal release. No nginx override or website download-link change.
+
+## Certification submission receipt — 2026-11-27 23:04 Beijing
+
+The user personally accepted and saved the IARC terms/adulthood declaration, then explicitly asked the agent to complete submission. Readback showed Age ratings **Complete**; Pricing/availability, Properties, both packages and Store listings were also Complete. Both MSIX files were **Validated**.
+
+The agent selected **提交进行认证**. Partner Center transitioned from draft to **正在认证** and displayed:
+- Submission: complete.
+- Preprocessing: in progress.
+- Certification: not started.
+- Publishing: not started.
+- “产品在通过认证后立即开始发布。”
+- Product submission: **正在认证 (Submission 1)**.
+
+Identifiers: Store product `9PJ7VZ48QM81`; submission `1152921505702525382`; MSIX `1.2.0.0` x64/ARM64 from website 1.2.0 (89). Receipt was visually checked in Partner Center and a screenshot is included in this chat's browser tool evidence. Dashboard: https://partner.microsoft.com/zh-cn/dashboard/products/9PJ7VZ48QM81/overview
+
+No additional agreement or personal verification was presented for this submission. The Microsoft feedback survey was not submitted. No website download link was changed. Microsoft-signed installation, production account smoke testing, Pro reviewer access and update verification remain unverified; do not turn this submission receipt into a claim of approval or install readiness. Reviewer notes describe normal self-service email verification sign-in and disclose existing Pro gates; no fixed-code bypass or private credential was created. If certification requests dedicated access, supply an authorized supported method and verify it before resubmission.

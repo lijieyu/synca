@@ -35,5 +35,6 @@ Files: .github/workflows/windows-store-stable.yml, desktop/stable-store-acceptan
 
 ### Task 3: Formal Store submission and website change
 - [x] Obtain authenticated Partner Center access; reserve approved localized names under Synca Notes and read assigned identity.
-- [ ] Build with real identity, verify package installation, submit version-correct screenshots/listing and reviewer access. Personal legal steps go to user.
+- [x] Build with real identity and submit version-correct screenshots/listing plus email sign-in instructions. User personally completed IARC acceptance. Submission 1152921505702525382 is in preprocessing.
+- [ ] Verify Microsoft-signed installation and production login/Pro reviewer access; existing CI checks are not this evidence.
 - [ ] Record submission/certification/public URL; verify actual Store installation. Only then update website primary link while retaining ZIP.
