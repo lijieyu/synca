@@ -97,4 +97,3 @@ jobs:
             desktop/dist/store/**/Synca*.msix
             desktop/dist/store/**/AppxManifest.xml
             desktop/dist/store/**/build-evidence.json
-

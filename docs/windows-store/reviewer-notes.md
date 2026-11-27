@@ -1,0 +1,16 @@
+# Store certification notes — Synca 1.2.1
+Prepared for certification; not proof of certification or submission.
+
+- Package: MSIX, full-trust Electron desktop app, Windows 10 build 19041+ / Windows 11. Architectures x64 and ARM64. ARM64 must receive runtime acceptance before its submission; cross-compilation is insufficient evidence.
+- `runFullTrust`: required for Electron desktop runtime, Windows tray, global capture shortcut, enumerating user-visible window bounds, clipboard access and user-selected PNG/file save dialogs. No driver, privileged service or administrator access is required by the app.
+- Store identity: copy exact Identity Name, Publisher CN and PublisherDisplayName from Partner Center. Test identity `Synca.CI` cannot be submitted. Package revision is 0; Microsoft applies the Store signature.
+- Update behavior: Store marker and native Store identity independently disable website update checks and install IPC. No downloaded executable runs as an application update in the Store edition.
+- Sign-in: Synca account is required for cloud records; email verification sign-in is available. Do not submit fictional credentials or add a public review bypass. Before submission provide a dedicated reviewer account/access method in the PRIVATE certification notes, verified end to end; never commit its password/token. Microsoft may need access to a test mailbox for one-time codes. This is a release gate until a supported review account is ready.
+- Basic flow: sign in → add text record → mark complete; Collections → add reference → filter by category; Scratchpad → edit Markdown → wait for saved indicator → preview; global search finds records and Collections.
+- Screenshot flow: File → Capture Screen, or Ctrl+Shift+A; click window / drag region; rectangle annotation; confirm to clipboard / Save PNG / Escape to cancel. No capture is sent to the service unless the user adds it as content.
+- Commercial features: existing Synca account entitlements include Pro file uploads/MCP and storage limits. Describe the actual purchase/access flow shown in this binary and select corresponding Store declarations; no new Microsoft billing implementation is claimed. Review the current non-game digital-service commerce policy before final submission.
+- Privacy policy source is updated for Windows capture, email sign-in, stored files, Collections, Scratchpad and channel-specific updates. The matching public policy must be deployed and verified before submission.
+- IARC/content rating, contact identity, privacy/commerce declarations and developer agreement must reflect actual functionality and the developer’s personal confirmation. No invented age-rating certificate or legal declaration.
+
+## Account checkpoint (2026-11-27)
+Official https://storedeveloper.microsoft.com/zh-Hans/onboarding shows free Individual for hobbyists/students/independent developers publishing in their own name, and free Company for organizations/freelancers publishing under a business. Individual selected as requested, but Continue/login not yet completed. Public account documentation also contains commercial-use eligibility language; verify the actual declaration after login before proceeding. No account, identity, name reservation, Product ID, Store URL or submission ID has been obtained.

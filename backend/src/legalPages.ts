@@ -25,11 +25,11 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             locale: 'en',
             kind: 'privacy-policy',
             title: 'Synca Privacy Policy',
-            description: 'How Synca collects, uses, stores, and protects user data across iPhone and Mac.',
+            description: 'How Synca collects, uses, stores, and protects data across Web, iOS, Mac, and Windows.',
             languageLabel: 'English',
             alternateLanguageLabel: '简体中文',
             alternatePath: '/zh-hans/privacy-policy',
-            updatedAt: 'April 4, 2026',
+            updatedAt: 'November 27, 2026',
             sections: [
                 {
                     heading: 'Overview',
@@ -45,7 +45,8 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     ],
                     bullets: [
                         'Account information received through Sign in with Apple, such as your Apple user identifier and, when provided by Apple, your email address.',
-                        'Content you choose to create in the app, including text entries, uploaded images, and related metadata such as creation time and source device name.',
+                        'Content you choose to create in the app, including text entries, collections, scratchpad content, uploaded images and files, and related metadata such as creation time and source device name.',
+                        'If you use email sign-in, your email address and the information necessary to verify the sign-in request.',
                         'Technical information required to operate the service, such as authentication tokens, device push tokens, and basic server logs.',
                     ],
                 },
@@ -60,6 +61,14 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     paragraphs: [
                         'User account and message records are stored on Synca’s backend infrastructure. Uploaded images are stored on the server so they can be accessed by the same user on their other devices.',
                         'We do not sell personal data and we do not use user content for advertising.',
+                    ],
+                },
+                {
+                    heading: 'Desktop Capture and Updates',
+                    paragraphs: [
+                        'Screen capture starts only when you invoke it. Captured images and annotations are processed locally and copied to the clipboard or saved to a location you choose. They are not automatically uploaded; syncing an image requires you to add it to Synca content.',
+                        'The website Windows edition checks Synca’s official update service using the app version and device architecture. Downloads are verified before installation. The Microsoft Store edition uses Microsoft Store updates and does not run Synca’s website installer.',
+                        'Local caches and offline edits may remain on your device. Collections and scratchpad content are retained for continued use until you delete them; they are not part of completed-task expiration cleanup.',
                     ],
                 },
                 {
@@ -229,11 +238,11 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             locale: 'zh-hans',
             kind: 'privacy-policy',
             title: 'Synca 隐私政策',
-            description: '说明 Synca 如何收集、使用、存储和保护 iPhone 与 Mac 间同步所涉及的用户数据。',
+            description: '说明 Synca 如何收集、使用、存储和保护 Web、iOS、Mac 和 Windows 间同步所涉及的用户数据。',
             languageLabel: '简体中文',
             alternateLanguageLabel: 'English',
             alternatePath: '/en/privacy-policy',
-            updatedAt: '2026年4月4日',
+            updatedAt: '2026年11月27日',
             sections: [
                 {
                     heading: '概述',
@@ -249,7 +258,8 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     ],
                     bullets: [
                         '通过 Sign in with Apple 获取的账户信息，例如 Apple 用户标识，以及在 Apple 提供的情况下包含邮箱地址。',
-                        '你在应用中主动创建的内容，包括文字记录、上传图片，以及创建时间、来源设备名称等相关元数据。',
+                        '你在应用中主动创建的内容，包括文字记录、收藏、草稿本、上传图片和文件，以及创建时间、来源设备名称等相关元数据。',
+                        '使用邮箱登录时提供的邮箱地址，以及验证登录请求所需的信息。',
                         '为运行服务所必需的技术信息，例如登录会话令牌、设备推送令牌，以及基础服务器日志。',
                     ],
                 },
@@ -264,6 +274,14 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                     paragraphs: [
                         '用户账户信息和消息记录会存储在 Synca 的后端基础设施中。上传的图片会保存在服务器上，以便同一用户在其他设备上访问。',
                         '我们不会出售个人信息，也不会将用户内容用于广告用途。',
+                    ],
+                },
+                {
+                    heading: '桌面截图与更新',
+                    paragraphs: [
+                        '截图只会在你主动调用时启动。截图及标注在本机处理，复制到剪切板或保存到你选择的位置，不会自动上传；只有将图片添加到 Synca 内容后才会参与同步。',
+                        '官网 Windows 版本通过 Synca 官方更新服务检查与应用版本、设备架构对应的更新，并在安装前校验下载文件。微软商店版本由 Microsoft Store 管理更新，不运行官网安装程序。',
+                        '设备上可能保留本地缓存和离线编辑。收藏和草稿本用于长期保存，直到你主动删除，不参与已完成待办的过期清理。',
                     ],
                 },
                 {
