@@ -16,7 +16,7 @@ Profile contents are never moved or deleted by the update logic. Do not rename p
 ## Reproducible build and validation
 Use `.github/workflows/windows-distribution.yml` on current `dev` (`gh workflow run windows-distribution.yml --ref dev` once registered on default branch, or push a scoped change). This workflow only builds/tests and uploads 14-day artifacts; it cannot deploy production. `gh run view RUN_ID --log-failed` for diagnostics; download the accepted run’s artifacts before expiration and retain them with checksums and commit SHA.
 
-Local Mac tasks remain the normal Web/iOS/Mac build. Windows-specific commands run on the Windows Runner with Node 24 and Windows SDK, locked npm dependencies:
+Local Mac tasks remain the normal Web/iOS/Mac build. Windows-specific commands run on the Windows Runner with Node 24, Windows SDK and Visual Studio C++ tools, locked npm dependencies. The Windows window enumerator is compiled for the target architecture and packaged in `resources/native`; screenshot startup does not invoke PowerShell or compile code at runtime:
 
 ```powershell
 $env:SYNCA_WINDOWS_ARCH = 'x64' # repeat for arm64
@@ -32,6 +32,8 @@ $env:SYNCA_STORE_IDENTITY = 'C:/secure/synca-store-identity.json'
 node build-windows-msix.mjs x64
 ```
 Identity JSON keys: `name`, `publisher`, `publisherDisplayName`, `displayName`. All values must match Partner Center. Never substitute test identity in a release. `WINDOWS_KIT_PATH` can point to the installed SDK's x64 tooling directory. MSIX uses marketing version `major.minor.patch.0`; fourth component stays 0. A rejected package that requires a new version must use a genuinely higher approved package version, not overwrite previously released bytes.
+
+After obtaining the assigned identity, configure repository variable `SYNCA_STORE_IDENTITY_JSON` with these four public package-identity fields (never login credentials). Manually dispatch the same workflow with `store_submission=true` to build the formal-identity MSIX; missing identity fails closed. Default push builds remain CI-identity packages. The workflow does not submit or publish either variant. Failed runs retain compact diagnostic evidence; distributable packages upload only after the verification steps succeed.
 
 ## Website publication gate and order
 1. Pass Windows tests, actual legacy 1.2.0 (89) migration, native Setup/Squirrel update/restart/failure tests, screenshot functionality and a production-sign-in smoke check using an authorized test account. Verify both supported architectures on Windows hardware/compatible VMs; each architecture now has its own native Windows Runner; inspect both results.

@@ -30,11 +30,13 @@ export async function verifySquirrel({stage,appData,out,instrument,launch,close,
   evidence.updateStage='verified native download';
   await fs.writeFile(releasePath,JSON.stringify(manifest));assert.equal((await page.evaluate(()=>window.syncaDesktop.updateAction('check'))).phase,'available');
   await page.evaluate(()=>window.syncaDesktop.updateAction('download'));
-  await page.waitForFunction(async()=>{const s=await window.syncaDesktop.updateState();if(s.phase==='error')throw Error('Native Squirrel update failed');return s.phase==='ready'},{},{timeout:180000});
+  const deadline=Date.now()+180000;
+  for(;;){const state=await page.evaluate(()=>window.syncaDesktop.updateState());if(state.phase==='error')throw Error('Native Squirrel update failed');if(state.phase==='ready')break;if(Date.now()>deadline)throw Error('Native Squirrel download did not become ready');await new Promise(resolve=>setTimeout(resolve,250));}
   await page.screenshot({path:path.join(out,'windows-native-update-ready.png')});
   // Browser connection closes when quitAndInstall exits this process.
   evidence.updateStage='native restart';
   evidence.nativeInstallResult=await page.evaluate(()=>window.syncaDesktop.updateAction('install')).catch(error=>{if(!/closed|destroyed/i.test(error.message))throw error});
+  await close().catch(()=>{}); // Detach the test debugger so the old process can exit.
   evidence.checks.push({name:'Native Setup + verified Squirrel failure/retry + quitAndInstall restart 1.2.1 → synthetic 1.2.2',passed:true,receipt:await receipt(),packageSha256:manifest.package.sha256});
   await stop();
   execFileSync(path.join(installed,'Update.exe'),['--uninstall','--silent'],{timeout:180000});
@@ -45,9 +47,10 @@ export async function verifySquirrel({stage,appData,out,instrument,launch,close,
   assert.equal((await portable.evaluate(()=>window.syncaDesktop.updateAction('download'))).phase,'ready');
   await portable.screenshot({path:path.join(out,'windows-portable-update-ready.png')});
   await portable.evaluate(()=>window.syncaDesktop.updateAction('install')).catch(error=>{if(!/closed|destroyed/i.test(error.message))throw error});
+  await close().catch(()=>{});
   evidence.checks.push({name:'Real portable controller → verified Setup → processStartAndWait → restarted installed app',passed:true,receipt:await receipt()});
  }catch(error){evidence.installedFiles=await fs.readdir(installed).catch(()=>[]);evidence.nativeUpdateState=await page?.evaluate(()=>window.syncaDesktop.updateState()).catch(()=>null);throw error;}finally{
-  for(const source of [path.join(installed,'SquirrelSetup.log'),path.join(process.env.LOCALAPPDATA,'SquirrelTemp/SquirrelSetup.log')])await fs.copyFile(source,path.join(out,path.basename(path.dirname(source))+'-SquirrelSetup.log')).catch(()=>{});
+  for(const source of [...(await fs.readdir(installed).catch(()=>[])).filter(name=>name.startsWith('Squirrel-')&&name.endsWith('.log')).map(name=>path.join(installed,name)),path.join(process.env.LOCALAPPDATA,'SquirrelTemp/SquirrelSetup.log')])await fs.copyFile(source,path.join(out,path.basename(path.dirname(source))+'-SquirrelSetup.log')).catch(()=>{});
   delete process.env.SYNCA_CI_RELEASE;delete process.env.SYNCA_CI_PACKAGE;delete process.env.SYNCA_CI_SETUP;await stop().catch(error=>{evidence.cleanupError=error.stack;});
  }
 }

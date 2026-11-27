@@ -1,6 +1,11 @@
 name: Windows distribution verification
 on:
   workflow_dispatch:
+    inputs:
+      store_submission:
+        description: Build with the assigned Partner Center identity (does not submit)
+        type: boolean
+        default: false
   push:
     branches: [dev]
     paths:
@@ -63,15 +68,25 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $version = (Get-Content app/package.json | ConvertFrom-Json).version
           Compress-Archive -Path "dist/Synca Electron-win32-$env:SYNCA_WINDOWS_ARCH" -DestinationPath "dist/Synca-$version-Windows-$env:SYNCA_WINDOWS_ARCH.zip"
-      - name: Build unsigned Store CI package (not a submission)
+      - name: Build Store package (test identity by default, no submission)
         working-directory: desktop
+        env:
+          SYNCA_STORE_IDENTITY_JSON: ${{ vars.SYNCA_STORE_IDENTITY_JSON }}
+          SYNCA_STORE_SUBMISSION: ${{ github.event_name == 'workflow_dispatch' && inputs.store_submission }}
         run: |
           $sdk = Get-ChildItem 'C:/Program Files (x86)/Windows Kits/10/bin' -Directory | Where-Object { Test-Path "$($_.FullName)/x64/makeappx.exe" } | Sort-Object Name -Descending | Select-Object -First 1
           if (!$sdk) { throw 'Windows SDK missing' }
           $env:WINDOWS_KIT_PATH = "$($sdk.FullName)/x64"
           node build.mjs win32 store
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
+          if ($env:SYNCA_STORE_SUBMISSION -eq 'true') {
+            if ([string]::IsNullOrWhiteSpace($env:SYNCA_STORE_IDENTITY_JSON)) { throw 'Assigned Partner Center identity is required; refusing CI fallback.' }
+            $env:SYNCA_STORE_IDENTITY = Join-Path $env:RUNNER_TEMP 'synca-store-identity.json'
+            [IO.File]::WriteAllText($env:SYNCA_STORE_IDENTITY, $env:SYNCA_STORE_IDENTITY_JSON, [Text.UTF8Encoding]::new($false))
+            node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH
+          } else {
+            node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
+          }
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Real Windows migration and UI evidence
         working-directory: desktop
@@ -97,7 +112,7 @@ jobs:
           if-no-files-found: warn
           path: desktop/dist/evidence/wack*
       - name: Upload packages
-        if: always()
+        if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: synca-1.2.1-windows-${{ matrix.arch }}-${{ github.sha }}
