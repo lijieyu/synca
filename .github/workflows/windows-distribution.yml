@@ -76,10 +76,6 @@ jobs:
       - name: Real Windows migration and UI evidence
         working-directory: desktop
         run: node windows-acceptance.mjs
-      - name: Probe Windows App Certification Kit
-        if: always()
-        working-directory: desktop
-        run: ./windows-wack.ps1 -Arch $env:SYNCA_WINDOWS_ARCH
       - name: Upload compact acceptance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -88,6 +84,18 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
           path: desktop/dist/evidence/**
+      - name: Probe Windows App Certification Kit
+        if: always()
+        working-directory: desktop
+        run: ./windows-wack.ps1 -Arch $env:SYNCA_WINDOWS_ARCH
+      - name: Upload certification probe evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-wack-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: desktop/dist/evidence/wack*
       - name: Upload packages
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

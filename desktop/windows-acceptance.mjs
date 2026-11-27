@@ -17,6 +17,8 @@ async function instrument(source,name,inPlace=false){
  const target=inPlace?source:path.join(stage,name);if(!inPlace)await fs.cp(source,target,{recursive:true});
  const archive=path.join(target,'resources/app.asar'),unpacked=path.join(stage,name+'-source');extractAll(archive,unpacked);
  const metadata=JSON.parse(await fs.readFile(path.join(unpacked,'package.json'),'utf8'));
+ const captureMain=path.join(unpacked,'capture/main.cjs');
+ try{const source=await fs.readFile(captureMain,'utf8');await fs.writeFile(captureMain,source.replace("throw Error('Untrusted capture request')","{console.warn('CI_CAPTURE_TRUST',JSON.stringify({entry:!!entry,main:e.senderFrame===e.sender.mainFrame,actual:e.senderFrame?.url,expected:overlayURL}));throw Error('Untrusted capture request')}"));}catch(error){if(error.code!=='ENOENT')throw error;}
  const entry=`const {app,session,net}=require('electron');const fs=require('node:fs/promises'),path=require('node:path');
 // Observe the real legacy defaults; no userData/sessionData/appData overrides.
 if(app.getVersion()==='1.2.0'){const syncFS=require('node:fs');const profile=app.getPath('userData');if(syncFS.existsSync(profile)&&syncFS.readdirSync(profile).length)throw Error('Legacy profile must be empty on this disposable runner');}
@@ -31,7 +33,7 @@ require('./local-ui.cjs').installLocalUI=(ses,cfg)=>{
  });
 };
 app.on('browser-window-created',(_event,window)=>window.webContents.on('did-finish-load',async()=>{if(app.getVersion()==='1.2.2'){const values=await window.webContents.executeJavaScript('({authToken:localStorage.getItem("authToken"),draft:localStorage.getItem("synca.ci.unsent")})');await fs.writeFile(path.join(process.env.SYNCA_CI_APPDATA,'launch-1.2.2.json'),JSON.stringify({...values,version:app.getVersion(),profile:app.getPath('userData')}));}}));
-globalThis.syncaCIWindowBounds=()=>require('./capture/main.cjs').windowBounds();
+globalThis.syncaCIWindowBounds=async()=>{try{return await require('./capture/main.cjs').windowBounds();}catch(e){console.warn('CI_BOUNDS_ERROR',JSON.stringify({code:e.code,killed:e.killed,signal:e.signal,stdout:e.stdout,stderr:e.stderr}));throw e;}};
 require('./${metadata.main}');`;
  await fs.writeFile(path.join(unpacked,'ci-entry.cjs'),entry);metadata.main='ci-entry.cjs';await fs.writeFile(path.join(unpacked,'package.json'),JSON.stringify(metadata));await fs.rm(archive);await createPackage(unpacked,archive);
  return path.join(target,'Synca Electron.exe');
