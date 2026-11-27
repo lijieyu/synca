@@ -1,3 +1,4 @@
+import {verifySquirrelRelease} from './squirrel-release.mjs';
 import {createWindowsInstaller} from 'electron-winstaller';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -23,6 +24,6 @@ const packageName=`Synca-${version}-full.nupkg`;
 const packageBytes=await fs.readFile(path.join(outputDirectory,packageName));
 const packageInfo={name:packageName,sha256:createHash('sha256').update(packageBytes).digest('hex'),sha1:createHash('sha1').update(packageBytes).digest('hex'),bytes:packageBytes.length};
 const releases=await fs.readFile(path.join(outputDirectory,'RELEASES'),'utf8');
-if(!releases.split(/\r?\n/).some(line=>line.toLowerCase()===`${packageInfo.sha1} ${packageName} ${packageInfo.bytes}`.toLowerCase()))throw Error('Squirrel feed does not match generated package');
+verifySquirrelRelease(releases,packageInfo);
 await fs.writeFile(path.join(outputDirectory,'release.json'),JSON.stringify({version,feed,url:feed+setupExe,sha256:createHash('sha256').update(file).digest('hex'),bytes:file.length,package:packageInfo},null,2)+'\n');
 console.log(`Installer and feed ready for verification: ${outputDirectory}`);

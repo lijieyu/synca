@@ -16,12 +16,16 @@ concurrency:
   cancel-in-progress: true
 jobs:
   windows:
-    runs-on: windows-2025
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, arm64]
+        include:
+          - arch: x64
+            runner: windows-2025
+          - arch: arm64
+            runner: windows-11-arm
     defaults:
       run:
         shell: pwsh
@@ -49,7 +53,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Windows contract and security regression
         working-directory: desktop
-        run: node --test update-policy.test.cjs updater.test.cjs windows-distribution.test.cjs store-manifest.test.cjs windows-compat.test.cjs capture.test.cjs
+        run: node --test update-policy.test.cjs updater.test.cjs windows-distribution.test.cjs store-manifest.test.cjs squirrel-release.test.cjs windows-compat.test.cjs capture.test.cjs
       - name: Build website app and installer
         working-directory: desktop
         run: |
@@ -69,11 +73,18 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Real Windows x64 migration and UI evidence
-        if: matrix.arch == 'x64'
+      - name: Real Windows migration and UI evidence
         working-directory: desktop
         run: node windows-acceptance.mjs
-      - name: Upload evidence and packages
+      - name: Upload compact acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-evidence-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: desktop/dist/evidence/**
+      - name: Upload packages
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -86,4 +97,4 @@ jobs:
             desktop/dist/store/**/Synca*.msix
             desktop/dist/store/**/AppxManifest.xml
             desktop/dist/store/**/build-evidence.json
-            desktop/dist/evidence/**
+
