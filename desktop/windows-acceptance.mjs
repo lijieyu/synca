@@ -73,8 +73,13 @@ try{
  await page.getByRole('button',{name:'Collections',exact:true}).click();await page.locator('.collection-filter').waitFor();await page.screenshot({path:path.join(out,'windows-collections-en-US.png')});
  await page.getByRole('button',{name:'Scratchpad',exact:true}).click();await page.locator('.scratchpad textarea').waitFor();await page.getByRole('button',{name:'Preview',exact:true}).click();await page.screenshot({path:path.join(out,'windows-scratchpad-en-US.png')});
  // Native Windows screen enumeration and capture, not a mocked image source.
- await page.evaluate(()=>window.syncaDesktop.captureStart());const overlay=await running.waitForEvent('window',p=>p!==page);await overlay.waitForLoadState('domcontentloaded');await overlay.screenshot({path:path.join(out,'windows-native-capture.png')});await overlay.keyboard.press('Escape');
- evidence.checks.push({name:'Windows collections, Markdown autosave/preview, light/dark, native screenshot launch/cancel',passed:true});await close();
+ async function capture(){const opened=running.waitForEvent('window',p=>p!==page);await page.evaluate(()=>window.syncaDesktop.captureStart());const overlay=await opened;await overlay.locator('body[data-ready=true]').waitFor();return overlay;}
+ await running.evaluate(({clipboard})=>clipboard.writeText('Synca CI cancel sentinel'));
+ let overlay=await capture();await overlay.screenshot({path:path.join(out,'windows-native-capture.png')});await overlay.keyboard.press('Escape');assert.equal(await running.evaluate(({clipboard})=>clipboard.readText()),'Synca CI cancel sentinel');
+ overlay=await capture();await overlay.mouse.move(120,150);await overlay.mouse.down();await overlay.mouse.move(650,450,{steps:10});await overlay.mouse.up();await overlay.locator('#annotate').click();await overlay.mouse.move(170,220);await overlay.mouse.down();await overlay.mouse.move(510,340,{steps:8});await overlay.mouse.up();await overlay.screenshot({path:path.join(out,'windows-native-capture-annotated.png')});
+ const closed=overlay.waitForEvent('close');await overlay.locator('#copy').click().catch(error=>{if(!overlay.isClosed())throw error});await closed;
+ const copied=await running.evaluate(({clipboard})=>{const image=clipboard.readImage();return {size:image.getSize(),png:image.toPNG().toString('base64')}});assert(copied.size.width>0&&copied.size.height>0);await fs.writeFile(path.join(out,'windows-native-clipboard.png'),Buffer.from(copied.png,'base64'));
+ evidence.checks.push({name:'Windows collections, Markdown autosave/preview, light/dark, native capture region/rectangle/clipboard/cancel',passed:true,clipboardSize:copied.size});await close();
  await verifySquirrel({stage,appData,out,instrument,launch,close,evidence,currentExe});
  const storeExe=await instrument(path.resolve(`dist/store-app/Synca Electron-win32-${arch}`),'store-runtime');page=await launch(storeExe);
  assert.equal(await running.evaluate(({app})=>app.getPath('userData')),path.join(path.dirname(oldProfile.profile),'Synca Store'));
