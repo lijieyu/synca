@@ -2,6 +2,7 @@
   "devDependencies": {
     "@electron/packager": "20.3.0",
     "electron": "45.3.2",
+    "electron-windows-msix": "2.0.4",
     "electron-winstaller": "5.4.4",
     "playwright-core": "1.65.1"
   },
@@ -14,6 +15,8 @@
     "build:mac:preview": "node build-ui.mjs && node build.mjs darwin preview",
     "build:mac:local-preview": "node build-ui.mjs && node build.mjs darwin local-preview",
     "build:ui": "node build-ui.mjs",
-    "build:windows:installer": "node build-windows-installer.mjs"
+    "build:windows:installer": "node build-windows-installer.mjs",
+    "build:windows:store": "node build.mjs win32 store",
+    "build:windows:msix": "node build-windows-msix.mjs"
   }
 }
