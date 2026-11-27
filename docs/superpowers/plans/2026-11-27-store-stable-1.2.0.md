@@ -23,15 +23,15 @@
 
 ### Task 1: Fixed-source packaging
 Files: desktop/store/stable-1.2.0.mjs, desktop/stable-store.test.cjs, desktop/build-stable-store.mjs.
-- [ ] Write tests for wrong hash, metadata, unexpected archive entries, original-file preservation and isolated startup. Run RED.
-- [ ] Implement source constants/validation, minimal startup adapter, content-preserving ASAR transformation and Windows-only MSIX packaging using existing storeManifest.
-- [ ] Run desktop tests GREEN and check actual released x64 archive locally; commit.
+- [x] Write tests for wrong hash, metadata, unexpected archive entries, original-file preservation and isolated startup. Run RED.
+- [x] Implement source constants/validation, minimal startup adapter, content-preserving ASAR transformation and Windows-only MSIX packaging using existing storeManifest.
+- [x] Run desktop tests GREEN and check actual released x64 archive locally; commit.
 
 ### Task 2: Native Windows evidence and version-correct materials
 Files: .github/workflows/windows-store-stable.yml, desktop/stable-store-acceptance.mjs, docs/windows-store/1.2.0/*, docs/windows-distribution-maintenance.md.
-- [ ] Native x64/ARM64 jobs build exact stable source; fixture runtime verifies version 1.2.0/89, separate profile, no 1.2.1 navigation/update bridge and captures real Windows screenshots.
-- [ ] Prepare accurate 1.2.0 Chinese/English listings and submission notes. Keep production website unchanged.
-- [ ] Run native builds/tests, inspect artifacts and screenshots, fix actual failures and commit. Fresh review of this scope, handle important findings.
+- [x] Native x64/ARM64 jobs build exact stable source; fixture runtime verifies version 1.2.0/89, separate profile, no 1.2.1 navigation/update bridge and captures real Windows screenshots.
+- [x] Prepare accurate 1.2.0 Chinese/English listings and submission notes. Keep production website unchanged.
+- [x] Run native builds/tests, inspect artifacts and screenshots, fix actual failures and commit. Fresh review passed; final run 46001240270 succeeded on x64 and ARM64.
 
 ### Task 3: Formal Store submission and website change
 - [ ] Obtain authenticated Partner Center access on the controllable machine; reserve Synca and read assigned identity.
