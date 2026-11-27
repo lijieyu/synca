@@ -1,4 +1,4 @@
-import {buildCaptureHelper} from './build-capture-helper.mjs'
+import {buildCaptureHelper,buildWindowsCaptureHelper} from './build-capture-helper.mjs'
 import { releaseVersion } from './release-version.mjs'
 import { packager } from '@electron/packager'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -40,6 +40,7 @@ for (const [platform, arch] of targets) {
     icon:'icons/Synca', win32metadata:{ProductName:'Synca Electron', FileDescription:'Synca Electron', CompanyName:'Synca'}})
   const resources = platform === 'darwin' ? path.join(directory, cfg.name+'.app/Contents/Resources') : path.join(directory, 'resources')
   await writeFile(path.join(resources, 'build-info.json'), JSON.stringify(identity))
+  if(platform==='win32')await buildWindowsCaptureHelper(resources,arch)
   if (platform === 'darwin') {
     await buildCaptureHelper(resources)
     const bundle = path.join(directory, cfg.name + '.app')

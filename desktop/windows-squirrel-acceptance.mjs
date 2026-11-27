@@ -34,7 +34,7 @@ export async function verifySquirrel({stage,appData,out,instrument,launch,close,
   await page.screenshot({path:path.join(out,'windows-native-update-ready.png')});
   // Browser connection closes when quitAndInstall exits this process.
   evidence.updateStage='native restart';
-  await page.evaluate(()=>window.syncaDesktop.updateAction('install')).catch(error=>{if(!/closed|destroyed/i.test(error.message))throw error});
+  evidence.nativeInstallResult=await page.evaluate(()=>window.syncaDesktop.updateAction('install')).catch(error=>{if(!/closed|destroyed/i.test(error.message))throw error});
   evidence.checks.push({name:'Native Setup + verified Squirrel failure/retry + quitAndInstall restart 1.2.1 → synthetic 1.2.2',passed:true,receipt:await receipt(),packageSha256:manifest.package.sha256});
   await stop();
   execFileSync(path.join(installed,'Update.exe'),['--uninstall','--silent'],{timeout:180000});
@@ -46,7 +46,7 @@ export async function verifySquirrel({stage,appData,out,instrument,launch,close,
   await portable.screenshot({path:path.join(out,'windows-portable-update-ready.png')});
   await portable.evaluate(()=>window.syncaDesktop.updateAction('install')).catch(error=>{if(!/closed|destroyed/i.test(error.message))throw error});
   evidence.checks.push({name:'Real portable controller → verified Setup → processStartAndWait → restarted installed app',passed:true,receipt:await receipt()});
- }catch(error){evidence.nativeUpdateState=await page?.evaluate(()=>window.syncaDesktop.updateState()).catch(()=>null);throw error;}finally{
+ }catch(error){evidence.installedFiles=await fs.readdir(installed).catch(()=>[]);evidence.nativeUpdateState=await page?.evaluate(()=>window.syncaDesktop.updateState()).catch(()=>null);throw error;}finally{
   for(const source of [path.join(installed,'SquirrelSetup.log'),path.join(process.env.LOCALAPPDATA,'SquirrelTemp/SquirrelSetup.log')])await fs.copyFile(source,path.join(out,path.basename(path.dirname(source))+'-SquirrelSetup.log')).catch(()=>{});
   delete process.env.SYNCA_CI_RELEASE;delete process.env.SYNCA_CI_PACKAGE;delete process.env.SYNCA_CI_SETUP;await stop().catch(error=>{evidence.cleanupError=error.stack;});
  }

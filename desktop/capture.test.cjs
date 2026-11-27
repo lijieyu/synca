@@ -22,10 +22,13 @@ test('IPC rejects malformed or oversized selections and limits annotation comple
  for(const value of [{...good,rect:{...good.rect,x:-1}},{...good,rect:{...good.rect,width:Infinity}},{...good,marks:Array(501).fill(good.marks[0])},{...good,marks:[{...good.marks[0],color:'url(evil)'}]}])assert.throws(()=>validateSelection(value,display));
 });
 
-test('Windows capture uses native PowerShell modules even when launched from PowerShell 7',async()=>{
- const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');let options;
+test('Windows capture runs the packaged native helper and maps physical bounds to DIP',async()=>{
+ const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');let invoked;
  const root=path.join(__dirname,'app/capture');
- const box={module:{exports:{}},__dirname:root,process:{platform:'win32',env:{SystemRoot:'C:\\Windows',PSModulePath:'C:\\Program Files\\PowerShell\\7\\Modules'}},require:id=>id==='electron'?{screen:{screenToDipRect:(_window,r)=>r}}:id==='node:child_process'?{execFile:(_file,_args,value,callback)=>{options=value;callback(null,{stdout:'[]'})}}:id.startsWith('./')?require(path.join(root,id)):require(id)};
- vm.runInNewContext(fs.readFileSync(path.join(root,'main.cjs'),'utf8'),box);await box.module.exports.windowBounds();
- assert.ok(options.env,'inheritance must be explicitly sanitized');assert.equal(Object.keys(options.env).some(key=>key.toLowerCase()==='psmodulepath'),false);assert.equal(options.env.SystemRoot,'C:\\Windows');
+ const box={module:{exports:{}},__dirname:root,process:{platform:'win32',resourcesPath:'/fixture/resources',env:{}},require:id=>id==='electron'?{screen:{screenToDipRect:(_window,r)=>({...r,x:r.x/2,width:r.width/2})}}:id==='node:child_process'?{execFile:(file,args,options,callback)=>{invoked={file,args,options};callback(null,{stdout:'[{"x":200,"y":100,"width":800,"height":600}]'})}}:id.startsWith('./')?require(path.join(root,id)):require(id)};
+ vm.runInNewContext(fs.readFileSync(path.join(root,'main.cjs'),'utf8'),box);
+ const bounds=await box.module.exports.windowBounds();
+ assert.equal(invoked.file,path.join('/fixture/resources','native','synca-window-bounds.exe'));
+ assert.equal(invoked.args.length,0);assert.equal(invoked.options.timeout,5000);assert.equal(invoked.options.windowsHide,true);
+ assert.equal(bounds[0].x,100);assert.equal(bounds[0].width,400);
 });

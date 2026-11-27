@@ -10,11 +10,8 @@ async function windowBounds(){
   const helper=path.join(process.resourcesPath,'native','synca-window-bounds');
   const {stdout}=await execute(helper,[],{timeout:5000,maxBuffer:1024*1024});result=JSON.parse(stdout);
  }else{
-  const script=await fs.readFile(path.join(__dirname,'windows-bounds.ps1'),'utf8');
-  const binary=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
-  // Windows PowerShell 5 cannot load modules inherited from PowerShell 7.
-  const env={...process.env};for(const key of Object.keys(env))if(key.toLowerCase()==='psmodulepath')delete env[key];
-  const {stdout}=await execute(binary,['-NoProfile','-NonInteractive','-Command',script],{timeout:15000,maxBuffer:1024*1024,windowsHide:true,env});result=JSON.parse(stdout.replace(/^\uFEFF/,''));
+  const helper=path.join(process.resourcesPath,'native','synca-window-bounds.exe');
+  const {stdout}=await execute(helper,[],{timeout:5000,maxBuffer:1024*1024,windowsHide:true});result=JSON.parse(stdout);
  }
  if(!Array.isArray(result))throw Error('Window enumeration unavailable');
  return result.filter(r=>['x','y','width','height'].every(key=>Number.isFinite(r[key]))&&r.width>0&&r.height>0).map(r=>process.platform==='win32'?screen.screenToDipRect(null,{x:r.x,y:r.y,width:r.width,height:r.height}):r);
