@@ -25,11 +25,11 @@ function installCapture(mainWindow,cfg,services={}){
  const overlay=e=>{const entry=active?.entries.find(item=>item.window.webContents===e.sender);if(!entry||e.senderFrame!==e.sender.mainFrame||e.senderFrame.url!==overlayURL)throw Error('Untrusted capture request');return entry;};
  function cancel(){const state=active;active=null;if(state)for(const entry of state.entries){if(!entry.window.isDestroyed())entry.window.destroy();}}
  async function report(error){
+  console.warn('[capture] unavailable',error?.code??error?.message??'unknown');
   const zh=activeLanguage!=='en';
   const denied=process.platform==='darwin'&&systemPreferences.getMediaAccessStatus('screen')!=='granted';
   const result=await dialog.showMessageBox(mainWindow,{type:'info',message:denied?(zh?'请允许 Synca 录制屏幕以使用截图':'Allow Synca to record the screen to take screenshots'):(zh?'截图未能启动，请重试':'Could not start capture. Please try again.'),detail:denied?(zh?'在系统设置的“隐私与安全性 → 屏幕与系统音频录制”中允许 Synca，然后重新打开应用。':'Allow Synca in System Settings → Privacy & Security → Screen & System Audio Recording, then reopen the app.'):(zh?'屏幕或窗口信息暂时不可用。':'Screen or window information is unavailable.'),buttons:denied?[zh?'打开系统设置':'Open System Settings',zh?'取消':'Cancel']:[zh?'好':'OK'],cancelId:denied?1:0});
   if(denied&&result.response===0)await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
-  console.warn('[capture] unavailable',error?.code??error?.message??'unknown');
  }
  async function start(){
   if(starting||active)return;starting=true;

@@ -8,7 +8,7 @@ if(process.platform!=='win32'||!['x64','arm64'].includes(process.arch))throw Err
 const arch=process.arch;
 const out=path.resolve('dist/evidence');await fs.mkdir(out,{recursive:true});
 const stage=await fs.mkdtemp(path.join(os.tmpdir(),'synca-windows-acceptance-')),appData=path.join(stage,'AppData');await fs.mkdir(appData);
-const evidence={os:os.release(),arch:process.arch,commit:process.env.GITHUB_SHA,scope:'Real Windows binaries; instrumented copies only; synthetic account and loopback service. Not Store certification.',checks:[],limitations:['Formal Microsoft Store signed installation and Store-managed upgrade require Partner Center identity and approval']};
+const evidence={os:os.release(),arch:process.arch,commit:process.env.GITHUB_SHA,scope:'Real Windows binaries; instrumented copies only; synthetic account and loopback service. Not Store certification.',checks:[],failures:[],limitations:['Formal Microsoft Store signed installation and Store-managed upgrade require Partner Center identity and approval']};
 let running,backend;
 const log=await fs.open(path.join(out,'backend.log'),'w');
 const powershell=(script)=>execFileSync('pwsh.exe',['-NoProfile','-NonInteractive','-Command',"$ErrorActionPreference='Stop';"+script],{encoding:'utf8',timeout:180000});
@@ -31,12 +31,15 @@ require('./local-ui.cjs').installLocalUI=(ses,cfg)=>{
  });
 };
 app.on('browser-window-created',(_event,window)=>window.webContents.on('did-finish-load',async()=>{if(app.getVersion()==='1.2.2'){const values=await window.webContents.executeJavaScript('({authToken:localStorage.getItem("authToken"),draft:localStorage.getItem("synca.ci.unsent")})');await fs.writeFile(path.join(process.env.SYNCA_CI_APPDATA,'launch-1.2.2.json'),JSON.stringify({...values,version:app.getVersion(),profile:app.getPath('userData')}));}}));
+globalThis.syncaCIWindowBounds=()=>require('./capture/main.cjs').windowBounds();
 require('./${metadata.main}');`;
  await fs.writeFile(path.join(unpacked,'ci-entry.cjs'),entry);metadata.main='ci-entry.cjs';await fs.writeFile(path.join(unpacked,'package.json'),JSON.stringify(metadata));await fs.rm(archive);await createPackage(unpacked,archive);
  return path.join(target,'Synca Electron.exe');
 }
 async function launch(executable){
  running=await _electron.launch({executablePath:executable,env:{...process.env,SYNCA_CI_APPDATA:appData},timeout:60000});
+ for(const stream of [running.process().stdout,running.process().stderr])stream?.on('data',data=>{void fs.appendFile(path.join(out,'runtime.log'),data).catch(()=>{});});
+ running.on('window',page=>{page.on('pageerror',error=>{void fs.appendFile(path.join(out,'runtime.log'),error.stack+'\n');});page.on('console',message=>{if(['error','warning'].includes(message.type()))void fs.appendFile(path.join(out,'runtime.log'),message.text()+'\n');});});
  const page=await running.firstWindow();page.setDefaultTimeout(20000);await page.waitForLoadState('domcontentloaded');return page;
 }
 async function close(){if(running){await running.close();running=null;}}
@@ -72,18 +75,24 @@ try{
  await page.evaluate(()=>{localStorage.setItem('synca.language','en');localStorage.setItem('synca.appearance','light')});await page.reload();
  await page.getByRole('button',{name:'Collections',exact:true}).click();await page.locator('.collection-filter').waitFor();await page.screenshot({path:path.join(out,'windows-collections-en-US.png')});
  await page.getByRole('button',{name:'Scratchpad',exact:true}).click();await page.locator('.scratchpad textarea').waitFor();await page.getByRole('button',{name:'Preview',exact:true}).click();await page.screenshot({path:path.join(out,'windows-scratchpad-en-US.png')});
+ evidence.checks.push({name:'Windows collections, Markdown autosave/preview, light/dark, Chinese/English UI',passed:true});
+ try {
+ evidence.captureEnvironment=await running.evaluate(async({screen,desktopCapturer})=>({displays:screen.getAllDisplays(),windows:await globalThis.syncaCIWindowBounds(),sources:(await desktopCapturer.getSources({types:['screen'],thumbnailSize:{width:320,height:180}})).map(s=>({id:s.id,displayId:s.display_id,size:s.thumbnail.getSize(),empty:s.thumbnail.isEmpty()}))}));
  // Native Windows screen enumeration and capture, not a mocked image source.
- async function capture(){const opened=running.waitForEvent('window',p=>p!==page);await page.evaluate(()=>window.syncaDesktop.captureStart());const overlay=await opened;await overlay.locator('body[data-ready=true]').waitFor();return overlay;}
+ async function capture(){const opened=running.waitForEvent('window',p=>p!==page);await page.evaluate(()=>window.syncaDesktop.captureStart());const overlay=await opened;try{await overlay.locator('body[data-ready=true]').waitFor();}catch(error){evidence.capturePage=await overlay.evaluate(()=>({url:location.href,ready:document.readyState,html:document.body.innerHTML,capture:typeof window.capture,geometry:typeof window.captureGeometry})).catch(()=>({closed:overlay.isClosed()}));throw error;}return overlay;}
  await running.evaluate(({clipboard})=>clipboard.writeText('Synca CI cancel sentinel'));
  let overlay=await capture();await overlay.screenshot({path:path.join(out,'windows-native-capture.png')});await overlay.keyboard.press('Escape');assert.equal(await running.evaluate(({clipboard})=>clipboard.readText()),'Synca CI cancel sentinel');
  overlay=await capture();await overlay.mouse.move(120,150);await overlay.mouse.down();await overlay.mouse.move(650,450,{steps:10});await overlay.mouse.up();await overlay.locator('#annotate').click();await overlay.mouse.move(170,220);await overlay.mouse.down();await overlay.mouse.move(510,340,{steps:8});await overlay.mouse.up();await overlay.screenshot({path:path.join(out,'windows-native-capture-annotated.png')});
  const closed=overlay.waitForEvent('close');await overlay.locator('#copy').click().catch(error=>{if(!overlay.isClosed())throw error});await closed;
  const copied=await running.evaluate(({clipboard})=>{const image=clipboard.readImage();return {size:image.getSize(),png:image.toPNG().toString('base64')}});assert(copied.size.width>0&&copied.size.height>0);await fs.writeFile(path.join(out,'windows-native-clipboard.png'),Buffer.from(copied.png,'base64'));
- evidence.checks.push({name:'Windows collections, Markdown autosave/preview, light/dark, native capture region/rectangle/clipboard/cancel',passed:true,clipboardSize:copied.size});await close();
- await verifySquirrel({stage,appData,out,instrument,launch,close,evidence,currentExe});
+ evidence.checks.push({name:'Windows native capture region/rectangle/clipboard/cancel',passed:true,clipboardSize:copied.size});
+ }catch(error){evidence.failures.push({name:'native capture',error:error.stack});}
+ await close();
+ try{await verifySquirrel({stage,appData,out,instrument,launch,close,evidence,currentExe});}catch(error){evidence.failures.push({name:'native Squirrel',error:error.stack});await close().catch(()=>{});}
  const storeExe=await instrument(path.resolve(`dist/store-app/Synca Electron-win32-${arch}`),'store-runtime');page=await launch(storeExe);
  assert.equal(await running.evaluate(({app})=>app.getPath('userData')),path.join(path.dirname(oldProfile.profile),'Synca Store'));
  assert.equal(await page.evaluate(()=>typeof window.syncaDesktop.updateAction),'undefined');assert.equal(await page.evaluate(()=>localStorage.getItem('authToken')),null);evidence.checks.push({name:'Store marker runtime: isolated profile and no updater bridge',passed:true});await close();
+ assert.equal(evidence.failures.length,0,JSON.stringify(evidence.failures));
  evidence.result='passed';
 } catch(error){evidence.result='failed';evidence.error=error.stack;throw error;}
 finally{await close();backend?.kill();await log.close();await fs.writeFile(path.join(out,'windows-acceptance.json'),JSON.stringify(evidence,null,2));await fs.rm(stage,{recursive:true,force:true}).catch(()=>{});}
