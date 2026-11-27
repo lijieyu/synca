@@ -73,6 +73,10 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Diagnose ARM64 capture host startup
+        if: matrix.arch == 'arm64'
+        working-directory: desktop
+        run: node windows-capture-probe.mjs
       - name: Real Windows migration and UI evidence
         working-directory: desktop
         run: node windows-acceptance.mjs
