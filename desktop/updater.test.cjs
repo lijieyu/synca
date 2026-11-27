@@ -20,3 +20,8 @@ test('macOS uses only the store and never downloads executable updates',async()=
  let opened;const updater=new UpdateController({platform:'darwin',version:'1.2.1',catalog:async()=>({macos:{version:'1.2.2',storeURL:'https://apps.apple.com/app/id6761647007'}}),openStore:async url=>opened=url});
  await updater.check();await updater.download();assert.equal(opened,'https://apps.apple.com/app/id6761647007');assert.equal(updater.state.phase,'available');
 });
+test('failed portable installation keeps the app open and supports a fresh retry',async()=>{
+ let quits=0,restarts=0;
+ const updater=new UpdateController({platform:'win32',arch:'x64',version:'1.2.1',installed:false,catalog:async()=>({windows:{x64:release}}),download:async()=>({path:'fixture'}),runInstaller:async()=>{throw Error('Installer failed')},prepareRestart:()=>restarts++,quit:()=>quits++});
+ await updater.check();await updater.download();assert.equal(updater.state.phase,'ready');await updater.install();assert.equal(updater.state.phase,'error');assert.equal(quits,0);assert.equal(restarts,0);assert.equal((await updater.check()).phase,'available');
+});

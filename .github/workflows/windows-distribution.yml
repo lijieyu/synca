@@ -4,6 +4,7 @@ on:
   push:
     branches: [dev]
     paths:
+      - '.gitattributes'
       - 'desktop/**'
       - 'web/**'
       - 'backend/tests/acceptance-server.ts'

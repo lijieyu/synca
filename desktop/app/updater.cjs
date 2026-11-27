@@ -71,7 +71,13 @@ function installUpdater(window,cfg,version,prepareRestart){
    // Recheck the exact trusted file immediately before execution; never accept a renderer path.
    const bytes=await fsp.readFile(bootstrap.path);
    if(bytes.length!==bootstrap.release.bytes||createHash('sha256').update(bytes).digest('hex')!==bootstrap.release.sha256)throw Error('Installer changed');
-   await new Promise((resolve,reject)=>{const child=spawn(bootstrap.path,['--silent'],{detached:true,stdio:'ignore'});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});
+   // Keep this app alive until Setup reports success so installer failures remain
+   // visible and retryable. Squirrel's processStartAndWait waits for our exit.
+   await new Promise((resolve,reject)=>{const child=spawn(bootstrap.path,['--silent'],{stdio:'ignore'});const timer=setTimeout(()=>{child.kill();reject(Error('Installer timed out'));},20*60*1000);child.once('error',error=>{clearTimeout(timer);reject(error)});child.once('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('Installer failed'))});});
+   const update=require('node:path').join(app.getPath('appData'),'..','Local','Synca','Update.exe');
+   const installedUpdate=process.env.LOCALAPPDATA?require('node:path').join(process.env.LOCALAPPDATA,'Synca','Update.exe'):update;
+   await fsp.access(installedUpdate);
+   await new Promise((resolve,reject)=>{const child=spawn(installedUpdate,['--processStartAndWait','Synca Electron.exe'],{detached:true,stdio:'ignore'});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});
   }
  });
  const trusted=event=>event.sender===window.webContents&&event.senderFrame===event.sender.mainFrame&&new URL(event.senderFrame.url).origin===cfg.home;
