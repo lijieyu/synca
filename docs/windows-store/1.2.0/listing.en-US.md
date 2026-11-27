@@ -1,6 +1,6 @@
 Product name: Synca · Notes & File Transfer
 # Synca 1.2.0 (89) — Microsoft Store first release
-Status: Prepared, not submitted. Publisher selected by user: Jieyu Li; exact identity must come from Partner Center. App name: Synca (reservation pending).
+Status: Saved in Partner Center submission draft; not submitted for certification. Publisher: Jieyu Li. Store ID: 9PJ7VZ48QM81.
 Category: Productivity
 Short description: Capture ideas, tasks and useful information, then pick up on your other devices.
 
@@ -13,7 +13,7 @@ Free accounts support text and image records within the account's storage allowa
 Microsoft Store manages installation and updates for this edition. Sign in when you first open the Store edition to access your cloud content. Your website edition's local files are not deleted.
 
 Keywords (7): quick notes; tasks; cross-device sync; Markdown; categories; image notes; ideas
-Release notes: First Microsoft Store release of Synca 1.2.0, using the same recording and sync functionality as the current website stable release.
+Release notes: Leave blank for this first submission, as instructed by Partner Center.
 Privacy: https://synca.haerth.cn/en/privacy-policy
 Support: https://synca.haerth.cn/en/support
 Contact: jieyu.li@icloud.com

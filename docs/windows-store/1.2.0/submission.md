@@ -1,6 +1,6 @@
 # Stable Store submission — 1.2.0 (89)
 
-User changed the first Store release to the mature website version on 2026-11-27. Publisher display name selected: Jieyu Li. Registration was completed on the user's MacBook; authenticated access from the controllable Mac mini has not yet been established.
+User changed the first Store release to the mature website version on 2026-11-27. Publisher display name selected: Jieyu Li. Registration was completed on the user's MacBook; authenticated access from the Mac mini is now established.
 
 ## Source and packaging
 - Immutable website release: `1.2.0-20261125-r3`, both SHA-256 values pinned in `desktop/store/stable-1.2.0.mjs` and matching the original website publication script.
@@ -14,7 +14,7 @@ Workflow `.github/workflows/windows-store-stable.yml` runs native x64/ARM64 pack
 The Windows fixture uses instrumented copies, synthetic accounts and a local backend. Source preservation is checked on the uninstrumented package. Formal Microsoft-signed installation, production login and Store update behavior require separate evidence.
 
 ## Remaining release gates
-- Reserve Synca; obtain exact Name, Publisher CN, PublisherDisplayName, DisplayName and Product ID from Partner Center.
+- Assigned identity and approved localized names are recorded below; reservation is complete.
 - Use only these versioned listing files and 1.2.0 screenshots; current 1.2.1 listings are not valid for this release.
 - Verify live privacy/support URLs and supported reviewer access. Private reviewer credentials must never enter git or public artifacts. Do not invent an authentication bypass.
 - User personally completes legal declarations, any further identity verification and developer agreement.
@@ -48,3 +48,16 @@ All three names were approved by the user and reserved under the same product on
 - zh-CN: **Synca · 笔记与文件传输**
 - zh-TW: **Synca · 筆記與檔案傳輸**
 Original Synca Notes reservation remains; do not delete/recreate the product. Package identity and Store ID are unchanged. `desktop/store/identity.production.json` contains only the public, assigned identity and approved default English package name. Localized Store listing names must be selected in their respective listing pages; reserving a name alone does not publish a listing.
+
+## Formal build and listing draft — 2026-11-27
+
+Formal native Windows run [46006176148](https://github.com/lijieyu/synca/actions/runs/46006176148) at `7c9ad9b172239237a3e8c2c5cb6e31745cf83aee` succeeded on x64 and ARM64. Downloaded packages were independently checked against build evidence and their embedded manifest identity:
+- x64 SHA-256: `c3d98960a49fcef7e51389b3f1ca92471586bcf464c24b81acb535099a9656a6`
+- ARM64 SHA-256: `8c5ff197816ee4b0f18a8af43ff2a8d3e873fa1eb984567b8b71cc140015f991`
+- Both use the assigned Name/Publisher, version `1.2.0.0`, and their correct architecture. These are unsigned Store-upload artifacts; no Microsoft-signed installation claim is made.
+
+Submission draft `1152921505702525382` exists. English, simplified Chinese and traditional Chinese listing pages were saved with their approved localized names, version-correct descriptions, short descriptions and real Windows screenshots. Partner Center reports Store listings **Complete**. First-submission release notes are blank. Traditional Chinese currently uses the English UI screenshot; no localized screenshot claim is made.
+
+x64 upload passed ingestion with only the expected `runFullTrust` restricted-capability review warning. ARM64 bytes uploaded and its package appears in the device table with the same warning; the uploader still reports “Analyzing package” at 99%, so final save is not yet verified. Desktop is selected; all other device families and automatic future-family availability are disabled. Product is still a draft, not certified or published. Website links remain unchanged.
+
+Browser follow-up is waiting for the user to release the Mac mini foreground browser. The independent tab connection reports unavailable; no certification submission was attempted. Remaining forms: availability/pricing, properties/privacy links, age rating, review notes and final submission.

@@ -1,5 +1,5 @@
 # Synca 1.2.0（89）微软商店首发资料
-状态：待正式包身份、Windows 验证及提交。发布者：Jieyu Li（用户已选定；最终以 Partner Center 为准）。应用名：Synca · 笔记与文件传输，已保留。
+状态：已保存至 Partner Center 提交草稿，尚未送审。发布者：Jieyu Li。应用名：Synca · 笔记与文件传输。
 
 简短说明：随手记录灵感、待办与资料，在自己的设备间继续使用。
 类别：高效工作 / Productivity
@@ -14,7 +14,7 @@ Synca 帮你快速留下想法、待办和日常信息，并在自己的设备�
 微软商店版本由 Microsoft Store 管理安装和更新。首次使用商店版需登录 Synca 账户，云端内容会按原有同步功能读取；官网版的本地资料不会被删除。
 
 关键词（7 个）：快速记录；待办；跨设备同步；Markdown；分类；图片笔记；灵感
-新增内容：Synca 1.2.0 首次登陆 Microsoft Store，与官网当前稳定版使用同一套记录与同步功能。
+新增内容：首次提交按 Partner Center 提示留空。
 隐私：https://synca.haerth.cn/zh-hans/privacy-policy
 支持：https://synca.haerth.cn/zh-hans/support
 联系：jieyu.li@icloud.com
