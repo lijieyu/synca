@@ -9,6 +9,13 @@ test('DIP crop maps exactly to Retina image pixels and never exceeds edges',()=>
  assert.deepEqual(pixels({x:99.5,y:49.5,width:1,height:1},{width:200,height:100},{width:100,height:50}),{x:199,y:99,width:1,height:1});
 });
 const {validateSelection}=require('./app/capture/selection.cjs');
+test('capture accepts equivalent local file URL encoding without accepting another document',()=>{
+ const {isCaptureDocument}=require('./app/capture/trusted-document.cjs');
+ const expected='file:///C:/Users/RUNNER%7E1/Synca%20Electron/resources/app.asar/capture/index.html';
+ assert.equal(isCaptureDocument('file:///C:/Users/RUNNER~1/Synca%20Electron/resources/app.asar/capture/index.html',expected),true);
+ for(const actual of [expected+'?other',expected+'#other',expected.replace('index.html','other.html'),expected.replace('file:///','https://example.com/'),'file://evil.example/C:/capture/index.html',expected.replace('capture/','capture%2F')])assert.equal(isCaptureDocument(actual,expected),false,actual);
+ assert.equal(isCaptureDocument(undefined,expected),false);
+});
 test('IPC rejects malformed or oversized selections and limits annotation complexity',()=>{
  const display={width:1000,height:800};const good={rect:{x:10,y:20,width:200,height:150},marks:[{x:20,y:30,width:100,height:60,color:'#ff453a',stroke:3}]};
  assert.deepEqual(validateSelection(good,display),good);

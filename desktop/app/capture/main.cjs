@@ -1,6 +1,7 @@
 const {app,BrowserWindow,desktopCapturer,screen,systemPreferences,globalShortcut,ipcMain,clipboard,nativeImage,dialog,shell}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),{promisify}=require('node:util'),{execFile}=require('node:child_process'),{pathToFileURL}=require('node:url');
 const execute=promisify(execFile),{validateSelection}=require('./selection.cjs'),{pixels}=require('./geometry.cjs');
+const {isCaptureDocument}=require('./trusted-document.cjs');
 const DEFAULT='CommandOrControl+Shift+A';
 function language(){const value=app.getLocale().toLowerCase();return /zh-(tw|hk|hant)/.test(value)?'zh-Hant':value.startsWith('zh')?'zh':'en';}
 async function windowBounds(){
@@ -22,7 +23,7 @@ function installCapture(mainWindow,cfg,services={}){
  const preferences=path.join(app.getPath('userData'),'capture-preferences.json');let shortcut=DEFAULT,shortcutError=false,active=null,starting=false,activeLanguage=language();
  const trustedMain=e=>e.sender===mainWindow.webContents&&e.senderFrame===e.sender.mainFrame&&new URL(e.senderFrame.url).origin===cfg.home;
  const overlayURL=pathToFileURL(path.join(__dirname,'index.html')).href;
- const overlay=e=>{const entry=active?.entries.find(item=>item.window.webContents===e.sender);if(!entry||e.senderFrame!==e.sender.mainFrame||e.senderFrame.url!==overlayURL)throw Error('Untrusted capture request');return entry;};
+ const overlay=e=>{const entry=active?.entries.find(item=>item.window.webContents===e.sender);if(!entry||e.senderFrame!==e.sender.mainFrame||!isCaptureDocument(e.senderFrame.url,overlayURL))throw Error('Untrusted capture request');return entry;};
  function cancel(){const state=active;active=null;if(state)for(const entry of state.entries){if(!entry.window.isDestroyed())entry.window.destroy();}}
  async function report(error){
   console.warn('[capture] unavailable',error?.code??error?.message??'unknown');
