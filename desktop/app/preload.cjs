@@ -19,7 +19,7 @@ if (process.isMainFrame && location.origin === origin) {
   contextBridge.exposeInMainWorld('syncaDesktop', {
     version:process.argv.find(value=>value.startsWith('--synca-version='))?.slice('--synca-version='.length) ?? '',
     build:process.argv.find(value=>value.startsWith('--synca-build='))?.slice('--synca-build='.length) ?? '', emailAuth:!masPreflight, preview, localPreview, platform:process.platform === 'darwin' ? 'macOS' : 'Windows',
-    ...(!preview ? {updateState:()=>ipcRenderer.invoke('desktop:update-state'), updateAction:action=>ipcRenderer.invoke('desktop:update-action',action)} : {}),
+    ...(!preview && !process.windowsStore && !process.argv.includes('--synca-store') ? {updateState:()=>ipcRenderer.invoke('desktop:update-state'), updateAction:action=>ipcRenderer.invoke('desktop:update-action',action)} : {}),
     captureSettings:()=>ipcRenderer.invoke('desktop:capture-settings'),
     captureShortcut:value=>ipcRenderer.invoke('desktop:capture-shortcut',value),
     captureStart:()=>ipcRenderer.invoke('desktop:capture-start'),

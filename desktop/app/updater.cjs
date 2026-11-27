@@ -1,11 +1,12 @@
 const {isNewer,validateRelease,installerPath,STORE}=require('./update-policy.cjs');
 class UpdateController {
  constructor(options){this.options=options;this.state={phase:'idle'};this.release=null;this.bootstrap=null;
-  options.autoUpdater?.on('error',()=>this.set({phase:'error'}));
-  options.autoUpdater?.on('update-not-available',()=>this.set({phase:'current'}));
-  options.autoUpdater?.on('update-downloaded',()=>{if(this.state.phase==='downloading')this.set({phase:'ready'});});
+  this.listeners={error:()=>{void this.cleanup();this.set({phase:'error'});},'update-not-available':()=>{void this.cleanup();this.set({phase:'current'});},'update-downloaded':()=>{if(this.state.phase==='downloading'){void this.cleanup();this.set({phase:'ready'});}}};
+  for(const [event,listener] of Object.entries(this.listeners))options.autoUpdater?.on(event,listener);
  }
- set(patch){this.state={...this.state,...patch};this.options.changed?.(this.state);return this.state;}
+ async cleanup(){clearTimeout(this.timeout);const feed=this.feed;this.feed=null;await feed?.close();}
+ async dispose(){this.disposed=true;await this.cleanup();for(const [event,listener] of Object.entries(this.listeners))this.options.autoUpdater?.removeListener(event,listener);}
+ set(patch){if(this.disposed)return this.state;this.state={...this.state,...patch};this.options.changed?.(this.state);return this.state;}
  async check(){
   if(['checking','downloading','ready','installing'].includes(this.state.phase))return this.state;
   this.set({phase:'checking'});
@@ -20,9 +21,14 @@ class UpdateController {
   if(this.options.platform==='darwin'){await this.options.openStore(STORE);return this.state;}
   this.set({phase:'downloading'});
   try{
-   if(this.options.installed){this.options.autoUpdater.setFeedURL({url:this.release.feed});this.options.autoUpdater.checkForUpdates();}
+   if(this.options.installed){
+    await this.cleanup();this.feed=await this.options.prepareFeed(this.release);
+    if(this.disposed){await this.cleanup();return this.state;}
+    this.options.autoUpdater.setFeedURL({url:this.feed.url});this.options.autoUpdater.checkForUpdates();
+    this.timeout=setTimeout(()=>{void this.cleanup();this.set({phase:'error'});},15*60*1000);this.timeout.unref?.();
+   }
    else {this.bootstrap=await this.options.download(this.release);this.set({phase:'ready'});}
-  }catch{this.set({phase:'error'});}
+  }catch{await this.cleanup();this.set({phase:'error'});}
   return this.state;
  }
  async install(){
@@ -35,10 +41,11 @@ class UpdateController {
   return this.state;
  }
 }
-async function downloadInstaller(release,fetcher,directory){
+async function downloadInstaller(release,fetcher,directory,filename='Setup.exe'){
  const fs=require('node:fs/promises'),path=require('node:path'),{createHash}=require('node:crypto');
+ if(!/^(?:Setup\.exe|Synca-\d+\.\d+\.\d+-full\.nupkg)$/.test(filename))throw Error('Invalid download name');
  const dir=await fs.mkdtemp(path.join(directory,'synca-update-'));
- const target=path.join(dir,'Setup.exe');let handle;
+ const target=path.join(dir,filename);let handle;
  try{
   const response=await fetcher(release.url,{redirect:'error',signal:AbortSignal.timeout(15*60*1000)});
   if(!response.ok||!response.body)throw Error('Download failed');
@@ -52,11 +59,12 @@ async function downloadInstaller(release,fetcher,directory){
 function installUpdater(window,cfg,version,prepareRestart){
  const {app,autoUpdater,ipcMain,net,shell}=require('electron'),fs=require('node:fs'),fsp=require('node:fs/promises');
  const {spawn}=require('node:child_process'),{createHash}=require('node:crypto');
- if(cfg.isolated)return;
+ if(cfg.isolated||cfg.store||process.windowsStore)return;
  const installed=process.platform==='win32'&&fs.existsSync(installerPath(process.execPath));
  const controller=new UpdateController({platform:process.platform,arch:process.arch,version,installed,autoUpdater:process.platform==='win32'?autoUpdater:null,
   changed:()=>{if(!window.isDestroyed())window.webContents.send('desktop:update');},
   catalog:async()=>{const response=await net.fetch('https://synca.haerth.cn/app-updates',{redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Check failed');const text=await response.text();if(text.length>32768)throw Error('Invalid catalog');return JSON.parse(text);},
+  prepareFeed:release=>require('./verified-feed.cjs').verifiedFeed(release,(url,options)=>net.fetch(url,options),app.getPath('temp')),
   download:release=>downloadInstaller(release,(url,options)=>net.fetch(url,options),app.getPath('temp')),
   openStore:url=>shell.openExternal(url),prepareRestart,quit:()=>app.quit(),
   runInstaller:async bootstrap=>{
@@ -73,11 +81,11 @@ function installUpdater(window,cfg,version,prepareRestart){
  });
  const timer=setTimeout(()=>void controller.check(),process.argv.includes('--squirrel-firstrun')?30000:15000);
  const interval=setInterval(()=>void controller.check(),6*60*60*1000);
- window.on('closed',()=>{clearTimeout(timer);clearInterval(interval);ipcMain.removeHandler('desktop:update-state');ipcMain.removeHandler('desktop:update-action');});
+ window.on('closed',()=>{void controller.dispose();clearTimeout(timer);clearInterval(interval);ipcMain.removeHandler('desktop:update-state');ipcMain.removeHandler('desktop:update-action');});
  return controller;
 }
-function squirrelEvent(app){
- if(process.platform!=='win32')return false;
+function squirrelEvent(app,cfg={}){
+ if(process.platform!=='win32'||cfg.store||process.windowsStore)return false;
  const event=process.argv.find(value=>/^--squirrel-(install|updated|uninstall|obsolete)$/.test(value));
  if(!event)return false;
  if(event!=='--squirrel-obsolete'){

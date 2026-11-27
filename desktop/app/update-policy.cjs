@@ -12,6 +12,7 @@ function validateRelease(value,platform,arch){
  if(platform!=='win32'||!['x64','arm64'].includes(arch))throw Error('Unsupported platform');
  const feed=`https://synca.haerth.cn/downloads/windows/${arch}/`;
  if(value.feed!==feed||value.url!==`${feed}Synca-${value.version}-${arch}-Setup.exe`||!/^[a-f0-9]{64}$/.test(value.sha256)||!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>600*1024*1024)throw Error('Invalid installer manifest');
+ if(value.package){const p=value.package;if(p.name!==`Synca-${value.version}-full.nupkg`||!/^[a-f0-9]{64}$/.test(p.sha256)||!/^[a-f0-9]{40}$/.test(p.sha1)||!Number.isSafeInteger(p.bytes)||p.bytes<1||p.bytes>600*1024*1024)throw Error('Invalid package manifest');}
  return value;
 }
 function installerPath(executable){return path.win32.join(path.win32.dirname(executable),'..','Update.exe');}
