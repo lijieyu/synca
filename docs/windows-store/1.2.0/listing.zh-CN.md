@@ -1,5 +1,5 @@
 # Synca 1.2.0（89）微软商店首发资料
-状态：待正式包身份、Windows 验证及提交。发布者：Jieyu Li（用户已选定；最终以 Partner Center 为准）。应用名：Synca，待名称保留。
+状态：待正式包身份、Windows 验证及提交。发布者：Jieyu Li（用户已选定；最终以 Partner Center 为准）。应用名：Synca · 笔记与文件传输，已保留。
 
 简短说明：随手记录灵感、待办与资料，在自己的设备间继续使用。
 类别：高效工作 / Productivity

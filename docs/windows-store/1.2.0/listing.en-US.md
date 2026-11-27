@@ -1,3 +1,4 @@
+Product name: Synca · Notes & File Transfer
 # Synca 1.2.0 (89) — Microsoft Store first release
 Status: Prepared, not submitted. Publisher selected by user: Jieyu Li; exact identity must come from Partner Center. App name: Synca (reservation pending).
 Category: Productivity

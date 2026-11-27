@@ -13,6 +13,7 @@ on:
       - 'desktop/build-stable-store.mjs'
       - 'desktop/stable-store*'
       - 'desktop/store/stable*.mjs'
+      - 'desktop/store/identity.production.json'
 permissions:
   contents: read
 concurrency:

@@ -41,3 +41,10 @@ On 2026-11-27 the user approved **Synca Notes**. Partner Center successfully cre
 - Package Family Name: `JieyuLi.SyncaNotes_n7haejrbvpnsy`
 
 Chinese localized name remains under discussion. The assigned Store URL is not evidence of public availability; the product is still a draft and no submission exists yet.
+
+## Approved localized names — reserved successfully
+All three names were approved by the user and reserved under the same product on 2026-11-27:
+- en-US: **Synca · Notes & File Transfer** (also set as dashboard name)
+- zh-CN: **Synca · 笔记与文件传输**
+- zh-TW: **Synca · 筆記與檔案傳輸**
+Original Synca Notes reservation remains; do not delete/recreate the product. Package identity and Store ID are unchanged. `desktop/store/identity.production.json` contains only the public, assigned identity and approved default English package name. Localized Store listing names must be selected in their respective listing pages; reserving a name alone does not publish a listing.
