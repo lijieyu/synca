@@ -1,4 +1,4 @@
-const {app,BrowserWindow,desktopCapturer,screen,systemPreferences,globalShortcut,ipcMain,clipboard,nativeImage,dialog,shell}=require('electron');
+const {app,BrowserWindow,desktopCapturer,screen,systemPreferences,globalShortcut,ipcMain,clipboard,ClipboardItem,nativeImage,dialog,shell}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),{promisify}=require('node:util'),{execFile}=require('node:child_process'),{pathToFileURL}=require('node:url');
 const execute=promisify(execFile),{validateSelection}=require('./selection.cjs'),{pixels}=require('./geometry.cjs');
 const {isCaptureDocument}=require('./trusted-document.cjs');
@@ -84,7 +84,7 @@ function installCapture(mainWindow,cfg,services={}){
    if(bytes.length<33||!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||bytes.readUInt32BE(8)!==13||bytes.toString('ascii',12,16)!=='IHDR'||bytes.readUInt32BE(16)!==expected.width||bytes.readUInt32BE(20)!==expected.height||expected.width*expected.height>40000000)throw Error('Invalid PNG');
    const image=nativeImage.createFromBuffer(bytes);const size=image.getSize();
    if(image.isEmpty()||size.width!==expected.width||size.height!==expected.height)throw Error('Invalid crop size');
-   if(value.action==='copy'){(services.clipboard??clipboard).writeImage(image);cancel();return{ok:true};}
+   if(value.action==='copy'){await (services.clipboard??clipboard).write([new ClipboardItem({'image/png':new Blob([image.toPNG()],{type:'image/png'})})]);cancel();return{ok:true};}
    for(const item of state.entries)item.window.setAlwaysOnTop(false);
    const result=await (services.dialog??dialog).showSaveDialog(entry.window,{defaultPath:path.join(app.getPath('pictures'),`Synca-${new Date().toISOString().replace(/[:.]/g,'-')}.png`),filters:[{name:'PNG',extensions:['png']}]});
    if(active!==state||result.canceled||!result.filePath)return{cancelled:true};
