@@ -42,7 +42,8 @@ function installCapture(mainWindow,cfg,services={}){
    for(const display of displays){
     const source=sources.find(item=>String(item.display_id)===String(display.id));if(!source||source.thumbnail.isEmpty())throw Error('Missing screen');
     const frozen=source.thumbnail.toPNG();const size=nativeImage.createFromBuffer(frozen).getSize();
-    const window=new BrowserWindow({...display.bounds,frame:false,transparent:false,backgroundColor:'#000000',show:false,resizable:false,movable:false,skipTaskbar:true,alwaysOnTop:true,fullscreenable:process.platform==='win32',fullscreen:process.platform==='win32',hasShadow:false,enableLargerThanScreen:true,
+    // Windows fullscreen requires resizable:true (Electron #51957); the overlay has no resize UI.
+    const window=new BrowserWindow({...display.bounds,frame:false,transparent:false,backgroundColor:'#000000',show:false,resizable:process.platform==='win32',movable:false,skipTaskbar:true,alwaysOnTop:true,fullscreenable:process.platform==='win32',fullscreen:process.platform==='win32',hasShadow:false,enableLargerThanScreen:true,
      webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,preload:path.join(__dirname,'preload.cjs'),partition:`capture-${Date.now()}-${display.id}`,backgroundThrottling:false}});
     if(process.platform==='darwin')window.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
     window.setAlwaysOnTop(true,'screen-saver');window.setMenu(null);
