@@ -1,0 +1,91 @@
+name: Windows Store stable 1.2.0
+on:
+  workflow_dispatch:
+    inputs:
+      formal_identity:
+        description: Use the assigned Partner Center identity (no automatic submission)
+        type: boolean
+        default: false
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/windows-store-stable.yml'
+      - 'desktop/build-stable-store.mjs'
+      - 'desktop/stable-store*'
+      - 'desktop/store/stable-1.2.0.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: windows-store-stable-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-2025
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            backend/package-lock.json
+      - name: Locked packaging and fixture dependencies (no current UI build)
+        run: |
+          npm ci --prefix desktop
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm ci --prefix backend
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Source preservation and Store contract tests
+        working-directory: desktop
+        run: node --test stable-store.test.cjs store-manifest.test.cjs
+      - name: Package the exact published 1.2.0 (89)
+        working-directory: desktop
+        env:
+          SYNCA_STORE_IDENTITY_JSON: ${{ vars.SYNCA_STORE_IDENTITY_JSON }}
+          SYNCA_FORMAL_IDENTITY: ${{ vars.SYNCA_STABLE_STORE_FORMAL == 'true' || (github.event_name == 'workflow_dispatch' && inputs.formal_identity) }}
+        run: |
+          $sdk = Get-ChildItem 'C:/Program Files (x86)/Windows Kits/10/bin' -Directory | Where-Object { Test-Path "$($_.FullName)/x64/makeappx.exe" } | Sort-Object Name -Descending | Select-Object -First 1
+          if (!$sdk) { throw 'Windows SDK missing' }
+          $env:WINDOWS_KIT_PATH = "$($sdk.FullName)/x64"
+          if ($env:SYNCA_FORMAL_IDENTITY -eq 'true') {
+            if ([string]::IsNullOrWhiteSpace($env:SYNCA_STORE_IDENTITY_JSON)) { throw 'Real Partner Center identity is required' }
+            $env:SYNCA_STORE_IDENTITY = Join-Path $env:RUNNER_TEMP 'stable-store-identity.json'
+            [IO.File]::WriteAllText($env:SYNCA_STORE_IDENTITY, $env:SYNCA_STORE_IDENTITY_JSON, [Text.UTF8Encoding]::new($false))
+            node build-stable-store.mjs ${{ matrix.arch }}
+          } else {
+            node build-stable-store.mjs ${{ matrix.arch }} --ci
+          }
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Native stable version UI and profile isolation
+        working-directory: desktop
+        run: node stable-store-acceptance.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stable-store-evidence-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          path: desktop/dist/stable-evidence/**
+      - name: Upload verified stable MSIX
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synca-1.2.0-store-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: error
+          path: desktop/dist/stable/${{ matrix.arch }}/package/**

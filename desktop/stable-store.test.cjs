@@ -19,7 +19,7 @@ test('stable Store adapter preserves every original module and renderer, and iso
  const output=path.join(root,'output');extractAll(asar,output);assert.equal(await fs.readFile(path.join(output,'main.cjs'),'utf8'),'original main');assert.equal(await fs.readFile(path.join(output,'renderer/index.html'),'utf8'),'original 1.2.0 UI');
  assert.deepEqual(JSON.parse(await fs.readFile(path.join(output,'package.json'),'utf8')),{...metadata,main:'store-entry.cjs'});
  const calls=[],app={getPath:()=>'/fixture/AppData',setPath:(key,value)=>calls.push([key,value])};
- vm.runInNewContext(storeStartup,{require:id=>id==='electron'?{app}:id==='node:path'?path:id==='node:fs'?{mkdirSync:()=>{},lstatSync:()=>({isDirectory:()=>true,isSymbolicLink:()=>false})}:id==='./main.cjs'?(assert.deepEqual(calls,[['userData','/fixture/AppData/Synca Store'],['sessionData','/fixture/AppData/Synca Store']]),{}):assert.fail(id)});
+ vm.runInNewContext(storeStartup,{require:id=>id==='electron'?{app}:id==='node:path'?path:id==='node:fs'?{mkdirSync:()=>{},lstatSync:()=>({isDirectory:()=>true,isSymbolicLink:()=>false})}:id==='./main.cjs'?(assert.deepEqual(calls,[['userData',path.join('/fixture/AppData','Synca Store')],['sessionData',path.join('/fixture/AppData','Synca Store')]]),{}):assert.fail(id)});
  await fs.writeFile(path.join(input,'updater.cjs'),'unexpected updater');await createPackage(input,asar);await assert.rejects(prepareStableAsar(asar,{version:'1.2.0',build:'89'}));
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });
