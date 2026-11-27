@@ -1,5 +1,5 @@
 // Disposable Windows runner only. Test copies use a synthetic account + loopback backend.
-import fs from 'node:fs/promises';import path from 'node:path';import os from 'node:os';import assert from 'node:assert/strict';import {spawn} from 'node:child_process';
+import fs from 'node:fs/promises';import path from 'node:path';import os from 'node:os';import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {once} from 'node:events';import {pathToFileURL} from 'node:url';
 import {extractAll,createPackage} from '@electron/asar';import {_electron} from 'playwright-core';
 if(process.platform!=='win32')throw Error('Windows runtime required');
 const arch=process.arch,out=path.resolve('dist/stable-evidence',arch);await fs.mkdir(out,{recursive:true});
@@ -7,8 +7,9 @@ const stage=await fs.mkdtemp(path.join(os.tmpdir(),'synca-stable-acceptance-')),
 const result={version:'1.2.0',build:'89',arch,commit:process.env.GITHUB_SHA,checks:[],scope:'Instrumented copy extracted from verified MSIX of published 1.2.0 with Store startup adapter; synthetic local backend; not Microsoft-signed installation'};
 let electron,backend;const log=await fs.open(path.join(out,'backend.log'),'w');
 try{
- backend=spawn(process.execPath,[path.resolve('../backend/node_modules/tsx/dist/cli.mjs'),path.resolve('../backend/tests/acceptance-server.ts')],{stdio:['ignore',log.fd,log.fd]});
- for(let i=0;i<60;i++){try{if((await fetch('http://127.0.0.1:54671/health')).ok)break;}catch{}if(i===59)throw Error('Fixture unavailable');await new Promise(r=>setTimeout(r,500));}
+ let occupied=false;try{await fetch('http://127.0.0.1:54671/health',{signal:AbortSignal.timeout(1000)});occupied=true;}catch{}assert.equal(occupied,false,'Fixture port must not belong to another process');
+ backend=spawn(process.execPath,['--import',pathToFileURL(path.resolve('../backend/node_modules/tsx/dist/loader.mjs')).href,path.resolve('../backend/tests/acceptance-server.ts')],{stdio:['ignore',log.fd,log.fd]});
+ for(let i=0;i<60;i++){if(backend.exitCode!==null)throw Error('Fixture exited before readiness');try{if((await fetch('http://127.0.0.1:54671/health')).ok)break;}catch{}if(i===59)throw Error('Fixture unavailable');await new Promise(r=>setTimeout(r,500));}
  const appData=path.join(stage,'AppData'),website=path.join(appData,'Synca Electron');await fs.mkdir(website,{recursive:true});assert.deepEqual(await fs.readdir(website),[],'Disposable runner website profile must be empty');await fs.writeFile(path.join(website,'preserve.txt'),'website data must not change');
  await fs.cp(source,copy,{recursive:true});const unpacked=path.join(stage,'unpacked'),archive=path.join(copy,'resources/app.asar');extractAll(archive,unpacked);
  const metadata=JSON.parse(await fs.readFile(path.join(unpacked,'package.json'),'utf8'));assert.equal(metadata.main,'store-entry.cjs');
@@ -27,6 +28,7 @@ require('./store-entry.cjs');`;
  assert.deepEqual(await page.evaluate(()=>({version:window.syncaDesktop.version,build:window.syncaDesktop.build,update:typeof window.syncaDesktop.updateAction,capture:typeof window.syncaDesktop.captureStart})),{version:'1.2.0',build:'89',update:'undefined',capture:'undefined'});
  assert.equal(await page.getByRole('button',{name:'收藏',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'草稿本',exact:true}).count(),0);
  await electron.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1440,900));
+ assert.equal(await page.getByText('记录灵感，跨设备接着使用。',{exact:true}).count(),0,'Fresh backend must not contain a prior acceptance record');
  await page.locator('.input-bar textarea').fill('记录灵感，跨设备接着使用。');await page.locator('.input-bar textarea').press('Enter');await page.getByText('记录灵感，跨设备接着使用。',{exact:true}).first().waitFor();
  await page.screenshot({path:path.join(out,'stable-tasks-zh-CN.png')});
  await page.evaluate(()=>localStorage.setItem('synca.appearance','dark'));await page.reload();await page.locator('[data-message-id]').first().waitFor();await page.screenshot({path:path.join(out,'stable-tasks-dark-zh-CN.png')});
@@ -34,4 +36,4 @@ require('./store-entry.cjs');`;
  assert.deepEqual(await fs.readdir(website),['preserve.txt']);assert.equal(await fs.readFile(path.join(website,'preserve.txt'),'utf8'),'website data must not change');
  result.checks=['released version 1.2.0 / build 89','Store profile and session isolation; website sentinel unchanged','no 1.2.1 Collections/Scratchpad/Capture/updater UI','record create/read against isolated backend','actual Windows Chinese/English and light/dark screenshots'];result.result='passed';
 }catch(error){result.result='failed';result.error=error.stack;throw error;}
-finally{await fs.writeFile(path.join(out,'acceptance.json'),JSON.stringify(result,null,2));if(electron)await electron.close().catch(()=>{});backend?.kill();await log.close();await fs.rm(stage,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(()=>{});}
+finally{await fs.writeFile(path.join(out,'acceptance.json'),JSON.stringify(result,null,2));if(electron)await electron.close().catch(()=>{});if(backend&&backend.exitCode===null){const stopped=once(backend,'exit');backend.kill();await stopped;}await log.close();await fs.rm(stage,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(()=>{});}
