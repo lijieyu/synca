@@ -11,7 +11,8 @@ try {
   else {
     $package = Get-ChildItem "dist/store/$Arch/Synca*.msix" | Select-Object -First 1
     if (!$package) { throw 'No MSIX available for WACK' }
-    & $kit reset 2>&1 | Out-File (Join-Path $out 'wack-reset.log')
+    $reset = Start-Process -FilePath $kit -ArgumentList @('reset') -PassThru -RedirectStandardOutput (Join-Path $out 'wack-reset.log') -RedirectStandardError (Join-Path $out 'wack-reset.stderr.log')
+    if (!$reset.WaitForExit(30000)) { $reset.Kill(); throw 'WACK reset did not complete in 30 seconds; an interactive certification session is required.' }
     $xml = Join-Path $out 'wack-report.xml'
     $process = Start-Process -FilePath $kit -ArgumentList @('test','-appxpackagepath',('"'+$package.FullName+'"'),'-reportoutputpath',('"'+$xml+'"')) -PassThru -RedirectStandardOutput (Join-Path $out 'wack.stdout.log') -RedirectStandardError (Join-Path $out 'wack.stderr.log')
     if (!$process.WaitForExit(180000)) { $process.Kill(); $report.status='timeout'; $report.reason='WACK did not finish within three minutes on this CI runner; interactive validation remains required.' }

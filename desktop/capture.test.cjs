@@ -14,3 +14,11 @@ test('IPC rejects malformed or oversized selections and limits annotation comple
  assert.deepEqual(validateSelection(good,display),good);
  for(const value of [{...good,rect:{...good.rect,x:-1}},{...good,rect:{...good.rect,width:Infinity}},{...good,marks:Array(501).fill(good.marks[0])},{...good,marks:[{...good.marks[0],color:'url(evil)'}]}])assert.throws(()=>validateSelection(value,display));
 });
+
+test('Windows capture uses native PowerShell modules even when launched from PowerShell 7',async()=>{
+ const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');let options;
+ const root=path.join(__dirname,'app/capture');
+ const box={module:{exports:{}},__dirname:root,process:{platform:'win32',env:{SystemRoot:'C:\\Windows',PSModulePath:'C:\\Program Files\\PowerShell\\7\\Modules'}},require:id=>id==='electron'?{screen:{screenToDipRect:(_window,r)=>r}}:id==='node:child_process'?{execFile:(_file,_args,value,callback)=>{options=value;callback(null,{stdout:'[]'})}}:id.startsWith('./')?require(path.join(root,id)):require(id)};
+ vm.runInNewContext(fs.readFileSync(path.join(root,'main.cjs'),'utf8'),box);await box.module.exports.windowBounds();
+ assert.ok(options.env,'inheritance must be explicitly sanitized');assert.equal(Object.keys(options.env).some(key=>key.toLowerCase()==='psmodulepath'),false);assert.equal(options.env.SystemRoot,'C:\\Windows');
+});

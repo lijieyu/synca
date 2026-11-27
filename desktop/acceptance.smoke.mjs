@@ -8,7 +8,7 @@ const metadata=JSON.parse(await fs.readFile(path.join(stage,'package.json'),'utf
 await fs.writeFile(path.join(stage,'preload.cjs'),(await fs.readFile(path.join(stage,'preload.cjs'),'utf8')).replace("...(!preview && !process.windowsStore && !process.argv.includes('--synca-store') ? {updateState:", '...(true ? {updateState:'));
 let app,profile;
 try{
- app=await _electron.launch({args:[stage],env:{...process.env,SYNCA_PREVIEW_SMOKE_RUN:randomBytes(16).toString('hex')}});const page=await app.firstWindow();await app.evaluate(({ipcMain})=>{globalThis.acceptanceUpdate={phase:'idle'};ipcMain.handle('desktop:update-state',()=>globalThis.acceptanceUpdate);ipcMain.handle('desktop:update-action',()=>({phase:'ready',version:'1.2.2'}));});page.setDefaultTimeout(10000);profile=await app.evaluate(({app})=>app.getPath('userData'));
+ app=await _electron.launch({args:[stage],env:{...process.env,SYNCA_PREVIEW_SMOKE_RUN:randomBytes(16).toString('hex')}});const page=await app.firstWindow();await app.evaluate(({ipcMain})=>{globalThis.acceptanceUpdate={phase:'idle'};ipcMain.handle('desktop:update-state',()=>globalThis.acceptanceUpdate);ipcMain.handle('desktop:update-action',()=>globalThis.acceptanceAction??({phase:'ready',version:'1.2.2'}));});page.setDefaultTimeout(10000);profile=await app.evaluate(({app})=>app.getPath('userData'));
  await app.evaluate(async({session},renderer)=>{
   const {fs,path,localUI}=globalThis.acceptanceRuntime;await session.defaultSession.protocol.unhandle('https');
   await session.defaultSession.protocol.handle('https',async req=>{
@@ -23,6 +23,9 @@ try{
  },path.join(stage,'renderer'));
  await page.evaluate(()=>{localStorage.setItem('authToken','visual-fixture');localStorage.setItem('userId','visual-fixture');localStorage.setItem('userEmail','demo@example.invalid');localStorage.setItem('synca.language','zh-Hans');localStorage.setItem('synca.appearance','light');});
  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setSize(1120,800));await page.reload();await page.locator('[data-message-id]').first().waitFor();
+ await app.evaluate(({BrowserWindow})=>{globalThis.acceptanceUpdate={phase:'available',version:'1.2.2'};globalThis.acceptanceAction={phase:'error'};BrowserWindow.getAllWindows()[0].webContents.send('desktop:update')});
+ await page.getByRole('button',{name:'下载更新',exact:true}).click();await page.locator('.update-notice').getByRole('button',{name:'检查更新',exact:true}).waitFor();await page.screenshot({path:path.join(out,'desktop-update-failure-retry.png')});
+ await app.evaluate(({BrowserWindow})=>{globalThis.acceptanceUpdate={phase:'idle'};globalThis.acceptanceAction=null;BrowserWindow.getAllWindows()[0].webContents.send('desktop:update')});
  await page.getByRole('button',{name:'收藏',exact:true}).click();await page.locator('.collection-filter').waitFor();await page.screenshot({path:path.join(out,'desktop-collections-light.png')});
  await page.locator('.search-trigger').click();await page.locator('input[type=search]').fill('项目资料');await page.locator('.message-search-result').first().waitFor();assert.equal(await page.locator('.message-search-result').first().getByText('收藏',{exact:true}).count(),1);await page.screenshot({path:path.join(out,'desktop-collection-search.png')});await page.locator('.message-search-result').first().click();await page.locator('.collection-filter').waitFor();
  assert.equal(await page.locator('.input-bar textarea').count(),1);await page.locator('.input-bar textarea').fill('验收：收藏独立新增');await page.locator('.input-bar textarea').press('Enter');await page.getByText('验收：收藏独立新增',{exact:true}).first().waitFor();

@@ -11,7 +11,7 @@ const stage=await fs.mkdtemp(path.join(os.tmpdir(),'synca-windows-acceptance-'))
 const evidence={os:os.release(),arch:process.arch,commit:process.env.GITHUB_SHA,scope:'Real Windows binaries; instrumented copies only; synthetic account and loopback service. Not Store certification.',checks:[],limitations:['Formal Microsoft Store signed installation and Store-managed upgrade require Partner Center identity and approval']};
 let running,backend;
 const log=await fs.open(path.join(out,'backend.log'),'w');
-const powershell=(script)=>execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',timeout:180000});
+const powershell=(script)=>execFileSync('pwsh.exe',['-NoProfile','-NonInteractive','-Command',"$ErrorActionPreference='Stop';"+script],{encoding:'utf8',timeout:180000});
 const quote=s=>"'"+s.replaceAll("'","''")+"'";
 async function instrument(source,name,inPlace=false){
  const target=inPlace?source:path.join(stage,name);if(!inPlace)await fs.cp(source,target,{recursive:true});
