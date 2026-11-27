@@ -73,6 +73,9 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Probe Windows App Certification Kit
+        working-directory: desktop
+        run: ./windows-wack.ps1 -Arch $env:SYNCA_WINDOWS_ARCH
       - name: Real Windows migration and UI evidence
         working-directory: desktop
         run: node windows-acceptance.mjs

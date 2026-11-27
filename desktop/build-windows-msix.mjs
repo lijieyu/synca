@@ -13,7 +13,10 @@ const appDir=path.resolve('dist/store-app',`Synca Electron-win32-${arch}`);
 const marker=JSON.parse(extractFile(path.join(appDir,'resources/app.asar'),'distribution.json').toString());
 if(marker.channel!=='store')throw Error('Website executable cannot be packaged for the Store');
 const outputDir=path.resolve('dist/store',arch);await fs.mkdir(outputDir,{recursive:true});
-const appManifest=path.join(outputDir,'AppxManifest.xml');await fs.writeFile(appManifest,manifest);
+// The packaging library empties outputDir before reading the manifest.
+const manifestDir=path.resolve('dist/store-manifests',arch);await fs.mkdir(manifestDir,{recursive:true});
+const appManifest=path.join(manifestDir,'AppxManifest.xml');await fs.writeFile(appManifest,manifest);
 const result=await packageMSIX({appDir,appManifest,packageAssets:path.resolve('store/assets'),outputDir,packageName:`Synca-${version}-${arch}${ci?'-CI-NOT-FOR-SUBMISSION':''}.msix`,sign:false,windowsKitPath:process.env.WINDOWS_KIT_PATH});
+await fs.copyFile(appManifest,path.join(outputDir,'AppxManifest.xml'));
 await fs.writeFile(path.join(outputDir,'build-evidence.json'),JSON.stringify({version,build,arch,channel:'store',submittableIdentity:!ci,signed:false,commit:process.env.GITHUB_SHA??null,artifact:result.msixPackage},null,2));
 console.log(JSON.stringify(result));

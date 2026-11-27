@@ -25,3 +25,12 @@ test('failed portable installation keeps the app open and supports a fresh retry
  const updater=new UpdateController({platform:'win32',arch:'x64',version:'1.2.1',installed:false,catalog:async()=>({windows:{x64:release}}),download:async()=>({path:'fixture'}),runInstaller:async()=>{throw Error('Installer failed')},prepareRestart:()=>restarts++,quit:()=>quits++});
  await updater.check();await updater.download();assert.equal(updater.state.phase,'ready');await updater.install();assert.equal(updater.state.phase,'error');assert.equal(quits,0);assert.equal(restarts,0);assert.equal((await updater.check()).phase,'available');
 });
+test('disposing during portable download waits and cleans the completed temporary file',async()=>{
+ let finish,cleaned=0;const pending=new Promise(resolve=>finish=resolve);
+ const updater=new UpdateController({platform:'win32',arch:'x64',version:'1.2.1',installed:false,catalog:async()=>({windows:{x64:release}}),download:()=>pending});await updater.check();
+ const downloading=updater.download();await new Promise(resolve=>setImmediate(resolve));const closing=updater.dispose();finish({dispose:async()=>cleaned++});await Promise.all([downloading,closing]);assert.equal(cleaned,1);
+});
+test('portable retry and completed installation release their staged installers',async()=>{
+ let cleaned=0;const updater=new UpdateController({platform:'win32',arch:'x64',version:'1.2.1',installed:false,catalog:async()=>({windows:{x64:release}}),download:async()=>({dispose:async()=>cleaned++}),runInstaller:async()=>{throw Error('failure')},prepareRestart(){},quit(){}});
+ await updater.check();await updater.download();await updater.install();assert.equal(cleaned,1);await updater.check();await updater.download();await updater.dispose();assert.equal(cleaned,2);
+});

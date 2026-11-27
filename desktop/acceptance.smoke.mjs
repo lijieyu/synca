@@ -5,7 +5,7 @@ const stage=await fs.mkdtemp(path.join(os.tmpdir(),'synca-acceptance-ui-'));cons
 await fs.cp(new URL('./app/',import.meta.url),stage,{recursive:true});await fs.writeFile(path.join(stage,'preview-build.json'),JSON.stringify({mode:'mas-preflight'}));
 await fs.writeFile(path.join(stage,'acceptance-entry.cjs'),"globalThis.acceptanceRuntime={fs:require('node:fs/promises'),path:require('node:path'),localUI:require('./local-ui.cjs')};require('./main.cjs');");
 const metadata=JSON.parse(await fs.readFile(path.join(stage,'package.json'),'utf8'));await fs.writeFile(path.join(stage,'package.json'),JSON.stringify({...metadata,main:'acceptance-entry.cjs'}));
-await fs.writeFile(path.join(stage,'preload.cjs'),(await fs.readFile(path.join(stage,'preload.cjs'),'utf8')).replace('...(!preview ? {updateState:', '...(true ? {updateState:'));
+await fs.writeFile(path.join(stage,'preload.cjs'),(await fs.readFile(path.join(stage,'preload.cjs'),'utf8')).replace("...(!preview && !process.windowsStore && !process.argv.includes('--synca-store') ? {updateState:", '...(true ? {updateState:'));
 let app,profile;
 try{
  app=await _electron.launch({args:[stage],env:{...process.env,SYNCA_PREVIEW_SMOKE_RUN:randomBytes(16).toString('hex')}});const page=await app.firstWindow();await app.evaluate(({ipcMain})=>{globalThis.acceptanceUpdate={phase:'idle'};ipcMain.handle('desktop:update-state',()=>globalThis.acceptanceUpdate);ipcMain.handle('desktop:update-action',()=>({phase:'ready',version:'1.2.2'}));});page.setDefaultTimeout(10000);profile=await app.evaluate(({app})=>app.getPath('userData'));

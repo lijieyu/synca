@@ -16,4 +16,15 @@ function validateRelease(value,platform,arch){
  return value;
 }
 function installerPath(executable){return path.win32.join(path.win32.dirname(executable),'..','Update.exe');}
-module.exports={isNewer,validateRelease,installerPath,STORE};
+function isSquirrelInstalled(executable,localAppData,fs=require('node:fs')){
+ if(!localAppData||typeof executable!=='string')return false;
+ const win=path.win32,root=win.join(localAppData,'Synca'),dir=win.dirname(executable),version=win.basename(dir).match(/^app-(\d+\.\d+\.\d+)$/)?.[1];
+ if(!version||win.basename(executable)!=='Synca Electron.exe'||win.normalize(win.dirname(dir)).toLowerCase()!==win.normalize(root).toLowerCase())return false;
+ try{
+  if(!fs.existsSync(win.join(root,'Update.exe')))return false;
+  return fs.readFileSync(win.join(root,'packages','RELEASES'),'utf8').replace(/^\uFEFF/,'').split(/\r?\n/).some(line=>{
+   const parts=line.split(' ');return parts.length===3&&/^[a-f0-9]{40}$/i.test(parts[0])&&parts[1]===`Synca-${version}-full.nupkg`&&/^[1-9]\d*$/.test(parts[2]);
+  });
+ }catch{return false;}
+}
+module.exports={isNewer,validateRelease,installerPath,isSquirrelInstalled,STORE};

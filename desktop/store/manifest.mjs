@@ -3,7 +3,8 @@ export function storeManifest(identity,version,arch,{ci=false}={}){
  if(!/^[1-9]\d*\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)||version.split('.').some(n=>Number(n)>65535))throw Error('Invalid Store version');
  if(!['x64','arm64'].includes(arch))throw Error('Invalid Store architecture');
  const i=ci?{name:'Synca.CI',publisher:'CN=Synca CI',publisherDisplayName:'Synca CI - Not for submission',displayName:'Synca CI'}:identity;
- if(!i||!/^[A-Za-z0-9][A-Za-z0-9.-]{2,49}$/.test(i.name)||!/^CN=.{1,200}$/.test(i.publisher)||!i.publisherDisplayName||!i.displayName||(!ci&&(/Synca\.CI/i.test(i.name)||/Synca CI/i.test(i.publisher))))throw Error('Partner Center identity is required; CI identity cannot be submitted');
+ if(!i||['name','publisher','publisherDisplayName','displayName'].some(key=>typeof i[key]!=='string'||!i[key].trim()))throw Error('Complete Partner Center identity is required');
+ if(!/^[A-Za-z0-9][A-Za-z0-9.-]{2,49}$/.test(i.name)||!/^CN=.{1,200}$/.test(i.publisher)||!i.publisherDisplayName||!i.displayName||(!ci&&(/Synca\.CI/i.test(i.name)||/Synca CI/i.test(i.publisher))))throw Error('Partner Center identity is required; CI identity cannot be submitted');
  for(const value of Object.values(i))if(typeof value!=='string'||/[\x00-\x1f]/.test(value))throw Error('Invalid identity text');
  return `<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">

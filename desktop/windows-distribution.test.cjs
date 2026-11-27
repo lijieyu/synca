@@ -41,3 +41,21 @@ test('Store startup registers no self-update timers, IPC or Squirrel shortcut pr
   assert.equal(box.module.exports.squirrelEvent({quit(){throw Error('Store quit')}},{store:!native}),false);
  }
 });
+test('native updater requires Synca canonical install path and NuGet identity',()=>{
+ const {isSquirrelInstalled}=require('./app/update-policy.cjs');
+ const local='C:\\Users\\CI\\AppData\\Local',exe=local+'\\Synca\\app-1.2.1\\Synca Electron.exe';
+ const fs={existsSync:()=>true,readFileSync:()=> '\ufeff'+'A'.repeat(40)+' Synca-1.2.1-full.nupkg 100'};
+ assert.equal(isSquirrelInstalled(exe,local,fs),true);
+ for(const target of ['C:\\Downloads\\Synca Electron\\Synca Electron.exe',local+'\\Other\\app-1.2.1\\Synca Electron.exe',local+'\\Synca\\app-1.2.1\\Other.exe'])assert.equal(isSquirrelInstalled(target,local,fs),false);
+ assert.equal(isSquirrelInstalled(exe,local,{...fs,readFileSync:()=> 'A'.repeat(40)+' Other-1.2.1-full.nupkg 100'}),false);
+});
+test('package bytes substituted between verification and sending never reach updater',async()=>{
+ const nativeFS=require('node:fs'),{Readable}=require('node:stream');const original=nativeFS.createReadStream;let opens=0,feed;
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'synca-feed-race-'));
+ nativeFS.createReadStream=(...args)=>++opens===2?Readable.from([Buffer.alloc(data.length,120)]):original(...args);
+ try{
+  feed=await verifiedFeed(release,async()=>new Response(data),root);
+  const result=await fetch(feed.url+release.package.name).then(async response=>({status:response.status,bytes:Buffer.from(await response.arrayBuffer())})).catch(()=>null);
+  assert(!result||result.status!==200||result.bytes.equals(data),'unverified replacement was served');
+ }finally{nativeFS.createReadStream=original;await feed?.close();await fs.rm(root,{recursive:true,force:true})}
+});

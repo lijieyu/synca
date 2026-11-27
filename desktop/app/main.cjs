@@ -139,7 +139,7 @@ else {
     installLocalUI(session.defaultSession,cfg)
     if (cfg.isolated) session.defaultSession.webRequest.onBeforeRequest((details, done) =>
       done({ cancel: !cfg.allows(details.url) && !/^(?:data|blob|devtools):/.test(details.url) }))
-    app.setAppUserModelId(process.platform==='win32' && !cfg.store && fs.existsSync(require('./update-policy.cjs').installerPath(process.execPath)) ? 'com.squirrel.Synca.Synca Electron' : cfg.bundleId)
+    app.setAppUserModelId(process.platform==='win32' && !cfg.store && require('./update-policy.cjs').isSquirrelInstalled(process.execPath,process.env.LOCALAPPDATA) ? 'com.squirrel.Synca.Synca Electron' : cfg.bundleId)
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     session.defaultSession.setPermissionCheckHandler(() => false)
     const clearCompletedItem = {id:'clear-completed',label:app.getLocale().startsWith('zh')?'清除已完成…':'Clear Completed…',

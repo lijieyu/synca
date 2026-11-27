@@ -18,8 +18,9 @@ async function instrument(source,name,inPlace=false){
  const archive=path.join(target,'resources/app.asar'),unpacked=path.join(stage,name+'-source');extractAll(archive,unpacked);
  const metadata=JSON.parse(await fs.readFile(path.join(unpacked,'package.json'),'utf8'));
  const entry=`const {app,session,net}=require('electron');const fs=require('node:fs/promises'),path=require('node:path');
-app.setPath('appData',process.env.SYNCA_CI_APPDATA);app.setPath('userData',path.join(process.env.SYNCA_CI_APPDATA,app.getName()));app.setPath('sessionData',app.getPath('userData'));
-const proxy=async(request,options={})=>{const url=new URL(typeof request==='string'?request:request.url);if(url.origin!=='https://synca.haerth.cn')return new Response(null,{status:403});if(url.pathname==='/app-updates')return Response.json({schema:1,windows:process.env.SYNCA_CI_RELEASE?{[process.arch]:JSON.parse(await fs.readFile(process.env.SYNCA_CI_RELEASE,'utf8'))}:{}});if(url.pathname.endsWith('/Synca-1.2.2-full.nupkg')&&process.env.SYNCA_CI_PACKAGE)return new Response(await fs.readFile(process.env.SYNCA_CI_PACKAGE));const response=await fetch('http://127.0.0.1:54671'+url.pathname+url.search,{method:options.method??request.method??'GET',headers:options.headers??request.headers,body:options.body,redirect:'error'});return response;};
+// Observe the real legacy defaults; no userData/sessionData/appData overrides.
+if(app.getVersion()==='1.2.0'){const syncFS=require('node:fs');const profile=app.getPath('userData');if(syncFS.existsSync(profile)&&syncFS.readdirSync(profile).length)throw Error('Legacy profile must be empty on this disposable runner');}
+const proxy=async(request,options={})=>{const url=new URL(typeof request==='string'?request:request.url);if(url.origin!=='https://synca.haerth.cn')return new Response(null,{status:403});if(url.pathname==='/app-updates')return Response.json({schema:1,windows:process.env.SYNCA_CI_RELEASE?{[process.arch]:JSON.parse(await fs.readFile(process.env.SYNCA_CI_RELEASE,'utf8'))}:{}});if(url.pathname.endsWith('-Setup.exe')&&process.env.SYNCA_CI_SETUP)return new Response(await fs.readFile(process.env.SYNCA_CI_SETUP));if(url.pathname.endsWith('/Synca-1.2.2-full.nupkg')&&process.env.SYNCA_CI_PACKAGE)return new Response(await fs.readFile(process.env.SYNCA_CI_PACKAGE));const response=await fetch('http://127.0.0.1:54671'+url.pathname+url.search,{method:options.method??request.method??'GET',headers:options.headers??request.headers,body:options.body,redirect:'error'});return response;};
 net.fetch=proxy;
 require('./local-ui.cjs').installLocalUI=(ses,cfg)=>{
  ses.fetch=proxy;
@@ -29,7 +30,7 @@ require('./local-ui.cjs').installLocalUI=(ses,cfg)=>{
   return proxy(req,{method:req.method,headers:req.headers,body:['GET','HEAD'].includes(req.method)?undefined:await req.arrayBuffer()});
  });
 };
-app.on('browser-window-created',(_event,window)=>window.webContents.on('did-finish-load',async()=>{if(app.getVersion()==='1.2.2'){const values=await window.webContents.executeJavaScript('({authToken:localStorage.getItem("authToken"),draft:localStorage.getItem("synca.ci.unsent")})');await fs.writeFile(path.join(process.env.SYNCA_CI_APPDATA,'launch-1.2.2.json'),JSON.stringify(values));}}));
+app.on('browser-window-created',(_event,window)=>window.webContents.on('did-finish-load',async()=>{if(app.getVersion()==='1.2.2'){const values=await window.webContents.executeJavaScript('({authToken:localStorage.getItem("authToken"),draft:localStorage.getItem("synca.ci.unsent")})');await fs.writeFile(path.join(process.env.SYNCA_CI_APPDATA,'launch-1.2.2.json'),JSON.stringify({...values,version:app.getVersion(),profile:app.getPath('userData')}));}}));
 require('./${metadata.main}');`;
  await fs.writeFile(path.join(unpacked,'ci-entry.cjs'),entry);metadata.main='ci-entry.cjs';await fs.writeFile(path.join(unpacked,'package.json'),JSON.stringify(metadata));await fs.rm(archive);await createPackage(unpacked,archive);
  return path.join(target,'Synca Electron.exe');
@@ -68,12 +69,15 @@ try{
  await page.getByRole('button',{name:'草稿本',exact:true}).click();const editor=page.locator('.scratchpad textarea');await editor.waitFor();await page.waitForFunction(()=>document.querySelector('.scratchpad textarea')?.value.includes('随时接着写'));
  await editor.fill((await editor.inputValue())+'\n\nWindows：自动保存与同步回归。');await page.getByRole('button',{name:'预览',exact:true}).click();await page.getByText('已同步',{exact:true}).waitFor();await page.screenshot({path:path.join(out,'windows-scratchpad-zh-CN.png')});
  await page.evaluate(()=>localStorage.setItem('synca.appearance','dark'));await page.reload();await page.getByRole('button',{name:'收藏',exact:true}).click();await page.locator('.collection-filter').waitFor();await page.screenshot({path:path.join(out,'windows-collections-dark-zh-CN.png')});
+ await page.evaluate(()=>{localStorage.setItem('synca.language','en');localStorage.setItem('synca.appearance','light')});await page.reload();
+ await page.getByRole('button',{name:'Collections',exact:true}).click();await page.locator('.collection-filter').waitFor();await page.screenshot({path:path.join(out,'windows-collections-en-US.png')});
+ await page.getByRole('button',{name:'Scratchpad',exact:true}).click();await page.locator('.scratchpad textarea').waitFor();await page.getByRole('button',{name:'Preview',exact:true}).click();await page.screenshot({path:path.join(out,'windows-scratchpad-en-US.png')});
  // Native Windows screen enumeration and capture, not a mocked image source.
  await page.evaluate(()=>window.syncaDesktop.captureStart());const overlay=await running.waitForEvent('window',p=>p!==page);await overlay.waitForLoadState('domcontentloaded');await overlay.screenshot({path:path.join(out,'windows-native-capture.png')});await overlay.keyboard.press('Escape');
  evidence.checks.push({name:'Windows collections, Markdown autosave/preview, light/dark, native screenshot launch/cancel',passed:true});await close();
- await verifySquirrel({stage,appData,out,instrument,launch,close,evidence});
+ await verifySquirrel({stage,appData,out,instrument,launch,close,evidence,currentExe});
  const storeExe=await instrument(path.resolve(`dist/store-app/Synca Electron-win32-${arch}`),'store-runtime');page=await launch(storeExe);
- assert.equal(await running.evaluate(({app})=>app.getPath('userData')),path.join(appData,'Synca Store'));
+ assert.equal(await running.evaluate(({app})=>app.getPath('userData')),path.join(path.dirname(oldProfile.profile),'Synca Store'));
  assert.equal(await page.evaluate(()=>typeof window.syncaDesktop.updateAction),'undefined');assert.equal(await page.evaluate(()=>localStorage.getItem('authToken')),null);evidence.checks.push({name:'Store marker runtime: isolated profile and no updater bridge',passed:true});await close();
  evidence.result='passed';
 } catch(error){evidence.result='failed';evidence.error=error.stack;throw error;}
