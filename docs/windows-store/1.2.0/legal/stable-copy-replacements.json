@@ -1,0 +1,66 @@
+{
+  "sourceSha256": "31b6db3685d2c74e647ec020cf7e2215b78cf38fd032ee80c1aff782671445c3",
+  "replacements": [
+    [
+      "How Synca collects, uses, stores, and protects user data across iPhone and Mac.",
+      "How Synca collects, uses, stores, and protects data across Web, iOS, Mac, and Windows."
+    ],
+    [
+      "Content you choose to create in the app, including text entries, uploaded images, and related metadata such as creation time and source device name.",
+      "Content you choose to create or upload, including text entries, images and files, and related metadata such as creation time and source device name."
+    ],
+    [
+      "Uploaded images are stored on the server",
+      "Uploaded images and files are stored on the server"
+    ],
+    [
+      "The rules and conditions for using Synca on iPhone and Mac.",
+      "The rules and conditions for using Synca on Web, iOS, Mac, and Windows."
+    ],
+    [
+      "Sign in with Apple is the account access method supported by Synca. You are responsible for maintaining access to your Apple account and devices.",
+      "Use the Apple or email sign-in options offered in Synca. You are responsible for maintaining the security of your sign-in account, email and devices."
+    ],
+    [
+      "Platform: iPhone or Mac",
+      "Platform: Windows, Mac, iPhone, iPad, or Web"
+    ],
+    [
+      "Synca is designed for personal capture and cross-device sync of text and image entries using Sign in with Apple.",
+      "Synca helps you quickly capture information and sync it across your own devices. Use the Apple or email sign-in options offered in the app to access your account and sync text, images and files. Ordinary file uploads require the applicable Pro entitlement."
+    ],
+    [
+      "说明 Synca 如何收集、使用、存储和保护 iPhone 与 Mac 间同步所涉及的用户数据。",
+      "说明 Synca 如何收集、使用、存储和保护 Web、iOS、Mac 和 Windows 间同步所涉及的用户数据。"
+    ],
+    [
+      "你在应用中主动创建的内容，包括文字记录、上传图片，以及创建时间、来源设备名称等相关元数据。",
+      "你在应用中主动创建或上传的内容，包括文字记录、图片和文件，以及创建时间、来源设备名称等相关元数据。"
+    ],
+    [
+      "上传的图片会保存在服务器上",
+      "上传的图片和文件会保存在服务器上"
+    ],
+    [
+      "说明在 iPhone 和 Mac 上使用 Synca 时适用的规则与条件。",
+      "说明在 Web、iOS、Mac 和 Windows 上使用 Synca 时适用的规则与条件。"
+    ],
+    [
+      "Synca 当前支持通过 Sign in with Apple 登录。你需要自行维护 Apple 账户及设备的访问安全。",
+      "你可以使用 Synca 提供的 Apple 或邮箱登录方式访问账户。你需要自行维护登录账户、邮箱及设备的访问安全。"
+    ],
+    [
+      "平台：iPhone 或 Mac",
+      "平台：Windows、Mac、iPhone、iPad 或 Web"
+    ],
+    [
+      "Synca 主要用于通过 Sign in with Apple 登录后，在个人设备之间同步文字和图片记录。",
+      "Synca 用于个人快速记录和跨设备同步。你可以使用应用提供的 Apple 或邮箱登录方式访问账户，并在自己的设备之间同步文字、图片和文件；普通文件上传需要相应 Pro 权益。"
+    ]
+  ],
+  "additionalDisclosures": [
+    "If you use email sign-in, your email address and the information necessary to verify the sign-in request.",
+    "使用邮箱登录时提供的邮箱地址，以及验证登录请求所需的信息。"
+  ],
+  "date": "2026-11-27"
+}

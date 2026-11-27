@@ -1,6 +1,6 @@
 # Public page corrections for the stable 1.2.0 Store launch
 
-Prepared 2026-11-27. Draft only; not deployed. Apply to the live stable release's legal-page source, not the full 1.2.1 backend. Preserve existing prices, quotas, retention, contact address and policy commitments. These paragraphs describe existing stable functionality; no Collections, Scratchpad, screenshot feature or website updater claims.
+Prepared and deployed 2026-11-27; six public pages verified. See submission.md and legal/production-module.patch for exact scope and the recovered first-attempt deployment failure. Apply to the live stable release's legal-page source, not the full 1.2.1 backend. Preserve existing prices, quotas, retention, contact address and policy commitments. These paragraphs describe existing stable functionality; no Collections, Scratchpad, screenshot feature or website updater claims.
 
 ## Privacy — 简体中文
 

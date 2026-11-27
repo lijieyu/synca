@@ -59,7 +59,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: 'How Content Is Stored',
                     paragraphs: [
-                        'User account and message records are stored on Synca’s backend infrastructure. Uploaded images are stored on the server so they can be accessed by the same user on their other devices.',
+                        'User account and message records are stored on Synca’s backend infrastructure. Uploaded images and files are stored on the server so they can be accessed by the same user on their other devices.',
                         'We do not sell personal data and we do not use user content for advertising.',
                     ],
                 },
@@ -115,11 +115,11 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             locale: 'en',
             kind: 'terms-of-use',
             title: 'Synca Terms of Use',
-            description: 'The rules and conditions for using Synca on iPhone and Mac.',
+            description: 'The rules and conditions for using Synca on Web, iOS, Mac, and Windows.',
             languageLabel: 'English',
             alternateLanguageLabel: '简体中文',
             alternatePath: '/zh-hans/terms-of-use',
-            updatedAt: 'April 4, 2026',
+            updatedAt: 'November 27, 2026',
             sections: [
                 {
                     heading: 'Acceptance of Terms',
@@ -136,7 +136,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: 'Accounts and Access',
                     paragraphs: [
-                        'Sign in with Apple is the account access method supported by Synca. You are responsible for maintaining access to your Apple account and devices.',
+                        'Use the Apple or email sign-in options offered in Synca. You are responsible for maintaining the security of your sign-in account, email and devices.',
                     ],
                 },
                 {
@@ -197,7 +197,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             languageLabel: 'English',
             alternateLanguageLabel: '简体中文',
             alternatePath: '/zh-hans/support',
-            updatedAt: 'April 4, 2026',
+            updatedAt: 'November 27, 2026',
             sections: [
                 {
                     heading: 'Contact Support',
@@ -211,7 +211,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                         'To help us resolve issues faster, please include the app platform you are using, a short description of the issue, and any relevant screenshots or reproduction steps.',
                     ],
                     bullets: [
-                        'Platform: iPhone or Mac',
+                        'Platform: Windows, Mac, iPhone, iPad, or Web',
                         'App version, if available',
                         'A short description of the issue',
                         'Steps to reproduce the problem, if applicable',
@@ -220,7 +220,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: 'Product Scope',
                     paragraphs: [
-                        'Synca is designed for personal capture and cross-device sync of text and image entries using Sign in with Apple.',
+                        'Synca helps you quickly capture information and sync it across your own devices. Use the Apple or email sign-in options offered in the app to access your account and sync text, images and files. Ordinary file uploads require the applicable Pro entitlement.',
                         'Synca offers a free plan that allows up to 20 new entries per day. Paid plans unlock files up to 200 MB, 1 GB of transfer storage and 30-day attachment retention. Free accounts have 100 MB of image storage with 3-day retention. Images are limited to 50 MB. Save attachments elsewhere before they expire; lifetime purchase does not mean permanent storage.',
                     ],
                 },
@@ -272,7 +272,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: '内容如何存储',
                     paragraphs: [
-                        '用户账户信息和消息记录会存储在 Synca 的后端基础设施中。上传的图片会保存在服务器上，以便同一用户在其他设备上访问。',
+                        '用户账户信息和消息记录会存储在 Synca 的后端基础设施中。上传的图片和文件会保存在服务器上，以便同一用户在其他设备上访问。',
                         '我们不会出售个人信息，也不会将用户内容用于广告用途。',
                     ],
                 },
@@ -328,11 +328,11 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             locale: 'zh-hans',
             kind: 'terms-of-use',
             title: 'Synca 用户协议',
-            description: '说明在 iPhone 和 Mac 上使用 Synca 时适用的规则与条件。',
+            description: '说明在 Web、iOS、Mac 和 Windows 上使用 Synca 时适用的规则与条件。',
             languageLabel: '简体中文',
             alternateLanguageLabel: 'English',
             alternatePath: '/en/terms-of-use',
-            updatedAt: '2026年4月4日',
+            updatedAt: '2026年11月27日',
             sections: [
                 {
                     heading: '条款接受',
@@ -349,7 +349,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: '账户与访问',
                     paragraphs: [
-                        'Synca 当前支持通过 Sign in with Apple 登录。你需要自行维护 Apple 账户及设备的访问安全。',
+                        '你可以使用 Synca 提供的 Apple 或邮箱登录方式访问账户。你需要自行维护登录账户、邮箱及设备的访问安全。',
                     ],
                 },
                 {
@@ -410,7 +410,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
             languageLabel: '简体中文',
             alternateLanguageLabel: 'English',
             alternatePath: '/en/support',
-            updatedAt: '2026年4月4日',
+            updatedAt: '2026年11月27日',
             sections: [
                 {
                     heading: '联系支持',
@@ -424,7 +424,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                         '为了更快协助你定位问题，建议在邮件中说明所使用的平台、问题描述，以及相关截图或复现步骤。',
                     ],
                     bullets: [
-                        '平台：iPhone 或 Mac',
+                        '平台：Windows、Mac、iPhone、iPad 或 Web',
                         '应用版本号（如可提供）',
                         '问题的简要描述',
                         '如可复现，请附上复现步骤',
@@ -433,7 +433,7 @@ const siteMap: Record<Locale, Record<PageKind, LegalPage>> = {
                 {
                     heading: '产品范围',
                     paragraphs: [
-                        'Synca 主要用于通过 Sign in with Apple 登录后，在个人设备之间同步文字和图片记录。',
+                        'Synca 用于个人快速记录和跨设备同步。你可以使用应用提供的 Apple 或邮箱登录方式访问账户，并在自己的设备之间同步文字、图片和文件；普通文件上传需要相应 Pro 权益。',
                         'Synca 免费版用户每日最多可新增 20 条内容；免费版提供 100 MB 图片空间，保存 3 天；付费版解锁最大 200 MB 文件传输、1 GB 中转空间及 30 天附件保存。图片最大 50 MB。请在到期前另存，永久购买不代表永久保存附件。',
                     ],
                 },
