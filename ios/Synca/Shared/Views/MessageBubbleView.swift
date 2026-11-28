@@ -23,6 +23,10 @@ struct MessageBubbleView: View {
     var searchMatchedText: String? = nil
     @State private var searchTextOffset: CGFloat = 0
 
+    @State private var markdownTaskBusy = false
+    @State private var markdownTaskError: String?
+    @State private var optimisticMarkdown: String?
+    @State private var markdownHeight: CGFloat = 0
     @State private var copied = false
     @State private var localTextExpanded = false
     private var isTextExpanded: Bool {
@@ -38,7 +42,7 @@ struct MessageBubbleView: View {
     @State private var loadID = UUID() // #1: 重显失败图片的关键
 
     private var messageText: String {
-        message.textContent ?? ""
+        optimisticMarkdown ?? message.textContent ?? ""
     }
 
     private var fileName: String {
@@ -253,30 +257,37 @@ struct MessageBubbleView: View {
     
     private var textContent: some View {
         VStack(alignment: .leading, spacing: 4) {
-            #if os(macOS)
-            MacSelectableText(attributedText: linkedNSAttributedText,
-                              color: message.isCleared ? .secondary : .primary, font: .body,
-                              maximumNumberOfLines: isTextExpanded ? 0 : 6,
-                              contextMenuActions: macMessageMenuActions)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            markdownDocument
+                .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { geometry in
-                    Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
-                        .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: searchMatchedText) { _ in updateTextOverflow(width: geometry.size.width) }
+                    Color.clear.preference(key: MarkdownHeightPreference.self, value: geometry.size.height)
                 })
-            #else
-            LinkTextView(attributedText: linkedNSAttributedText, maximumNumberOfLines: isTextExpanded ? 0 : 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(GeometryReader { geometry in
-                    Color.clear.onAppear { updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: geometry.size.width) { updateTextOverflow(width: $0) }
-                        .onChange(of: dynamicTypeSize) { _ in updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: messageText) { _ in updateTextOverflow(width: geometry.size.width) }
-                        .onChange(of: searchMatchedText) { _ in updateTextOverflow(width: geometry.size.width) }
-                })
-            #endif
+                .opacity(!isTextExpanded && textOverflows ? 0 : 1)
+                .allowsHitTesting(isTextExpanded || !textOverflows)
+                .accessibilityHidden(!isTextExpanded && textOverflows)
+                .frame(maxHeight: isTextExpanded ? nil : collapsedMarkdownHeight, alignment: .top)
+                .clipped()
+                .contentShape(Rectangle())
+                .overlay(alignment: .topLeading) {
+                    if !isTextExpanded && textOverflows {
+                        #if os(iOS)
+                        LinkTextView(attributedText: linkedNSAttributedText, maximumNumberOfLines: 6)
+                        #else
+                        MacSelectableText(attributedText: linkedNSAttributedText,
+                            color: message.isCleared ? .secondary : .primary, font: .body,
+                            maximumNumberOfLines: 6, contextMenuActions: macMessageMenuActions)
+                        #endif
+                    }
+                }
+                .onPreferenceChange(MarkdownHeightPreference.self) { height in
+                    markdownHeight = height
+                    textOverflows = height > collapsedMarkdownHeight + 1
+                    if revealSearchText && textOverflows { isTextExpanded = true }
+                }
+            if let markdownTaskError {
+                Text(markdownTaskError).font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
             if textOverflows || isTextExpanded {
                 Button {
                     let collapsing = isTextExpanded
@@ -315,12 +326,58 @@ struct MessageBubbleView: View {
 
     @State private var textOverflows = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    private func updateTextOverflow(width: CGFloat) {
-        guard width > 0 else { return }
-        textOverflows = MessageMarkdownRenderer.overflows(linkedNSAttributedText, width: width, maximumLines: 6)
-        if revealSearchText && textOverflows { isTextExpanded = true }
-        if let searchMatchedText {
-            searchTextOffset = MessageMarkdownRenderer.matchOffset(linkedNSAttributedText, text: searchMatchedText, width: width)
+    private var collapsedMarkdownHeight: CGFloat {
+        #if os(iOS)
+        UIFont.preferredFont(forTextStyle: .body).lineHeight * 6
+        #else
+        ceil(NSFont.preferredFont(forTextStyle: .body).boundingRectForFont.height) * 6
+        #endif
+    }
+    private var markdownDocument: some View {
+        var view = MarkdownDocumentView(source: messageText, secondary: message.isCleared,
+            taskBusy: markdownTaskBusy, tasksEnabled: message.canEditText,
+            onToggleTask: { offset in Task { await toggleMarkdownTask(offset) } },
+            searchText: searchMatchedText, onSearchOffset: { searchTextOffset = $0 })
+        #if os(macOS)
+        view.contextMenuActions = macMessageMenuActions
+        #endif
+        let content: AnyView
+        if let account = APIClient.shared.currentUserId,
+           MarkdownImageCandidate.containsImageSyntax(messageText) {
+            content = AnyView(AuthenticatedMarkdownAssets(account: account, source: messageText) { urls in
+                var resolved = view
+                resolved.imageURL = { urls[$0] }
+                return resolved
+            }.id(account))
+        } else { content = AnyView(view) }
+        return content
+            .onChange(of: dynamicTypeSize) { _ in textOverflows = markdownHeight > collapsedMarkdownHeight + 1 }
+            .onChange(of: message.textContent) { _ in
+                if !markdownTaskBusy { optimisticMarkdown = nil }
+            }
+    }
+    @MainActor private func toggleMarkdownTask(_ offset: Int) async {
+        guard !markdownTaskBusy, message.canEditText else { return }
+        let account = APIClient.shared.currentUserId
+        let original = message
+        let source = messageText
+        markdownTaskBusy = true
+        markdownTaskError = nil
+        defer { markdownTaskBusy = false; optimisticMarkdown = nil }
+        guard let next = await MarkdownParser.shared.toggleTaskAsync(source, offset: offset),
+              APIClient.shared.currentUserId == account, messageText == source else { return }
+        optimisticMarkdown = next
+        do {
+            try await SyncManager.shared.updateMessageText(original, textContent: next)
+            guard APIClient.shared.currentUserId == account else { return }
+            markdownTaskFeedback(success: true)
+        } catch {
+            guard APIClient.shared.currentUserId == account, !(error is CancellationError) else { return }
+            switch error {
+            case APIError.textEditConflict: markdownTaskError = String(syncaLocalized: "markdown.task_conflict")
+            default: markdownTaskError = String(syncaLocalized: "markdown.task_failed")
+            }
+            markdownTaskFeedback(success: false, message: markdownTaskError)
         }
     }
 
@@ -1219,4 +1276,9 @@ struct CategoryColorDot: View {
         #endif
     }
     var body: some View { image.resizable().frame(width: 8, height: 8) }
+}
+
+private struct MarkdownHeightPreference: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

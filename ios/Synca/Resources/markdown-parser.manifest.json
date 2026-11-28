@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "inputs": {
+    "web/package-lock.json": "f7068c23cb0650984e283137c209d2dc964478bd2dbea0af1520b9cf637b1678",
+    "web/scripts/build-markdown-parser.mjs": "2ea19624abb6749301be105b69c0269cba7d7b8863fde1f249f3ab49a212d9d1",
+    "web/src/markdown/native.ts": "becdc5a93405f1a9dc0d55c69134ec5f87a7ab108bb81b8c0ab3f753896f2863",
+    "web/src/markdown/parse.ts": "7e1e7b12d9445a6454bf3da40c218c9c50632a15f1e34a9bde0e34b4fd537c88"
+  },
+  "output": {
+    "path": "ios/Synca/Resources/markdown-parser.js",
+    "sha256": "9ad8eef42a4778a8041401e090e0a4ae793be44ce9625dade2c8b4a5eb36b8f7"
+  }
+}

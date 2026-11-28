@@ -8,6 +8,8 @@ import { Modal } from './Modal';
 import { Toast } from './Toast';
 import { CategoryAssignmentMenu } from './CategoryAssignmentMenu';
 import { MessageMarkdown } from './MessageMarkdown';
+import { OwnedMarkdownImage } from './MarkdownImage';
+import { toggleMarkdownTask } from '../markdown/parse';
 import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
 import type { RecordMenuItem, RecordMenuOptions } from './SettingsPanel';
@@ -83,13 +85,12 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
   const toggleTask = async (offset: number) => {
     const source = message.textContent;
     if (!canEditText || isProcessing || taskInFlight.current || !source) return;
-    const marker = source[offset];
-    if (source[offset - 1] !== '[' || source[offset + 1] !== ']' || ![' ', 'x', 'X'].includes(marker)) return;
+    const text = toggleMarkdownTask(source, offset);
+    if (text === null) return;
     taskInFlight.current = true;
     setIsProcessing(true);
     setActionError('');
     try {
-      const text = source.slice(0, offset) + (marker === ' ' ? 'x' : ' ') + source.slice(offset + 1);
       onTextSaved(await api.updateMessageText(message.id, text, message.updatedAt));
     } catch (error) {
       if (error instanceof MessageEditError) {
@@ -301,6 +302,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
         {message.type === 'text' && (
           <ExpandableMessageText text={message.textContent ?? ''}>
             <MessageMarkdown text={message.textContent ?? ''} taskLabel={t('message_task.label')}
+              renderOwnedImage={node => <OwnedMarkdownImage node={node}/>}
               taskPending={isProcessing} onTaskToggle={canEditText ? toggleTask : undefined} />
           </ExpandableMessageText>
         )}

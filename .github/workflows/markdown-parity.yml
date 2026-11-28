@@ -1,0 +1,66 @@
+name: Shared Markdown parity
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'web/src/markdown/**'
+      - 'web/src/components/MessageMarkdown.tsx'
+      - 'web/src/components/Scratchpad.tsx'
+      - 'web/scripts/build-markdown-parser.mjs'
+      - 'web/package*.json'
+      - 'ios/Synca/Shared/Models/MarkdownDocument.swift'
+      - 'ios/Synca/Shared/Views/*Markdown*'
+      - 'ios/Synca/Resources/markdown-parser*'
+      - 'ios/Synca/ci_scripts/ci_post_clone.sh'
+      - 'scripts/*check-markdown-bundle.py'
+      - 'ios/Tests/*Markdown*'
+      - 'ios/Tests/run-message-markdown.sh'
+      - 'tests/fixtures/markdown-parity.json'
+      - '.github/workflows/markdown-parity.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'web/src/markdown/**'
+      - 'web/src/components/MessageMarkdown.tsx'
+      - 'web/src/components/Scratchpad.tsx'
+      - 'web/scripts/build-markdown-parser.mjs'
+      - 'web/package*.json'
+      - 'ios/Synca/Shared/Models/MarkdownDocument.swift'
+      - 'ios/Synca/Shared/Views/*Markdown*'
+      - 'ios/Synca/Resources/markdown-parser*'
+      - 'ios/Synca/ci_scripts/ci_post_clone.sh'
+      - 'scripts/*check-markdown-bundle.py'
+      - 'ios/Tests/*Markdown*'
+      - 'ios/Tests/run-message-markdown.sh'
+      - 'tests/fixtures/markdown-parity.json'
+      - '.github/workflows/markdown-parity.yml'
+permissions:
+  contents: read
+concurrency:
+  group: markdown-parity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  common-corpus:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Validate the native CI manifest gate
+        run: |
+          python3 scripts/test-check-markdown-bundle.py
+          python3 scripts/check-markdown-bundle.py
+      - name: Install locked parser dependencies
+        run: npm ci --prefix web
+      - name: Reject a stale native parser bundle
+        run: node web/scripts/build-markdown-parser.mjs --check
+      - name: Exercise the shared parser corpus and safe source edits
+        run: node --experimental-strip-types --test web/tests/markdown-parser.test.ts web/tests/markdown-bundle.test.mjs
+      - name: Exercise the exact same corpus in JavaScriptCore and native text
+        run: bash ios/Tests/run-message-markdown.sh

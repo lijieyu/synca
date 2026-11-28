@@ -1,20 +1,13 @@
 import {useEffect,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import {MessageMarkdown} from './MessageMarkdown';
+import {toggleMarkdownTask} from '../markdown/parse';
 import {ImagePlus,FileText,Eye,History} from 'lucide-react';
 import {api,ScratchConflict,type ScratchCopy,type SyncaMessage} from '../api/client';
 import {acceptedDraft,remoteDraft,localScratchCopies,persistScratchDraft,type ScratchDraft,type ScratchDocument} from '../utils/scratchpad';
 import './Scratchpad.css';
+import {ProtectedMarkdownImage} from './MarkdownImage';
 
-function ProtectedImage({asset}:{asset?:SyncaMessage}) {
- const [url,setURL]=useState<string>();
- useEffect(()=>{let live=true;let objectURL:string|undefined;
-  if(asset?.imageUrl) void api.getProtectedFileBlob(asset.imageUrl).then(blob=>{objectURL=URL.createObjectURL(blob);if(live)setURL(objectURL);else URL.revokeObjectURL(objectURL);}).catch(()=>{});
-  return()=>{live=false;if(objectURL)URL.revokeObjectURL(objectURL);};
- },[asset?.imageUrl]);
- return url?<img src={url} alt=""/>:<span role="img" aria-label="Image">▧</span>;
-}
 export function Scratchpad({account}:{account:string}) {
  const {t}=useTranslation();const key=`synca:scratchpad:v1:${account}`;
  const writer=useRef(crypto.randomUUID());const session=useRef(localStorage.getItem('authToken'));
@@ -79,7 +72,10 @@ export function Scratchpad({account}:{account:string}) {
   {remote&&<div className="scratch-notice" role="alert"><p>{t('scratch.conflict_detail')}</p><button onClick={()=>void useCloud()}>{t('scratch.use_cloud')}</button><button onClick={()=>{persist({...current.current,revision:remote.revision,dirty:true,preserveCurrent:true});setRemote(undefined);blocked.current=false;void syncRef.current();}}>{t('scratch.use_local')}</button></div>}
   {error&&<p className="scratch-notice" role="alert">{error}</p>}
   {showCopies&&<div className="scratch-copies">{localCopies.map(copy=><article key={copy.id}><time>{new Date(copy.created_at).toLocaleString()}</time><pre>{copy.content}</pre><button onClick={()=>void restore(copy)}>{t('scratch.restore')}</button><button onClick={()=>{if(window.confirm(t('scratch.delete_copy'))){localStorage.removeItem(copy.id);setDraft({...current.current});}}}>{t('common.delete')}</button></article>)}{copies.length===0&&localCopies.length===0?<p>{t('scratch.no_copies')}</p>:copies.map(copy=><article key={copy.id}><time>{new Date(copy.created_at).toLocaleString()}</time><pre>{copy.content}</pre><button onClick={()=>void restore(copy)}>{t('scratch.restore')}</button><button onClick={()=>{if(window.confirm(t('scratch.delete_copy')))void api.deleteScratchCopy(account,copy.id).then(refreshExtras).catch(()=>setError(t('scratch.offline')));}}>{t('common.delete')}</button></article>)}</div>}
-  {showImages&&<div className="scratch-copies">{images.map(asset=><article key={asset.id}><ProtectedImage asset={asset}/><button onClick={()=>edit(current.current.content+`\n![](synca-image:${asset.id})\n`)}>{t('scratch.insert')}</button><button disabled={current.current.dirty} onClick={()=>{if(window.confirm(t('scratch.delete_image')))void api.deleteScratchImage(account,asset.id).then(refreshExtras).catch(()=>setError(t('scratch.image_in_use')));}}>{t('common.delete')}</button></article>)}</div>}
-  {preview?<div className="scratch-preview"><Markdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={(url)=>url.startsWith('synca-image:')?url:/^https?:|^mailto:/i.test(url)?url:''} components={{img:({src})=><ProtectedImage asset={images.find(asset=>`synca-image:${asset.id}`===src)}/>,a:({children,href})=><a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{draft.content}</Markdown></div>:<textarea ref={editor} value={draft.content} maxLength={250000} onChange={e=>edit(e.target.value)} onPaste={e=>{const image=[...e.clipboardData.files].find(file=>file.type.startsWith('image/'));if(image){e.preventDefault();void upload(image);}}} aria-label={t('scratch.editor')} placeholder={t('scratch.placeholder')} spellCheck/>}
+  {showImages&&<div className="scratch-copies">{images.map(asset=><article key={asset.id}><ProtectedMarkdownImage asset={asset}/><button onClick={()=>edit(current.current.content+`\n![](synca-image:${asset.id})\n`)}>{t('scratch.insert')}</button><button disabled={current.current.dirty} onClick={()=>{if(window.confirm(t('scratch.delete_image')))void api.deleteScratchImage(account,asset.id).then(refreshExtras).catch(()=>setError(t('scratch.image_in_use')));}}>{t('common.delete')}</button></article>)}</div>}
+  {preview?<div className="scratch-preview"><MessageMarkdown text={draft.content} taskLabel={t('message_task.label')} onTaskToggle={offset=>{
+   if(!alive.current||!sameSession()||blocked.current||current.current.content!==draft.content)return;
+   const next=toggleMarkdownTask(current.current.content,offset);if(next!==null)edit(next);
+  }} taskPending={Boolean(remote)} renderOwnedImage={node=>{const asset=images.find(image=>`synca-image:${image.id}`.toLowerCase()===node.url?.toLowerCase());return asset?<ProtectedMarkdownImage asset={asset} alt={node.alt} fallback={node.source}/>:undefined;}}/></div>:<textarea ref={editor} value={draft.content} maxLength={250000} onChange={e=>edit(e.target.value)} onPaste={e=>{const image=[...e.clipboardData.files].find(file=>file.type.startsWith('image/'));if(image){e.preventDefault();void upload(image);}}} aria-label={t('scratch.editor')} placeholder={t('scratch.placeholder')} spellCheck/>}
  </section>;
 }

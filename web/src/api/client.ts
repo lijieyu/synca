@@ -169,6 +169,7 @@ class APIClient {
     this.activeUploads.forEach(xhr => xhr.abort());
     this.activeUploads.clear();
     this.messageDeltaCache = null;
+    this.markdownImageIndex = null;
     if ('caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
 
@@ -334,9 +335,26 @@ class APIClient {
   }
   getScratchCopies(account:string):Promise<{conflicts:ScratchCopy[]}> {return this.fetch('/scratchpad/conflicts',{headers:this.scratchHeaders(account)});}
   deleteScratchCopy(account:string,id:string):Promise<unknown> {return this.fetch(`/scratchpad/conflicts/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  private markdownImageIndex: {account:string;token:string;version:number;expiresAt:number;pending:Promise<{images:SyncaMessage[]}>} | null = null;
+  /** A single session-scoped index serves all Markdown rows; arbitrary source URLs are never fetched. */
+  async markdownImageAsset(account:string,id:string):Promise<SyncaMessage|null> {
+    const token=this.token,version=this.sessionVersion;
+    if(!token||account!==localStorage.getItem('userId')||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return null;
+    let entry=this.markdownImageIndex;
+    if(!entry||entry.account!==account||entry.token!==token||entry.version!==version||entry.expiresAt<=Date.now()){
+      entry={account,token,version,expiresAt:Date.now()+30_000,pending:this.getScratchImages(account)};
+      this.markdownImageIndex=entry;
+    }
+    try {
+      const {images}=await entry.pending;
+      if(token!==this.token||version!==this.sessionVersion||account!==localStorage.getItem('userId'))throw new DOMException('Session changed','AbortError');
+      return images.find(asset=>asset.id.toLowerCase()===id.toLowerCase())??null;
+    }catch(error){if(this.markdownImageIndex===entry)this.markdownImageIndex=null;throw error;}
+  }
   getScratchImages(account:string):Promise<{images:SyncaMessage[]}> {return this.fetch('/scratchpad/images',{headers:this.scratchHeaders(account)});}
-  deleteScratchImage(account:string,id:string):Promise<unknown> {return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  deleteScratchImage(account:string,id:string):Promise<unknown> {this.markdownImageIndex=null;return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
   async uploadScratchImage(account:string,file:File):Promise<SyncaMessage> {
+    this.markdownImageIndex=null;
     const data=new FormData();data.append('image',file);
     return this.upload('/scratchpad/images',data,file,undefined,this.scratchHeaders(account));
   }

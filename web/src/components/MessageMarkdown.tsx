@@ -1,114 +1,51 @@
-import { createContext, Fragment, useContext } from 'react';
-import Markdown, { type Components } from 'react-markdown';
-import type { Root as HtmlRoot, Element, ElementContent } from 'hast';
-import remarkGfm from 'remark-gfm';
-import type { Root, RootContent, PhrasingContent } from 'mdast';
+import {createElement,Fragment,useMemo,type ReactNode} from 'react';
+import {parseMarkdown,type MarkdownNode} from '../markdown/parse';
 
-const elements = [
-  'p', 'br', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'code', 'a',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'hr', 'del', 'input',
-  'u', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-];
-// Keep plain-text records on the whitespace-preserving path.
-const blockMarker = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|(?:=[= \t]*|[-_*](?:[ \t]*[-_*]){2,})[ \t]*$|\|?[ \t]*:?-+:?[ \t]*\|)/m;
-const strikeOrImage = /~~[^\n]+?~~|!\[/;
-const basicMarkdown = /(^|\n) {0,3}(?:(?:[-+*]|\d+[.)])(?:[ \t]|\r?\n)|> ?)|\*\*[^\n]+\*\*|__[^\n]+__|\*(?!\s)[^*\n]*\S\*|(?:^|[^\p{L}\p{N}_])_(?!\s)[^_\n]*\S_(?![\p{L}\p{N}_])|`[^`\n]+`|(?<!!)\[[^\]\n]+\]\([^\n]+\)/u;
-const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]，。！？；：、]+[^\s<>"{}|\\^`[\],.)!?;:，。！？；：、])/g;
-
-/** GFM supplies bare URL detection; keep unsupported syntax literal instead of losing data. */
-function preserveImageSource({ source }: { source: string }) {
-  return (tree: Root) => {
-    function visit(node: Root | RootContent | PhrasingContent) {
-      if (!('children' in node)) return;
-      node.children = node.children.map(child => {
-        if (child.type === 'image' || child.type === 'imageReference') {
-          return { type: 'text' as const, value: source.slice(child.position?.start.offset, child.position?.end.offset) };
-        }
-        visit(child);
-        return child;
-      }) as typeof node.children;
-    }
-    visit(tree);
-  };
+interface MarkdownControls {
+ onTaskToggle?:(offset:number)=>void;
+ taskPending?:boolean;
+ taskLabel?:string;
+ /** The host must resolve this UUID against assets owned by the current account. */
+ renderOwnedImage?:(node:MarkdownNode)=>ReactNode;
 }
+const ownedImage=/^synca-image:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const visibleText=(node:MarkdownNode):string=>node.value??node.alt??node.children?.map(visibleText).join('')??'';
 
-interface TaskControls {
-  onTaskToggle?: (offset: number) => void;
-  taskPending?: boolean;
-  taskLabel?: string;
-}
-
-const Tasks = createContext<TaskControls>({});
-const underline = /<u>[^\r\n]+?<\/u>/;
-function inlineText(node: ElementContent): string {
-  if (node.type === 'text' || node.type === 'raw') return node.value;
-  return node.type === 'element' ? node.children.map(inlineText).join('') : '';
-}
-
-// Only GFM creates input elements. Raw HTML remains inert throughout this pass.
-function enhanceMessage({ source }: { source: string }) {
-  return (tree: HtmlRoot) => {
-    function visit(parent: HtmlRoot | Element) {
-      for (const child of parent.children) {
-        if (child.type === 'element') visit(child);
-      }
-      if (parent.type === 'element' && parent.tagName === 'li') {
-        const first = parent.children.find(child => child.type === 'element');
-        const checkbox = first?.tagName === 'p' ? first.children[0] : first;
-        const start = parent.position?.start.offset;
-        if (checkbox?.type === 'element' && checkbox.tagName === 'input' && start !== undefined) {
-          // GFM has already classified this item. Its first bracket is its task marker,
-          // including when the marker starts on a continuation line inside a quote.
-          const offset = source.indexOf('[', start) + 1;
-          if (offset > start && offset < (parent.position?.end.offset ?? start) && /^[ xX]\]/.test(source.slice(offset, offset + 2))) {
-            checkbox.properties.dataTaskOffset = offset;
-            const labelNodes = first?.tagName === 'p' ? first.children : parent.children;
-            checkbox.properties.ariaLabel = labelNodes.filter(child => child.type !== 'element' || !['ul', 'ol'].includes(child.tagName)).map(inlineText).join('').trim();
-          }
-        }
-      }
-      let opening = -1;
-      for (let i = 0; i < parent.children.length; i++) {
-        const child = parent.children[i];
-        if (child.type !== 'raw') continue;
-        if (child.value === '<u>') { opening = i; continue; }
-        if (child.value === '</u>' && opening >= 0 && child.position?.start.line === parent.children[opening].position?.end.line) {
-          const children = parent.children.slice(opening + 1, i) as ElementContent[];
-          parent.children.splice(opening, i - opening + 1, { type: 'element', tagName: 'u', properties: {}, children });
-          i = opening;
-        }
-        opening = -1;
-      }
-    }
-    visit(tree);
-  };
-}
-
-const components: Components = {
-  table: ({ children }) => <div className="message-table-scroll"><table>{children}</table></div>,
-  a: ({ href, children }) => href
-    ? <a href={href} className="message-link" target="_blank" rel="noopener noreferrer">{children}</a>
-    : <>{children}</>,
-  input: function TaskCheckbox({ node, checked, 'aria-label': label }) {
-    const { onTaskToggle, taskPending, taskLabel } = useContext(Tasks);
-    const offset = node?.properties.dataTaskOffset;
-    const editable = typeof offset === 'number' && Boolean(onTaskToggle);
-    return <input type="checkbox" checked={Boolean(checked)} disabled={!editable}
-      aria-label={label || taskLabel} aria-disabled={taskPending || undefined}
-      onChange={() => { if (!taskPending && typeof offset === 'number') onTaskToggle?.(offset); }} />;
-  },
-};
-
-export function MessageMarkdown({ text, ...controls }: { text: string } & TaskControls) {
-  if (!basicMarkdown.test(text) && !blockMarker.test(text) && !strikeOrImage.test(text) && !underline.test(text)) return <>{text.split(urlPattern).map((part, index) => /^https?:\/\//.test(part)
-    ? <a key={index} href={part} className="message-link" target="_blank" rel="noopener noreferrer">{part}</a>
-    : <Fragment key={index}>{part}</Fragment>)}</>;
-  return <Tasks.Provider value={controls}><div className="message-markdown"><Markdown
-    remarkPlugins={[remarkGfm, [preserveImageSource, { source: text }]]}
-    rehypePlugins={[[enhanceMessage, { source: text }]]}
-    allowedElements={elements}
-    unwrapDisallowed
-    urlTransform={url => /^(https?:\/\/|mailto:|tel:)/i.test(url) ? url : ''}
-    components={components}
-  >{text}</Markdown></div></Tasks.Provider>;
+/** Records and scratch previews share this renderer and the native parser contract. */
+export function MessageMarkdown({text,onTaskToggle,taskPending,taskLabel,renderOwnedImage}:{text:string}&MarkdownControls){
+ const document=useMemo(()=>parseMarkdown(text),[text]);
+ if(document.plain)return <span className="message-plain">{text}</span>;
+ function renderChildren(node:MarkdownNode):ReactNode{return node.children?.map((child,index)=><Fragment key={index}>{render(child)}</Fragment>);}
+ function render(node:MarkdownNode):ReactNode {
+  switch(node.type){
+   case 'text':case 'html':return node.value;
+   case 'paragraph':return <p>{renderChildren(node)}</p>;
+   case 'heading':return createElement(`h${node.depth??1}`,null,renderChildren(node));
+   case 'strong':return <strong>{renderChildren(node)}</strong>;
+   case 'emphasis':return <em>{renderChildren(node)}</em>;
+   case 'delete':return <del>{renderChildren(node)}</del>;
+   case 'underline':return <u>{renderChildren(node)}</u>;
+   case 'inlineCode':return <code>{node.value}</code>;
+   case 'code':return <pre tabIndex={0}><code className={node.lang?`language-${node.lang}`:undefined}>{node.value+'\n'}</code></pre>;
+   case 'break':return <br/>;
+   case 'thematicBreak':return <hr/>;
+   case 'blockquote':return <blockquote>{renderChildren(node)}</blockquote>;
+   case 'list':return node.ordered?<ol start={node.start}>{renderChildren(node)}</ol>:<ul>{renderChildren(node)}</ul>;
+   case 'listItem':{
+    const task=typeof node.checked==='boolean';const offset=node.taskOffset;
+    const label=node.children?.filter(child=>child.type!=='list').map(visibleText).join(' ').trim();
+    return <li className={task?'task-list-item':undefined}>{task&&<><input type="checkbox" checked={node.checked} disabled={!onTaskToggle||offset===undefined}
+     aria-label={label||taskLabel} aria-disabled={taskPending||undefined}
+     onChange={()=>{if(!taskPending&&offset!==undefined)onTaskToggle?.(offset);}}/>{' '}</>}{node.children?.map((child,index)=><Fragment key={index}>{index===0&&child.type==='paragraph'?<span className="message-list-text" style={{whiteSpace:'pre-wrap'}}>{renderChildren(child)}</span>:render(child)}</Fragment>)}</li>;
+   }
+   case 'table':return <div className="message-table-scroll" tabIndex={0}><table>{node.children?.map((row,index)=>{
+    const cells=<tr>{row.children?.map((cell,column)=>createElement(index===0?'th':'td',{key:column,style:{textAlign:node.align?.[column]??undefined},scope:index===0?'col':undefined},<div className="message-table-cell">{renderChildren(cell)}</div>))}</tr>;
+    return index===0?<thead key={index}>{cells}</thead>:<tbody key={index}>{cells}</tbody>;
+   })}</table></div>;
+   case 'link':return <a href={node.url} title={node.title} className="message-link" target="_blank" rel="noopener noreferrer">{renderChildren(node)}</a>;
+   case 'image':return (node.url&&ownedImage.test(node.url)?renderOwnedImage?.(node):undefined)??node.source??node.alt;
+   default:return renderChildren(node)??node.value;
+  }
+ }
+ return <div className="message-markdown">{document.children.map((node,index)=><Fragment key={index}>{render(node)}</Fragment>)}</div>;
 }

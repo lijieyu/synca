@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { db } from './db.js';
 import { getMessage, purgeMessageMedia } from './store.js';
 import { nextMessageTimestamp } from './messageRevision.js';
+import { decodeString } from 'micromark-util-decode-string';
 
-export const imageIDs = (content: string) => [...new Set([...content.matchAll(/synca-image:([0-9a-f-]{36})/gi)].map(match => match[1].toLowerCase()))];
+// Match CommonMark destination decoding, including named/numeric character
+// references and punctuation escapes. Scan code/literal text conservatively too.
+export const imageIDs = (content: string) => [...new Set([...decodeString(content).matchAll(/synca-image:([0-9a-f-]{36})/gi)].map(match => match[1].toLowerCase()))];
 const empty = { content: '', revision: 0, updatedAt: null as string | null };
 export async function readScratchpad(userId: string) {
     const row = await db.selectFrom('scratchpads').selectAll().where('user_id', '=', userId).executeTakeFirst();
@@ -58,6 +61,13 @@ export async function deleteScratchpadImage(userId: string, id: string, uploadsD
         const main = await trx.selectFrom('scratchpads').select('content').where('user_id','=',userId).execute();
         const copies = await trx.selectFrom('scratchpad_conflicts').select('content').where('user_id','=',userId).execute();
         if ([...main,...copies].some(doc => imageIDs(doc.content).includes(id))) return {status: 409 as const};
+        // Records share these assets with scratchpad previews. Check in the same
+        // transaction as the tombstone, including collected records and literal
+        // references in code; preserving bytes is safer than parsing for deletion.
+        const records = await trx.selectFrom('messages').select('text_content')
+            .where('user_id','=',userId).where('is_deleted','=',0).where('type','=','text')
+            .execute();
+        if (records.some(record => imageIDs(record.text_content ?? '').includes(row.id.toLowerCase()))) return {status: 409 as const};
         await trx.updateTable('messages').set({is_deleted:1,attachment_expires_at:new Date().toISOString(),updated_at:nextMessageTimestamp(new Date().toISOString())})
             .where('id','=',id).where('user_id','=',userId).execute();
         return {status:200 as const,row};

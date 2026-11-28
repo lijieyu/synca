@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/build-ai-page.mjs",
+    "build": "npm run markdown:check && tsc -b && vite build && node scripts/build-ai-page.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "sync-i18n": "node scripts/sync-i18n.js"
+    "sync-i18n": "node scripts/sync-i18n.js",
+    "markdown:bundle": "node scripts/build-markdown-parser.mjs",
+    "markdown:check": "node scripts/build-markdown-parser.mjs --check",
+    "test:markdown": "node --test tests/markdown-parser.test.ts tests/markdown-bundle.test.mjs",
+    "test:node": "node --test tests/*.test.mjs tests/markdown-parser.test.ts tests/scratchpad.test.ts tests/collections.test.ts tests/change-notifications.test.ts"
   },
   "dependencies": {
     "i18next": "^26.0.3",
@@ -18,9 +22,10 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^17.0.2",
-    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.0",
-    "remark-gfm": "^4.0.1"
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -34,6 +39,7 @@
     "globals": "^17.4.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "rolldown": "1.0.0-rc.12"
   }
 }

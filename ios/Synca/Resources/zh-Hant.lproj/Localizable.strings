@@ -523,7 +523,7 @@
 "scratch.delete_copy" = "刪除這份衝突副本？此操作不能撤銷。";
 "scratch.insert" = "插入";
 "scratch.delete_image" = "刪除這張未使用圖片？其他裝置離線草稿可能仍需它，請先確認。";
-"scratch.image_in_use" = "圖片仍被草稿或衝突副本引用，或刪除暫時失敗。";
+"scratch.image_in_use" = "圖片仍被記錄、草稿或衝突副本引用，或刪除暫時失敗。";
 "scratch.editor" = "Markdown 草稿";
 "scratch.placeholder" = "在這裡隨時接著寫…\n支援 Markdown，也可以貼上或插入圖片。";
 
@@ -546,3 +546,27 @@
 "updates.finish_edit" = "請先完成目前編輯或上傳，再重新啟動更新。";
 
 "collections.save_to" = "儲存到%@";
+
+"markdown.task_saving" = "正在儲存任務";
+
+"markdown.task_checked" = "已完成";
+
+"markdown.task_unchecked" = "未完成";
+
+"markdown.task_uncheck" = "標記為未完成";
+
+"markdown.task_check" = "標記為已完成";
+
+"markdown.task_updated" = "任務已更新";
+
+"markdown.task_conflict" = "這筆記錄已在其他裝置更新，請重新整理後重試。";
+
+"markdown.task_failed" = "任務儲存失敗，已恢復先前的狀態。";
+
+"markdown.loading" = "正在顯示 Markdown…";
+
+"markdown.item_range" = "第 %d–%d 項，共 %d 項";
+
+"markdown.previous_items" = "上一組";
+
+"markdown.next_items" = "下一組";

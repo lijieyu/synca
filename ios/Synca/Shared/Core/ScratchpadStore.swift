@@ -17,12 +17,15 @@ final class ScratchpadStore: ObservableObject {
     @Published var copies: [ScratchCopy] = []
     @Published var images: [SyncaMessage] = []
     @Published var uploading = false
+    @Published private(set) var previewTaskBusy = false
     private let account: String
     private let file: URL
     private var imageFile: URL { file.appendingPathExtension("images") }
     private var localSaveFailed = false
     private var busy = false
     private var debounce: Task<Void, Never>?
+    private var previewImageLoad: Task<Void, Never>?
+    private var previewImagesLoadedAt: Date?
     private var sameAccount: Bool { APIClient.shared.currentUserId == account }
 
     init(account: String) {
@@ -38,6 +41,39 @@ final class ScratchpadStore: ObservableObject {
     private func persist() {
         do { try JSONEncoder().encode(draft).write(to: file, options: .atomic); localSaveFailed = false }
         catch { localSaveFailed = true; self.error = String(syncaLocalized: "scratch.local_error") }
+    }
+    func loadPreviewImages() async {
+        guard sameAccount else { return }
+        if let previewImageLoad { await previewImageLoad.value; return }
+        if let loaded = previewImagesLoadedAt, Date().timeIntervalSince(loaded) < 60 { return }
+        let task = Task { [weak self] in
+            guard let self else { return }
+            defer { previewImageLoad = nil }
+            do {
+                let response = try await APIClient.shared.getScratchImages(account: account)
+                guard sameAccount else { return }
+                images = response.images
+                previewImagesLoadedAt = Date()
+            } catch { /* Existing source fallback stays visible; no arbitrary URL retry. */ }
+        }
+        previewImageLoad = task
+        await task.value
+    }
+    var canEditPreview: Bool { sameAccount && remote == nil }
+    func previewImageURL(id: String) -> URL? {
+        guard sameAccount, let asset = images.first(where: { $0.id.lowercased() == id.lowercased() }),
+              let value = asset.imageUrl else { return nil }
+        return URL(string: value)
+    }
+    @discardableResult func toggleTask(offset: Int) async -> Bool {
+        guard canEditPreview, !previewTaskBusy else { return false }
+        previewTaskBusy = true
+        defer { previewTaskBusy = false }
+        let source = draft.content
+        guard let next = await MarkdownParser.shared.toggleTaskAsync(source, offset: offset),
+              canEditPreview, draft.content == source else { return false }
+        edit(next)
+        return !localSaveFailed
     }
     func edit(_ text: String) {
         guard sameAccount else { return }
@@ -81,7 +117,7 @@ final class ScratchpadStore: ObservableObject {
             async let i = APIClient.shared.getScratchImages(account: account)
             let (newCopies,newImages) = try await (c,i)
             guard sameAccount else { return }
-            copies = newCopies.conflicts; images = newImages.images
+            copies = newCopies.conflicts; images = newImages.images; previewImagesLoadedAt = Date()
             try JSONEncoder().encode(images).write(to: imageFile, options: .atomic)
         } catch { if sameAccount { self.error = String(syncaLocalized: "scratch.offline") } }
     }

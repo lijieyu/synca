@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2723A71A3CF567AD04F9469B /* markdown-parser.js in Resources */ = {isa = PBXBuildFile; fileRef = 4F1ED52E4B6D68AFFBE2BA0E /* markdown-parser.js */; };
+		4218E7D78C8F7A2B7A9E51B5 /* MarkdownDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5A8FE786839932A9BE6E70 /* MarkdownDocumentView.swift */; };
+		98A4BB475198AEBBFA4D0B8C /* markdown-parser.js in Resources */ = {isa = PBXBuildFile; fileRef = 4F1ED52E4B6D68AFFBE2BA0E /* markdown-parser.js */; };
+		D6D1D5A08E650A71C6DCA4F1 /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0829B4F137450F1D972A41F /* MarkdownDocument.swift */; };
+		DECA986B7FB064F4B3E589CE /* MarkdownDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5A8FE786839932A9BE6E70 /* MarkdownDocumentView.swift */; };
+		E3965163958F9577E7BBF58D /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0829B4F137450F1D972A41F /* MarkdownDocument.swift */; };
 		B24112400000000000000002 /* SyncNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24112400000000000000001 /* SyncNotifications.swift */; };
 		B24112400000000000000003 /* SyncNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24112400000000000000001 /* SyncNotifications.swift */; };
 		02132BF3E09B519CC7E95D37 /* PushTokenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297BDECDF8299BE751AA053B /* PushTokenManager.swift */; };
@@ -117,6 +123,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3C5A8FE786839932A9BE6E70 /* MarkdownDocumentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocumentView.swift; sourceTree = "<group>"; };
+		4F1ED52E4B6D68AFFBE2BA0E /* markdown-parser.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "markdown-parser.js"; sourceTree = "<group>"; };
+		A0829B4F137450F1D972A41F /* MarkdownDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocument.swift; sourceTree = "<group>"; };
 		B24112400000000000000001 /* SyncNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncNotifications.swift; sourceTree = "<group>"; };
 		0829B728B1C63CE05222E991 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0D2726295D2A4F43DCB7E7E5 /* AccessCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessCenterView.swift; sourceTree = "<group>"; };
@@ -199,6 +208,7 @@
 		3CBB0BD2963CBCF73B302619 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				4F1ED52E4B6D68AFFBE2BA0E /* markdown-parser.js */,
 				522C09F13322D85989CF219D /* Assets.xcassets */,
 				81431AEACBD2BC05C346B7C2 /* InfoPlist.strings */,
 				70DE0078AC87764CD2422D4D /* Localizable.strings */,
@@ -230,6 +240,7 @@
 		8CDDE1EC09BE30C929CAD6B3 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				A0829B4F137450F1D972A41F /* MarkdownDocument.swift */,
 				4FF1234287F38B3116511492 /* AccessStatus.swift */,
 				20C443E869542BFAC55FE508 /* ImagePayload.swift */,
 				C1A3EB5B02A5AB970E136C4D /* Scratchpad.swift */,
@@ -241,6 +252,7 @@
 		B2689032700D5FABB662DAE0 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				3C5A8FE786839932A9BE6E70 /* MarkdownDocumentView.swift */,
 				B1E35B8E89A1BAA4421F27B6 /* AppSettingsView.swift */,
 				A41D507A6341146B3525EAAA /* AIConnectionView.swift */,
 				B0A61C61C4A99097AAAC0997 /* AccountSheet.swift */,
@@ -416,6 +428,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98A4BB475198AEBBFA4D0B8C /* markdown-parser.js in Resources */,
 				12D9E3A6641B9E11DEB2372D /* Assets.xcassets in Resources */,
 				1757B485F5383E25C955DFD5 /* Localizable.strings in Resources */,
 				DC34A8637557420804DA6F7A /* InfoPlist.strings in Resources */,
@@ -426,6 +439,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2723A71A3CF567AD04F9469B /* markdown-parser.js in Resources */,
 				A278AF3AA74A013ED137040B /* Assets.xcassets in Resources */,
 				EEAC4334DBE983A5898B4C12 /* Localizable.strings in Resources */,
 				E4DB4941B4F445A95C2CA2E6 /* InfoPlist.strings in Resources */,
@@ -439,6 +453,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6D1D5A08E650A71C6DCA4F1 /* MarkdownDocument.swift in Sources */,
+				4218E7D78C8F7A2B7A9E51B5 /* MarkdownDocumentView.swift in Sources */,
 				424F6054C2A0D22413708252 /* MessageMarkdownRenderer.swift in Sources */,
 				44E8481E7D0CED0BC9FE178A /* RichClipboardText.swift in Sources */,
 				B57539AEDE6D382A2CF66DA5 /* Scratchpad.swift in Sources */,
@@ -497,6 +513,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3965163958F9577E7BBF58D /* MarkdownDocument.swift in Sources */,
+				DECA986B7FB064F4B3E589CE /* MarkdownDocumentView.swift in Sources */,
 				88B18FF1179B124CE66ACFD9 /* MessageMarkdownRenderer.swift in Sources */,
 				70B6BF0BA33B89BE97DF16BC /* RichClipboardText.swift in Sources */,
 				6A8936189C52C35C0044545B /* Scratchpad.swift in Sources */,

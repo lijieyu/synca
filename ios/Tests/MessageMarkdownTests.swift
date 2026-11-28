@@ -2,90 +2,88 @@ import AppKit
 
 @main
 struct MessageMarkdownTests {
-    @MainActor static func main() {
-        let headingSource = "#### 托管的产品功能与 Demo，和用户调研确认\n- 合作伙伴；\n- 用户访谈"
-        let heading = MessageMarkdownRenderer.render(headingSource, baseColor: .labelColor)
-        precondition(heading.string == "托管的产品功能与 Demo，和用户调研确认\n•\t合作伙伴；\n•\t用户访谈", "H4 from the reported mobile record must render without Markdown markers")
-        let headingFont = heading.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
-        precondition(headingFont.fontDescriptor.symbolicTraits.contains(.bold))
-        precondition(headingFont.pointSize > NSFont.preferredFont(forTextStyle: .body).pointSize)
-        var previousSize = CGFloat.greatestFiniteMagnitude
-        for level in 1...6 {
-            let title = MessageMarkdownRenderer.render(String(repeating: "#", count: level) + " 标题 *English* [链接](https://example.com) ###", baseColor: .secondaryLabelColor)
-            precondition(title.string == "标题 English 链接", "ATX headings 1–6 and optional closing markers match Web")
-            let titleFont = title.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
-            precondition(titleFont.pointSize <= previousSize)
-            previousSize = titleFont.pointSize
-            let link = (title.string as NSString).range(of: "链接").location
-            precondition(title.attribute(.link, at: link, effectiveRange: nil) != nil)
-            precondition((title.attribute(.foregroundColor, at: 0, effectiveRange: nil) as! NSColor) == .secondaryLabelColor)
+    struct Fixture: Decodable {
+        let id: String; let source: String; let contains: [String]; let types: [String]; let taskCount: Int; let plain: Bool?
+    }
+    @MainActor static func main() async throws {
+        let fixtures = try JSONDecoder().decode([Fixture].self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let parser = MarkdownParser.shared
+        for fixture in fixtures {
+            let document = parser.parse(fixture.source)
+            let nodes = document.children.flatMap(\.descendants)
+            let rendered = MessageMarkdownRenderer.render(document: document, baseColor: .labelColor)
+            for text in fixture.contains { precondition(rendered.string.contains(text), "\(fixture.id): missing \(text)") }
+            for type in fixture.types { precondition(nodes.contains { $0.type == type }, "\(fixture.id): missing \(type)") }
+            let tasks = nodes.filter { $0.taskOffset != nil }
+            precondition(tasks.count == fixture.taskCount, fixture.id)
+            if let plain = fixture.plain { precondition(document.plain == plain, fixture.id) }
+            if document.plain { precondition(rendered.string == fixture.source, "Plain whitespace must survive") }
+            for task in tasks {
+                let offset = task.taskOffset!
+                let toggled = parser.toggleTask(fixture.source, offset: offset)!
+                let before = Array(fixture.source.utf16), after = Array(toggled.utf16)
+                precondition(before.count == after.count)
+                precondition(zip(before, after).filter { $0 != $1 }.count == 1, "Only bracket middle changes")
+                precondition(parser.parse(toggled).children.flatMap(\.descendants).first { $0.taskOffset == offset }?.checked != task.checked)
+                var expected = before
+                if expected[offset] == 88 { expected[offset] = 120 }
+                precondition(parser.toggleTask(toggled, offset: offset) == String(decoding: expected, as: UTF16.self))
+            }
         }
-        for source in ["#tag", "####标题", "####### seven", "\\# escaped", "    # indented", "```md\n#### literal\n```", "~~~\n# literal\n~~~"] {
-            precondition(MessageMarkdownRenderer.render(source, baseColor: .labelColor).string == source, "Non-headings and fenced examples must stay literal")
+        let inline = MessageMarkdownRenderer.render("**bold** *italic* ~~strike~~ <u>under</u> `mono` [site](https://example.com)", baseColor: .secondaryLabelColor)
+        func attr(_ key: NSAttributedString.Key, _ text: String) -> Any? { inline.attribute(key, at: (inline.string as NSString).range(of: text).location, effectiveRange: nil) }
+        precondition((attr(.font, "bold") as! NSFont).fontDescriptor.symbolicTraits.contains(.bold))
+        precondition((attr(.font, "italic") as! NSFont).fontDescriptor.symbolicTraits.contains(.italic))
+        precondition(attr(.strikethroughStyle, "strike") as? Int == NSUnderlineStyle.single.rawValue)
+        precondition(attr(.underlineStyle, "under") as? Int == NSUnderlineStyle.single.rawValue)
+        precondition((attr(.font, "mono") as! NSFont).isFixedPitch)
+        precondition(attr(.link, "site") != nil)
+        for source in ["`![](synca-image:01234567-0123-0123-0123-012345678901)`", "```\n![](synca-image:01234567-0123-0123-0123-012345678901)\n```"] {
+            precondition(parser.parse(source).children.flatMap(\.descendants).allSatisfy { $0.ownedImageID == nil })
         }
-        precondition(MessageMarkdownRenderer.render("  ####\t标题\r\n正文", baseColor: .labelColor).string == "标题\n正文")
-        precondition(MessageMarkdownRenderer.render("#", baseColor: .labelColor).string == "")
-        precondition(MessageMarkdownRenderer.render("# C#", baseColor: .labelColor).string == "C#")
-        precondition(MessageMarkdownRenderer.render("# 标题 \\#", baseColor: .labelColor).string == "标题 #")
-        let source = "1. **标题**\n   - 子项目 `code`\n> 引用\n[官网](https://example.com) https://example.org"
-        let rendered = MessageMarkdownRenderer.render(source, baseColor: .labelColor)
-        precondition(rendered.string == "1.\t标题\n•\t子项目 code\n│\t引用\n官网 https://example.org", "Render compact lists, quotes and inline formatting")
-        let title = (rendered.string as NSString).range(of: "标题").location
-        let font = rendered.attribute(.font, at: title, effectiveRange: nil) as! NSFont
-        precondition(font.fontDescriptor.symbolicTraits.contains(.bold), "Bold must survive native attributed rendering")
-        let code = (rendered.string as NSString).range(of: "code").location
-        precondition((rendered.attribute(.font, at: code, effectiveRange: nil) as! NSFont).isFixedPitch)
-        let nested = (rendered.string as NSString).range(of: "子项目").location
-        let style = rendered.attribute(.paragraphStyle, at: nested, effectiveRange: nil) as! NSParagraphStyle
-        precondition(style.firstLineHeadIndent > 0 && style.headIndent > style.firstLineHeadIndent)
-        for label in ["官网", "https://example.org"] {
-            precondition(rendered.attribute(.link, at: (rendered.string as NSString).range(of: label).location, effectiveRange: nil) != nil)
-        }
-        let plain = "普通 English 👨‍👩‍👧‍👦\n\n第二段\n"
-        let unchanged = MessageMarkdownRenderer.render(plain, baseColor: .secondaryLabelColor)
-        precondition(unchanged.string == plain, "Plain text whitespace must survive")
-        precondition((unchanged.attribute(.font, at: 0, effectiveRange: nil) as! NSFont) == NSFont.preferredFont(forTextStyle: .body))
-        precondition((unchanged.attribute(.foregroundColor, at: 0, effectiveRange: nil) as! NSColor) == .secondaryLabelColor)
-        precondition(MessageMarkdownRenderer.render("**未完成", baseColor: .labelColor).string == "**未完成")
-        for text in ["a &amp; b", #"a\_b"#, "  ordinary  text\n\n\nend\n", "snake_case_name"] {
-            precondition(MessageMarkdownRenderer.render(text, baseColor: .labelColor).string == text, "Plain records must bypass Markdown decoding")
-        }
-        precondition(MessageMarkdownRenderer.render("a *b* c", baseColor: .labelColor).string == "a b c", "Italic detection matches Web")
-        precondition(MessageMarkdownRenderer.render("1. a\n\n1. b", baseColor: .labelColor).string == "1.\ta\n\n2.\tb", "Blank line must not reset ordered list")
-        let fenced = "```swift\n- **literal**\n```"
-        precondition(MessageMarkdownRenderer.render(fenced, baseColor: .labelColor).string == fenced)
-        precondition(MessageMarkdownRenderer.render("![alt](https://example.com/image.png)", baseColor: .labelColor).string == "![alt](https://example.com/image.png)")
-        let unsafe = MessageMarkdownRenderer.render("[bad](javascript:alert) [local](file:///tmp/test)", baseColor: .labelColor)
+        precondition(parser.toggleTask("- [ ] a", offset: 0) == nil)
+        let unsafe = MessageMarkdownRenderer.render("[bad](javascript:alert) <script>alert(1)</script>", baseColor: .labelColor)
         unsafe.enumerateAttribute(.link, in: NSRange(location: 0, length: unsafe.length)) { value, _, _ in precondition(value == nil) }
-        precondition(MessageMarkdownRenderer.render("1. first\n1. second", baseColor: .labelColor).string == "1.\tfirst\n2.\tsecond")
-        let six = MessageMarkdownRenderer.render(Array(repeating: "- **项目**", count: 6).joined(separator: "\n"), baseColor: .labelColor)
-        let seven = MessageMarkdownRenderer.render(Array(repeating: "- **项目**", count: 7).joined(separator: "\n"), baseColor: .labelColor)
-        precondition(!MessageMarkdownRenderer.overflows(six, width: 300, maximumLines: 6))
-        precondition(MessageMarkdownRenderer.overflows(seven, width: 300, maximumLines: 6))
-        precondition(MessageMarkdownRenderer.overflows(MessageMarkdownRenderer.render("- " + String(repeating: "嵌套内容 ", count: 60), baseColor: .labelColor), width: 160, maximumLines: 6))
-        let longPlain = String(repeating: "纯文本 English 👋 保持原样并正常换行。", count: 50)
-        let plainRendered = MessageMarkdownRenderer.render(longPlain, baseColor: .labelColor)
-        precondition(plainRendered.string == longPlain)
-        precondition(MessageMarkdownRenderer.overflows(plainRendered, width: 300, maximumLines: 6))
-        let wrapped = MessageMarkdownRenderer.render("  - " + String(repeating: "子项目内容 ", count: 30), baseColor: .labelColor)
-        let storage = NSTextStorage(attributedString: wrapped)
-        let manager = NSLayoutManager()
-        let container = NSTextContainer(size: NSSize(width: 160, height: CGFloat.greatestFiniteMagnitude))
-        container.lineFragmentPadding = 0
-        manager.addTextContainer(container)
-        storage.addLayoutManager(manager)
-        manager.ensureLayout(for: container)
-        let paragraph = wrapped.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as! NSParagraphStyle
-        var fragments = 0
-        manager.enumerateLineFragments(forGlyphRange: NSRange(location: 0, length: manager.numberOfGlyphs)) { _, used, _, _, _ in
-            if fragments > 0 { precondition(used.minX >= paragraph.headIndent - 1, "Wrapped nested lines retain hanging indentation") }
-            fragments += 1
+        for plain in ["a &amp; b", #"a\_b"#, "  ordinary  text\n\n\nend\n", "snake_case_name"] {
+            precondition(MessageMarkdownRenderer.render(plain, baseColor: .labelColor).string == plain)
         }
-        precondition(fragments > 1)
+        let upper = "- [X] first\n- [X] second"
+        let upperOffsets = parser.parse(upper).children.flatMap(\.descendants).compactMap(\.taskOffset)
+        let once = parser.toggleTask(upper, offset: upperOffsets[0])!
+        precondition(once == "- [ ] first\n- [X] second")
+        for encodedImage in [
+            "![](synca-image&#58;11111111-1111-4111-8111-111111111111)",
+            #"![](synca-image\:11111111-1111-4111-8111-111111111111)"#,
+            "![](synca-image:&#49;1111111-1111-4111-8111-111111111111)",
+            "![owned][asset]\n\n[asset]: synca-image&#58;11111111-1111-4111-8111-111111111111"
+        ] {
+            precondition(MarkdownImageCandidate.containsImageSyntax(encodedImage), "Encoded owned-image URL must reach the asynchronous AST ownership check")
+            precondition(parser.parse(encodedImage).children.flatMap(\.descendants).contains { $0.ownedImageID == "11111111-1111-4111-8111-111111111111" })
+        }
+        let missing = MarkdownParser(resourceURL: nil)
+        let raw = "# Preserve **raw**\n\n\t<script>"
+        precondition(MessageMarkdownRenderer.render(document: missing.parse(raw), baseColor: .labelColor).string == raw)
+        let nested = MessageMarkdownRenderer.render("- parent\n  - child", baseColor: .labelColor)
+        let parentStyle = nested.attribute(.paragraphStyle, at: (nested.string as NSString).range(of: "parent").location, effectiveRange: nil) as! NSParagraphStyle
+        let childStyle = nested.attribute(.paragraphStyle, at: (nested.string as NSString).range(of: "child").location, effectiveRange: nil) as! NSParagraphStyle
+        precondition(childStyle.headIndent > parentStyle.headIndent, "Nested list preview retains hanging indentation")
+        let longPlain = String(repeating: "保持原样 English 👋\n", count: 10000)
+        precondition(MessageMarkdownRenderer.render(longPlain, baseColor: .labelColor).string == longPlain)
         let tail = MessageMarkdownRenderer.render(String(repeating: "前面的段落\n", count: 100) + "**目标关键词**", baseColor: .labelColor)
-        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "目标关键词", width: 300) > 1000, "Deep rendered hit anchors beyond collapsed text")
-        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "不存在", width: 300) == 0, "Missing rendered text safely falls back to top")
-        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "前面的段落", width: 300) == 0, "Beginning hit requires no offset")
-        print("PASS: native Markdown styles, nested lists, links, plain text, incomplete markup and rendered six-line overflow")
+        precondition(MessageMarkdownRenderer.matchOffset(tail, text: "目标关键词", width: 300) > 1000)
+        precondition(MessageMarkdownRenderer.overflows(tail, width: 300, maximumLines: 6))
+        let manyTasks = String(repeating: "- [ ] x\n", count: 31_250)
+        let started = Date()
+        let heartbeat = Task { @MainActor in try? await Task.sleep(for: .milliseconds(25)); return Date() }
+        let largeDocument = await parser.parseAsync(manyTasks)
+        let duration = Date().timeIntervalSince(started)
+        let heartbeatDelay = await heartbeat.value.timeIntervalSince(started)
+        precondition(largeDocument.children.flatMap(\.descendants).filter { $0.taskOffset != nil }.count == 31_250)
+        precondition(heartbeatDelay < max(0.75, duration * 0.8), "Large Markdown parsing must not block the UI actor")
+        let lastOffset = largeDocument.children.flatMap(\.descendants).compactMap(\.taskOffset).last!
+        let toggledLarge = await parser.toggleTaskAsync(manyTasks, offset: lastOffset)!
+        precondition(toggledLarge.hasSuffix("- [x] x\n") && toggledLarge.utf16.count == 250_000)
+        print(String(format: "Large corpus: 250000 UTF-16 units / 31250 tasks parsed in %.3fs; UI heartbeat %.3fs", duration, heartbeatDelay))
+        print("PASS: \(fixtures.count) shared fixtures, UTF-16 task patches, native traits, owned images, safe links, raw fallback and long text")
     }
 }

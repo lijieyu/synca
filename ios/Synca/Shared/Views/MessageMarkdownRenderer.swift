@@ -9,156 +9,103 @@ private typealias MarkdownFont = NSFont
 typealias MarkdownColor = NSColor
 #endif
 
-/// Display-only formatting: stored text and editor/copy actions retain the original source.
+/// Native attributes are derived from the same AST as Web. Source remains untouched.
 @MainActor
 enum MessageMarkdownRenderer {
-    private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
-    private static let quotePattern = try! NSRegularExpression(pattern: #"^[ \t]*(>+)[ \t]?(.*)$"#)
-    private static let headingPattern = try! NSRegularExpression(pattern: #"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*\r?$"#)
-    private static let closingHeadingPattern = try! NSRegularExpression(pattern: #"(?:^|[ \t]+)#+[ \t]*$"#)
-    // Match the compact hierarchy in web/src/calm.css, scaled from native body text.
     private static let headingScales: [CGFloat] = [1.55, 1.4, 1.25, 1.15, 1.075, 1]
-    // Keep detection aligned with Web: ordinary records bypass Markdown escape/entity decoding.
-    private static let basicPattern = try! NSRegularExpression(pattern: #"(^|\n) {0,3}(?:[-+*] |\d+[.)] |> ?)|\*\*[^\n]+\*\*|__[^\n]+__|\*(?!\s)[^*\n]*\S\*|(?:^|[^\p{L}\p{N}_])_(?!\s)[^_\n]*\S_(?![\p{L}\p{N}_])|`[^`\n]+`|(?<!!)\[[^\]\n]+\]\([^\n]+\)"#)
-    private static let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-    private static let codeKey = NSAttributedString.Key("SyncaMarkdownCode")
-
     static func render(_ source: String, baseColor: MarkdownColor) -> NSAttributedString {
-        let font = MarkdownFont.preferredFont(forTextStyle: .body)
-        let result = NSMutableAttributedString(string: "")
-        let lines = source.components(separatedBy: "\n")
-        let hasMarkdown = basicPattern.firstMatch(in: source, range: NSRange(location: 0, length: source.utf16.count)) != nil || lines.contains {
-            headingPattern.firstMatch(in: $0, range: NSRange(location: 0, length: $0.utf16.count)) != nil
-        }
-        var fence: (character: Character, count: Int)?
-        var orderedCounters: [Int: Int] = [:]
-        for (index, line) in lines.enumerated() {
-            let nsLine = line as NSString
-            let range = NSRange(location: 0, length: nsLine.length)
-            var body = line
-            var prefix = ""
-            var lineFont = font
-            var headingLevel: Int?
-            let paragraph = NSMutableParagraphStyle()
-            // Scale indents with body text; leave ordinary paragraphs at their existing spacing.
-            let indent = font.pointSize * 1.35
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let fenceCharacter = trimmed.first
-            let fenceCount = trimmed.prefix { $0 == fenceCharacter }.count
-            let isFence = (fenceCharacter == "`" || fenceCharacter == "~") && fenceCount >= 3
-            let literal = !hasMarkdown || fence != nil || isFence
-            if let active = fence {
-                if fenceCharacter == active.character && fenceCount >= active.count && trimmed.dropFirst(fenceCount).trimmingCharacters(in: .whitespaces).isEmpty { fence = nil }
-            } else if isFence, let fenceCharacter {
-                fence = (fenceCharacter, fenceCount)
-            }
-            if !literal, let match = headingPattern.firstMatch(in: line, range: range) {
-                let level = match.range(at: 1).length
-                headingLevel = level
-                body = match.range(at: 2).location == NSNotFound ? "" : nsLine.substring(with: match.range(at: 2))
-                body = closingHeadingPattern.stringByReplacingMatches(in: body, range: NSRange(location: 0, length: body.utf16.count), withTemplate: "").trimmingCharacters(in: .whitespaces)
-                lineFont = MarkdownFont.systemFont(ofSize: font.pointSize * headingScales[level - 1], weight: level == 6 ? .medium : .semibold)
-                paragraph.paragraphSpacingBefore = index == 0 ? 0 : lineFont.pointSize * 0.45
-                paragraph.paragraphSpacing = lineFont.pointSize * 0.2
-                #if os(macOS)
-                paragraph.headerLevel = level
-                #endif
-            } else if !literal, let match = listPattern.firstMatch(in: line, range: range) {
-                let whitespace = nsLine.substring(with: match.range(at: 1)).replacingOccurrences(of: "\t", with: "    ")
-                let marker = nsLine.substring(with: match.range(at: 2))
-                body = nsLine.substring(with: match.range(at: 3))
-                let depth = whitespace.count
-                orderedCounters = orderedCounters.filter { $0.key <= depth }
-                if marker.first?.isNumber == true {
-                    let number = orderedCounters[depth].map { $0 + 1 } ?? Int(marker.dropLast()) ?? 1
-                    orderedCounters[depth] = number
-                    prefix = "\(number).\t"
-                } else {
-                    orderedCounters[depth] = nil
-                    prefix = "•\t"
-                }
-                paragraph.firstLineHeadIndent = CGFloat(min(whitespace.count / 2, 8)) * indent
-                let markerWidth = (prefix.replacingOccurrences(of: "\t", with: "") as NSString).size(withAttributes: [.font: font]).width
-                paragraph.headIndent = paragraph.firstLineHeadIndent + max(indent, markerWidth + font.pointSize * 0.4)
-            } else if !literal, let match = quotePattern.firstMatch(in: line, range: range) {
-                body = nsLine.substring(with: match.range(at: 2))
-                prefix = "│\t"
-                paragraph.firstLineHeadIndent = CGFloat(min(match.range(at: 1).length - 1, 8)) * indent
-                paragraph.headIndent = paragraph.firstLineHeadIndent + indent
-            }
-            if prefix.isEmpty && !trimmed.isEmpty { orderedCounters.removeAll() }
-            if !prefix.isEmpty {
-                paragraph.tabStops = [NSTextTab(textAlignment: .left, location: paragraph.headIndent)]
-                paragraph.defaultTabInterval = indent
-            }
-            let lineResult = NSMutableAttributedString(string: prefix, attributes: [.font: font, .foregroundColor: baseColor])
-            if !hasMarkdown {
-                lineResult.append(NSAttributedString(string: body, attributes: [.font: font, .foregroundColor: baseColor]))
-            } else if literal || body.contains("![") {
-                lineResult.append(NSAttributedString(string: body, attributes: [.font: font, .foregroundColor: baseColor, codeKey: true]))
-            } else {
-                lineResult.append(inline(body, font: lineFont, color: baseColor))
-            }
-            #if os(iOS)
-            if let headingLevel {
-                lineResult.addAttribute(.accessibilityTextHeadingLevel, value: headingLevel, range: NSRange(location: 0, length: lineResult.length))
-            }
-            #endif
-            if index < lines.count - 1 { lineResult.append(NSAttributedString(string: "\n", attributes: [.font: lineFont, .foregroundColor: baseColor])) }
-            lineResult.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: lineResult.length))
-            result.append(lineResult)
-        }
-        let fullRange = NSRange(location: 0, length: result.length)
-        detector?.enumerateMatches(in: result.string, range: fullRange) { match, _, _ in
-            guard let match, let url = match.url, isSafeLink(url),
-                  result.attribute(.link, at: match.range.location, effectiveRange: nil) == nil,
-                  result.attribute(codeKey, at: match.range.location, effectiveRange: nil) == nil else { return }
-            result.addAttribute(.link, value: url, range: match.range)
-        }
-        result.enumerateAttribute(.link, in: fullRange) { value, range, _ in
-            guard value != nil else { return }
-            #if os(iOS)
-            let linkColor = UIColor.link
-            #else
-            let linkColor = NSColor.linkColor
-            #endif
-            result.addAttributes([.foregroundColor: linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue], range: range)
-        }
-        return result
+        render(document: MarkdownParser.shared.parse(source), baseColor: baseColor)
     }
-
-    private static func isSafeLink(_ url: URL) -> Bool {
-        ["http", "https", "mailto", "tel"].contains(url.scheme?.lowercased() ?? "")
-    }
-
-    private static func inline(_ source: String, font: MarkdownFont, color: MarkdownColor) -> NSAttributedString {
-        guard let parsed = try? AttributedString(markdown: source, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) else {
-            return NSAttributedString(string: source, attributes: [.font: font, .foregroundColor: color])
-        }
+    static func render(document: MarkdownDocument, baseColor: MarkdownColor) -> NSAttributedString {
         let output = NSMutableAttributedString(string: "")
-        for run in parsed.runs {
-            let intent = run.inlinePresentationIntent ?? []
-            var runFont = font
-            if intent.contains(.code) {
-                runFont = MarkdownFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
-            }
-            #if os(iOS)
-            var traits = runFont.fontDescriptor.symbolicTraits
-            if intent.contains(.stronglyEmphasized) { traits.insert(.traitBold) }
-            if intent.contains(.emphasized) { traits.insert(.traitItalic) }
-            if let descriptor = runFont.fontDescriptor.withSymbolicTraits(traits) { runFont = UIFont(descriptor: descriptor, size: font.pointSize) }
-            #else
-            var traits = runFont.fontDescriptor.symbolicTraits
-            if intent.contains(.stronglyEmphasized) { traits.insert(.bold) }
-            if intent.contains(.emphasized) { traits.insert(.italic) }
-            runFont = NSFont(descriptor: runFont.fontDescriptor.withSymbolicTraits(traits), size: font.pointSize) ?? runFont
-            #endif
-            var attributes: [NSAttributedString.Key: Any] = [.font: runFont, .foregroundColor: color]
-            if let link = run.link, isSafeLink(link) { attributes[.link] = link }
-            if intent.contains(.code) { attributes[codeKey] = true }
-            output.append(NSAttributedString(string: String(parsed[run.range].characters), attributes: attributes))
+        for (index, node) in document.children.enumerated() {
+            if index > 0 { output.append(NSAttributedString(string: "\n")) }
+            output.append(block(node, color: baseColor))
         }
         return output
+    }
+    static func inline(_ nodes: [MarkdownNode], baseColor: MarkdownColor, heading: Int? = nil) -> NSAttributedString {
+        let body = MarkdownFont.preferredFont(forTextStyle: .body)
+        let font = heading.map { MarkdownFont.systemFont(ofSize: body.pointSize * headingScales[max(0, min(5, $0 - 1))], weight: .semibold) } ?? body
+        var attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: baseColor]
+        #if os(iOS)
+        if let heading { attributes[.accessibilityTextHeadingLevel] = heading }
+        #endif
+        return styled(nodes, attributes: attributes)
+    }
+    private static func styled(_ nodes: [MarkdownNode], attributes: [NSAttributedString.Key: Any]) -> NSAttributedString {
+        let output = NSMutableAttributedString(string: "")
+        for node in nodes {
+            var next = attributes
+            let font = (next[.font] as? MarkdownFont) ?? MarkdownFont.preferredFont(forTextStyle: .body)
+            switch node.type {
+            case "strong", "emphasis":
+                var traits = font.fontDescriptor.symbolicTraits
+                #if os(iOS)
+                traits.insert(node.type == "strong" ? .traitBold : .traitItalic)
+                if let descriptor = font.fontDescriptor.withSymbolicTraits(traits) { next[.font] = UIFont(descriptor: descriptor, size: font.pointSize) }
+                #else
+                traits.insert(node.type == "strong" ? .bold : .italic)
+                next[.font] = NSFont(descriptor: font.fontDescriptor.withSymbolicTraits(traits), size: font.pointSize) ?? font
+                #endif
+            case "inlineCode", "code":
+                next[.font] = MarkdownFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular)
+            case "delete": next[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            case "underline": next[.underlineStyle] = NSUnderlineStyle.single.rawValue
+            case "link":
+                if let raw = node.url, let url = URL(string: raw), ["http", "https", "mailto", "tel"].contains(url.scheme?.lowercased() ?? "") {
+                    next[.link] = url
+                    next[.underlineStyle] = NSUnderlineStyle.single.rawValue
+                    #if os(iOS)
+                    next[.foregroundColor] = UIColor.link
+                    #else
+                    next[.foregroundColor] = NSColor.linkColor
+                    #endif
+                }
+            default: break
+            }
+            if let children = node.children { output.append(styled(children, attributes: next)) }
+            else { output.append(NSAttributedString(string: node.text, attributes: next)) }
+        }
+        return output
+    }
+    private static func block(_ node: MarkdownNode, color: MarkdownColor, depth: Int = 0) -> NSAttributedString {
+        switch node.type {
+        case "list":
+            let result = NSMutableAttributedString(string: "")
+            for (index, item) in (node.children ?? []).enumerated() {
+                if index > 0 { result.append(NSAttributedString(string: "\n")) }
+                let prefix = item.checked.map { $0 ? "☑\t" : "☐\t" } ?? (node.ordered == true ? "\((node.start ?? 1) + index).\t" : "•\t")
+                let line = NSMutableAttributedString(string: prefix, attributes: [.font: MarkdownFont.preferredFont(forTextStyle: .body), .foregroundColor: color])
+                for (childIndex, child) in (item.children ?? []).enumerated() {
+                    if childIndex > 0 { line.append(NSAttributedString(string: "\n")) }
+                    line.append(block(child, color: color, depth: depth + 1))
+                }
+                let paragraph = NSMutableParagraphStyle()
+                let indent = MarkdownFont.preferredFont(forTextStyle: .body).pointSize * 1.35
+                paragraph.firstLineHeadIndent = CGFloat(depth) * indent
+                paragraph.headIndent = CGFloat(depth + 1) * indent
+                paragraph.tabStops = [NSTextTab(textAlignment: .left, location: paragraph.headIndent)]
+                // Preserve deeper list styles already set by recursive rendering.
+                var unstyled: [NSRange] = []
+                line.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: line.length)) { value, range, _ in
+                    if value == nil { unstyled.append(range) }
+                }
+                for range in unstyled { line.addAttribute(.paragraphStyle, value: paragraph, range: range) }
+                result.append(line)
+            }
+            return result
+        case "blockquote", "listItem", "table", "tableRow":
+            let result = NSMutableAttributedString(string: node.type == "blockquote" ? "│\t" : "")
+            for (index, child) in (node.children ?? []).enumerated() {
+                if index > 0 { result.append(NSAttributedString(string: node.type == "tableRow" ? "\t" : "\n")) }
+                result.append(block(child, color: color, depth: depth))
+            }
+            return result
+        case "thematicBreak": return inline([MarkdownNode(type: "text", value: "────────")], baseColor: color)
+        case "code": return inline([node], baseColor: color)
+        default: return inline(node.children ?? [node], baseColor: color, heading: node.type == "heading" ? node.depth : nil)
+        }
     }
 
     /// Count actual rendered TextKit fragments, including list indentation and inline font traits.
