@@ -67,24 +67,25 @@ export const versionedId = z.object({ id: z.string().uuid(), expectedUpdatedAt: 
 export const mutationSchema = z.object({
     items: z.array(versionedId).min(1).max(100),
     textContent: trimmedRecordTextSchema.optional(),
-    categoryId: z.string().uuid().optional(), isCleared: z.boolean().optional(),
-}).strict().refine(v => v.textContent !== undefined || v.categoryId !== undefined || v.isCleared !== undefined, 'No changes')
+    categoryId: z.string().uuid().optional(), isCleared: z.boolean().optional(), isCollected: z.literal(true).optional(),
+}).strict().refine(v => v.textContent !== undefined || v.categoryId !== undefined || v.isCleared !== undefined || v.isCollected !== undefined, 'No changes')
     .refine(v => v.textContent === undefined || v.items.length === 1, 'Text editing requires one record')
     .refine(v => new Set(v.items.map(i => i.id)).size === v.items.length, 'Duplicate ids');
 export const searchSchema = z.object({
     query: z.string().trim().max(200).optional(), categoryId: z.string().uuid().optional(),
-    isCleared: z.boolean().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
+    isCollected: z.boolean().optional(), isCleared: z.boolean().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
     limit: z.number().int().min(1).max(100).default(30), cursor: z.string().max(500).optional(),
 }).strict();
 export async function searchMessages(actor: Actor, args: z.infer<typeof searchSchema>) {
     requireScope(actor, 'read');
-    let q = db.selectFrom('messages').select(['id', 'created_at']).where('user_id', '=', actor.userId).where('is_deleted', '=', 0);
+    let q = db.selectFrom('messages').select(['id', 'created_at']).where('user_id', '=', actor.userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0);
     if (args.query) {
         const pattern = `%${args.query.replace(/[\\%_]/g, '\\$&')}%`;
         q = q.where(sql<boolean>`(text_content LIKE ${pattern} ESCAPE ${String.fromCharCode(92)} OR file_name LIKE ${pattern} ESCAPE ${String.fromCharCode(92)})`);
     }
     if (args.categoryId) q = q.where('category_id', '=', args.categoryId);
-    if (args.isCleared !== undefined) q = q.where('is_cleared', '=', args.isCleared ? 1 : 0);
+    if (args.isCollected !== undefined) q = q.where('collected_at', args.isCollected ? 'is not' : 'is', null);
+    if (args.isCleared !== undefined) q = q.where('collected_at', 'is', null).where('is_cleared', '=', args.isCleared ? 1 : 0);
     if (args.from) q = q.where('created_at', '>=', new Date(args.from).toISOString());
     if (args.to) q = q.where('created_at', '<=', new Date(args.to).toISOString());
     if (args.cursor) {
@@ -102,7 +103,7 @@ export async function searchMessages(actor: Actor, args: z.infer<typeof searchSc
 export async function readMessage(actor: Actor, id: string) {
     requireScope(actor, 'read');
     const message = await getMessage(id, publicOrigin());
-    if (!message || message.userId !== actor.userId || message.isDeleted) throw new AIError(404, 'message_not_found');
+    if (!message || message.userId !== actor.userId || message.isDeleted || message.scratchpadAsset) throw new AIError(404, 'message_not_found');
     // URLs are protected; attachment scope is enforced again at download time.
     return message;
 }
@@ -110,7 +111,7 @@ function operation(actor: Actor, kind: string, payload: unknown, result: unknown
     return { id: randomUUID(), user_id: actor.userId, connection_id: actor.id, kind, payload: JSON.stringify(payload),
         result: JSON.stringify(result), status: 'completed', created_at: new Date().toISOString(), expires_at: null, request_key: key };
 }
-export const createSchema = z.object({ textContent: trimmedRecordTextSchema, categoryId: z.string().uuid().optional(),
+export const createSchema = z.object({ isCollected: z.boolean().optional(), textContent: trimmedRecordTextSchema, categoryId: z.string().uuid().optional(),
     idempotencyKey: z.string().uuid() }).strict();
 export async function createText(actor: Actor, args: z.infer<typeof createSchema>) {
     requireScope(actor, 'create');
@@ -127,7 +128,7 @@ export async function createText(actor: Actor, args: z.infer<typeof createSchema
     const id = randomUUID();
     const result = { id, created: true };
     try {
-        await createMessage({ id, userId: actor.userId, type: 'text', textContent: args.textContent, categoryId: args.categoryId,
+        await createMessage({ id, userId: actor.userId, type: 'text', isCollected: args.isCollected, textContent: args.textContent, categoryId: args.categoryId,
             sourceDevice: `AI: ${actor.name}`.slice(0, 50), now: new Date().toISOString(),
             beforeCommit: async trx => {
                 await assertActive(actor, trx);
@@ -147,12 +148,15 @@ export async function updateMessages(actor: Actor, args: z.infer<typeof mutation
         const after = [];
         for (const item of args.items) {
             const row = await trx.selectFrom('messages').selectAll().where('id', '=', item.id).where('user_id', '=', actor.userId)
-                .where('is_deleted', '=', 0).executeTakeFirst();
+                .where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0).executeTakeFirst();
             if (!row) throw new AIError(404, 'message_not_found');
             if (row.updated_at !== item.expectedUpdatedAt) throw new AIError(409, 'version_conflict');
+            if (args.isCleared !== undefined && (row.collected_at || args.isCollected)) throw new AIError(409, 'collection_not_task');
+            if (args.isCollected && !row.collected_at && row.type !== 'text' && (row.attachment_purged ||
+                (row.attachment_expires_at && row.attachment_expires_at <= new Date().toISOString()))) throw new AIError(410, 'attachment_expired');
             if (args.textContent !== undefined && row.type !== 'text') throw new AIError(400, 'text_message_required');
             const now = new Date(Math.max(Date.now(), Date.parse(row.updated_at) + 1)).toISOString();
-            const patch = { updated_at: nextMessageTimestamp(now), ...(args.textContent !== undefined ? { text_content: args.textContent } : {}),
+            const patch = { updated_at: nextMessageTimestamp(now), ...(args.isCollected ? {collected_at: row.collected_at ?? now, is_cleared: 0, attachment_expires_at: null} : {}), ...(args.textContent !== undefined ? { text_content: args.textContent } : {}),
                 ...(args.categoryId ? { category_id: args.categoryId } : {}), ...(args.isCleared !== undefined ? { is_cleared: args.isCleared ? 1 : 0 } : {}) };
             await trx.updateTable('messages').set(patch).where('id', '=', item.id).where('user_id', '=', actor.userId).execute();
             before.push({ id: row.id, updatedAt: row.updated_at });
@@ -224,9 +228,9 @@ export async function prepareDelete(actor: Actor, args: z.infer<typeof deleteSch
     requireScope(actor, 'delete');
     return db.transaction().execute(async trx => {
         await assertActive(actor, trx);
-        let q = trx.selectFrom('messages').selectAll().where('user_id', '=', actor.userId).where('is_deleted', '=', 0);
+        let q = trx.selectFrom('messages').selectAll().where('user_id', '=', actor.userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0);
         if (args.items) q = q.where('id', 'in', args.items.map(i => i.id));
-        if (args.completedOnly) q = q.where('is_cleared', '=', 1);
+        if (args.completedOnly) q = q.where('collected_at', 'is', null).where('is_cleared', '=', 1);
         if (args.categoryId) q = q.where('category_id', '=', args.categoryId);
         const rows = await q.orderBy('id').limit(501).execute();
         if (rows.length > 500) throw new AIError(400, 'too_many_records_select_smaller_batch');
@@ -264,7 +268,7 @@ export async function executeDelete(actor: Actor, args: z.infer<typeof executeDe
             const now = new Date(Math.max(Date.now(), Date.parse(item.updatedAt) + 1)).toISOString();
             const result = await trx.updateTable('messages').set({ is_deleted: 1, text_content: null, file_name: null,
                 file_size: null, file_mime_type: null, attachment_expires_at: now, updated_at: nextMessageTimestamp(now) })
-                .where('id', '=', item.id).where('user_id', '=', userId).where('is_deleted', '=', 0).where('updated_at', '=', item.updatedAt).executeTakeFirst();
+                .where('id', '=', item.id).where('user_id', '=', userId).where('is_deleted', '=', 0).where('scratchpad_asset', '=', 0).where('updated_at', '=', item.updatedAt).executeTakeFirst();
             if (result.numUpdatedRows !== 1n) throw new AIError(409, 'version_conflict_prepare_again');
         }
         const result = { deletedCount: items.length };
@@ -275,6 +279,7 @@ export async function executeDelete(actor: Actor, args: z.infer<typeof executeDe
 }
 
 export const attachmentSchema = z.object({
+    isCollected: z.boolean().optional(),
     kind: z.enum(['image', 'file']), fileName: z.string().trim().min(1).max(255), mimeType: z.string().max(100),
     base64: z.string().min(4).max(6990508), categoryId: z.string().uuid().optional(), idempotencyKey: z.string().uuid(),
 }).strict();
@@ -305,7 +310,7 @@ export async function createAttachment(actor: Actor, args: z.infer<typeof attach
         await trackUpload(reservation, filename);
         await fs.writeFile(path.resolve(process.cwd(), args.kind === 'image' ? 'uploads' : 'files', filename), data, { flag: 'wx' });
         const now = new Date().toISOString();
-        await createMessage({ id, userId: actor.userId, type: args.kind,
+        await createMessage({ id, userId: actor.userId, type: args.kind, isCollected: args.isCollected,
             imagePath: args.kind === 'image' ? filename : null, filePath: args.kind === 'file' ? filename : null,
             fileName: args.fileName, fileMimeType: args.mimeType, fileSize: data.length, categoryId: args.categoryId,
             sourceDevice: `AI: ${actor.name}`.slice(0, 50), now, reservationId: reservation,

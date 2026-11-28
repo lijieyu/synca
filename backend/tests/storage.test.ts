@@ -167,7 +167,7 @@ describe('Attachment storage contract', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
         expect((await request(app).delete(`/messages/${res.body.id}`).set('Authorization', user.auth)).status).toBe(200);
         const row = await db.selectFrom('messages').selectAll().where('id', '=', res.body.id).executeTakeFirstOrThrow();
-        expect(row).toMatchObject({ is_deleted: 1, attachment_purged: 0, file_path: res.body.filePath });
+        expect(row).toMatchObject({ is_deleted: 1, attachment_purged: 2, file_path: res.body.filePath });
         expect((await request(app).get(`/api/media/${res.body.filePath}`).set('Authorization', user.auth)).status).toBe(410);
         const list = await request(app).get('/messages?since=2000-01-01T00:00:00.000Z').set('Authorization', user.auth);
         expect(list.body.messages[0].filePath).toBeUndefined();

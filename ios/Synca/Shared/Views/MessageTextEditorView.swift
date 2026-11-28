@@ -67,12 +67,14 @@ struct MessageTextEditorView: View {
             #if os(macOS)
             MacPlainTextEditor(text: $draft, isEditable: !isSaving, focusesOnAppear: true, horizontalTextInset: 0, verticalTextInset: 0)
                 .accessibilityLabel(Text("message_edit.content"))
+                .accessibilityIdentifier("message-text-editor")
                 .frame(minHeight: 180)
             #else
             TextEditor(text: $draft)
                 .font(.body)
                 .focused($isFocused)
                 .accessibilityLabel(Text("message_edit.content"))
+                .accessibilityIdentifier("message-text-editor")
                 .disabled(isSaving)
                 .frame(minHeight: 180)
             #endif

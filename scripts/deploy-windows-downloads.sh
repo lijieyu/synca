@@ -105,6 +105,12 @@ block='''    # Immutable public Windows packages, independent from app and homep
     }
 
 '''
+# The Squirrel feed is mutable even when versioned packages are immutable.
+for arch in ['x64','arm64']:
+ feed='    location = /downloads/windows/'+arch+'/RELEASES {'
+ if feed not in source:
+  position=source.index('    # SPA fallback:')
+  source=source[:position]+feed+'\n        alias /opt/synca/downloads/windows/'+arch+'/RELEASES;\n        add_header Cache-Control "no-cache" always;\n        add_header X-Content-Type-Options "nosniff" always;\n    }\n\n'+source[position:]
 marker='    # SPA fallback:'
 if 'location ^~ /downloads/windows/' in source:
  if block not in source: raise SystemExit('Existing downloads route differs; inspect before changing')

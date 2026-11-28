@@ -490,3 +490,83 @@
 "email_auth.logged_in" = "登录成功";
 
 "email_auth.signup_agreement" = "未注册的邮箱验证后将自动创建账号。继续即表示你同意%@和%@。";
+
+// Long-term collections
+"collections.title" = "收藏";
+"collections.category" = "分类";
+"collections.all" = "全部分类";
+"collections.move" = "移入收藏";
+"collections.saved" = "已移入收藏";
+"collections.empty" = "长期保存资料，在这里新增或从待办移入。";
+
+// Shared scratchpad
+"scratch.title" = "草稿本";
+"scratch.edit" = "编辑";
+"scratch.preview" = "预览";
+"scratch.image" = "插入图片";
+"scratch.uploading" = "上传中…";
+"scratch.copies" = "冲突副本";
+"scratch.images" = "图片";
+"scratch.local" = "已保存本机";
+"scratch.saving" = "同步中…";
+"scratch.saved" = "已同步";
+"scratch.conflict" = "存在冲突";
+"scratch.conflict_detail" = "另一台设备修改了这页。你的内容已保留为副本，请选择继续哪一份；另一份也会保留。";
+"scratch.use_cloud" = "使用云端内容";
+"scratch.use_local" = "继续本机内容";
+"scratch.local_error" = "本机保存失败，请复制内容备份后重试。";
+"scratch.offline" = "暂未同步，内容已留在本机，将自动重试。";
+"scratch.upload_error" = "图片上传失败，请检查网络、容量和图片大小后重试。";
+"scratch.finish_current" = "请先完成当前草稿的同步或冲突处理。";
+"scratch.no_copies" = "没有冲突副本";
+"scratch.restore" = "恢复到草稿";
+"scratch.delete_copy" = "删除这份冲突副本？此操作不能撤销。";
+"scratch.insert" = "插入";
+"scratch.delete_image" = "删除这张未使用图片？其他设备离线草稿可能仍需它，请先确认。";
+"scratch.image_in_use" = "图片仍被记录、草稿或冲突副本引用，或删除暂时失败。";
+"scratch.editor" = "Markdown 草稿";
+"scratch.placeholder" = "在这里随时接着写…\n支持 Markdown，也可以粘贴或插入图片。";
+
+// Update reminders
+"updates.idle" = "检查是否有新版本";
+"updates.checking" = "正在检查更新…";
+"updates.current" = "已是最新版本";
+"updates.available" = "Synca {{version}} 可更新";
+"updates.available_native" = "Synca %@ 可更新";
+"updates.downloading" = "正在下载更新…";
+"updates.ready" = "更新已下载，可以重启安装";
+"updates.installing" = "正在重启安装…";
+"updates.error" = "暂时无法检查或下载更新，请重试。";
+"updates.store" = "前往商店更新";
+"updates.download" = "下载更新";
+"updates.restart" = "重启并安装";
+"updates.check" = "检查更新";
+"updates.later" = "稍后提醒";
+"updates.migration" = "此次更新将迁移到安装版，保留账号和本机资料。";
+"updates.finish_edit" = "请先完成当前编辑或上传，再重启更新。";
+
+"collections.save_to" = "保存到%@";
+
+"markdown.task_saving" = "正在保存任务";
+
+"markdown.task_checked" = "已完成";
+
+"markdown.task_unchecked" = "未完成";
+
+"markdown.task_uncheck" = "标记为未完成";
+
+"markdown.task_check" = "标记为已完成";
+
+"markdown.task_updated" = "任务已更新";
+
+"markdown.task_conflict" = "这条记录已在其他设备更新，请刷新后重试。";
+
+"markdown.task_failed" = "任务保存失败，已恢复之前的状态。";
+
+"markdown.loading" = "正在显示 Markdown…";
+
+"markdown.item_range" = "第 %d–%d 项，共 %d 项";
+
+"markdown.previous_items" = "上一组";
+
+"markdown.next_items" = "下一组";

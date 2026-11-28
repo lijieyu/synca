@@ -1,8 +1,11 @@
+import { appReleases } from './appReleases.js';
+import {readScratchpad, writeScratchpad, preserveScratchpadCopy, scratchpadImages, deleteScratchpadImage} from './scratchpad.js';
 import { notifySync, openSyncStream, syncState } from './syncEvents.js';
 import { isEmailAuthConfigured } from './emailAuth.js';
 import { trackActivity } from './activity.js';
 import { categoryColorSchema, categoryColorHexSchema } from './categoryPalette.js';
 import { isRecordTextWithinLimit, recordTextSchema } from './recordText.js';
+import { collectMessage, legacyCollectionProjection, supportsCollections } from './collections.js';
 import { supportedDocumentMimeTypeByExtension, allowedImageMimeTypes, imageExtensionForMimeType, supportedFileExtension } from './attachmentPolicy.js';
 import { createAIRouter, aiRateLimit } from './aiRoutes.js';
 import { authenticate as authenticateAI, requireScope as requireAIScope, AIError, assertActive, type Actor, publicOrigin } from './aiCore.js';
@@ -39,7 +42,7 @@ app.use(requestContext);
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'X-Synca-Client', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Upload-Size', 'X-Upload-ID', 'X-Synca-Client', 'X-Synca-Features', 'X-Synca-Account', 'MCP-Protocol-Version', 'Mcp-Session-Id', 'X-Request-ID'],
     exposedHeaders: ['WWW-Authenticate', 'Mcp-Session-Id', 'X-Request-ID'],
 }));
 
@@ -60,6 +63,7 @@ app.use(['/mcp', '/api/ai/tools/create_attachment'], async (req, res, next) => {
 const recordTextJson = express.json({ limit: '1mb' });
 app.post(['/messages', '/api/ai/tools/create_record', '/api/ai/tools/update_records'], recordTextJson);
 app.patch('/messages/:id/text', recordTextJson);
+app.use('/scratchpad', express.json({limit:'2mb'}));
 app.use(express.json());
 // Keep email sign-in and binding off until the operator explicitly enables them.
 const emailAuthEnabled = process.env.SYNCA_EMAIL_AUTH_ENABLED === 'true';
@@ -89,6 +93,7 @@ if (!fs.existsSync(feedbackUploadsDir)) {
 }
 
 const attachmentMetadata = z.object({
+    isCollected: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
     sourceDevice: z.string().max(50).optional(),
     categoryId: z.string().uuid().nullable().optional(),
     fileName: z.string().trim().min(1).max(255).optional(),
@@ -345,7 +350,7 @@ app.get('/messages', auth, async (req, res) => {
         baseUrl: getBaseUrl(req),
     });
 
-    res.json({ messages });
+    res.json({ messages: supportsCollections(req) ? messages : legacyCollectionProjection(messages, Boolean(since)) });
 });
 
 app.get('/message-categories', auth, async (req, res) => {
@@ -449,6 +454,49 @@ app.delete('/message-categories/:id', auth, async (req, res) => {
     res.json({ ok: true });
 });
 
+app.get('/app-updates', async (_req,res) => {
+    try { res.set('Cache-Control','public, max-age=300').json(await appReleases()); }
+    catch { res.status(503).json({error:'release_catalog_unavailable'}); }
+});
+
+// Bind every scratchpad operation (including uploads) to its originating account.
+app.use('/scratchpad', auth, (req,res,next) => {
+    const account = req.header('X-Synca-Account');
+    if (account && account !== getUserId(req)) return res.status(409).json({error:'scratchpad_account_changed'});
+    next();
+});
+app.post('/scratchpad/conflicts', async(req,res,next)=>{
+    const parsed=z.object({content:z.string().max(250000),mutationId:z.string().uuid()}).strict().safeParse(req.body);
+    if(!parsed.success)return res.status(400).json({error:'invalid_payload'});
+    try{res.json(await preserveScratchpadCopy(getUserId(req),parsed.data));}catch(error){next(error);}
+});
+app.get('/scratchpad', auth, async (req, res, next) => {
+    try { res.json(await readScratchpad(getUserId(req))); } catch(error) { next(error); }
+});
+app.put('/scratchpad', auth, async (req, res, next) => {
+    const parsed = z.object({content:z.string().max(250000),expectedRevision:z.number().int().nonnegative(),mutationId:z.string().uuid(),preserveCurrent:z.boolean().optional()}).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({error:'invalid_payload'});
+    try {
+        const result=await writeScratchpad(getUserId(req),parsed.data);
+        if(result.status===200) notifyOtherDevices(getUserId(req),req.header('Authorization')).catch(()=>{});
+        res.status(result.status).json(result.body);
+    } catch(error) { next(error); }
+});
+app.get('/scratchpad/conflicts', auth, async(req,res,next)=>{
+    try { res.json({conflicts:await db.selectFrom('scratchpad_conflicts').select(['id','content','created_at']).where('user_id','=',getUserId(req)).orderBy('created_at','desc').execute()}); }
+    catch(error){next(error);}
+});
+app.delete('/scratchpad/conflicts/:id', auth, async(req,res,next)=>{
+    try { await db.deleteFrom('scratchpad_conflicts').where('user_id','=',getUserId(req)).where('id','=',req.params.id).execute();res.json({ok:true}); }
+    catch(error){next(error);}
+});
+app.get('/scratchpad/images', auth, async(req,res,next)=>{
+    try {res.json({images:await scratchpadImages(getUserId(req),getBaseUrl(req))});}catch(error){next(error);}
+});
+app.delete('/scratchpad/images/:id', auth, async(req,res,next)=>{
+    try {const status=await deleteScratchpadImage(getUserId(req),req.params.id,uploadsDir,filesDir);res.status(status).json(status===200?{ok:true}:{error:status===409?'scratchpad_image_in_use':'image_not_found'});}catch(error){next(error);}
+});
+
 // Send text message
 app.post('/messages', auth, async (req, res, next) => {
     try {
@@ -458,6 +506,7 @@ app.post('/messages', auth, async (req, res, next) => {
 
     const parsed = z.object({
         textContent: recordTextSchema,
+        isCollected: z.boolean().optional(),
         sourceDevice: z.string().max(50).optional(),
         categoryId: z.string().uuid().optional().nullable(),
     }).safeParse(req.body);
@@ -484,6 +533,7 @@ app.post('/messages', auth, async (req, res, next) => {
         userId,
         type: 'text',
         textContent: parsed.data.textContent,
+        isCollected: parsed.data.isCollected,
         categoryId: parsed.data.categoryId,
         sourceDevice: parsed.data.sourceDevice,
         now,
@@ -501,7 +551,7 @@ app.post('/messages', auth, async (req, res, next) => {
 });
 
 // Send image message
-app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('image'), async (req, res, next) => {
+app.post(['/messages/image', '/scratchpad/images'], auth, prepareUpload('image'), receiveAttachment('image'), async (req, res, next) => {
     res.locals.upload.processing = true;
     try {
     if (req.aborted || res.destroyed) return;
@@ -536,6 +586,8 @@ app.post('/messages/image', auth, prepareUpload('image'), receiveAttachment('ima
     const expiresAt = new Date(Date.now() + res.locals.upload.retentionDays * 86400000).toISOString();
     await createMessage({
         attachmentExpiresAt: expiresAt,
+        isCollected: req.path === '/scratchpad/images' || metadata.data.isCollected,
+        scratchpadAsset: req.path === '/scratchpad/images',
         reservationId: res.locals.upload.reservationId,
         beforeCommit: res.locals.aiActor ? async trx => {
             const actor = res.locals.aiActor as Actor;
@@ -601,6 +653,7 @@ app.post('/messages/file', auth, prepareUpload('file'), receiveAttachment('file'
     const expiresAt = new Date(Date.now() + res.locals.upload.retentionDays * 86400000).toISOString();
     await createMessage({
         attachmentExpiresAt: expiresAt,
+        isCollected: metadata.data.isCollected,
         reservationId: res.locals.upload.reservationId,
         beforeCommit: res.locals.aiActor ? async trx => {
             const actor = res.locals.aiActor as Actor;
@@ -665,6 +718,30 @@ app.post('/feedback', auth, feedbackUpload.array('images', 3), async (req, res) 
     res.status(201).json({ ok: true });
 });
 
+// A cached pre-1.2.1 record cannot mutate a collection it no longer understands.
+app.use('/messages/:id', auth, async (req, res, next) => {
+    if (!['PATCH', 'DELETE'].includes(req.method)) return next();
+    try {
+        const message = await getMessage(req.params.id);
+        if(message?.userId === getUserId(req) && message.scratchpadAsset) return res.status(409).json({error:'scratchpad_image_requires_document_api'});
+        if (message?.userId === getUserId(req) && message.collectedAt &&
+            (!supportsCollections(req) || ['/completion', '/clear'].includes(req.path))) {
+            return res.status(409).json({ error: 'collection_not_task' });
+        }
+        next();
+    } catch (error) { next(error); }
+});
+app.patch('/messages/:id/collect', auth, async (req, res, next) => {
+    const parsed = z.object({ expectedUpdatedAt: z.iso.datetime({ offset: true }) }).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_payload' });
+    try {
+        const result = await collectMessage(getUserId(req), req.params.id, parsed.data.expectedUpdatedAt, getBaseUrl(req));
+        if ('error' in result) return res.status(result.status).json({error:result.error});
+        notifyOtherDevices(getUserId(req), req.header('Authorization')).catch(() => {});
+        res.json(result.message);
+    } catch (error) { next(error); }
+});
+
 app.patch('/messages/:id/text', auth, async (req, res, next) => {
     const parsed = z.object({
         textContent: recordTextSchema.refine(value => value.trim().length > 0),
@@ -673,7 +750,7 @@ app.patch('/messages/:id/text', auth, async (req, res, next) => {
     if (!parsed.success) return res.status(400).json({ error: 'invalid_payload' });
     const userId = getUserId(req);
     try {
-        const result = await updateMessageText({ ...parsed.data, id: req.params.id, userId, baseUrl: getBaseUrl(req) });
+        const result = await updateMessageText({ ...parsed.data, allowCollected: supportsCollections(req), id: req.params.id, userId, baseUrl: getBaseUrl(req) });
         if ('error' in result) {
             return res.status(result.error === 'message_not_found' ? 404 : result.error === 'message_not_text' ? 422 : 409)
                 .json({ error: result.error });
@@ -718,6 +795,7 @@ app.patch('/messages/:id/category', auth, async (req, res) => {
     }
 
     const message = await updateMessageCategoryAssignment({
+        allowCollected: supportsCollections(req),
         id: req.params.id,
         userId: getUserId(req),
         categoryId: parsed.data.categoryId,
@@ -736,7 +814,7 @@ app.patch('/messages/:id/category', auth, async (req, res) => {
 // Delete single message (True Delete)
 app.delete('/messages/:id', auth, async (req, res) => {
     const userId = getUserId(req);
-    const deleted = await deleteMessage(req.params.id, userId, uploadsDir, filesDir);
+    const deleted = await deleteMessage(req.params.id, userId, uploadsDir, filesDir, supportsCollections(req));
     if (!deleted) {
         return res.status(404).json({ error: 'message_not_found' });
     }

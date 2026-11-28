@@ -1,0 +1,126 @@
+name: Windows distribution verification
+on:
+  workflow_dispatch:
+    inputs:
+      store_submission:
+        description: Build with the assigned Partner Center identity (does not submit)
+        type: boolean
+        default: false
+  push:
+    branches: [dev]
+    paths:
+      - '.gitattributes'
+      - 'desktop/**'
+      - 'web/**'
+      - 'backend/tests/acceptance-server.ts'
+      - '.github/workflows/windows-distribution.yml'
+permissions:
+  contents: read
+concurrency:
+  group: windows-distribution-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-2025
+          - arch: arm64
+            runner: windows-11-arm
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      SYNCA_WINDOWS_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            web/package-lock.json
+            backend/package-lock.json
+      - name: Install locked dependencies
+        run: |
+          npm ci --prefix web
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm ci --prefix desktop
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm ci --prefix backend
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Windows contract and security regression
+        working-directory: desktop
+        run: node --test update-policy.test.cjs updater.test.cjs windows-distribution.test.cjs store-manifest.test.cjs squirrel-release.test.cjs windows-compat.test.cjs capture.test.cjs
+      - name: Build website app and installer
+        working-directory: desktop
+        run: |
+          npm run build:windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node build-windows-installer.mjs $env:SYNCA_WINDOWS_ARCH
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $version = (Get-Content app/package.json | ConvertFrom-Json).version
+          Compress-Archive -Path "dist/Synca Electron-win32-$env:SYNCA_WINDOWS_ARCH" -DestinationPath "dist/Synca-$version-Windows-$env:SYNCA_WINDOWS_ARCH.zip"
+      - name: Build Store package (test identity by default, no submission)
+        working-directory: desktop
+        env:
+          SYNCA_STORE_IDENTITY_JSON: ${{ vars.SYNCA_STORE_IDENTITY_JSON }}
+          SYNCA_STORE_SUBMISSION: ${{ github.event_name == 'workflow_dispatch' && inputs.store_submission }}
+        run: |
+          $sdk = Get-ChildItem 'C:/Program Files (x86)/Windows Kits/10/bin' -Directory | Where-Object { Test-Path "$($_.FullName)/x64/makeappx.exe" } | Sort-Object Name -Descending | Select-Object -First 1
+          if (!$sdk) { throw 'Windows SDK missing' }
+          $env:WINDOWS_KIT_PATH = "$($sdk.FullName)/x64"
+          node build.mjs win32 store
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if ($env:SYNCA_STORE_SUBMISSION -eq 'true') {
+            if ([string]::IsNullOrWhiteSpace($env:SYNCA_STORE_IDENTITY_JSON)) { throw 'Assigned Partner Center identity is required; refusing CI fallback.' }
+            $env:SYNCA_STORE_IDENTITY = Join-Path $env:RUNNER_TEMP 'synca-store-identity.json'
+            [IO.File]::WriteAllText($env:SYNCA_STORE_IDENTITY, $env:SYNCA_STORE_IDENTITY_JSON, [Text.UTF8Encoding]::new($false))
+            node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH
+          } else {
+            node build-windows-msix.mjs $env:SYNCA_WINDOWS_ARCH --ci
+          }
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Real Windows migration and UI evidence
+        working-directory: desktop
+        run: node windows-acceptance.mjs
+      - name: Upload compact acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-evidence-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: desktop/dist/evidence/**
+      - name: Probe Windows App Certification Kit
+        if: always()
+        working-directory: desktop
+        run: ./windows-wack.ps1 -Arch $env:SYNCA_WINDOWS_ARCH
+      - name: Upload certification probe evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-wack-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: desktop/dist/evidence/wack*
+      - name: Upload packages
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: synca-1.2.1-windows-${{ matrix.arch }}-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            desktop/dist/*.zip
+            desktop/dist/updates/**
+            desktop/dist/store/**/Synca*.msix
+            desktop/dist/store/**/AppxManifest.xml
+            desktop/dist/store/**/build-evidence.json

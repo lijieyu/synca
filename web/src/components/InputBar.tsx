@@ -10,6 +10,7 @@ import { PlanDialog } from './PlanDialog';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
+  isCollected?: boolean;
   onSent: () => void;
   categoryId?: string | null;
   focusRequest?: number;
@@ -26,11 +27,11 @@ const SendIcon = ({ size = 30, color = 'currentColor' }: { size?: number; color?
   </svg>
 );
 
-export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availableScopeIds, fallbackScopeId, focusRequest = 0 }) => {
+export const InputBar: React.FC<Props> = ({ onSent, categoryId, isCollected = false, scopeId, availableScopeIds, fallbackScopeId, focusRequest = 0 }) => {
   const { accessStatus } = useAuth();
   const uploadController = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [retryAttachment, setRetryAttachment] = useState<{ file: File; image: boolean; categoryId?: string | null } | null>(null);
+  const [retryAttachment, setRetryAttachment] = useState<{ file: File; image: boolean; categoryId?: string | null; isCollected: boolean } | null>(null);
   useEffect(() => () => uploadController.current?.abort(), []);
   const [drafts] = useState(() => createComposerDrafts());
   const scope = scopeId ?? categoryId ?? 'default';
@@ -91,7 +92,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availab
     
     setIsSending(true);
     try {
-      await api.sendTextMessage(trimmed, categoryId);
+      await api.sendTextMessage(trimmed, categoryId, isCollected);
       if (drafts.get(scope).text === text) drafts.set(scope, '', 0, 0);
       onSent();
     } catch (e) {
@@ -106,9 +107,9 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availab
     setIsSending(false);
   };
 
-  const sendAttachment = async (file: File, image: boolean, targetCategoryId = categoryId) => {
+  const sendAttachment = async (file: File, image: boolean, targetCategoryId = categoryId, targetCollection = isCollected) => {
     if (isSending) return;
-    if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null }); setLimitReason('upload'); return; }
+    if (!image && !accessStatus?.isUnlimited) { setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null, isCollected: targetCollection }); setLimitReason('upload'); return; }
     if (file.size > (image ? 50 * 1024 * 1024 : maxDocumentSize)) {
       setToastMsg(t(image ? 'storage.image_too_large' : 'message_file.error_too_large')); setShowToast(true); return;
     }
@@ -118,12 +119,12 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availab
     setProgress(0);
     setIsSending(true);
     try {
-      const options = { signal: controller.signal, onProgress: setProgress };
+      const options = { signal: controller.signal, onProgress: setProgress, isCollected: targetCollection };
       if (image) await api.sendImageMessage(file, targetCategoryId, options);
       else await api.sendFileMessage(file, targetCategoryId, options);
       onSent();
     } catch (error) {
-      setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null });
+      setRetryAttachment({ file, image, categoryId: targetCategoryId ?? null, isCollected: targetCollection });
       if (error instanceof DailyLimitError) setLimitReason('quota');
       else if (error instanceof StorageError && error.code === 'file_upload_requires_paid') setLimitReason('upload');
       else if (!(error instanceof DOMException && error.name === 'AbortError')) {
@@ -284,7 +285,7 @@ export const InputBar: React.FC<Props> = ({ onSent, categoryId, scopeId, availab
         </div>}
         {retryAttachment && !isSending && <div className="transfer-progress">
           <span>{t('storage.retry_hint')}</span>
-          <button onClick={() => void sendAttachment(retryAttachment.file, retryAttachment.image, retryAttachment.categoryId)}>{t('storage.retry')}</button>
+          <button onClick={() => void sendAttachment(retryAttachment.file, retryAttachment.image, retryAttachment.categoryId, retryAttachment.isCollected)}>{t('storage.retry')}</button>
           <button onClick={() => setRetryAttachment(null)}>{t('common.cancel')}</button>
         </div>}
       </div>}

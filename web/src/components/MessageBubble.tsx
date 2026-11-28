@@ -1,4 +1,5 @@
 import { formatMessageTime } from '../utils/messageTime';
+import { Bookmark } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { api, MessageEditError, StorageError, type MessageCategory, type SyncaMessage } from '../api/client';
 import { Check, Copy, Download, FileArchive, FileSpreadsheet, FileText, FileType2, Presentation, Pencil, Trash2 } from 'lucide-react';
@@ -7,6 +8,8 @@ import { Modal } from './Modal';
 import { Toast } from './Toast';
 import { CategoryAssignmentMenu } from './CategoryAssignmentMenu';
 import { MessageMarkdown } from './MessageMarkdown';
+import { OwnedMarkdownImage } from './MarkdownImage';
+import { toggleMarkdownTask } from '../markdown/parse';
 import { ExpandableMessageText } from './ExpandableMessageText';
 import { AuthImage } from './AuthImage';
 import type { RecordMenuItem, RecordMenuOptions } from './SettingsPanel';
@@ -82,13 +85,12 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
   const toggleTask = async (offset: number) => {
     const source = message.textContent;
     if (!canEditText || isProcessing || taskInFlight.current || !source) return;
-    const marker = source[offset];
-    if (source[offset - 1] !== '[' || source[offset + 1] !== ']' || ![' ', 'x', 'X'].includes(marker)) return;
+    const text = toggleMarkdownTask(source, offset);
+    if (text === null) return;
     taskInFlight.current = true;
     setIsProcessing(true);
     setActionError('');
     try {
-      const text = source.slice(0, offset) + (marker === ' ' ? 'x' : ' ') + source.slice(offset + 1);
       onTextSaved(await api.updateMessageText(message.id, text, message.updatedAt));
     } catch (error) {
       if (error instanceof MessageEditError) {
@@ -103,6 +105,13 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
     }
   };
 
+  const handleCollect = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try { onTextSaved(await api.collectMessage(message.id, message.updatedAt)); onUpdate(); }
+    catch (error) { reportError(error); }
+    finally { setIsProcessing(false); }
+  };
   const handleClear = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
@@ -247,7 +256,8 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
         {id: 'reveal', label: t(window.syncaDesktop?.platform === 'macOS' ? 'message_bubble.show_in_finder' : 'desktop_menu.show_folder'), enabled});
     }
     if (items.length && items.at(-1) !== null) items.push(null);
-    items.push({id: 'complete', label: t(message.isCleared ? 'storage.mark_incomplete' : 'storage.mark_complete'), enabled});
+    if (!message.collectedAt) items.push({id: 'collect', label: t('collections.move'), enabled: enabled && !expired});
+    if (!message.collectedAt) items.push({id: 'complete', label: t(message.isCleared ? 'storage.mark_incomplete' : 'storage.mark_complete'), enabled});
     if (categories.length) items.push({id: 'category', label: t('storage.message_category'), enabled, options: categories.map(category => ({
       id: category.id, label: category.isDefault ? t('message_category.default_badge') : category.name, checked: category.id === message.categoryId,
     }))});
@@ -262,6 +272,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
       if (!action || !row.isConnected) return;
       if (action === 'edit') onEdit(message);
       else if (action === 'copied') setCopied(true);
+      else if (action === 'collect') await handleCollect();
       else if (action === 'complete') await handleClear();
       else if (action === 'delete') setShowDeleteModal(true);
       else if (action === 'save' && attachment) {
@@ -286,11 +297,12 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
       <div data-message-id={message.id} tabIndex={-1}
         onContextMenu={openRecordMenu}
         onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) void openRecordMenu(event); }}
-        className={`message-bubble ${message.isCleared ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
+        className={`message-bubble ${message.isCleared && !message.collectedAt ? 'cleared' : ''} ${showsSeparator ? '' : 'message-bubble-last'}`}>
         {message.type !== 'text' && expired && <p className="attachment-expiry">{t('storage.expired')}</p>}
         {message.type === 'text' && (
           <ExpandableMessageText text={message.textContent ?? ''}>
             <MessageMarkdown text={message.textContent ?? ''} taskLabel={t('message_task.label')}
+              renderOwnedImage={node => <OwnedMarkdownImage node={node}/>}
               taskPending={isProcessing} onTaskToggle={canEditText ? toggleTask : undefined} />
           </ExpandableMessageText>
         )}
@@ -354,7 +366,8 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
             <button className="action-btn" onClick={() => setShowDeleteModal(true)} disabled={isProcessing} title={t('common.delete', 'Delete')}>
               <Trash2 size={16} />
             </button>
-            <button 
+            {!message.collectedAt && <button className="action-btn" onClick={handleCollect} disabled={isProcessing || expired} title={t('collections.move')} aria-label={t('collections.move')}><Bookmark size={16}/></button>}
+            {!message.collectedAt && <button
               className={`action-btn ${message.isCleared ? 'cleared-icon' : ''}`} 
               aria-label={t(message.isCleared ? 'storage.mark_incomplete' : 'storage.mark_complete')}
               onClick={handleClear} 
@@ -365,7 +378,7 @@ export const MessageBubble: React.FC<Props> = React.memo(({ message, categories,
               ) : (
                 <CheckCircleOutline size={18} color="var(--text-secondary)" />
               )}
-            </button>
+            </button>}
           </div>
         </div>
       </div>

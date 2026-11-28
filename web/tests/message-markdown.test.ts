@@ -8,7 +8,7 @@ describe('message Markdown presentation', () => {
   it('renders nested lists, ordered starts, emphasis, quotes and code as semantic content', () => {
     const html = render('- **第一项**\n  - 子项 `code`\n- 第二项\n\n3. three\n4. four\n\n> quote');
     expect(html.match(/<ul>/g)?.length).toBe(2);
-    expect(html).toContain('<li>子项 <code>code</code></li>');
+    expect(html).toContain('<li><span class="message-list-text" style="white-space:pre-wrap">子项 <code>code</code></span></li>');
     expect(html).toContain('<strong>第一项</strong>');
     expect(html).toContain('<ol start="3">');
     expect(html).toMatch(/<blockquote>\s*<p>quote<\/p>/);
@@ -47,7 +47,7 @@ it('renders each extended format on its own', () => {
   expect(render('章节\n===')).toContain('<h1>章节</h1>');
   expect(render('---')).toMatch(/<hr\s*\/?>/);
   expect(render('~~旧稿~~')).toContain('<del>旧稿</del>');
-  expect(render('~~~js\n  a < b\n~~~')).toContain('<pre><code class="language-js">  a &lt; b\n</code></pre>');
+  expect(render('~~~js\n  a < b\n~~~')).toContain('<pre tabindex="0"><code class="language-js">  a &lt; b\n</code></pre>');
   const table = render('阶段 | 状态\n:--- | ---:\n复核 | **完成**');
   expect(table).toContain('<table>'); expect(table).toContain('<strong>完成</strong>');
   expect(table.match(/<th[ >]/g)).toHaveLength(2);
@@ -55,6 +55,13 @@ it('renders each extended format on its own', () => {
   expect(tasks.match(/type="checkbox"/g)).toHaveLength(2);
   expect(tasks.match(/disabled/g)).toHaveLength(2);
   expect(tasks.match(/checked=/g)).toHaveLength(1);
+});
+
+it('renders the mobile H4 regression record with the same heading and list structure', () => {
+  const html = render('#### 托管的产品功能与 Demo，和用户调研确认\n- 合作伙伴；\n- 用户访谈');
+  expect(html).toContain('<h4>托管的产品功能与 Demo，和用户调研确认</h4>');
+  expect(html).toContain('<li><span class="message-list-text" style="white-space:pre-wrap">合作伙伴；</span></li>');
+  expect(html).not.toContain('####');
 });
 
 it('leaves remote images literal inside formatted documents and code untouched', () => {
@@ -82,4 +89,27 @@ it('underlines only explicit paired inline tags, leaves code, attributes and esc
   expect(html).toContain('<code>&lt;u&gt;code&lt;/u&gt;</code>');
   expect(html).toContain('&lt;u title=');
   expect(render('```\n<u>verbatim</u>\n```')).not.toContain('<u>');
+});
+
+it('resolves only owned image nodes and leaves all other image sources readable', () => {
+ const seen: string[]=[];
+ const source='![owned](synca-image:00000000-0000-0000-0000-000000000001) ![remote](https://tracker.example/pixel) ![bad](synca-image:not-a-uuid)';
+ const html=renderToStaticMarkup(createElement(MessageMarkdown,{text:source,renderOwnedImage:(node)=>{seen.push(node.url!);return createElement('span',{'data-owned':true},node.alt);}}));
+ expect(seen).toEqual(['synca-image:00000000-0000-0000-0000-000000000001']);
+ expect(html).toContain('data-owned="true"');
+ expect(html).toContain('![remote](https://tracker.example/pixel)');
+ expect(html).not.toContain('<img');
+});
+it('disables task activation during pending writes and renders references and indented code',()=>{
+ const html=renderToStaticMarkup(createElement(MessageMarkdown,{text:'- [ ] save',onTaskToggle:()=>{},taskPending:true}));
+ expect(html).toContain('aria-disabled="true"');
+ expect(render('[reference][id]\n\n[id]: https://example.com')).toContain('href="https://example.com"');
+ expect(render('    literal <u>code</u>')).toContain('<pre tabindex="0"><code>literal &lt;u&gt;code&lt;/u&gt;\n</code></pre>');
+});
+
+it('retains soft line breaks and repeated spaces in every first list paragraph',()=>{
+ const html=render('- first  line\n  continuation\n  - nested  line\n    next line\n- [ ] task  line\n  task continuation');
+ expect(html).toContain('<span class="message-list-text" style="white-space:pre-wrap">first  line\ncontinuation</span>');
+ expect(html).toContain('<span class="message-list-text" style="white-space:pre-wrap">nested  line\nnext line</span>');
+ expect(html).toContain('<span class="message-list-text" style="white-space:pre-wrap">task  line\ntask continuation</span>');
 });

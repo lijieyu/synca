@@ -1,0 +1,301 @@
+[
+  {
+    "id": "plain",
+    "source": "普通记录 English 👨‍👩‍👧‍👦\n\n\n空行和  两个空格\n",
+    "contains": [
+      "普通记录",
+      "空行和  两个空格"
+    ],
+    "types": [
+      "text"
+    ],
+    "taskCount": 0,
+    "plain": true
+  },
+  {
+    "id": "headings",
+    "source": "# 一级\n\n## 二级\n\n### 三级\n\n#### 托管的产品功能与 Demo，和用户调研确认\n\n##### 五级\n\n###### 六级",
+    "contains": [
+      "一级",
+      "六级",
+      "托管的产品功能与 Demo"
+    ],
+    "types": [
+      "heading"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "setext",
+    "source": "主标题\n======\n\n副标题\n------",
+    "contains": [
+      "主标题",
+      "副标题"
+    ],
+    "types": [
+      "heading"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "inline",
+    "source": "**粗体**、*斜体*、~~旧内容~~、<u>下划线 **加重**</u>、`<u>代码原样</u>`。",
+    "contains": [
+      "粗体",
+      "斜体",
+      "旧内容",
+      "下划线",
+      "<u>代码原样</u>"
+    ],
+    "types": [
+      "strong",
+      "emphasis",
+      "delete",
+      "underline",
+      "inlineCode"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "nested",
+    "source": "> ### 引用中的标题\n> 引用正文\n>\n> - 第一层\n>   - **第二层**\n>   - [ ] 引用任务\n\n3. 第三项\n4. 第四项\n   1. 子序号\n      - 子项目",
+    "contains": [
+      "引用中的标题",
+      "第一层",
+      "第二层",
+      "引用任务",
+      "子序号"
+    ],
+    "types": [
+      "blockquote",
+      "heading",
+      "list",
+      "listItem",
+      "strong"
+    ],
+    "taskCount": 1,
+    "plain": false
+  },
+  {
+    "id": "tasks-unicode-crlf",
+    "source": "中文 👨‍👩‍👧‍👦 English\r\n\r\n- [ ] 第一项\r\n- [X] 第二项\r\n  - [ ] 嵌套任务\r\n\r\n`- [ ] 不是任务`\r\n\r\n\\- [ ] 普通文字",
+    "contains": [
+      "第一项",
+      "第二项",
+      "嵌套任务",
+      "- [ ] 不是任务"
+    ],
+    "types": [
+      "list",
+      "listItem",
+      "inlineCode"
+    ],
+    "taskCount": 3,
+    "plain": false
+  },
+  {
+    "id": "fences",
+    "source": "```markdown\n# 代码里的标题\n- [ ] 代码里的任务\n![代码内图片](synca-image:11111111-1111-4111-8111-111111111111)\n```\n\n~~~js\nconst markup = \"<script>alert(1)</script>\";\n~~~",
+    "contains": [
+      "# 代码里的标题",
+      "- [ ] 代码里的任务",
+      "<script>alert(1)</script>"
+    ],
+    "types": [
+      "code"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "indented-code",
+    "source": "前文\n\n    let x = 1\n    // **仍是代码**\n\n后文",
+    "contains": [
+      "let x = 1",
+      "**仍是代码**",
+      "后文"
+    ],
+    "types": [
+      "paragraph",
+      "code"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "tables",
+    "source": "| 项目 | 状态 | 数量 |\n| :--- | :---: | ---: |\n| **同步** | 完成 | 12 |\n| a \\| b | `code` | 3 |",
+    "contains": [
+      "项目",
+      "状态",
+      "数量",
+      "同步",
+      "a | b",
+      "code"
+    ],
+    "types": [
+      "table",
+      "tableRow",
+      "tableCell",
+      "strong",
+      "inlineCode"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "links",
+    "source": "[官网](https://example.com) https://example.org\n\n[引用链接][site] 和 [邮件](mailto:hello@example.com)\n\n[site]: https://example.net \"Example\"",
+    "contains": [
+      "官网",
+      "https://example.org",
+      "引用链接",
+      "邮件"
+    ],
+    "types": [
+      "link"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "rules-breaks",
+    "source": "第一行  \n第二行\n\n---\n\n第三行\n\n***\n\n最后一行",
+    "contains": [
+      "第一行",
+      "第二行",
+      "第三行",
+      "最后一行"
+    ],
+    "types": [
+      "break",
+      "thematicBreak"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "html-safety",
+    "source": "**安全样例**\n\n<script>alert(\"no\")</script>\n\n<img src=\"https://tracker.example/pixel\" onerror=\"alert(1)\">\n\n[危险链接](javascript:alert%281%29) [本地链接](file:///tmp/private)\n\n<u title=\"no\">带属性标签</u>",
+    "contains": [
+      "安全样例",
+      "危险链接",
+      "本地链接",
+      "带属性标签"
+    ],
+    "types": [
+      "strong"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "images",
+    "source": "![本机上传](synca-image:11111111-1111-4111-8111-111111111111)\n\n![外部图片](https://tracker.example/pixel)\n\n![引用图片][img]\n\n[img]: synca-image:22222222-2222-4222-8222-222222222222\n\n`![代码图片](synca-image:11111111-1111-4111-8111-111111111111)`",
+    "contains": [
+      "![代码图片]"
+    ],
+    "types": [
+      "image",
+      "inlineCode"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "unfinished",
+    "source": "#### 标题\n\n**未闭合强调\n\n```swift\nlet value = 1\n# 仍在代码块",
+    "contains": [
+      "标题",
+      "**未闭合强调",
+      "let value = 1",
+      "# 仍在代码块"
+    ],
+    "types": [
+      "heading",
+      "code"
+    ],
+    "taskCount": 0,
+    "plain": false
+  },
+  {
+    "id": "escaped",
+    "source": "普通 #tag 和 snake_case_name\n\\# 这不是标题\n####没有空格\n####### 七个井号",
+    "contains": [
+      "#tag",
+      "snake_case_name",
+      "####没有空格",
+      "####### 七个井号"
+    ],
+    "types": [
+      "text"
+    ],
+    "taskCount": 0,
+    "plain": true
+  },
+  {
+    "id": "showcase",
+    "source": "#### 项目记录 · Markdown 对齐\n正文包含 **重点**、*补充说明*、~~旧计划~~ 和 <u>标记</u>。\n\n> 先明确目标，再分步推进。\n> - 分类与同步保持一致\n>   - 支持中文和 English\n\n- [ ] 核对记录和草稿本\n- [x] 保留 Markdown 原文\n\n| 平台 | 状态 |\n| :--- | :---: |\n| iPhone / iPad | 验收中 |\n| Mac / Windows / Web | 验收中 |\n\n```swift\nlet title = \"Synca\"\n// # 代码中的标题保持原样\n```\n\n---\n[参考链接](https://example.com)\n",
+    "contains": [
+      "项目记录",
+      "重点",
+      "旧计划",
+      "标记",
+      "核对记录和草稿本",
+      "平台",
+      "let title = \"Synca\""
+    ],
+    "types": [
+      "heading",
+      "strong",
+      "emphasis",
+      "delete",
+      "underline",
+      "blockquote",
+      "list",
+      "table",
+      "code",
+      "thematicBreak",
+      "link"
+    ],
+    "taskCount": 2,
+    "plain": false
+  },
+  {
+    "id": "list-whitespace",
+    "source": "- 第一行  两个空格\n  第二行\n  - 子项  保留空格\n\n- [ ] 任务第一行\n  任务第二行",
+    "contains": [
+      "第一行  两个空格\n第二行",
+      "子项  保留空格",
+      "任务第一行\n任务第二行"
+    ],
+    "types": [
+      "list",
+      "listItem",
+      "paragraph"
+    ],
+    "taskCount": 1,
+    "plain": false
+  },
+  {
+    "id": "image-nesting-table",
+    "source": "**前文 ![嵌套图片](synca-image:11111111-1111-4111-8111-111111111111) 尾部**\n\n| 说明 | 图片 |\n| :--- | :---: |\n| 表格图片 | ![表格图片](SYNCA-IMAGE:11111111-1111-4111-8111-111111111111) |\n| 原文 | `![代码图片](synca-image:11111111-1111-4111-8111-111111111111)` |",
+    "contains": [
+      "前文",
+      "尾部",
+      "说明",
+      "![代码图片]"
+    ],
+    "types": [
+      "strong",
+      "image",
+      "table",
+      "inlineCode"
+    ],
+    "taskCount": 0,
+    "plain": false
+  }
+]

@@ -104,6 +104,7 @@ final class APIClient: ObservableObject {
         }
         guard let token else { throw APIError.unauthorized }
         var request = URLRequest(url: url)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 15 * 60
         return request
@@ -210,6 +211,7 @@ final class APIClient: ObservableObject {
 
     func deleteAccount() async throws {
         var request = URLRequest(url: URL(string: "\(baseURL)/me/account")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "DELETE"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -248,6 +250,7 @@ final class APIClient: ObservableObject {
 
     func deleteMessageCategory(id: String) async throws {
         var request = URLRequest(url: URL(string: "\(baseURL)/message-categories/\(id)")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "DELETE"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -261,9 +264,9 @@ final class APIClient: ObservableObject {
         ])
     }
 
-    func sendTextMessage(text: String, sourceDevice: String? = nil, categoryId: String? = nil) async throws -> SyncaMessage {
+    func sendTextMessage(text: String, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false) async throws -> SyncaMessage {
         guard MessageTextPolicy.accepts(text) else { throw APIError.messageTooLong(MessageTextPolicy.maximumCharacters) }
-        var body: [String: Any] = ["textContent": text]
+        var body: [String: Any] = ["textContent": text, "isCollected": isCollected]
         if let sourceDevice { body["sourceDevice"] = sourceDevice }
         if let categoryId { body["categoryId"] = categoryId }
         return try await post("/messages", body: body)
@@ -297,15 +300,20 @@ final class APIClient: ObservableObject {
         return ("image/jpeg", ".jpg") // Default to JPEG
     }
 
-    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil,
+    func sendImageMessage(imageData: Data, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false, scratchpad: Bool = false, scratchpadAccount: String? = nil,
                           progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> SyncaMessage {
         let generation = sessionGeneration
         let cacheGeneration = ImageCache.generation
         let authorizationToken = token
         try Task.checkCancellation()
         guard imageData.count <= PendingFileUpload.maxImageSize else { throw APIError.imageTooLarge }
-        let url = URL(string: "\(baseURL)/messages/image")!
+        let url = URL(string: "\(baseURL)\(scratchpad ? "/scratchpad/images" : "/messages/image")")!
         var request = URLRequest(url: url)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
+        if scratchpad {
+            guard let scratchpadAccount, currentUserId == scratchpadAccount else { throw CancellationError() }
+            request.setValue(scratchpadAccount, forHTTPHeaderField: "X-Synca-Account")
+        }
         request.httpMethod = "POST"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -324,6 +332,8 @@ final class APIClient: ObservableObject {
         data.append("Content-Type: \(format.mime)\r\n\r\n".data(using: .utf8)!)
         data.append(imageData)
         data.append("\r\n".data(using: .utf8)!)
+
+        data.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"isCollected\"\r\n\r\n\(isCollected)\r\n".data(using: .utf8)!)
 
         // Source device part
         if let sourceDevice {
@@ -368,7 +378,7 @@ final class APIClient: ObservableObject {
         return message
     }
 
-    func sendFileMessage(file: PendingFileUpload, sourceDevice: String? = nil, categoryId: String? = nil,
+    func sendFileMessage(file: PendingFileUpload, sourceDevice: String? = nil, categoryId: String? = nil, isCollected: Bool = false,
                          progress: @escaping @Sendable (Double) -> Void) async throws -> SyncaMessage {
         let generation = sessionGeneration
         let fileURL = file.fileURL
@@ -376,7 +386,7 @@ final class APIClient: ObservableObject {
         let boundary = UUID().uuidString
         let name = multipartUploadFileName(for: file.fileName)
         let mime = file.mimeType ?? "application/octet-stream"
-        var fields = ["fileName": multipartFieldValue(file.fileName)]
+        var fields = ["fileName": multipartFieldValue(file.fileName), "isCollected": String(isCollected)]
         if let sourceDevice { fields["sourceDevice"] = multipartFieldValue(sourceDevice) }
         if let categoryId { fields["categoryId"] = multipartFieldValue(categoryId) }
         let uploadFields = fields
@@ -411,6 +421,7 @@ final class APIClient: ObservableObject {
         guard generation == sessionGeneration else { throw CancellationError() }
         try Task.checkCancellation()
         var request = URLRequest(url: URL(string: "\(baseURL)/messages/file")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "POST"
         request.timeoutInterval = 15 * 60
         request.setValue("Bearer \(token ?? "")", forHTTPHeaderField: "Authorization")
@@ -432,6 +443,10 @@ final class APIClient: ObservableObject {
 
     private var uploadRequests: [UUID: Task<(Data, URLResponse), Error>] = [:]
     func cancelUploads() { uploadRequests.values.forEach { $0.cancel() } }
+
+    func collectMessage(id: String, expectedUpdatedAt: String) async throws -> SyncaMessage {
+        try await patch("/messages/\(id)/collect", body: ["expectedUpdatedAt": expectedUpdatedAt])
+    }
 
     func updateMessageText(id: String, textContent: String, expectedUpdatedAt: String) async throws -> SyncaMessage {
         guard MessageTextPolicy.accepts(textContent) else { throw APIError.messageTooLong(MessageTextPolicy.maximumCharacters) }
@@ -458,6 +473,7 @@ final class APIClient: ObservableObject {
 
     func deleteMessage(id: String) async throws {
         var request = URLRequest(url: URL(string: "\(baseURL)/messages/\(id)")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "DELETE"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -500,6 +516,7 @@ final class APIClient: ObservableObject {
                          deviceModel: String, osVersion: String, appVersion: String) async throws {
         let url = URL(string: "\(baseURL)/feedback")!
         var request = URLRequest(url: url)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "POST"
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -543,11 +560,40 @@ final class APIClient: ObservableObject {
     func syncNotificationRequest() -> URLRequest? {
         guard let token, let url = URL(string: "\(baseURL)/sync/events") else { return nil }
         var request = URLRequest(url: url)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return request
     }
+
+    func getStoreReleases() async throws -> StoreReleases { try await get("/app-updates", authenticated: false) }
+
+    private func scratchRequest<T: Decodable>(_ path: String, account: String, method: String = "GET", body: [String: Any]? = nil) async throws -> T {
+        guard currentUserId == account else { throw CancellationError() }
+        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue(account, forHTTPHeaderField: "X-Synca-Account")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+        return try await execute(request)
+    }
+    func getScratchpad(account: String) async throws -> ScratchDocument { try await scratchRequest("/scratchpad", account: account) }
+    func saveScratchpad(_ draft: ScratchDraft, account: String) async throws -> ScratchDocument {
+        try await scratchRequest("/scratchpad", account: account, method: "PUT", body: ["content":draft.content, "expectedRevision":draft.revision,
+                                            "mutationId":UUID().uuidString, "preserveCurrent":draft.preserveCurrent])
+    }
+    func preserveScratchCopy(_ content: String, account: String) async throws -> ScratchDocument {
+        try await scratchRequest("/scratchpad/conflicts", account: account, method: "POST", body: ["content":content,"mutationId":UUID().uuidString])
+    }
+    func getScratchCopies(account: String) async throws -> ScratchCopies { try await scratchRequest("/scratchpad/conflicts", account: account) }
+    func getScratchImages(account: String) async throws -> ScratchImages { try await scratchRequest("/scratchpad/images", account: account) }
+    func deleteScratchCopy(_ id: String, account: String) async throws { let _: OkResponse = try await scratchRequest("/scratchpad/conflicts/\(id)", account: account, method: "DELETE") }
+    func deleteScratchImage(_ id: String, account: String) async throws { let _: OkResponse = try await scratchRequest("/scratchpad/images/\(id)", account: account, method: "DELETE") }
 
     // MARK: - Generic HTTP Methods
 
@@ -558,6 +604,7 @@ final class APIClient: ObservableObject {
             components.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
         var request = URLRequest(url: components.url!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.cachePolicy = .reloadIgnoringLocalCacheData
         if authenticated, let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -568,6 +615,7 @@ final class APIClient: ObservableObject {
     private func post<T: Decodable>(_ path: String, body: [String: Any],
                                      authenticated: Bool = true) async throws -> T {
         var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if authenticated, let token {
@@ -580,6 +628,7 @@ final class APIClient: ObservableObject {
     private func put<T: Decodable>(_ path: String, body: [String: Any],
                                     authenticated: Bool = true) async throws -> T {
         var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if authenticated, let token {
@@ -592,12 +641,20 @@ final class APIClient: ObservableObject {
     private func patch<T: Decodable>(_ path: String, body: [String: Any] = [:],
                                       authenticated: Bool = true) async throws -> T {
         var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.setValue("collections", forHTTPHeaderField: "X-Synca-Features")
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if authenticated, let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return try await execute(request)
+    }
+
+    private func delete<T: Decodable>(_ path: String) async throws -> T {
+        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        request.httpMethod = "DELETE"
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         return try await execute(request)
     }
 
@@ -619,6 +676,9 @@ final class APIClient: ObservableObject {
 
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
+        }
+        if httpResponse.statusCode == 409, let conflict = try? JSONDecoder().decode(ScratchConflict.self, from: data) {
+            throw conflict
         }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw decodeAPIError(statusCode: httpResponse.statusCode, data: data)

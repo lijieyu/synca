@@ -148,7 +148,7 @@ else:
 
 '''+source[position:]
 # MCP and OAuth must reach the API rather than the SPA fallback.
-for route in ['/mcp', '/api/ai/', '/oauth/', '/.well-known/oauth-', '/sync/']:
+for route in ['/mcp', '/api/ai/', '/oauth/', '/.well-known/oauth-', '/sync/', '/scratchpad', '/app-updates']:
     marker='location ^~ '+route+' {'
     if marker not in source:
         position=source.index('    # SPA fallback:')
@@ -156,6 +156,7 @@ for route in ['/mcp', '/api/ai/', '/oauth/', '/.well-known/oauth-', '/sync/']:
             '        proxy_pass http://127.0.0.1:3002;\n'
             '        proxy_http_version 1.1;\n'
             '        proxy_buffering off;\n'
+            '        proxy_request_buffering off;\n'
             '        proxy_set_header Host $host;\n'
             '        proxy_set_header X-Real-IP $remote_addr;\n'
             '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n'

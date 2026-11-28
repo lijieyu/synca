@@ -1,3 +1,6 @@
+import type { ScratchDocument } from '../utils/scratchpad';
+export class ScratchConflict extends Error { readonly current: ScratchDocument; constructor(current: ScratchDocument) { super('scratchpad_conflict'); this.current=current; } }
+export interface ScratchCopy { id:string; content:string; created_at:string }
 export interface SyncState { messages: string; categories: string; access: string; latestMessage: string | null; count: number }
 import { saveDownload } from '../utils/downloads';
 export class SessionExpiredError extends Error {}
@@ -18,6 +21,7 @@ const BASE_URL = '';
 const ATTACHMENT_CACHE_NAME = 'synca-attachment-cache-v1';
 
 export interface SyncaMessage {
+  collectedAt?: string | null;
   attachmentExpiresAt?: string | null;
   attachmentExpired?: boolean;
   id: string;
@@ -103,7 +107,7 @@ export class StorageError extends Error {
   readonly code: string;
   constructor(code: string) { super(code); this.code = code; }
 }
-export interface UploadOptions { signal: AbortSignal; onProgress: (value: number) => void }
+export interface UploadOptions { isCollected?: boolean; signal: AbortSignal; onProgress: (value: number) => void }
 export interface AttachmentOptions { signal?: AbortSignal; expiresAt?: string | null; cacheImage?: boolean }
 const IMAGE_CACHE_LIMIT_BYTES = 16 * 1024 * 1024;
 const IMAGE_CACHE_ITEM_LIMIT_BYTES = 4 * 1024 * 1024;
@@ -127,6 +131,8 @@ class APIClient {
   constructor() {
     if (typeof window !== 'undefined' && 'caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
+  canRestartForUpdate(): boolean { return this.editingDrafts.size === 0 && this.pendingUploads === 0; }
+  private pendingUploads = 0;
   private readonly editingDrafts = new Set<() => void>();
   private pendingSessionReload = false;
 
@@ -163,6 +169,7 @@ class APIClient {
     this.activeUploads.forEach(xhr => xhr.abort());
     this.activeUploads.clear();
     this.messageDeltaCache = null;
+    this.markdownImageIndex = null;
     if ('caches' in window) void caches.delete(ATTACHMENT_CACHE_NAME).catch(() => {});
   }
 
@@ -174,6 +181,7 @@ class APIClient {
   private async fetch<T>(path: string, options: RequestInit = {}, anonymous = false): Promise<T> {
     const requestToken = this.token;
     const headers: Record<string, string> = {
+      'X-Synca-Features': 'collections',
       ...(!options.body || typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers as Record<string, string>),
     };
@@ -208,6 +216,7 @@ class APIClient {
       if (requestToken !== this.token) throw new DOMException('Session changed', 'AbortError');
       try {
         const errorJson = JSON.parse(errorText);
+        if (errorJson.error === "scratchpad_conflict") throw new ScratchConflict(errorJson.current);
         if (typeof errorJson.error === 'string' && (anonymous || response.url.includes('/login-methods') || ['invalid_payload','invalid_email','invalid_code','code_expired','code_attempts_exceeded','apple_auth_failed','email_in_use','apple_in_use','email_already_bound','apple_already_bound','rate_limited','email_unavailable','email_send_failed'].includes(errorJson.error))) throw new AuthError(errorJson.error, errorJson.retryAfter);
         if (['message_edit_conflict', 'message_not_found', 'message_not_text'].includes(errorJson.error)) throw new MessageEditError(errorJson.error);
         if (['file_upload_requires_paid', 'storage_limit_reached', 'attachment_expired', 'file_too_large'].includes(errorJson.error)) throw new StorageError(errorJson.error);
@@ -215,7 +224,7 @@ class APIClient {
           throw new DailyLimitError();
         }
       } catch (e) {
-        if (e instanceof AuthError || e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
+        if (e instanceof ScratchConflict || e instanceof AuthError || e instanceof DailyLimitError || e instanceof StorageError || e instanceof MessageEditError) throw e;
       }
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
@@ -240,6 +249,7 @@ class APIClient {
         // Explicit max-age permits origin ETag validation while no-store prevents
         // disk caching of protected record content in the browser.
         'Cache-Control': 'max-age=0',
+        'X-Synca-Features': 'collections',
         ...(cached ? { 'If-None-Match': cached.etag } : {}),
       },
     });
@@ -308,11 +318,45 @@ class APIClient {
     });
   }
 
-  async sendTextMessage(text: string, categoryId?: string | null): Promise<SyncaMessage> {
+  async sendTextMessage(text: string, categoryId?: string | null, isCollected = false): Promise<SyncaMessage> {
     return this.fetch<SyncaMessage>('/messages', {
       method: 'POST',
-      body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null }),
+      body: JSON.stringify({ textContent: text, sourceDevice: 'Web', categoryId: categoryId ?? null, isCollected }),
     });
+  }
+
+  private scratchHeaders(account:string) { return {'X-Synca-Account':account}; }
+  getScratchpad(account:string):Promise<ScratchDocument> {return this.fetch('/scratchpad',{cache:'no-store',headers:this.scratchHeaders(account)});}
+  saveScratchpad(account:string,content:string,expectedRevision:number,mutationId:string,preserveCurrent=false):Promise<ScratchDocument> {
+    return this.fetch('/scratchpad',{method:'PUT',headers:this.scratchHeaders(account),body:JSON.stringify({content,expectedRevision,mutationId,preserveCurrent})});
+  }
+  preserveScratchCopy(account:string,content:string):Promise<ScratchDocument> {
+    return this.fetch('/scratchpad/conflicts',{method:'POST',headers:this.scratchHeaders(account),body:JSON.stringify({content,mutationId:crypto.randomUUID()})});
+  }
+  getScratchCopies(account:string):Promise<{conflicts:ScratchCopy[]}> {return this.fetch('/scratchpad/conflicts',{headers:this.scratchHeaders(account)});}
+  deleteScratchCopy(account:string,id:string):Promise<unknown> {return this.fetch(`/scratchpad/conflicts/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  private markdownImageIndex: {account:string;token:string;version:number;expiresAt:number;pending:Promise<{images:SyncaMessage[]}>} | null = null;
+  /** A single session-scoped index serves all Markdown rows; arbitrary source URLs are never fetched. */
+  async markdownImageAsset(account:string,id:string):Promise<SyncaMessage|null> {
+    const token=this.token,version=this.sessionVersion;
+    if(!token||account!==localStorage.getItem('userId')||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return null;
+    let entry=this.markdownImageIndex;
+    if(!entry||entry.account!==account||entry.token!==token||entry.version!==version||entry.expiresAt<=Date.now()){
+      entry={account,token,version,expiresAt:Date.now()+30_000,pending:this.getScratchImages(account)};
+      this.markdownImageIndex=entry;
+    }
+    try {
+      const {images}=await entry.pending;
+      if(token!==this.token||version!==this.sessionVersion||account!==localStorage.getItem('userId'))throw new DOMException('Session changed','AbortError');
+      return images.find(asset=>asset.id.toLowerCase()===id.toLowerCase())??null;
+    }catch(error){if(this.markdownImageIndex===entry)this.markdownImageIndex=null;throw error;}
+  }
+  getScratchImages(account:string):Promise<{images:SyncaMessage[]}> {return this.fetch('/scratchpad/images',{headers:this.scratchHeaders(account)});}
+  deleteScratchImage(account:string,id:string):Promise<unknown> {this.markdownImageIndex=null;return this.fetch(`/scratchpad/images/${id}`,{method:'DELETE',headers:this.scratchHeaders(account)});}
+  async uploadScratchImage(account:string,file:File):Promise<SyncaMessage> {
+    this.markdownImageIndex=null;
+    const data=new FormData();data.append('image',file);
+    return this.upload('/scratchpad/images',data,file,undefined,this.scratchHeaders(account));
   }
 
   async sendImageMessage(file: File, categoryId?: string | null, options?: UploadOptions): Promise<SyncaMessage> {
@@ -391,11 +435,14 @@ class APIClient {
     return this.upload('/messages/file', formData, file, options);
   }
 
-  private async upload(path: string, form: FormData, file: File, options?: UploadOptions): Promise<SyncaMessage> {
+  private async upload(path: string, form: FormData, file: File, options?: UploadOptions, extraHeaders:Record<string,string>={}): Promise<SyncaMessage> {
+    this.pendingUploads++;
+    try {
+    form.set('isCollected', String(options?.isCollected ?? false));
     const size = file.size;
     const uploadID = this.uploadIDs.get(file) ?? crypto.randomUUID();
     this.uploadIDs.set(file, uploadID);
-    if (!options) return this.fetch(path, { method: 'POST', body: form, headers: { 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
+    if (!options) return await this.fetch(path, { method: 'POST', body: form, headers: { ...extraHeaders, 'X-Upload-Size': String(size), 'X-Upload-ID': uploadID } });
     const requestToken = this.token;
     const response = await new Promise<Response>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -403,6 +450,7 @@ class APIClient {
       xhr.open('POST', `${BASE_URL}${path}`);
       xhr.timeout = 15 * 60 * 1000;
       if (requestToken) xhr.setRequestHeader('Authorization', `Bearer ${requestToken}`);
+      xhr.setRequestHeader('X-Synca-Features', 'collections');
       xhr.setRequestHeader('X-Upload-Size', String(size));
       xhr.setRequestHeader('X-Upload-ID', uploadID);
       const abort = () => xhr.abort();
@@ -417,6 +465,7 @@ class APIClient {
       xhr.send(form);
     });
     return this.decodeResponse(response, requestToken);
+    } finally { this.pendingUploads--; }
   }
 
   async getProtectedFileBlob(url: string, options: AttachmentOptions = {}): Promise<Blob> {
@@ -488,6 +537,10 @@ class APIClient {
     return this.fetch<SyncaMessage>(`/messages/${id}/text`, {
       method: 'PATCH', body: JSON.stringify({ textContent, expectedUpdatedAt }),
     });
+  }
+
+  collectMessage(id: string, expectedUpdatedAt: string): Promise<SyncaMessage> {
+    return this.fetch(`/messages/${id}/collect`, { method: 'PATCH', body: JSON.stringify({ expectedUpdatedAt }) });
   }
 
   async setMessageCompletion(id: string, isCleared: boolean): Promise<SyncaMessage> {

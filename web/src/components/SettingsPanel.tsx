@@ -1,3 +1,4 @@
+import { CaptureSettings } from './CaptureSettings';
 import { SettingsSelect } from './SettingsSelect';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { SettingsSurface, type SettingsAction } from './SettingsSurface';
@@ -46,12 +47,17 @@ declare global {
       platform: string;
       version: string;
       build?: string;
+      captureSettings?: () => Promise<{shortcut:string;error:boolean}>;
+      captureShortcut?: (shortcut:string) => Promise<{shortcut:string;error:boolean}>;
+      captureStart?: () => Promise<unknown>;
+      updateState?: () => Promise<import('./UpdateNotice').UpdateState>;
+      updateAction?: (action: 'check' | 'download' | 'install') => Promise<import('./UpdateNotice').UpdateState>;
       recordMenu?: (options: RecordMenuOptions) => Promise<string | null>;
       copyRecord?: (options: Pick<RecordMenuOptions, 'text' | 'attachment'>) => Promise<void>;
       preferences: () => Promise<Preferences>;
       change: (key: 'ask' | 'badge', value: boolean) => Promise<Preferences>;
       directory: () => Promise<Preferences>;
-      subscribe: (event: 'settings' | 'refresh' | 'sync' | 'clear-completed', listener: () => void) => () => void;
+      subscribe: (event: 'settings' | 'refresh' | 'sync' | 'clear-completed' | 'update', listener: () => void) => () => void;
       clearCompletedAvailable?: (available: boolean) => void;
       session: (token: string | null) => void;
       count: (count: number) => void;
@@ -336,6 +342,7 @@ export function SettingsFrame({ children }: { children: ReactNode }) {
                     />
                   </label>
                   </div>
+                  <CaptureSettings/>
                   <h3>{t('review.page.downloads')}</h3>
                   <div className="settings-pref-group">
                   <label>

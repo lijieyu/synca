@@ -5,13 +5,18 @@ const fs = require('node:fs')
 const { variant } = require('./variant.cjs')
 const {installLocalUI}=require('./local-ui.cjs')
 const {installPlatform}=require('./platform.cjs')
+const {installCapture}=require('./capture/main.cjs')
+const {installUpdater,squirrelEvent}=require('./updater.cjs')
 const {requestInstance}=require('./instance.cjs')
 
 const marker = path.join(__dirname, 'preview-build.json')
 const hasMarker = fs.existsSync(marker)
 const builtMode = hasMarker ? JSON.parse(fs.readFileSync(marker, 'utf8')).mode : 'production'
 if (hasMarker && !['preview', 'local-preview', 'mas-preflight', 'mas-testflight', 'mas-production'].includes(builtMode)) throw Error('Invalid preview marker')
-const baseCfg = variant(builtMode)
+const distributionFile=path.join(__dirname,'distribution.json')
+const distribution=require('./windows-distribution.cjs').distribution(process.platform,process.windowsStore,fs.existsSync(distributionFile)?JSON.parse(fs.readFileSync(distributionFile,'utf8')):null)
+const modeCfg=variant(builtMode)
+const baseCfg = {...modeCfg,store:distribution.store,profile:modeCfg.profile??distribution.profile}
 const cfg = baseCfg.local ? Object.freeze({...baseCfg, readAdmission() {
   const secureFile = path.join(app.getPath('userData'), 'launch-admission')
   const fd = fs.openSync(secureFile, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW)
@@ -38,7 +43,7 @@ const apple = 'https://appleid.apple.com'
 let quitting = false
 app.on('before-quit',()=>{quitting=true})
 const preferences = { sandbox: true, contextIsolation: true, nodeIntegration: false, webviewTag: false }
-let mainWindow, opening
+let mainWindow, opening, capture
 async function openWorkspace(){
   if(mainWindow)return restore()
   if(!opening)opening=(async()=>{
@@ -62,7 +67,7 @@ function createWindow() {
   const window = new BrowserWindow({ title: cfg.name, width: 1040, height: 760,
     ...(process.platform === 'darwin' && {titleBarStyle:'hiddenInset', trafficLightPosition:{x:16,y:14}}),
     ...(process.platform === 'win32' && {titleBarStyle:'hidden', titleBarOverlay:{color:'#00000000',symbolColor:nativeTheme.shouldUseDarkColors?'#eeecf2':'#29272d',height:36}}),
-    minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: ['--synca-version='+identity.version, '--synca-build='+identity.build, ...(cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : [])]} })
+    minWidth: 640, minHeight: 500, autoHideMenuBar: true, webPreferences: {...preferences, preload:path.join(__dirname,"preload.cjs"), additionalArguments: ['--synca-version='+identity.version, '--synca-build='+identity.build, ...(cfg.store?['--synca-store']:[]), ...(cfg.offline ? ['--synca-mas-preflight'] : cfg.local ? ['--synca-local-preview'] : cfg.isolated ? ['--synca-internal-preview'] : [])]} })
   // BrowserWindow minimum dimensions include the native Windows frame.
   if (process.platform === 'win32') {
     const [width, height] = window.getSize()
@@ -119,11 +124,13 @@ function createWindow() {
   })
   window.on('close', event => { if(!quitting){event.preventDefault();window.hide()} })
   installPlatform(window,session.defaultSession,restore,showSettings,cfg)
+  installUpdater(window,cfg,identity.version,()=>{quitting=true})
+  capture=installCapture(window,cfg)
   window.on('closed', () => { mainWindow = undefined })
   void window.loadURL(home).catch(() => {})
 }
 
-if (!requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
+if (squirrelEvent(app,cfg) || !requestInstance(process,builtMode,()=>app.requestSingleInstanceLock())) app.quit()
 else {
   app.on('second-instance', () => {
     if (app.isReady()) void openWorkspace()
@@ -132,7 +139,7 @@ else {
     installLocalUI(session.defaultSession,cfg)
     if (cfg.isolated) session.defaultSession.webRequest.onBeforeRequest((details, done) =>
       done({ cancel: !cfg.allows(details.url) && !/^(?:data|blob|devtools):/.test(details.url) }))
-    app.setAppUserModelId(cfg.bundleId)
+    app.setAppUserModelId(process.platform==='win32' && !cfg.store && require('./update-policy.cjs').isSquirrelInstalled(process.execPath,process.env.LOCALAPPDATA) ? 'com.squirrel.Synca.Synca Electron' : cfg.bundleId)
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
     session.defaultSession.setPermissionCheckHandler(() => false)
     const clearCompletedItem = {id:'clear-completed',label:app.getLocale().startsWith('zh')?'清除已完成…':'Clear Completed…',
@@ -142,6 +149,7 @@ else {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {label:process.platform==='darwin'?cfg.name:'File',submenu:[
         ...(process.platform==='darwin'?[{role:'about'},{type:'separator'}]:[]),
+        {label:app.getLocale().startsWith('zh')?'截图':'Capture Screen',click:()=>void capture?.start()},
         {label:app.getLocale().startsWith('zh')?'设置…':'Settings…',accelerator:'CommandOrControl+,',click:showSettings},
         ...(process.platform==='darwin'?[{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'}]:[]),
         ...(process.platform!=='darwin'?[clearCompletedItem,{type:'separator'},{role:'close'}]:[]),

@@ -5,6 +5,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  userId: string | null;
   email: string | null;
   plan: string | null;
   accessStatus: AccessStatus | null;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isAuthenticated: false,
   isAdmin: false,
+  userId: null,
   email: null,
   plan: null,
   accessStatus: null,
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
   const [isAdmin, setIsAdmin] = useState<boolean>(localStorage.getItem('isAdmin') === 'true');
+  const [userId, setUserId] = useState<string | null>(localStorage.getItem('userId'));
   const [email, setEmail] = useState<string | null>(localStorage.getItem('userEmail'));
   const [plan, setPlan] = useState<string | null>(localStorage.getItem('userPlan'));
   const [accessStatus, setAccessStatus] = useState<AccessStatus | null>(null);
@@ -37,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.getMyProfile();
       if (token !== localStorage.getItem('authToken')) return false;
+      setUserId(res.userId);localStorage.setItem('userId',res.userId);
       if (res.isAdmin !== undefined) {
         setIsAdmin(res.isAdmin);
         localStorage.setItem('isAdmin', res.isAdmin ? 'true' : 'false');
@@ -69,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       api.resetSession();
       setToken(localStorage.getItem('authToken'));
       setIsAdmin(false);
+      setUserId(null);
       setEmail(null);
       setPlan(null);
       setAccessStatus(null);
@@ -82,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     api.resetSession();
     setAccessStatus(null);
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('userId');setUserId(null);
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userPlan');
     setIsAdmin(false);
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('authToken');
     api.resetSession();
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('userId');setUserId(null);
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userPlan');
     setToken(null);
@@ -120,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       token, 
       isAuthenticated: !!token, 
       isAdmin, 
-      email, 
+      email, userId,
       plan, 
       accessStatus,
       login, 

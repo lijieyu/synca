@@ -285,6 +285,7 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 }
 
 /* Markdown stays inside the existing message typography and six-line fold. */
+.message-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-markdown { white-space: normal; overflow-wrap: anywhere; }
 .message-markdown p { margin: 0; white-space: pre-wrap; }
 .message-markdown > * + * { margin-block-start: 0.35em; }
@@ -303,7 +304,8 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
 .message-markdown hr { border: 0; border-top: 1px solid var(--border-color); margin: .65em 0; }
 .message-markdown pre { margin: .35em 0; padding: .55em .75em; max-width: 100%; box-sizing: border-box; white-space: pre; overflow-x: auto; background: var(--selection-bg); border-radius: 6px; }
 .message-markdown .message-table-scroll { max-width: 100%; overflow-x: auto; }
-.message-markdown table { border-collapse: collapse; font-size: .95em; }
+.message-markdown table { border-collapse: collapse; font-size: .95em; width: max-content; overflow-wrap: normal; }
+.message-markdown .message-table-cell { min-width: 6em; max-width: 28em; white-space: normal; overflow-wrap: anywhere; }
 .message-markdown :is(th,td) { border: 1px solid var(--border-color); padding: .25em .55em; }
 .message-markdown th { background: var(--selection-bg); }
 .message-markdown li.task-list-item { list-style: none; }
@@ -373,3 +375,10 @@ body.sidebar-resizing,body.sidebar-resizing * { cursor:col-resize!important; use
   width:100%; min-width:0; max-width:100%; box-sizing:border-box;
 }
 .mobile-categories .category-chip {box-sizing:border-box}
+
+.collection-filter { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:8px 20px; color:var(--text-secondary); font-size:13px; }
+.collection-filter label { display:flex; align-items:center; gap:8px; }
+.collection-filter select { max-width:220px; min-height:36px; padding:6px 10px; border:1px solid var(--border-color); border-radius:8px; color:var(--text-main); background:var(--card-bg-color); font:inherit; }
+.collection-filter select:focus-visible { outline:2px solid var(--text-secondary); outline-offset:2px; }
+
+.markdown-owned-image { display: inline-block; max-width: 100%; max-height: 480px; object-fit: contain; }

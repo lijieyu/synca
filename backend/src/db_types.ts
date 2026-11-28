@@ -18,6 +18,8 @@ export interface UsersTable {
 }
 
 export interface MessagesTable {
+    scratchpad_asset: Generated<number>;
+    collected_at: Generated<string | null>;
     attachment_expires_at: string | null;
     attachment_purged: Generated<number>;
     id: string;
@@ -135,6 +137,8 @@ export interface AIOAuthRequestsTable {
     scopes: string; expires_at: string; code_hash: string | null; connection_id: string | null; resource: string;
 }
 export interface Database {
+    scratchpads: { user_id: string; content: string; revision: number; updated_at: string; mutation_id: string };
+    scratchpad_conflicts: { id: string; user_id: string; content: string; created_at: string };
     ai_connections: AIConnectionsTable;
     ai_refresh_tokens: { token_hash: string; connection_id: string; expires_at: string; consumed_at: string | null; created_at: string };
     ai_operations: AIOperationsTable;

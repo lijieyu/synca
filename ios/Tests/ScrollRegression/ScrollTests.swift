@@ -281,6 +281,19 @@ final class ScrollTests: XCTestCase {
         attach(app, name: "markdown-collapsed")
     }
 
+    func testMarkdownHeadingAppearance() {
+        for style in ["light", "dark", "large"] {
+            var arguments = ["--qa-heading", "-appAppearance", style == "dark" ? "dark" : "light"]
+            if style == "large" { arguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] }
+            let app = launch(arguments)
+            let heading = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "托管的产品功能与 Demo")).firstMatch
+            XCTAssertTrue(heading.waitForExistence(timeout: 8), "Displayed text must contain the heading without ####")
+            XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "####")).firstMatch.exists)
+            attach(app, name: "markdown-heading-" + style)
+            app.terminate()
+        }
+    }
+
     func testLastTextCollapseRemainsVisible() {
         checkCollapse(arguments: [], screenshot: "collapsed-last-text")
     }

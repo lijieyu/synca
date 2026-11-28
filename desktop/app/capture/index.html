@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'"><link rel="stylesheet" href="style.css"></head><body>
+<canvas id="screen" aria-label="Screenshot selection"></canvas>
+<div id="hint" role="status"></div><div id="size" aria-live="polite"></div>
+<div id="toolbar" role="toolbar" hidden>
+<button id="select" aria-pressed="true"></button><button id="annotate" aria-pressed="false"></button>
+<label id="color-label"><select id="color"><option value="#ff453a">Red</option><option value="#ffd60a">Yellow</option><option value="#30d158">Green</option><option value="#0a84ff">Blue</option><option value="#ffffff">White</option><option value="#000000">Black</option></select></label>
+<label id="width-label"><select id="width"><option>2</option><option selected>3</option><option>5</option><option>8</option></select></label>
+<button id="undo"></button><button id="save"></button><button id="cancel"></button><button id="copy" class="primary"></button>
+</div><script src="geometry.cjs"></script><script src="renderer.js"></script></body></html>

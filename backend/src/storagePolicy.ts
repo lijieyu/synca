@@ -9,7 +9,7 @@ export function storagePolicy(paid: boolean) {
 }
 export async function storageUsage(userId: string) {
     const result = await sql<{ bytes: number }>`SELECT COALESCE(SUM(file_size), 0) AS bytes FROM messages
-        WHERE user_id = ${userId} AND is_deleted = 0 AND attachment_purged = 0 AND type IN ('image','file')`.execute(db);
+        WHERE user_id = ${userId} AND is_deleted = 0 AND attachment_purged != 1 AND type IN ('image','file')`.execute(db);
     return Number(result.rows[0].bytes);
 }
 

@@ -146,7 +146,8 @@ struct MessageSearchView: View {
         HStack(spacing: 6) {
             Circle().fill(categoryColor(message)).frame(width: 8, height: 8).accessibilityHidden(true)
             Text(categoryName(message)).lineLimit(1)
-            if message.isCleared {
+            if message.collectedAt != nil { Label("collections.title", systemImage: "bookmark") }
+            if message.isCleared && message.collectedAt == nil {
                 Image(systemName: "checkmark.circle.fill").accessibilityLabel(Text("search.completed"))
             }
         }

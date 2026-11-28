@@ -79,6 +79,14 @@ struct MessageListIndexTests {
                                  createdAt: "2026-11-06T00:00:00Z", updatedAt: "2026-11-06T00:00:00Z")
         precondition(!image.canEditText)
         print("PASS: pure text editing allows completed text but rejects attachments and deleted records")
+        var collected = message("collected", category: "one")
+        collected.collectedAt = "2026-11-26T00:00:00Z"
+        let collectionIndex = MessageListIndex(messages: [collected, message("todo", category: "one")])
+        precondition(collectionIndex.ordered.map(\.id) == ["todo"])
+        precondition(collectionIndex.todoCount == 1 && collectionIndex.todoCountsByCategory["one"] == 1)
+        let collectionRoundtrip = try decoder.decode(SyncaMessage.self, from: JSONEncoder().encode(collected))
+        precondition(collectionRoundtrip.collectedAt == collected.collectedAt)
+        print("PASS: collections survive cache and stay outside task lists and counts")
         let order = ["all", "one", "two"]
         precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: -80, vertical: 10) == "two")
         precondition(CategorySwipeNavigation.target(order: order, selected: "one", horizontal: 80, vertical: 10) == "all")

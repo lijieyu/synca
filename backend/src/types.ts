@@ -37,6 +37,8 @@ export interface SyncaAccessStatus {
 }
 
 export interface SyncaMessage {
+    scratchpadAsset?: boolean;
+    collectedAt?: string | null;
     attachmentExpiresAt?: string | null;
     attachmentExpired?: boolean;
     id: string;

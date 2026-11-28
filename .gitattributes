@@ -1,0 +1,3 @@
+# The desktop renderer applies this patch to a staged Web tree on every OS.
+/desktop/frontend.patch text eol=lf
+/web/src/** text eol=lf

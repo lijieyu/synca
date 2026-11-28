@@ -1397,3 +1397,9 @@ button.attachment-placeholder { cursor: pointer; }
 .message-content .message-link, .shell-links a, .ai-page .ai-text-link, .message-expand { color:var(--link-color); }
 
 .message-metadata .attachment-expiry { margin:0; font:inherit; color:inherit; }
+
+/* Admin identity indicators follow verified sign-in methods, not email domains. */
+.admin-user-email { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.admin-login-methods { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; color: var(--text-secondary); }
+.admin-login-methods:empty { display: none; }
+.admin-login-methods > span { display: inline-flex; align-items: center; }

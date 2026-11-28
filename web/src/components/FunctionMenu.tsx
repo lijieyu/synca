@@ -92,7 +92,7 @@ function DesktopAccountMenu({ email, usage, onSettings, onFeedback, onAbout, onL
       const index = nodes.indexOf(document.activeElement as HTMLElement);
       nodes[event.key === 'Home' ? 0 : event.key === 'End' ? nodes.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + nodes.length) % nodes.length]?.focus();
     }}>
-      <div className="account-menu-identity"><span className="identity-avatar" aria-hidden="true"><PersonIcon size={18}/></span><strong title={email || undefined}>{email || t('navigation.account')}</strong></div>
+      <div className="account-menu-identity"><strong title={email || undefined}>{email || t('navigation.account')}</strong></div>
       <div role="menu" aria-label={t('navigation.account')}>
         <hr role="separator"/>
         {items.map(({label, Icon, action}) => <button key={label} role="menuitem" onClick={() => { close(); action(); }}><Icon size={16} aria-hidden="true"/><span>{label}</span></button>)}
