@@ -30,3 +30,31 @@ with tempfile.TemporaryDirectory(prefix='synca-routes-test-') as tmp:
   block=text.split('location = /downloads/windows/'+arch+'/RELEASES {')[1].split('}')[0]
   assert 'no-cache' in block and 'immutable' not in block
 print('PASS: API ingress, streaming uploads, mutable Windows feeds, repeated deployment transformations')
+
+# Preview uses the production API only after an explicit deployment; the existing
+# access gate remains mandatory, and no database connection is copied or shared.
+import importlib.util
+spec=importlib.util.spec_from_file_location('preview_routing', root/'scripts/preview-production-routing.py')
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+preview='''server {
+    server_name synca-preview.haerth.cn;
+}
+server {
+    server_name synca-preview.haerth.cn;
+    location = /__preview/unlock {
+        auth_basic_user_file /opt/synca-preview/access.htpasswd;
+    }
+}
+'''
+routed=module.transform(preview)
+assert module.transform(routed)==routed
+assert 'auth_request /__preview/production-gate;' in routed
+assert 'internal;' in routed and 'proxy_pass http://127.0.0.1:3004/health;' in routed
+assert 'proxy_pass http://127.0.0.1:3002;' in routed
+assert 'proxy_pass_request_body off;' in routed and 'proxy_set_header Accept "application/json";' in routed
+for invalid in [preview.replace('synca-preview.haerth.cn','synca.haerth.cn'),preview.replace('access.htpasswd','missing')]:
+ try:
+  module.transform(invalid)
+ except ValueError:pass
+ else:raise AssertionError('Unsafe Preview configuration accepted')
+print('PASS: Preview production routing, access gate, idempotency and wrong-site rejection')
