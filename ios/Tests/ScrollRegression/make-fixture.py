@@ -23,9 +23,11 @@ messages.append(dict(messages[0], id='qa-image', type='image', textContent=None,
 messages.append(dict(messages[0], id='qa-image-2', type='image', textContent=None, imageUrl='http://127.0.0.1:54671/logo.png', attachmentExpired=False))
 messages.append(dict(messages[0], id='qa-long', textContent=('一万字记录验收：中文、English、表情 👨‍👩‍👧‍👦。\n' * 120), categoryId='1', categoryName='工作', categoryColor='sky', categoryIsDefault=False))
 seed='private init() {\n categories = try! JSONDecoder().decode([SyncaMessageCategory].self, from: Data(#"'+json.dumps(categories,ensure_ascii=False)+'"#.utf8))\n messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"'+json.dumps(messages,ensure_ascii=False)+'"#.utf8))\n if ProcessInfo.processInfo.arguments.contains("--qa-images") { messages.removeAll { $0.id == "qa-long" } }\n if ProcessInfo.processInfo.arguments.contains("--qa-penultimate") { messages.append(try! JSONDecoder().decode(SyncaMessage.self, from: Data(#"{"id": "qa-tail", "userId": "visual-fixture", "type": "text", "textContent": "长文本后面的最后一条记录", "categoryId": "0", "categoryName": "默认", "categoryColor": "slate", "categoryIsDefault": true, "isCleared": false, "isDeleted": false, "sourceDevice": "MacBook Pro", "createdAt": "2026-11-07T09:30:00.000Z", "updatedAt": "2026-11-07T09:30:00.000Z"}"#.utf8))) }\n hasCompletedInitialLoad = true\n unclearedCount = 3\n selectedCategoryId = "__all__"\n }'
-markdown_sample = "面试前的准备\n\n1. **整理经历**\n   - 选出两个最有代表性的项目\n   - 补上结果和自己的贡献\n2. **准备问题**\n   - 了解团队目前的工作方式\n   - 确认岗位最看重的能力\n\n> 先讲清楚，再补细节。\n\n资料统一放在 `面试准备` 文件夹。"
+markdown_sample = "#### 面试前的准备\n\n1. **整理经历**\n   - 选出两个最有代表性的项目\n   - 补上结果和自己的贡献\n2. **准备问题**\n   - 了解团队目前的工作方式\n   - 确认岗位最看重的能力\n\n> 先讲清楚，再补细节。\n\n资料统一放在 `面试准备` 文件夹。"
 markdown_record = dict(messages[0], id='qa-markdown', textContent=markdown_sample)
-seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-markdown") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#"' + json.dumps([markdown_record], ensure_ascii=False) + '"#.utf8)) }\n }'
+seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-markdown") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#######"' + json.dumps([markdown_record], ensure_ascii=False) + '"#######.utf8)) }\n }'
+heading_record = dict(messages[0], id='qa-heading', textContent='#### 托管的产品功能与 Demo，和用户调研确认\n- 合作伙伴沟通；\n- 用户访谈与反馈；\n- 确认下一步计划。')
+seed = seed[:-1] + '\n if ProcessInfo.processInfo.arguments.contains("--qa-heading") { messages = try! JSONDecoder().decode([SyncaMessage].self, from: Data(#######"' + json.dumps([heading_record], ensure_ascii=False) + '"#######.utf8)) }\n }'
 # Search navigation uses the real feed and a larger account-local synthetic dataset.
 search_messages = [dict(messages[0], id=f'search-{i:03}', textContent=f'工作记录 {i}：跟进日常事项。', categoryId='1', categoryName='工作', categoryIsDefault=False, createdAt=f'2026-11-07T10:{i:02}:00.000Z', updatedAt=f'2026-11-07T10:{i:02}:00.000Z') for i in range(35)]
 search_messages += [dict(messages[0], id='search-completed', textContent='面试已完成记录：Synca playing，沟通安排。' + '整理会议内容，确认后续安排。' * 8, categoryId='2', categoryName='生活', categoryIsDefault=False, isCleared=True),
@@ -45,7 +47,7 @@ edit('Shared/Views/MessageListView.swift', 'struct MessageListView: View {', 'st
 edit('Shared/Views/MessageListView.swift', 'Text("Synca")\n                    .font(.system(size: 17, weight: .semibold))', 'Text("Synca")\n                    .font(.system(size: 17, weight: .semibold)).accessibilityIdentifier("qa-image-resets").accessibilityValue(String(qaImageResets))',1)
 
 
-edit('Shared/Core/SyncManager.swift', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async {', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async { return;')
+edit('Shared/Core/SyncManager.swift', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool {', 'func fullSync(manual: Bool = false, showSuccessStatus: Bool = true) async -> Bool { return true;')
 
 
 # Count scroll-container mounts while switching categories (fixture only).

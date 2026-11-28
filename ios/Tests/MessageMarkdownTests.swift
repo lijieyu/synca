@@ -3,6 +3,30 @@ import AppKit
 @main
 struct MessageMarkdownTests {
     @MainActor static func main() {
+        let headingSource = "#### 托管的产品功能与 Demo，和用户调研确认\n- 合作伙伴；\n- 用户访谈"
+        let heading = MessageMarkdownRenderer.render(headingSource, baseColor: .labelColor)
+        precondition(heading.string == "托管的产品功能与 Demo，和用户调研确认\n•\t合作伙伴；\n•\t用户访谈", "H4 from the reported mobile record must render without Markdown markers")
+        let headingFont = heading.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
+        precondition(headingFont.fontDescriptor.symbolicTraits.contains(.bold))
+        precondition(headingFont.pointSize > NSFont.preferredFont(forTextStyle: .body).pointSize)
+        var previousSize = CGFloat.greatestFiniteMagnitude
+        for level in 1...6 {
+            let title = MessageMarkdownRenderer.render(String(repeating: "#", count: level) + " 标题 *English* [链接](https://example.com) ###", baseColor: .secondaryLabelColor)
+            precondition(title.string == "标题 English 链接", "ATX headings 1–6 and optional closing markers match Web")
+            let titleFont = title.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
+            precondition(titleFont.pointSize <= previousSize)
+            previousSize = titleFont.pointSize
+            let link = (title.string as NSString).range(of: "链接").location
+            precondition(title.attribute(.link, at: link, effectiveRange: nil) != nil)
+            precondition((title.attribute(.foregroundColor, at: 0, effectiveRange: nil) as! NSColor) == .secondaryLabelColor)
+        }
+        for source in ["#tag", "####标题", "####### seven", "\\# escaped", "    # indented", "```md\n#### literal\n```", "~~~\n# literal\n~~~"] {
+            precondition(MessageMarkdownRenderer.render(source, baseColor: .labelColor).string == source, "Non-headings and fenced examples must stay literal")
+        }
+        precondition(MessageMarkdownRenderer.render("  ####\t标题\r\n正文", baseColor: .labelColor).string == "标题\n正文")
+        precondition(MessageMarkdownRenderer.render("#", baseColor: .labelColor).string == "")
+        precondition(MessageMarkdownRenderer.render("# C#", baseColor: .labelColor).string == "C#")
+        precondition(MessageMarkdownRenderer.render("# 标题 \\#", baseColor: .labelColor).string == "标题 #")
         let source = "1. **标题**\n   - 子项目 `code`\n> 引用\n[官网](https://example.com) https://example.org"
         let rendered = MessageMarkdownRenderer.render(source, baseColor: .labelColor)
         precondition(rendered.string == "1.\t标题\n•\t子项目 code\n│\t引用\n官网 https://example.org", "Render compact lists, quotes and inline formatting")

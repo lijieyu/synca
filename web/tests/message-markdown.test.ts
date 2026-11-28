@@ -57,6 +57,13 @@ it('renders each extended format on its own', () => {
   expect(tasks.match(/checked=/g)).toHaveLength(1);
 });
 
+it('renders the mobile H4 regression record with the same heading and list structure', () => {
+  const html = render('#### 托管的产品功能与 Demo，和用户调研确认\n- 合作伙伴；\n- 用户访谈');
+  expect(html).toContain('<h4>托管的产品功能与 Demo，和用户调研确认</h4>');
+  expect(html).toContain('<li>合作伙伴；</li>');
+  expect(html).not.toContain('####');
+});
+
 it('leaves remote images literal inside formatted documents and code untouched', () => {
   const html = render('# 标题\n\n![photo](https://example.com/p.png)\n\n```md\n~~literal~~\n# literal\n```');
   expect(html).toContain('![photo](https://example.com/p.png)');

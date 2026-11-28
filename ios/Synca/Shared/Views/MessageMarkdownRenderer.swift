@@ -14,6 +14,10 @@ typealias MarkdownColor = NSColor
 enum MessageMarkdownRenderer {
     private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
     private static let quotePattern = try! NSRegularExpression(pattern: #"^[ \t]*(>+)[ \t]?(.*)$"#)
+    private static let headingPattern = try! NSRegularExpression(pattern: #"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*\r?$"#)
+    private static let closingHeadingPattern = try! NSRegularExpression(pattern: #"(?:^|[ \t]+)#+[ \t]*$"#)
+    // Match the compact hierarchy in web/src/calm.css, scaled from native body text.
+    private static let headingScales: [CGFloat] = [1.55, 1.4, 1.25, 1.15, 1.075, 1]
     // Keep detection aligned with Web: ordinary records bypass Markdown escape/entity decoding.
     private static let basicPattern = try! NSRegularExpression(pattern: #"(^|\n) {0,3}(?:[-+*] |\d+[.)] |> ?)|\*\*[^\n]+\*\*|__[^\n]+__|\*(?!\s)[^*\n]*\S\*|(?:^|[^\p{L}\p{N}_])_(?!\s)[^_\n]*\S_(?![\p{L}\p{N}_])|`[^`\n]+`|(?<!!)\[[^\]\n]+\]\([^\n]+\)"#)
     private static let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -22,8 +26,10 @@ enum MessageMarkdownRenderer {
     static func render(_ source: String, baseColor: MarkdownColor) -> NSAttributedString {
         let font = MarkdownFont.preferredFont(forTextStyle: .body)
         let result = NSMutableAttributedString(string: "")
-        let hasMarkdown = basicPattern.firstMatch(in: source, range: NSRange(location: 0, length: source.utf16.count)) != nil
         let lines = source.components(separatedBy: "\n")
+        let hasMarkdown = basicPattern.firstMatch(in: source, range: NSRange(location: 0, length: source.utf16.count)) != nil || lines.contains {
+            headingPattern.firstMatch(in: $0, range: NSRange(location: 0, length: $0.utf16.count)) != nil
+        }
         var fence: (character: Character, count: Int)?
         var orderedCounters: [Int: Int] = [:]
         for (index, line) in lines.enumerated() {
@@ -31,6 +37,8 @@ enum MessageMarkdownRenderer {
             let range = NSRange(location: 0, length: nsLine.length)
             var body = line
             var prefix = ""
+            var lineFont = font
+            var headingLevel: Int?
             let paragraph = NSMutableParagraphStyle()
             // Scale indents with body text; leave ordinary paragraphs at their existing spacing.
             let indent = font.pointSize * 1.35
@@ -44,7 +52,18 @@ enum MessageMarkdownRenderer {
             } else if isFence, let fenceCharacter {
                 fence = (fenceCharacter, fenceCount)
             }
-            if !literal, let match = listPattern.firstMatch(in: line, range: range) {
+            if !literal, let match = headingPattern.firstMatch(in: line, range: range) {
+                let level = match.range(at: 1).length
+                headingLevel = level
+                body = match.range(at: 2).location == NSNotFound ? "" : nsLine.substring(with: match.range(at: 2))
+                body = closingHeadingPattern.stringByReplacingMatches(in: body, range: NSRange(location: 0, length: body.utf16.count), withTemplate: "").trimmingCharacters(in: .whitespaces)
+                lineFont = MarkdownFont.systemFont(ofSize: font.pointSize * headingScales[level - 1], weight: level == 6 ? .medium : .semibold)
+                paragraph.paragraphSpacingBefore = index == 0 ? 0 : lineFont.pointSize * 0.45
+                paragraph.paragraphSpacing = lineFont.pointSize * 0.2
+                #if os(macOS)
+                paragraph.headerLevel = level
+                #endif
+            } else if !literal, let match = listPattern.firstMatch(in: line, range: range) {
                 let whitespace = nsLine.substring(with: match.range(at: 1)).replacingOccurrences(of: "\t", with: "    ")
                 let marker = nsLine.substring(with: match.range(at: 2))
                 body = nsLine.substring(with: match.range(at: 3))
@@ -78,9 +97,14 @@ enum MessageMarkdownRenderer {
             } else if literal || body.contains("![") {
                 lineResult.append(NSAttributedString(string: body, attributes: [.font: font, .foregroundColor: baseColor, codeKey: true]))
             } else {
-                lineResult.append(inline(body, font: font, color: baseColor))
+                lineResult.append(inline(body, font: lineFont, color: baseColor))
             }
-            if index < lines.count - 1 { lineResult.append(NSAttributedString(string: "\n", attributes: [.font: font, .foregroundColor: baseColor])) }
+            #if os(iOS)
+            if let headingLevel {
+                lineResult.addAttribute(.accessibilityTextHeadingLevel, value: headingLevel, range: NSRange(location: 0, length: lineResult.length))
+            }
+            #endif
+            if index < lines.count - 1 { lineResult.append(NSAttributedString(string: "\n", attributes: [.font: lineFont, .foregroundColor: baseColor])) }
             lineResult.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: lineResult.length))
             result.append(lineResult)
         }
